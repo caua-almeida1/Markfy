@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+:root {
+    --main-color: rgba(9, 42, 243, 1);
+    --main-color-transparent: rgba(9, 42, 243, 0.2);
+    --black-color: #000000;
+    --second-black-color: #1a1a1a;
+    --white-color: #F8F8F8;
+    --lighter-color:#3d3d3d;
+    --second-lighter-color: rgb(237, 237, 237);
+    --dark-color: #ffffff;  /* Alterado de #1D1D1D para branco */
+    --second-dark-color: #f8f8f8;  /* Alterado de #222222 para cinza muito claro */
+    --button-dark-color: #282828;  /* Alterado de #282828 para cinza claro */
+    --light-dark-color: #757575;
+    --second-light-dark-color: #9a9a9a;
+    --border-radius-card1: 2rem;
+    --border-radius-card2: 1.5rem;
+    --box-shadow-1: rgba(50, 50, 93, 0.1) 0 50px 100px -20px,
+                   rgba(0, 0, 0, 0.05) 0 30px 60px -30px;
+}
+
+.central-adm {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.content {
+    flex: 1;
+    overflow: hidden;
+    background-color: var(--dark-color);
+    position: relative;
+}
+
+.motion-div {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+}
+
+.content>div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}

@@ -1,0 +1,675 @@
+:root {
+    --mkf-ui-primary: #092af3;
+    --mkf-ui-primary-hover: #092af3b3;
+    --mkf-ui-secondary: #f5f5f5;
+    --mkf-ui-border: #eeeeee;
+    --mkf-text-primary: #333333;
+    --mkf-text-secondary: #555555;
+    --mkf-text-tertiary: #666666;
+    --mkf-text-light: #999999;
+    --mkf-ui-shadow: rgba(0, 0, 0, 0.1);
+    --mkf-ui-white: #ffffff;
+    --mkf-link-color: #4a6bdf;
+
+    --modal-transition-duration: 300ms;
+}
+
+/* ======= CREATE COMPANY PAGE STYLES ======= */
+.create-company-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+}
+
+.create-company-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100%;
+    padding: 1.5rem;
+}
+
+.create-company-box {
+    background-color: var(--mkf-ui-white);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px var(--mkf-ui-shadow);
+    padding: 2rem;
+    width: 100%;
+    max-width: 600px;
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.create-company-box h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--mkf-text-primary);
+}
+
+.create-company-box p {
+    font-size: 0.95rem;
+    color: var(--mkf-text-secondary);
+}
+
+.create-company-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.create-company-input {
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    color: var(--mkf-text-primary);
+    background-color: var(--mkf-ui-white);
+}
+
+.create-company-input:focus {
+    outline: none;
+    border-color: var(--mkf-ui-primary);
+    box-shadow: 0 0 0 2px rgba(9, 42, 243, 0.1);
+}
+
+.create-company-btn-wrapper-row {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.create-company-btn {
+    background-color: var(--mkf-ui-primary);
+    color: var(--mkf-ui-white);
+    width: 100%;
+    padding: 0.85rem 0;
+    font-size: 0.8rem;
+    font-weight: 500;
+    border-radius: 5rem;
+    transition: all .3s ease-in-out;
+}
+
+.create-company-btn:hover {
+    background-color: var(--mkf-ui-primary-hover);
+}
+
+.create-company-btn-back {
+    background-color: var(--mkf-ui-border) !important;
+    color: var(--mkf-text-tertiary) !important;
+}
+
+.create-company-btn-back:hover {
+    background-color: var(--mkf-ui-primary);
+    color: var(--mkf-ui-white);
+}
+
+.handle-error-list {
+    margin-top: -1rem;
+    padding-left: 0.5rem;
+    color: red;
+    font-size: 0.8rem;
+    list-style: disc;
+}
+
+.handle-error-single {
+    color: red !important;
+    font-size: 0.8rem !important;
+    text-align: left !important;
+    font-weight: 500;
+    margin-top: -1rem;
+}
+
+
+.company-at-input-wrapper {
+    margin: 0;
+}
+
+/* Responsividade */
+@media (max-width: 468px) {
+    .create-company-container {
+        overflow-y: auto !important;
+    }
+
+    .create-company-box {
+        width: 100vw;
+        height: 100vh;
+        max-width: 100vw;
+        max-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+        padding: 1rem;
+        justify-content: center;
+        margin-top: -4rem;
+        overflow-y: auto !important;
+        animation: fadeInTransitionResponsive 0.5s ease forwards;
+    }
+
+    .create-company-box h1 {
+        font-size: 1.3rem;
+        margin-top: -1rem;
+        margin-bottom: -1rem;
+    }
+
+    .create-company-box p {
+        font-size: 0.85rem;
+    }
+
+    .create-company-box input,
+    span {
+        font-size: 0.8rem;
+    }
+
+    .create-company-btn {
+        font-size: 0.85rem;
+    }
+
+    .create-company-btn-wrapper-row {
+        flex-direction:column-reverse;
+        gap: 0.5rem;
+    }
+}
+
+/* =========== RESPONSIVIDADE PARA TELAS AINDA MENORES ============= */
+@media (max-width: 380px) {
+    .create-company-box {
+        padding: 0.75rem;
+        gap: 1rem;
+        animation: fadeInTransitionResponsive 0.5s ease forwards;
+    }
+
+    .create-company-box .setup-logo {
+        width: 50px;
+        height: auto;
+    }
+
+    .create-company-box h1 {
+        font-size: 1.1rem;
+    }
+
+    .create-company-box p {
+        font-size: 0.75rem;
+    }
+
+    .create-company-input,
+    .company-at-input {
+        padding: 0.55rem 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .company-at-input-wrapper .company-at-input {
+        padding-left: 2.5rem !important;
+    }
+
+    .create-company-btn {
+        padding: 0.7rem 1.2rem;
+        font-size: 0.8rem;
+    }
+
+    .handle-error-list,
+    .handle-error-single {
+        font-size: 0.7rem;
+    }
+}
+
+@keyframes fadeInTransitionResponsive {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============= SEÇÃO PARA SUBMETER IMAGENS E DESCRIÇÃO ================ */
+.create-company-box img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+}
+
+.create-company-form textarea {
+    resize: none;
+}
+
+.file-upload-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.file-upload-label {
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: center;
+    gap: 0.5rem;
+    justify-content: center;
+    width: 100%;
+    padding: 0.7rem 1.5rem;
+    background-color: transparent;
+    border: 1px solid;
+    border-color: var(--mkf-ui-primary);
+    color: var(--mkf-ui-primary);
+    border-radius: 2rem;
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: center;
+    transition: all .3s ease;
+}
+
+.file-upload-label:hover {
+    background-color: var(--mkf-ui-primary-hover);
+    border: 1px solid white !important;
+    color: var(--mkf-ui-white);
+}
+
+.file-upload-label input[type="file"] {
+    display: none;
+}
+
+.create-company-modal-backdrop {
+    backdrop-filter: blur(5px);
+    transition: all;
+}
+
+.create-company-btn {
+    padding: 0.85rem 1rem;
+    border-radius: 2rem;
+    border: none;
+    background-color: var(--mkf-ui-primary);
+    color: white;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.create-company-btn:hover {
+    background-color: var(--mkf-ui-primary-hover);
+}
+
+.create-company-logo-wrapper {
+    width: 100%;
+    display: flex;
+    position: relative;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.create-company-logo-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 999px;
+}
+
+.create-company-logo-wrapper .create-company-overlay {
+    position: absolute;
+    top: 12px;
+    width: 120px;
+    height: 120px;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.create-company-logo-wrapper:hover .create-company-overlay {
+    opacity: 1;
+}
+
+.image-logo-preview {
+    width: 120px !important;
+    height: auto !important;
+    object-fit: cover !important;
+    border-radius: 50% !important;
+    object-fit: cover;
+}
+
+.create-company-logo-wrapper label {
+    width: 100%;
+}
+
+.create-company-form p {
+    text-align: center;
+}
+
+.create-company-logo-image-content {
+    cursor: pointer;
+    border-radius: 50%;
+    width: 120px;
+    height: 120px;
+}
+
+.create-company-logo-wrapper img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 50%;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* ===== MODAL BACKDROP ===== */
+.create-company-logo-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.0);
+    backdrop-filter: blur(0px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    opacity: 0;
+
+    transition:
+        background var(--modal-transition-duration) ease,
+        backdrop-filter var(--modal-transition-duration) ease,
+        opacity var(--modal-transition-duration) ease;
+}
+
+.create-company-logo-modal-backdrop.show {
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    opacity: 1;
+}
+
+/* ===== MODAL BOX ===== */
+.create-company-logo-modal {
+    background-color: var(--mkf-ui-white);
+    color: #f8fafc;
+    width: 100%;
+    max-width: 600px;
+    border-radius: 2rem;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    position: relative;
+    padding: 2rem;
+    box-sizing: border-box;
+    max-height: 90vh;
+    overflow-y: hidden;
+
+    /* estado inicial (escondido) */
+    opacity: 0;
+    transform: translateY(-8px) scale(0.995);
+    transition: transform var(--modal-transition-duration) ease,
+        opacity var(--modal-transition-duration) ease;
+}
+
+.create-company-logo-modal-backdrop.show .create-company-logo-modal {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+/* ===== CLOSE BUTTON ===== */
+.create-company-logo-modal-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: transparent;
+    border: none;
+    color: var(--mkf-text-light);
+    font-size: 1.2rem !important;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.create-company-logo-modal-close:hover {
+    color: #0080ff;
+}
+
+/* ===== MODAL CONTENT ===== */
+.create-company-logo-modal-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+/* ===== CROPPER WRAPPER ===== */
+.create-company-logo-cropper-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1rem;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.create-company-logo-cropper-upload-wrapper {
+    text-align: center;
+    margin-top: 2rem;
+}
+
+.create-company-logo-cropper-upload-label {
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.create-company-logo-cropper-upload-input {
+    margin-top: 0.5rem;
+}
+
+.create-company-logo-cropper-tip {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+    color: gray;
+}
+
+/* Erro */
+.create-company-logo-cropper-error {
+    color: red;
+    margin: 1rem 0;
+}
+
+/* Área do Crop */
+.create-company-logo-cropper-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 100%;
+    width: 100%;
+}
+
+/* Imagem (Controla o tamanho máximo visível da imagem) */
+.create-company-logo-cropper-image {
+    max-width: 100%;
+    max-height: 50vh;
+    height: auto;
+    object-fit: contain;
+    border-radius: 0.5rem;
+}
+
+.create-company-logo-cropper-confirm-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    background-color: var(--mkf-ui-primary);
+    color: white;
+    border: none;
+    width: 100%;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.create-company-logo-cropper-confirm-btn:hover {
+    background-color: var(--mkf-ui-primary-hover);
+}
+
+.ReactCrop--circular-crop .ReactCrop__crop-selection:after {
+    border: 2px solid var(--mkf-ui-white) !important;
+}
+
+.ReactCrop--no-animate .ReactCrop__crop-selection {
+    border: 2px dashed var(--mkf-ui-white) !important;
+}
+
+/* ============= MODAL DROP FILES TEST =============== */
+.create-company-logo-dropzone {
+    width: 100%;
+    max-width: 600px;
+    height: 200px;
+    background-color: var(--mkf-ui-border);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: all .3s ease-in-out;
+    padding: 2rem 6rem;
+}
+
+.create-company-logo-dropzone:hover {
+    background-color: var(--mkf-ui-primary);
+    color: var(--mkf-ui-white);
+}
+
+.create-company-logo-dropzone:hover .create-company-logo-dropzone-text,
+.create-company-logo-dropzone:hover .create-company-logo-dropzone-subtext,
+.create-company-logo-dropzone:hover .browse-text {
+    color: var(--mkf-ui-white) !important;
+}
+
+.create-company-logo-dropzone-inner {
+    text-align: center;
+    pointer-events: none;
+}
+
+.create-company-logo-dropzone-icon {
+    margin-bottom: 0.5rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-company-logo-dropzone-icon .iconify {
+    color: white !important;
+    font-size: 4rem !important;
+    padding: 1rem;
+    background-color: var(--mkf-ui-white);
+    border-radius: 12px;
+}
+
+.create-company-logo-dropzone-text {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #1e293b;
+    transition: all .3s ease-in-out;
+}
+
+.browse-text {
+    text-decoration: underline;
+    color: #007aff;
+    transition: all .3s ease-in-out;
+
+}
+
+.create-company-logo-dropzone-subtext {
+    font-size: 0.7rem;
+    color: #64748b;
+    transition: all .3s ease-in-out;
+}
+
+.create-company-logo-dropzone-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* ===== MOBILE RESPONSIVE ===== */
+@media screen and (max-width: 468px) {
+    .create-company-logo-modal-backdrop {
+        align-items: flex-end;
+        padding: 0;
+        overflow-y: hidden;
+        z-index: 999 !important;
+        position: fixed;
+    }
+
+    .create-company-logo-modal {
+        width: 100%;
+        max-width: 100%;
+        height: 550px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-around;
+        border-radius: 2rem 2rem 0 0;
+        padding: 2rem;
+        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
+        transform: translateY(100%);
+        opacity: 0;
+        transition: transform var(--modal-transition-duration) ease,
+            opacity var(--modal-transition-duration) ease;
+    }
+
+    .create-company-logo-cropper-confirm-btn {
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: calc(100% - 2rem);
+        max-width: 400px;
+        z-index: 2000;
+        margin-top: 0;
+        border-radius: 999px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    }
+
+    .create-company-logo-modal-content {
+        padding-bottom: 4rem;
+    }
+
+    .create-company-logo-modal-backdrop.show .create-company-logo-modal {
+        transform: translateY(0);
+        opacity: 1;
+    }
+
+    .create-company-logo-modal-content {
+        overflow-y: auto;
+        max-height: 75vh;
+    }
+
+    @keyframes slideUpCreateCompanyLogoEdit {
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    .create-company-logo-dropzone {
+        padding: 2rem 3rem !important;
+    }
+
+    .ReactCrop {
+        transform: scale(0.85);
+    }
+}

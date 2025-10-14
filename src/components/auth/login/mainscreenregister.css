@@ -1,0 +1,544 @@
+:root {
+    --mkf-ui-primary: #092AF3;
+    --mkf-ui-primary-hover: rgba(9, 42, 243, 0.7);
+    --mkf-ui-secondary: #f5f5f5;
+    --mkf-ui-border: #eeeeee;
+    --mkf-text-primary: #333333;
+    --mkf-text-secondary: #555555;
+    --mkf-text-tertiary: #666666;
+    --mkf-text-light: #999999;
+    --mkf-ui-shadow: rgba(0, 0, 0, 0.1);
+    --mkf-ui-white: #ffffff;
+    --mkf-link-color: #4a6bdf;
+}
+
+@keyframes mkf-main-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.btn-tester{
+    background-color: var(--mkf-ui-primary);
+}
+
+/* ============= BAKCGROUND BLOB LIQUID ============== */
+.liquid-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+}
+
+.blob {
+    position: absolute;
+    width: 500px;
+    height: 500px;
+    background: linear-gradient(180deg,
+            rgba(9, 42, 243, 0.4) 0%,
+            rgba(74, 107, 223, 0.3) 100%);
+    border-radius: 30% 50% 20% 40%;
+    animation: rotate 20s infinite alternate;
+    filter: blur(40px);
+    transition: all 0.5s cubic-bezier(0.07, 0.8, 0.16, 1);
+}
+
+.blur {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    backdrop-filter: blur(120px);
+    -webkit-backdrop-filter: blur(120px);
+    z-index: 1;
+}
+
+@keyframes rotate {
+    0% {
+        transform: rotate(0deg) scale(1);
+        border-radius: 30% 50% 20% 40%;
+    }
+
+    50% {
+        border-radius: 50% 30% 40% 20%;
+    }
+
+    100% {
+        transform: rotate(360deg) scale(1.5);
+        border-radius: 20% 40% 30% 50%;
+    }
+}
+
+/* Ajuste para mobile - esconde o background animado */
+@media (max-width: 480px) {
+    .liquid-background {
+        display: none;
+    }
+
+    .app-container {
+        background-color: var(--mkf-ui-white);
+    }
+}
+
+@media (min-width: 480px) {
+    .main-container {
+        background-color: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+}
+
+.app-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 16px;
+    box-sizing: border-box;
+}
+
+.main-container {
+    max-width: 400px;
+    width: 100%;
+    padding: 24px;
+    color: var(--mkf-text-primary);
+    animation: mkf-main-fade-in 0.5s ease-out forwards;
+    opacity: 0;
+    margin: auto;
+    background-color: var(--mkf-ui-white);
+    border-radius: 1.5rem;
+    box-shadow: 0 4px 12px var(--mkf-ui-shadow);
+}
+
+/* Header */
+.auth-header {
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    align-items: left;
+    justify-content: center;
+    margin-bottom: 32px;
+}
+
+.auth-logo {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 16px;
+}
+
+.auth-title {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+
+.auth-title h1 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--mkf-text-secondary);
+}
+
+.auth-subtitle {
+    font-size: 0.9rem;
+    color: var(--mkf-text-secondary);
+    margin: 0;
+}
+
+/* Formulário */
+.auth-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group {
+    margin-bottom: 1rem;
+}
+
+.auth-input {
+    width: 100%;
+    padding: 10px 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 8px;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.auth-input:focus {
+    outline: none;
+    border-color: var(--mkf-ui-primary);
+    box-shadow: 0 0 0 2px rgba(9, 42, 243, 0.1);
+}
+
+.verify-input{
+    margin-top: 1rem;
+}
+
+.password-input-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+.password-toggle-icon {
+    position: absolute;
+    right: 16px;
+    top: 40%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: var(--mkf-text-light);
+    font-size: 1.2rem;
+    transition: color 0.2s ease;
+}
+
+.password-toggle-icon:hover {
+    color: var(--mkf-text-primary);
+}
+
+.auth-input[type="password"],
+.auth-input[type="text"] {
+    padding-right: 40px;
+}
+
+/* Opções de Login */
+.auth-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.remember-text {
+    font-size: 0.9rem;
+    color: var(--mkf-text-secondary);
+}
+
+.forgot-password {
+    font-size: 0.9rem;
+    color: var(--mkf-link-color);
+    text-decoration: none;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+}
+
+/* ============= Toggle Checkbox ============*/
+.remember-text{
+    cursor: pointer;
+}
+
+.checkbox-wrapper-46 {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.checkbox-wrapper-46 input[type="checkbox"] {
+    display: none;
+    visibility: hidden;
+}
+
+.checkbox-wrapper-46 .cbx {
+    margin-top: -3px;
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: pointer;
+}
+
+.checkbox-wrapper-46 .cbx span {
+    display: inline-block;
+    vertical-align: middle;
+    transform: translate3d(0, 0, 0);
+}
+
+.checkbox-wrapper-46 .cbx span:first-child {
+    position: relative;
+    width: 18px;
+    height: 18px;
+    border-radius: 3px;
+    transform: scale(1);
+    vertical-align: middle;
+    border: 1px solid var(--mkf-link-color);
+    transition: all 0.2s ease;
+}
+
+.checkbox-wrapper-46 .cbx span:first-child svg {
+    position: absolute;
+    top: 3px;
+    left: 2px;
+    fill: none;
+    stroke: #ffffff;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 16px;
+    stroke-dashoffset: 16px;
+    transition: all 0.3s ease;
+    transition-delay: 0.1s;
+    transform: translate3d(0, 0, 0);
+}
+
+.checkbox-wrapper-46 .cbx span:first-child:before {
+    content: "";
+    width: 100%;
+    height: 100%;
+    background: #506eec;
+    display: block;
+    transform: scale(0);
+    opacity: 1;
+    border-radius: 50%;
+}
+
+.checkbox-wrapper-46 .cbx:hover span:first-child {
+    border-color: var(--mkf-ui-primary);
+}
+
+.checkbox-wrapper-46 .inp-cbx:checked+.cbx span:first-child {
+    background: var(--mkf-ui-primary);
+    border-color: var(--mkf-ui-primary);
+    animation: wave-46 0.4s ease;
+}
+
+.checkbox-wrapper-46 .inp-cbx:checked+.cbx span:first-child svg {
+    stroke-dashoffset: 0;
+}
+
+.checkbox-wrapper-46 .inp-cbx:checked+.cbx span:first-child:before {
+    transform: scale(3.5);
+    opacity: 0;
+    transition: all 0.6s ease;
+}
+
+@keyframes wave-46 {
+    50% {
+        transform: scale(0.9);
+    }
+}
+
+.form-error {
+    color: red;
+    font-size: 0.8rem;
+    text-align: left;
+    margin-top: -10px;
+    margin-bottom: 8px;
+}
+
+.auth-button {
+    width: 100%;
+    padding: 14px;
+    background-color: var(--mkf-ui-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.auth-button:hover {
+    background-color: var(--mkf-ui-primary-hover);
+}
+
+.verify-button{
+    margin-bottom: 1rem;
+}
+
+/* Footer */
+.auth-footer {
+    text-align: center;
+}
+
+.auth-toggle-text {
+    font-size: 0.8rem;
+    color: var(--mkf-text-secondary);
+    margin: 0;
+}
+
+.auth-toggle-button {
+    background: none;
+    border: none;
+    color: var(--mkf-link-color);
+    font-weight: 600;
+    font-size: inherit;
+    cursor: pointer;
+    padding: 0;
+
+}
+
+.auth-toggle-button:hover {
+    text-decoration: underline;
+}
+
+/* =========== BOTAO GOOGLE ============= */
+/* Botão do Google */
+.google-auth-button {
+    width: 100%;
+    padding: 12px;
+    background-color: white;
+    color: #5f6368;
+    border: 1px solid #dadce0;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.google-auth-button:hover {
+    background-color: #f8f9fa;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.google-icon {
+    margin-right: 8px;
+}
+
+/* Divisor */
+.auth-divider {
+    display: flex;
+    align-items: center;
+    margin: 16px 0;
+}
+
+.divider-line {
+    flex: 1;
+    height: 1px;
+    background-color: var(--mkf-ui-border);
+}
+
+.divider-text {
+    padding: 0 12px;
+    color: var(--mkf-text-secondary);
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+/* Responsividade para Mobile */
+@media (max-width: 480px) {
+    .google-auth-button {
+        padding: 10px;
+        font-size: 0.7rem;
+    }
+
+    .auth-divider {
+        margin: 12px 0;
+    }
+}
+
+/* Animações */
+@keyframes auth-transition {
+    from {
+        opacity: 0.5;
+        transform: translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsividade para Mobile */
+@media (max-width: 480px) {
+    .app-container {
+        padding: 12px;
+        align-items: flex-start;
+        min-height: 100vh;
+        background-color: var(--mkf-ui-white);
+        margin-top: -2rem;
+    }
+
+    .main-container {
+        max-width: 100%;
+        padding: 20px;
+        box-shadow: none;
+        animation: none;
+        opacity: 1;
+    }
+
+    .auth-header {
+        margin-bottom: 1rem;
+    }
+
+    .auth-logo {
+        width: 56px;
+        height: 56px;
+        margin-bottom: 0;
+    }
+
+    .auth-title h1 {
+        font-size: 1rem;
+    }
+
+    .auth-subtitle {
+        font-size: 0.85rem;
+    }
+
+    .auth-input {
+        padding: 12px 14px;
+        font-size: 0.7rem;
+    }
+
+    .auth-button {
+        padding: 12px;
+        font-size: 0.7rem;
+    }
+
+    .auth-toggle-text {
+        font-size: 0.85rem;
+    }
+
+    .cbx svg {
+        margin-top: -1px;
+        width: 10px;
+        height: 10px;
+    }
+
+    .checkbox-wrapper-46 .cbx span:first-child {
+        width: 16px;
+        height: 16px;
+    }
+
+    .remember-text {
+        font-size: 0.8rem;
+    }
+}
+
+/* Dispositivos muito pequenos (ex: iPhone 5/SE) */
+@media (max-width: 320px) {
+    .auth-title h1 {
+        font-size: 1.2rem;
+    }
+
+    .auth-input {
+        padding: 10px 12px;
+    }
+
+    .auth-button {
+        padding: 10px;
+    }
+}

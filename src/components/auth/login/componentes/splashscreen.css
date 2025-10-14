@@ -1,0 +1,96 @@
+/* Cores temáticas */
+:root {
+    --mkf-text-primary: #333333;
+    --mkf-text-secondary: #666666;
+}
+
+/* Animações */
+@keyframes mkf-scale-in {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes mkf-slide-up {
+    from {
+        transform: translateY(10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes mkf-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* Estilos do componente - mobile first */
+.splash-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: transparent;
+    color: var(--mkf-text-primary);
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+}
+
+.splash-logo {
+    width: 100px;
+    height: 100px;
+    margin-bottom: 20px;
+    animation: mkf-scale-in 1s ease-out forwards;
+}
+
+.splash-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0;
+    animation: mkf-slide-up 0.8s ease-out 0.3s both;
+}
+
+.splash-subtitle {
+    font-size: 0.8rem;
+    width: 400px;
+    text-align: center;
+    color: var(--mkf-text-secondary);
+    opacity: 0;
+    animation: mkf-fade-in 0.6s ease-out 0.8s forwards;
+}
+
+/* Media query para telas maiores */
+@media (min-width: 768px) {
+    .splash-logo {
+        width: 120px;
+        height: 120px;
+    }
+
+    .splash-title {
+        font-size: 2.2rem;
+    }
+
+    .splash-subtitle {
+        font-size: 1.1rem;
+    }
+}

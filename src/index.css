@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+:root {
+    --main-color: #092AF3;
+    --white-color: #ffffff;
+    --lighter-color: #f5f5f5;
+    --dark-color: #1D1D1D;
+    --second-dark-color: #222222;
+    --button-dark-color: #282828;
+    --light-dark-color: #757575;
+    --second-light-dark-color: #9a9a9a;
+    --border-radius-card1: 2rem;
+    --border-radius-card2: 1.5rem;
+    --box-shadow-1: rgb(50 50 93 / 25%) 0 50px 100px -20px,
+        rgb(0 0 0 / 10%) 0 30px 60px -30px;
+}
+
+body {
+    font-family: Poppins, sans-serif!important;
+    justify-content: center;
+    margin: 0 auto;
+    max-width: 1000px !important;
+}
+
+body.dark-mode {
+    background-color: var(--dark-color);
+}
+
+body.light-mode {
+    background-color: var(--white-color);
+}

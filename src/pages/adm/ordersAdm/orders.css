@@ -1,0 +1,205 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+/* :root {
+    --main-color: #092AF3;
+    --white-color: #ffffff;
+    --lighter-color: #f5f5f5;
+    --dark-color: #ffffff;
+    --second-dark-color: #222222;
+    --button-dark-color: #282828;
+    --light-dark-color: #757575;
+    --second-light-dark-color: #9a9a9a;
+    --border-radius-card1: 2rem;
+    --border-radius-card2: 1.5rem;
+    --box-shadow-1: rgb(50 50 93 / 25%) 0 50px 100px -20px,
+        rgb(0 0 0 / 10%) 0 30px 60px -30px;
+} */
+
+
+
+.orders-page {
+    padding: 1rem 0;
+    overflow-x: hidden;
+    width: 100%;
+    height: 100vh;
+    background-color: var(--dark-color);
+    margin-bottom: 5rem;
+}
+
+/* ======== HEADER CONTENT ITENS ORDERS ========= */
+
+.orders-header {
+    display: flex;
+    justify-content: center;
+    text-align: center;
+    font-size: 1rem;
+    border-bottom: 1px solid rgb(222, 222, 222);
+    padding-top: 1rem;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+}
+
+.header-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.orders-header h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--black-color);
+    margin-bottom: 1rem;
+}
+
+.orders-header-tabs {
+    display: flex;
+    width: 100%;
+    gap: 15px;
+}
+
+.orders-header-tabs button {
+    color: var(--light-dark-color);
+    padding-top: 0.6rem;
+    font-size: 1rem;
+    border: none;
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    flex: 1;
+    text-align: center;
+    position: relative;
+    transition: all .3s ease-in-out;
+}
+
+.orders-header-tabs button.active {
+    color: var(--main-color);
+    font-weight: 600;
+}
+
+.orders-header-tabs button::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    border-radius: 1rem 1rem 0 0;
+    height: 5px;
+    background-color: var(--main-color);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.orders-header-tabs button.active::after {
+    opacity: 1;
+}
+
+/* ======== CONTENT PAGE ========= */
+.orders-content {
+    padding: 1.5rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.order-card {
+    background-color: var(--second-dark-color);
+    border-radius: var(--border-radius-card1);
+    padding: 1.5rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.order-card-header {
+    display: flex;
+    gap: 1rem;
+}
+
+
+.order-card-header img {
+    width: 90px;
+    height: 90px;
+    border-radius: var(--border-radius-card2);
+    object-fit: cover;
+}
+
+.order-card-header h3 {
+    font-size: 1rem;
+    color: var(--white-color);
+}
+
+.order-card-header p {
+    color: var(--second-light-dark-color);
+    font-size: 0.9rem;
+}
+
+.order-card-body span {
+    color: var(--light-dark-color);
+    font-size: 1rem;
+}
+
+.order-card-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.order-card-footer button {
+    width: 100%;
+    padding: 0.6rem 1rem;
+    font-weight: 600;
+    font-size: 0.8rem;
+    border: none;
+    border-radius: 5rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.order-cancel-button {
+    background-color: var(--dark-color);
+    color: var(--second-black-color)!important;
+}
+
+.order-view-button {
+    background-color: var(--main-color);
+}
+
+.order-card-product-name-status{
+    display: flex;
+    align-items: center;
+    width: 100%;
+    justify-content: space-between;
+    color: var(--white-color);
+}
+
+.order-card-product-name-status .icon{
+    font-size: 1.5rem;
+    margin: 0.5rem 0;
+}
+
+.order-info-description-line-flex {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.order-card-infos-product h3{
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--black-color);
+}
+
+.order-description-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--second-light-dark-color);
+}
+
+.order-description-item .icon {
+    color: var(--second-light-dark-color);
+}
