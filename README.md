@@ -149,3 +149,28 @@ Interface para criação e gerenciamento dos serviços oferecidos pela empresa.
 
 ```bash
 git clone https://github.com/seu-usuario/markfy.git
+```
+
+2. Entre na pasta do projeto
+
+```bash
+cd .\react-firebase-auth-boilerplate-main\
+```
+
+3. Instale as dependências
+   
+```bash
+npm install
+```
+
+4. Inicie a aplicação
+
+```bash
+npm start
+```
+
+A aplicação estará disponível em:
+
+```bash
+http://localhost:3000
+```
