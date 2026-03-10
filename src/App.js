@@ -8,7 +8,7 @@ import InitialSetup from "./pages/inital-pages/initial-setup";
 
 // ========= CREATE COMPANY ===========
 import CreateCompany from "./pages/inital-pages/initial-steps-components/create-company/CreateCompany";
-import PreviewCompany from "./pages/inital-pages/initial-steps-components/preview-company/PreviewCompany"
+import PreviewCompany from "./pages/inital-pages/initial-steps-components/preview-company/PreviewCompany";
 
 import Home from "./components/home";
 
@@ -19,10 +19,14 @@ import { AuthProvider } from "./contexts/authContext";
 import { useRoutes } from "react-router-dom";
 import Dashboard from "./pages/adm/dashboardAdm/dashboard";
 import CentralAdm from "./pages/adm/centralAdm";
-import CentralUser from "./pages/users/homepage"
-
+import CentralUser from "./pages/users/homepage";
 import CompanyPage from "./pages/users/homepage/CompanyPage/CompanyPage";
 
+// 🔹 IMPORTAR O NOVO CONTEXTO
+import { UserCompanyProvider } from "./contexts/companyContext/UserCompanyContext";
+
+
+import TestSMS from "./pages/TESTE-SMS/testesms";
 function App() {
   const routesArray = [
     {
@@ -57,25 +61,33 @@ function App() {
         </PrivateRoute>
       ),
     },
-    // Rota sem handle
     {
       path: "/central-user",
       element: <CentralUser />,
     },
-    // Rota com handle
     {
       path: "/central-user/:handle",
       element: <CentralUser />,
     },
     {
-      path: "/central-user/catalog/:handle",
+      path: "/central-user/:handle/catalog",
       element: <CompanyPage />,
+    },
+    {
+      path: "/test-sms",
+      element: <TestSMS />,
     }
   ];
-  let routesElement = useRoutes(routesArray);
+
+  const routesElement = useRoutes(routesArray);
+
   return (
     <AuthProvider>
-      <div className="w-full h-screen flex flex-col">{routesElement}</div>
+      <UserCompanyProvider>
+        <div className="w-full h-screen flex flex-col">
+          {routesElement}
+        </div>
+      </UserCompanyProvider>
     </AuthProvider>
   );
 }

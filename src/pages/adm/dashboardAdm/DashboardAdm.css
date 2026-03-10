@@ -22,7 +22,6 @@
     overflow-x: hidden;
     width: 100%;
     height: 100vh;
-    background-color: var(--dark-color);
 }
 
 .dashboard-adm-header-content {
@@ -73,14 +72,14 @@
 .dashboard-adm-header-content p {
     font-size: 1rem;
     font-weight: 400;
-    color: var(--second-light-dark-color);
+    color: var(--mkf-text-tertiary);
     margin-bottom: -0.2rem;
 }
 
 .dashboard-adm-header-content h1 {
     font-size: 1.2rem;
     font-weight: 500;
-    color: var(--lighter-color);
+    color: var(--mkf-text-primary)!important;
 }
 
 /* ======== DASHBOARD TOP CONTENT ======= */
@@ -130,7 +129,7 @@
 }
 
 .dashboard-top-content-wallet h1 {
-    color: var(--lighter-color);
+    color: var(--mkf-text-primary);
     font-size: 1.5rem;
     font-weight: 600;
 }
@@ -175,7 +174,7 @@
     display: inline-block;
     font-size: 2rem;
     font-weight: bold;
-    color: var(--white-color);
+    color: var(--mkf-text-primary);
     position: relative;
     transition: opacity 0.4s ease, transform 0.4s ease;
 }
@@ -192,7 +191,7 @@
 
 /* ========== LISTA DE ADMINS DA PLATAFORMA ========== */
 .dashboard-mid-products {
-    color: var(--lighter-color);
+    color: var(--mkf-text-primary);
     display: flex;
     gap: 1.5rem;
     align-items: center;
@@ -264,7 +263,7 @@
 .dashboard-adm-item h1 {
     font-size: 0.8rem;
     font-weight: 500;
-    color: var(--button-dark-color);
+    color: var(--mkf-text-primary);
     margin: 0;
     white-space: nowrap;
     overflow: hidden;
@@ -321,14 +320,14 @@
     left: -100%;
     width: 100%;
     height: 100%;
-    background-color: var(--dark-color);
+    background-color: var(--mkf-ui-background);
     transition: all 0.3s ease-in-out;
     z-index: -1;
 }
 
 .dashboard-buttons-actions button:hover {
     color: var(--main-color);
-    border-color: var(--main-color);
+    border-color: var(--mkf-ui-primary);
 }
 
 .dashboard-buttons-actions button:hover::before {
@@ -347,7 +346,7 @@
 
 /* ========== SEÇÃO DE PEDIDOS RECENTES ========== */
 .dashboard-card-section {
-    background-color: #ffffff;
+    background-color: var(--mkf-ui-white);
     padding: 20px;
     border-radius: var(--border-radius-card2);
     box-shadow: rgba(0, 0, 0, 0.03) 0px 10px 50px;
@@ -362,14 +361,15 @@
 }
 
 .dashboard-card-section h1 {
-    font-size: 1.05rem;
-    color: var(--lighter-color);
+    font-size: 1rem;
+    color: var(--mkf-text-primary);
     font-weight: 600;
 }
 
 .dashboard-card-section-header p {
     font-size: 0.9rem;
     color: var(--light-dark-color);
+    cursor: pointer;
 }
 
 .dashboard-cards {
@@ -379,21 +379,36 @@
 }
 
 .dashboard-card {
-    background-color: var(--white-color);
+    background-color: var(--mkf-ui-background);
     padding: 16px;
     border-radius: var(--border-radius-card2);
     text-align: left;
-    /* box-shadow: rgba(0, 0, 0, 0.04) 0px 3px 10px; */
+    box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 30px;
+    transition: all .3s ease;
+    cursor: pointer;
+}
+
+.dashboard-card:hover {
+    background-color: var(--mkf-ui-primary);
+    color: white!important;
+    transform: translateY(-4px);
+    box-shadow: 0 4px 22px var(--mkf-ui-primary);
+    cursor: pointer;
+}
+
+.dashboard-card:hover h2,
+.dashboard-card:hover p {
+    color: white;
 }
 
 .dashboard-card h2 {
     font-size: 0.85rem;
     font-weight: 500;
-    color: var(--button-dark-color);
+    color: var(--mkf-text-primary);
     margin-bottom: 8px;
 }
 
 .dashboard-card p {
     font-size: 0.9rem;
-    color: #666666;
+    color: var(--mkf-text-tertiary);
 }

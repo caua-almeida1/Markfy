@@ -1,63 +1,39 @@
-import React, { useState } from 'react';
-import { Icon } from '@iconify/react';
+import React from "react";
+import { Icon } from "@iconify/react";
 
-const TabBar = () => {
-  const [activeTab, setActiveTab] = useState('home');
+const TabBar = ({ activeTab, setActiveTab }) => {
 
-  const toggleActiveTab = (tabId) => {
-    setActiveTab(tabId);
-  };
+  const tabs = [
+    { id: "home", label: "Início", icon: "ri:home-line" },
+    { id: "reservas", label: "Reservas", icon: "mingcute:calendar-line" },
+    { id: "produtos", label: "Produtos", icon: "gg:shopping-bag" },
+    { id: "carrinho", label: "Carrinho", icon: "humbleicons:cart" },
+    { id: "perfil", label: "Perfil", icon: "tabler:user" },
+  ];
 
   return (
-    <div id="page" className="site">
+    <div id="tabbar" className="site">
       <div className="container">
         <nav>
           <ul>
-            <li
-              className={activeTab === 'home' ? 'active' : ''}
-              onClick={() => toggleActiveTab('home')}
-            >
-              <a href="#" id="home">
-                <span>Início</span>
-                <Icon icon="ri:home-line" className="icon" />
-              </a>
-            </li>
-            <li
-              className={activeTab === 'reservas' ? 'active' : ''}
-              onClick={() => toggleActiveTab('reservas')}
-            >
-              <a href="#" id="reservas">
-                <span>Reservas</span>
-                <Icon icon="mingcute:calendar-line" className="icon" />
-              </a>
-            </li>
-            <li
-              className={activeTab === 'conversas' ? 'active' : ''}
-              onClick={() => toggleActiveTab('conversas')}
-            >
-              <a href="#" id="conversas">
-                <span>Produtos</span>
-                <Icon icon="gg:shopping-bag" className="icon"/>
-              </a>
-            </li>
-            <li
-              className={activeTab === 'carrinho' ? 'active' : ''}
-              onClick={() => toggleActiveTab('carrinho')}
-            >
-              <a href="#" id="carrinho">
-                <span>Carrinho</span>
-                <Icon icon="humbleicons:cart" className="icon" />
-              </a>
-            </li>
-            <li
-              className={activeTab === 'perfil' ? 'active' : ''}
-              onClick={() => toggleActiveTab('perfil')}
-            >
-              <a href="#" id="perfil">
-                <span>Perfil</span>
-                <Icon icon="tabler:user" className="icon" />
-              </a>
-            </li>
+
+            {tabs.map((tab) => (
+              <li
+                key={tab.id}
+                className={activeTab === tab.id ? "active" : ""}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <button type="button" className="nav-button">
+
+                  <span>{tab.label}</span>
+
+                  <Icon icon={tab.icon} className="icon" />
+
+                </button>
+
+              </li>
+            ))}
+
           </ul>
         </nav>
       </div>

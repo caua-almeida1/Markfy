@@ -22,7 +22,7 @@
     overflow-x: hidden;
     width: 100%;
     height: 100vh;
-    background-color: var(--dark-color);
+    background-color: var(--mkf-background);
     margin-bottom: 5rem;
 }
 
@@ -40,7 +40,7 @@
 .adm_products-header h1 {
     font-size: 1rem;
     font-weight: 600;
-    color: var(--black-color);
+    color: var(--mkf-text-primary);
     margin-bottom: 1rem;
 }
 
@@ -49,10 +49,10 @@
 }
 
 .adm_products-new-product-btn {
-    background-color: var(--main-color);
+    background-color: var(--mkf-ui-primary);
     justify-content: center;
     width: 100%;
-    color: var(--white-color);
+    color: #fff;
     padding: 1rem;
     border-radius: 5rem;
     font-size: 0.8rem;
@@ -92,7 +92,7 @@
 }
 
 .adm_products-list p {
-    color: var(--second-black-color);
+    color: var(--mkf-text-secondary);
 }
 
 .adm_products-list p span {
@@ -103,7 +103,7 @@
 }
 
 .adm_products-card {
-    background: var(--second-dark-color);
+    background: var(--mkf-ui-white);
     border-radius: var(--border-radius-card2);
     overflow: hidden;
     padding: 1rem;
@@ -126,8 +126,8 @@
 }
 
 .adm_products-card-top-info img {
-    width: 110px;
-    height: 110px;
+    width: 100%;
+    height: 100%;
     border-radius: 1rem;
     object-fit: cover;
 }
@@ -172,13 +172,13 @@
 
 .adm_products-card-content h2 {
     font-size: 0.8rem;
-    color: var(--second-black-color);
+    color: var(--mkf-text-primary);
     font-weight: 600;
 }
 
 .adm_products-card-content p {
-    font-size: 14px;
-    color: #777;
+    font-size: 0.8rem;
+    color: var(--mkf-text-secondary);
 }
 
 .adm_products-card-content-icons {
@@ -210,16 +210,16 @@
     font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.3s ease;
+    transition: all 0.3s ease;
 }
 
 .adm_products-btn.edit-btn {
-    background-color: var(--main-color);
+    background-color: var(--mkf-ui-primary);
     color: #fff;
 }
 
 .adm_products-btn.delete-btn {
-    background-color: var(--dark-color);
+    background-color: var(--mkf-ui-background);
     color: var(--second-black-color);
 }
 
@@ -286,7 +286,7 @@
     width: 700px;
     max-width: 100%;
     min-height: 700px;
-    background: #fff;
+    background: var(--mkf-ui-white);
     border-radius: 2rem 2rem 0 0;
     box-shadow: rgba(50, 50, 93, 0.5) 0px -10px 110px -20px, rgba(0, 0, 0, 0.25) 0px 30px 60px -30px;
     overflow: hidden;
@@ -343,7 +343,7 @@
 }
 
 .adm_products-modal-content h1 {
-    color: var(--black-color);
+    color: var(--mkf-text-primary);
     font-size: 1.1rem;
     font-weight: 500;
 }
@@ -351,7 +351,7 @@
 .adm_products-modal-content h2 {
     font-size: 0.8rem;
     margin-bottom: 2rem;
-    color: var(--black-color) !important;
+    color: var(--mkf-text-secondary) !important;
 }
 
 .adm_products-modal-buttons {
@@ -373,24 +373,26 @@
 }
 
 .adm_products-modal-btn.primary-btn {
-    background-color: var(--main-color);
-    border: 1px solid var(--main-color);
+    background-color: var(--mkf-ui-primary);
+    border: 1px solid var(--mkf-ui-primary);
     color: white;
 }
 
 .adm_products-modal-btn.primary-btn:hover {
     background-color: var(--white-color);
-    color: var(--main-color);
+    color: var(--mkf-ui-primary);
+    border: 1px solid var(--mkf-text-primary);
 }
 
 .adm_products-modal-btn.secondary-btn {
-    background-color: #f0f0f0;
-    border: 1px solid #f0f0f0;
-    color: var(--button-dark-color);
+    background-color: var(--mkf-ui-background-secondary);
+    border: 1px solid var(--mkf-ui-background-secondary);
+    color: var(--mkf-text-primary);
 }
 
 .adm_products-modal-btn.secondary-btn:hover {
-    background-color: #e0e0e0;
+    background-color: var(--mkf-ui-primary);
+    color: white !important;
 }
 
 @keyframes slideInFromBottom {
@@ -506,14 +508,14 @@
 /* ========= SEGUNDO PASSO ========== */
 .adm_products-modal-content-title {
     font-size: 1rem !important;
-    color: var(--dark-color) !important;
+    color: var(--mkf-ui-background) !important;
     font-weight: 500;
 }
 
 .adm_products-modal-content-subtitle {
     margin-top: -1.5rem;
     margin-bottom: 2rem;
-    color: var(--light-dark-color);
+    color: var(--mkf-text-secondary) !important;
 }
 
 .circle-buttons {
@@ -534,7 +536,7 @@
     height: 100px;
     border: 2px solid #ccc;
     border-radius: 50%;
-    background-color: var(--dark-color);
+    background-color: var(--mkf-ui-white);
     align-items: center;
     justify-content: center;
     position: relative;
@@ -654,8 +656,8 @@
 .adm_products-modal-carousel-item {
     min-width: 200px;
     height: 200px;
-    background-color: var(--white-color);
-    border: 1px dashed var(--light-dark-color);
+    background-color: var(--mkf-ui-white);
+    border: 1px dashed var(--mkf-text-tertiary);
     border-radius: var(--border-radius-card2);
     flex-shrink: 0;
     display: flex;
@@ -714,8 +716,8 @@
 }
 
 .adm_products-modal-carousel-item:hover {
-    background-color: var(--main-color);
-    border: 1px solid var(--white-color);
+    background-color: var(--mkf-ui-primary);
+    border: 1px solid var(--mkf-ui-white);
 }
 
 .adm_products-modal-carousel-item:hover .adm_products-modal-carousel-item-content,
@@ -726,12 +728,12 @@
 
 .adm_products-modal-carousel-icon {
     font-size: 24px;
-    color: #555;
+    color: var(--mkf-text-tertiary);
 }
 
 .adm_products-modal-carousel-text {
     font-size: 14px;
-    color: #555;
+    color: var(--mkf-text-tertiary);
 }
 
 .remove-item-button {
@@ -807,7 +809,7 @@
 
 .adm_products-new-product-modal-form {
     position: relative;
-    background-color: var(--lighter-color);
+    background-color: var(--mkf-background);
     border-radius: 3rem;
     width: 100%;
     height: 100%;
@@ -826,7 +828,7 @@
 .adm_products-modal-input-group label {
     display: flex;
     justify-content: space-between;
-    color: var(--second-black-color);
+    color: var(--mkf-text-primary);
     align-items: center;
     font-weight: 500;
     font-size: 0.85rem;
@@ -836,8 +838,9 @@
 .adm_products-modal-input {
     width: 100%;
     padding: 0.7rem 1rem;
-    color: var(--black-color);
-    border: 1.5px solid #e7e7e7;
+    color: var(--mkf-text-primary);
+    background-color: var(--mkf-ui-white);
+    border: 1.5px solid var(--mkf-ui-border);
     border-radius: 0.6rem;
     font-size: 0.8rem !important;
 }
@@ -847,7 +850,7 @@
 }
 
 .adm_products-modal-input:focus {
-    border: 1px solid var(--black-color);
+    border: 1px solid var(--mkf-text-primary);
     outline: none;
 }
 
@@ -873,7 +876,7 @@
     background-color: transparent;
     border: none;
     font-size: 0.9rem;
-    color: var(--main-color);
+    color: var(--mkf-text-primary);
     cursor: pointer;
     appearance: none;
     padding: 4px 20px;
@@ -888,11 +891,11 @@
 
 .adm_products-currency-select:focus {
     outline: none;
-    box-shadow: 0 0 0 2px var(--main-color);
+    box-shadow: 0 0 0 2px var(--mkf-ui-background-secondary);
 }
 
 .adm_products-currency-icon {
-    color: var(--main-color);
+    color: var(--mkf-ui-background-secondary);
     margin-left: -1.5rem;
 }
 
@@ -991,7 +994,7 @@
     display: block;
     margin-top: 0.5rem;
     font-size: 0.9rem;
-    color: var(--main-color);
+    color: var(--mkf-text-primary);
 }
 
 /* ============ 5 PASSO CATEGORIA ============= */
@@ -1010,7 +1013,7 @@
 .adm_products-order-grid-item {
     width: 100px;
     height: 120px;
-    background-color: var(--dark-color);
+    background-color: var(--mkf-ui-background-secondary);
     box-shadow: rgba(0, 0, 0, 0.05) 0px 0px 0px 1px;
     border-radius: 1rem;
     display: flex;
@@ -1032,18 +1035,18 @@
 
 .adm_products-order-grid-item p {
     font-size: 0.75rem;
-    color: var(--lighter-color);
+    color: var(--mkf-text-secondary);
     font-weight: 500;
 }
 
 .adm_products-order-grid-item.selected {
-    background-color: var(--main-color);
-    box-shadow: 0 0 4rem color-mix(in srgb, var(--main-color) 50%, transparent);
-    color: var(--dark-color) !important;
+    background-color: var(--mkf-ui-primary);
+    box-shadow: 0 0 4rem color-mix(in srgb, var(--mkf-ui-primary) 50%, transparent);
+    color: var(--mkf-text-primary) !important;
 }
 
 .adm_products-order-grid-item.selected p {
-    color: var(--dark-color);
+    color: var(--mkf-ui-white);
 }
 
 .adm_products-order-grid-item.selected .icon {
@@ -1252,11 +1255,7 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    background-color: white;
-}
-
-.adm_admins-config-wrapper-circles-select-adm:hover {
-    background-color: #f0f7ff;
+    background-color: var(--mkf-ui-white);
 }
 
 .adm_admins-config-wrapper h1 {
@@ -1267,7 +1266,7 @@
 
 .adm_admins-config-wrapper p {
     font-size: 0.7rem;
-    color: #666;
+    color: var(--mkf-text-secondary);
 }
 
 .adm_admins-config-circle-container {
@@ -1338,11 +1337,11 @@
 
 /* Adicione estas regras para melhorar a seleção múltipla */
 .adm_admins-config-wrapper-circles-select-adm.active {
-    background-color: #e1ecf7;
+    background-color: var(--mkf-ui-background-secondary);
 }
 
 .adm_admins-config-wrapper-circles-select-adm:hover {
-    background-color: #f0f7ff;
+    background-color: var(--mkf-ui-background-secondary);
     transform: translateY(-2px);
 }
 
@@ -1352,7 +1351,7 @@
 .adm_admins-config-square {
     width: 170px;
     height: 170px;
-    background-color: var(--white-color);
+    background-color: var(--mkf-ui-background-secondary);
     border-radius: 1.5rem;
     display: flex;
     align-items: center;
@@ -1388,7 +1387,6 @@
 
 .add-admin-config-button .icon {
     color: var(--light-dark-color);
-
 }
 
 .adm_admins-config-carousel {
@@ -2651,9 +2649,9 @@
 }
 
 .pms-status-btn.active {
-    background: var(--main-color);
+    background: var(--mkf-ui-primary);
     color: white;
-    border-color: var(--dark-color);
+    border-color: var(--mkf-ui-primary);
 }
 
 .pms-duration,

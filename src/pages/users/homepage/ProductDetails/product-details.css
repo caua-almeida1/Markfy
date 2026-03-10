@@ -1,3 +1,10 @@
+.product-details-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
 .product-details-body.fullscreen {
     flex: 1;
     width: 100%;
@@ -66,14 +73,16 @@
 .product-details-container {
     background: var(--mkf-ui-white);
     border-radius: 1.5rem !important;
-    width: 100%;
-    max-width: 600px;
-    max-height: min(90dvh, 900px);
+
+    width: min(75vw, 750px);
+    max-height: 90dvh;
+
     overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+
+    box-shadow: 0 12px 40px rgba(0,0,0,.28);
+
     display: flex;
     flex-direction: column;
-    overscroll-behavior: contain;
 }
 
 .product-details-footer {
@@ -134,7 +143,7 @@
 }
 
 .slot-button.selected {
-    background-color: var(--primary-color, #007bff);
+    background-color: var(--mkf-ui-primary);
     color: #fff;
     border: none;
 }
@@ -149,8 +158,9 @@
 
 .product-details-media {
     position: relative;
+    width: 100%;
+    height: clamp(180px, 30vh, 320px);
     overflow: hidden;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.1);
 }
 
 .product-details-image {
@@ -159,7 +169,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+    object-position: center left;
 }
 
 .product-details-carousel {
@@ -261,6 +271,11 @@
 
 .product-details-info {
     padding: 0 1.25rem;
+
+    flex: 1;
+    overflow-y: auto;
+
+    min-height: 0;
 }
 
 .product-details-categories {
@@ -417,10 +432,14 @@
 }
 
 .product-details-professionals-list .no-professional-placeholder {
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    position: relative;
+    width: 100%;
+    margin-top: 2rem;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 .professional-circle-card {
@@ -521,6 +540,8 @@
     transition: all 0.3s ease;
     opacity: 0;
     max-height: 0;
+    flex-basis: 100%;
+
 }
 
 .product-details-available-times-wrapper.open {
@@ -586,6 +607,7 @@
 .slot-button:hover {
     background: #f3f3f3;
     transform: scale(1.05);
+    color: var(--mkf-text-primary);
 }
 
 .back-to-days {
@@ -725,6 +747,211 @@
     max-width: 300px;
     color: var(--mkf-text-light);
 }
+
+/* ========== MODAL DE CONFIRMAÇÃO DE AGENDAMENTO ========== */
+.confirmation-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+    backdrop-filter: blur(2px);
+    transition: background 0.3s ease;
+}
+
+/* === Modal Container === */
+.confirmation-modal {
+    background: #fff;
+    border-radius: 1rem;
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    text-align: center !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    transform-origin: center;
+}
+
+.confirmation-modal h2 {
+    margin-top: 2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.confirmation-modal p {
+    font-size: 0.8rem;
+    color: var(--mkf-text-light);
+    margin-bottom: 1.5rem;
+}
+
+/* === Actions === */
+.confirmation-modal-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.confirmation-btn {
+    flex: 1;
+    padding: 1rem 1rem;
+    border: none;
+    border-radius: 0.6rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 0.8rem !important;
+    transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.confirmation-btn.cancel {
+    background: #eee;
+    color: #333;
+}
+
+.confirmation-btn.cancel:hover {
+    background: #ddd;
+    transform: scale(1.03);
+}
+
+.confirmation-btn.confirm {
+    background: var(--mkf-ui-primary);
+    color: #fff;
+}
+
+.confirmation-btn.confirm:hover {
+    background: var(--mkf-ui-primary-hover);
+    transform: scale(1.03);
+}
+
+/* ======== CONFIRMACAO NUMERO ========= */
+.confirmation-input {
+    width: 100%;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    font-size: 1rem;
+    margin-top: 0.8rem;
+    margin-bottom: 0.8rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.phone-error-text {
+    font-size: 0.85rem;
+    color: #f44336;
+    margin-top: -0.3rem;
+    margin-bottom: 0.8rem;
+    text-align: left;
+}
+
+.loading-agendamento {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+}
+
+.loading-agendamento .icon {
+    font-size: 3.5rem;
+    color: var(--mkf-text-quartiary);
+}
+
+.loading-agendamento p {
+    animation: blink 1.5s infinite;
+}
+
+
+
+.agendamento-sucesso .icon {
+    color: var(--mkf-ui-sucess) !important;
+    display: block;
+    margin: 0 auto;
+    font-size: 4rem;
+}
+
+@keyframes blink {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* ========== AGERNDAMENTO COMPLETO ========= */
+
+
+/* ======== MOBILE (BOTTOM SHEET STYLE) ======== */
+@media (max-width: 768px) {
+    .confirmation-modal-overlay {
+        align-items: flex-end;
+    }
+
+    .confirmation-modal {
+        position: relative;
+        width: 100%;
+        max-width: none;
+        border-radius: 1.5rem 1.5rem 0 0;
+        padding: 1.5rem 1.25rem 2rem;
+        text-align: center;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+        animation: slideUpConfirmationSchedule 0.35s ease-out;
+    }
+
+    @keyframes slideUpConfirmationSchedule {
+        from {
+            transform: translateY(100%);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    .confirmation-modal::before {
+        content: "";
+        display: block;
+        width: 40px;
+        height: 4px;
+        background: #ccc;
+        border-radius: 999px;
+        margin: 0 auto 1rem;
+    }
+
+    .confirmation-modal-handle {
+        position: absolute;
+        top: 0.4rem;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 60px;
+        height: 20px;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        z-index: 5;
+    }
+
+    .confirmation-modal-handle:active {
+        opacity: 0.4;
+    }
+
+    .confirmation-modal-actions {
+        flex-direction: column;
+        gap: 0.8rem;
+    }
+
+    .confirmation-btn {
+        width: 100%;
+        padding: 0.9rem 1rem;
+        font-size: 1.05rem;
+    }
+
+    .confirmation-btn.confirm {
+        order: -1;
+        /* "Confirmar" em  */
+    }
+}
+
 
 /* ======== KEY FRAMES ======== */
 @keyframes skeleton-loading {

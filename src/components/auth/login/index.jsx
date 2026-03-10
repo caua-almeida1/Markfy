@@ -158,7 +158,7 @@ const AuthScreen = () => {
     if (snapshot.exists()) {
       const userData = snapshot.val();
 
-      if (userData.initial === false) {
+      if (userData.initial === true) {
         navigate('/central-user', {
           state: { name: userData.name || name, email, id: uid }
         });
@@ -173,6 +173,7 @@ const AuthScreen = () => {
         name,
         email,
         initial: false
+
       });
 
       navigate('/initial-setup', { state: { name, email, id: uid } });

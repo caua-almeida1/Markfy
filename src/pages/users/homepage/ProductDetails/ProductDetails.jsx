@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { getDatabase, ref, onValue } from "firebase/database";
-import { get } from "firebase/database";
+import InputMask from "react-input-mask";
+import { getDatabase, ref, onValue, get, update } from "firebase/database";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from '@iconify/react';
+
+import OrderSummary from "../../../../components/order-summary";
 
 import "./product-details.css";
 
@@ -25,6 +27,29 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     const [selectedSlot, setSelectedSlot] = useState(null);
 
     const [isClosingTimes, setIsClosingTimes] = useState(false);
+
+    const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+    const [isAskingPhone, setIsAskingPhone] = useState(false);
+    const [userName, setUserName] = useState("");
+    const [isConfirmed, setIsConfirmed] = useState(false);
+
+    const [showOrderSummary, setShowOrderSummary] = useState(false);
+    const [lastAgendamento, setLastAgendamento] = useState(null);
+
+    const [userIp, setUserIp] = useState(null);
+
+    useEffect(() => {
+        const getIp = async () => {
+            try {
+                const res = await fetch("https://api64.ipify.org?format=json");
+                const data = await res.json();
+                setUserIp(data.ip);
+            } catch (err) {
+                console.error("Erro ao obter IP:", err);
+            }
+        };
+        getIp();
+    }, []);
 
     useEffect(() => {
         const fetchUsersInfo = async () => {
@@ -60,8 +85,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     const groupedByMonth = availableTimes.reduce((acc, day) => {
         const [dd, mm, yyyy] = day.day.split("/");
-        const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+        const dateObj = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
         const monthLabel = dateObj.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+
         if (!acc[monthLabel]) acc[monthLabel] = [];
         acc[monthLabel].push(day);
         return acc;
@@ -88,6 +114,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 }
 
                 const userData = userSnap.val();
+
+
                 const scheduledTimes = userData.scheduledTimes || [];
 
                 // 🔹 Montar calendário de 30 dias
@@ -123,7 +151,31 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         .filter((t) => t.day === dayStr)
                         .map((t) => t.hour);
 
-                    let freeSlots = allSlots.filter((s) => !busy.includes(s));
+                    const busySlots = scheduledTimes.filter((t) => t.day === dayStr);
+
+                    // converter duração do serviço em minutos
+                    const serviceDuration = Number(product.duration) || 0;
+
+                    // Cria um Set com todos os horários ocupados (considerando duração)
+                    const blockedSlots = new Set();
+
+                    busySlots.forEach((t) => {
+                        const [hour, minute] = t.hour.split(":").map(Number);
+                        const start = new Date(`${yyyy}-${mm}-${dd}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`);
+                        const end = new Date(start.getTime() + serviceDuration * 60000); // adiciona duração do serviço
+
+                        // percorre todos os slots e remove os que caem nesse intervalo
+                        allSlots.forEach((slot) => {
+                            const [sh, sm] = slot.split(":").map(Number);
+                            const slotTime = new Date(`${yyyy}-${mm}-${dd}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00`);
+                            if (slotTime >= start && slotTime < end) {
+                                blockedSlots.add(slot);
+                            }
+                        });
+                    });
+
+                    // remove horários bloqueados
+                    let freeSlots = allSlots.filter((s) => !blockedSlots.has(s));
 
                     // 🔹 Se for o dia de hoje, remove horários que já passaram
                     const now = new Date();
@@ -202,22 +254,103 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     if (!product) return null;
 
+    // ================ FUNÇÃO DE CONFIRMAR AGENDAMENTO ================
+    const toShedule = async (agendamento) => {
+        if (!product || !companyHandle || !productDetailsSelectedProfessionalId) return;
+
+        try {
+            const db = getDatabase();
+
+            // 🆕 Verifica se o IP já fez agendamento recentemente
+            const schedulesRef = ref(db, `companys/${companyHandle}/schedules`);
+            const schedulesSnap = await get(schedulesRef);
+            const schedulesData = schedulesSnap.exists() ? schedulesSnap.val() : {};
+
+            const now = new Date();
+            let bloqueado = false;
+
+            Object.values(schedulesData).forEach((ag) => {
+                if (!ag.userIp || ag.userIp !== userIp) return;
+
+                const [dd, mm, yyyy] = ag.day.split("/");
+                const [hh, min] = ag.hour.split(":").map(Number);
+                const agDate = new Date(`${yyyy}-${mm}-${dd}T${String(hh).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`);
+                const diffMin = (now - agDate) / 60000;
+
+                if (diffMin < 30 && diffMin > -30) {
+                    bloqueado = true;
+                }
+            });
+
+            if (bloqueado) {
+                alert("⚠️ Você já realizou um agendamento recentemente. Tente novamente em 30 minutos.");
+                return; // 🚫 não salva nada
+            }
+
+            // 🔹 Atualiza contador de pedidos do produto
+            const productRef = ref(db, `companys/${companyHandle}/products/${product.id}`);
+            const updatedOrders = (product.orders || 0) + 1;
+            await update(productRef, { orders: updatedOrders });
+
+            // 🔹 Salva o agendamento na empresa
+            const scheduleId = agendamento.timestamp.replace(/[:.]/g, "-");
+            const newScheduleRef = ref(db, `companys/${companyHandle}/schedules/${scheduleId}`);
+
+            const agendamentoComStatus = {
+                ...agendamento,
+                status: "pending",
+                userIp: userIp || "unknown",
+            };
+
+            await update(newScheduleRef, agendamentoComStatus);
+
+            // 🧩 Atualiza os horários ocupados do profissional
+            const userRef = ref(db, `users/${productDetailsSelectedProfessionalId}`);
+            const userSnap = await get(userRef);
+            const userData = userSnap.exists() ? userSnap.val() : {};
+            const currentTimes = Array.isArray(userData.scheduledTimes)
+                ? userData.scheduledTimes
+                : [];
+
+            const updatedTimes = [
+                ...currentTimes,
+                { day: agendamento.day, hour: agendamento.hour }
+            ];
+
+            await update(userRef, { scheduledTimes: updatedTimes });
+
+            console.log("✅ Agendamento confirmado:", agendamento.day, agendamento.hour);
+
+            setAvailableTimes((prev) =>
+                prev.map((d) =>
+                    d.day === agendamento.day
+                        ? { ...d, slots: d.slots.filter((h) => h !== agendamento.hour) }
+                        : d
+                )
+            );
+
+        } catch (error) {
+            console.error("❌ Erro ao salvar agendamento:", error);
+        }
+    };
 
     return createPortal(
         <AnimatePresence
-            mode="wait"               // ✅ permite esperar o exit antes de desmontar
-            onExitComplete={() => onClose?.()} // chama onClose só depois do exit
+            mode="wait"
+            onExitComplete={() => onClose?.()}
         >
             {visible && (
                 <motion.div
                     className="product-details-overlay"
-                    initial={{ opacity: 0 }}        // ✅ entrada volta a funcionar
+                    onClick={() => setVisible(false)}
+                    initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
                     <motion.div
-                        key={product.id}              // ✅ força re-mount e animação a cada abertura
+                        key={product.id}
                         className="product-details-container"
+                        onClick={(e) => e.stopPropagation()}
                         initial={{ scale: 0.30, opacity: 0, borderRadius: "5rem" }}
                         animate={{ scale: 1, opacity: 1, }}
                         exit={{ scale: 0.30, opacity: 0, borderRadius: "5rem" }}
@@ -249,7 +382,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                             key={index}
                                             className={`carousel-thumb ${index === selectedImage ? "active" : ""}`}
                                             onClick={() => {
-                                                if (index !== selectedImage) {   // evita skeleton infinito
+                                                if (index !== selectedImage) {
                                                     setImgLoaded(false);
                                                     setSelectedImage(index);
                                                 }
@@ -465,8 +598,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                                 </button>
                                                                             </div>
 
-                                                                            <div
-                                                                                className="days-scroll"
+                                                                            {/* substitua o map dos dias por este código */}
+                                                                            <div className="days-scroll"
                                                                                 onWheel={(e) => {
                                                                                     const el = e.currentTarget;
                                                                                     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
@@ -492,7 +625,11 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                                 }}
                                                                             >
                                                                                 {groupedByMonth[months[currentMonthIndex]].map((day) => {
-                                                                                    const dateObj = new Date(day.day.split("/").reverse().join("-"));
+                                                                                    // day.day é "dd/mm/yyyy"
+                                                                                    const [dd, mm, yyyy] = day.day.split("/").map((v) => v.padStart(2, "0"));
+                                                                                    // usa construtor local (evita shift de timezone)
+                                                                                    const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
+
                                                                                     const dayName = dateObj
                                                                                         .toLocaleDateString("pt-BR", { weekday: "short" })
                                                                                         .replace(".", "");
@@ -503,17 +640,18 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                                             key={day.day}
                                                                                             className="day-button"
                                                                                             onClick={() => {
+                                                                                                // cria label a partir do mesmo dateObj (local)
+                                                                                                const label = dateObj.toLocaleDateString("pt-BR", {
+                                                                                                    weekday: "long",
+                                                                                                    day: "2-digit",
+                                                                                                    month: "2-digit",
+                                                                                                    year: "numeric",
+                                                                                                });
                                                                                                 setSelectedDay({
                                                                                                     ...day,
-                                                                                                    label: new Date(day.day.split("/").reverse().join("-")).toLocaleDateString("pt-BR", {
-                                                                                                        weekday: "long",
-                                                                                                        day: "2-digit",
-                                                                                                        month: "2-digit",
-                                                                                                        year: "numeric",
-                                                                                                    }),
+                                                                                                    label: label.charAt(0).toUpperCase() + label.slice(1),
                                                                                                 });
                                                                                             }}
-
                                                                                         >
                                                                                             <span className="day-name">{dayName}</span>
                                                                                             <span className="day-number">{dayNumber}</span>
@@ -617,10 +755,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                             selectedDay &&
                                             selectedSlot
                                         ) {
-                                            alert(
-                                                `✅ Agendado com sucesso em ${selectedDay.label} às ${selectedSlot}`
-                                            );
-                                            onClose?.();
+                                            setShowConfirmationModal(true);
+                                            return;
                                         }
                                     }}
                                 >
@@ -631,6 +767,217 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         </div>
 
                     </motion.div >
+                    <AnimatePresence>
+                        {showConfirmationModal && (
+                            <motion.div
+                                className="confirmation-modal-overlay"
+                                onClick={(e) => e.stopPropagation()}
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.25, ease: "easeOut" }}
+                            >
+                                <motion.div
+                                    className="confirmation-modal"
+                                    onClick={(e) => e.stopPropagation()}
+                                    initial={{ scale: 0.8, opacity: 0 }}
+                                    animate={{ scale: 1, opacity: 1 }}
+                                    exit={{ scale: 0.8, opacity: 0 }}
+                                    transition={{ duration: 0.25, ease: "easeOut" }}
+                                >
+                                    {/* ======================= ETAPA 1: Confirmar agendamento ======================= */}
+                                    {!isAskingPhone && isConfirmed === false && (
+                                        <>
+                                            <h2>Confirmar agendamento</h2>
+                                            <p>
+                                                Deseja confirmar o horário <strong>{selectedSlot}</strong> em{" "}
+                                                <strong>{selectedDay?.label}</strong> com{" "}
+                                                <strong>
+                                                    {
+                                                        relatedUsersWithInfo.find(
+                                                            (u) => u.id === productDetailsSelectedProfessionalId
+                                                        )?.name || "profissional não identificado"
+                                                    }
+                                                </strong>
+                                                ?
+                                            </p>
+
+                                            <div className="confirmation-modal-actions">
+                                                <button
+                                                    className="confirmation-btn cancel"
+                                                    onClick={() => setShowConfirmationModal(false)}
+                                                >
+                                                    Cancelar
+                                                </button>
+                                                <button
+                                                    className="confirmation-btn confirm"
+                                                    onClick={() => setIsAskingPhone(true)}
+                                                >
+                                                    Confirmar
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* ======================= ETAPA 2: Pedir nome ======================= */}
+                                    {isAskingPhone && !isConfirmed && (
+                                        <>
+                                            <h2>Informe seu nome</h2>
+                                            <p>Digite seu nome para confirmar o agendamento:</p>
+
+                                            <input
+                                                type="text"
+                                                className="auth-input"
+                                                placeholder="Seu nome completo"
+                                                value={userName}
+                                                onChange={(e) => setUserName(e.target.value)}
+                                                maxLength={40}
+                                            />
+
+                                            <div className="confirmation-modal-actions">
+                                                <button
+                                                    className="confirmation-btn cancel"
+                                                    onClick={() => setIsAskingPhone(false)}
+                                                >
+                                                    Voltar
+                                                </button>
+                                                <button
+                                                    className="confirmation-btn confirm"
+                                                    disabled={!userName.trim()}
+                                                    onClick={() => {
+                                                        setIsConfirmed("loading");
+
+                                                        const agendamento = {
+                                                            productId: product.id,
+                                                            productName: product.name,
+                                                            productPrice: product.value,
+                                                            professionalId: productDetailsSelectedProfessionalId,
+                                                            professionalName:
+                                                                relatedUsersWithInfo.find(
+                                                                    (u) => u.id === productDetailsSelectedProfessionalId
+                                                                )?.name || "Profissional não identificado",
+                                                            day: selectedDay.day,
+                                                            dayLabel: selectedDay.label,
+                                                            hour: selectedSlot,
+                                                            userName: userName.trim(),
+                                                            timestamp: new Date().toISOString(),
+                                                        };
+
+                                                        console.log("📅 Agendamento iniciado:", agendamento);
+
+                                                        toShedule(agendamento);
+
+                                                        setLastAgendamento({
+                                                            ...agendamento,
+                                                            product,
+                                                        });
+
+                                                        setIsConfirmed("success");
+
+                                                        // Simula o processamento
+                                                        setTimeout(() => {
+                                                            console.log("✅ Agendamento realizado com sucesso:", agendamento);
+                                                            setTimeout(() => {
+                                                                setIsConfirmed("loading");
+                                                                setTimeout(() => {
+                                                                    setIsConfirmed("success");
+                                                                }, 800);
+                                                            }, 2500);
+                                                        }, 2500);
+                                                    }}
+                                                >
+                                                    Confirmar Agendamento
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* ======================= ETAPA 3: Loading ======================= */}
+                                    <AnimatePresence mode="wait">
+                                        {isConfirmed === "loading" && (
+                                            <motion.div
+                                                key="loading-screen"
+                                                className="loading-agendamento"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.5, ease: "easeOut" }}
+                                            >
+                                                <Icon icon="svg-spinners:clock" className="icon" />
+                                                <p>Realizando seu agendamento...</p>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+
+                                    {/* ======================= ETAPA 4: Sucesso ======================= */}
+                                    <AnimatePresence mode="wait">
+                                        {isConfirmed === "success" && (
+                                            <motion.div
+                                                key="success-screen"
+                                                className="agendamento-sucesso"
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1 }}
+                                                exit={{ opacity: 0, scale: 0.9 }}
+                                                transition={{
+                                                    delay: 0.4,
+                                                    duration: 0.6,
+                                                    ease: "easeOut",
+                                                }}
+                                            >
+                                                <Icon icon="mdi:check-circle" className="icon" />
+                                                <h2>Agendamento realizado com sucesso!</h2>
+                                                <p>
+                                                    Seu horário para <strong>{selectedDay.label}</strong> às{" "}
+                                                    <strong>{selectedSlot}</strong> foi confirmado.
+                                                </p>
+
+                                                <div className="confirmation-modal-actions">
+                                                    <button
+                                                        className="confirmation-btn cancel"
+                                                        onClick={() => {
+                                                            setShowConfirmationModal(false);
+                                                            setIsAskingPhone(false);
+                                                            setIsConfirmed(false);
+                                                            setUserName("");
+                                                            onClose?.();
+                                                        }}
+                                                    >
+                                                        Fechar
+                                                    </button>
+
+                                                    <button
+                                                        className="confirmation-btn confirm"
+                                                        onClick={() => {
+                                                            setShowConfirmationModal(false);
+                                                            setShowOrderSummary(true);
+                                                        }}
+                                                    >
+                                                        Ver Agendamento
+                                                    </button>
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+                                </motion.div>
+                            </motion.div>
+                        )
+                        }
+                    </AnimatePresence >
+
+                    <AnimatePresence>
+                        {showOrderSummary && (
+                            <OrderSummary
+                                agendamento={lastAgendamento}
+                                onClose={() => {
+                                    setShowOrderSummary(false);
+                                    setVisible(false);
+                                    onClose?.();  
+                                }}
+                            />
+                        )}
+                    </AnimatePresence>
+
                 </motion.div >
             )
             }

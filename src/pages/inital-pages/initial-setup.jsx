@@ -59,6 +59,16 @@ const InitialSetup = () => {
   }, [initialName, id, navigate]);
 
   const [showUserConfirmModal, setShowUserConfirmModal] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
+
+  const closeModal = () => {
+    setIsClosing(true);
+
+    setTimeout(() => {
+      setShowUserConfirmModal(false);
+      setIsClosing(false);
+    }, 200);
+  };
 
   const handleSelectRole = (role) => {
     if (selectedRole === role) {
@@ -168,8 +178,8 @@ const InitialSetup = () => {
         )}
       </div>
       {showUserConfirmModal && (
-        <div className="setup-confirmation-modal-overlay">
-          <div className="setup-confirmation-modal-box">
+        <div className={`setup-confirmation-modal-overlay ${isClosing ? 'closing' : ''}`}>
+          <div className={`setup-confirmation-modal-box ${isClosing ? 'closing' : ''}`}>
             <Icon icon="ix:question" className='icon' />
             <h2>Confirmar escolha</h2>
             <p>
@@ -177,8 +187,19 @@ const InitialSetup = () => {
               <strong>{selectedRole === 'user' ? 'Usuário Comum' : 'Administrador de Negócio'}</strong>?
             </p>
             <div className="setup-confirmation-modal-actions">
-              <button className="setup-confirmation-modal-button cancel" onClick={cancelUserRole}>Cancelar</button>
-              <button className="setup-confirmation-modal-button initial-setup-confirmation-confirm" onClick={confirmUserRole}>Confirmar</button>
+              <button
+                className="setup-confirmation-modal-button cancel"
+                onClick={closeModal}
+              >
+                Cancelar
+              </button>
+
+              <button
+                className="setup-confirmation-modal-button initial-setup-confirmation-confirm"
+                onClick={confirmUserRole}
+              >
+                Confirmar
+              </button>
             </div>
           </div>
         </div>

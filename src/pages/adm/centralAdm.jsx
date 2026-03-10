@@ -1,34 +1,22 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import TabBarAdm from "../../components/tabbarADM/";
 import Dashboard from "./dashboardAdm/dashboard";
 import Orders from "./ordersAdm/orders";
 import Products from "./productsAdm/productsAdm";
 import Schedules from "./schedulesAdm/schedulesAdm";
+import PerfilAdm from "./perfilAdm/perfilAdm";
+
+import { useUserCompany } from "../../contexts/companyContext/UserCompanyContext"; // 🟢 importa o contexto
 
 import "./centralAdm.css";
 
 const CentralAdm = () => {
-    const tabs = ["home", "pedidos", "produtos", "horarios"];
+    const { user, company, loading } = useUserCompany(); // 🟢 obtém dados do usuário logado e empresa
+    const tabs = ["home", "pedidos", "produtos", "horarios", "perfil"];
     const [activeTab, setActiveTab] = useState("home");
     const [prevTab, setPrevTab] = useState("home");
-
     const [openProductsModal, setOpenProductsModal] = useState(false);
-
-    const renderContent = () => {
-        switch (activeTab) {
-            case "home":
-                return <Dashboard setActiveTab={handleTabChange} />;
-            case "pedidos":
-                return <Orders />;
-            case "produtos":
-                return <Products shouldOpenModal={openProductsModal} setOpenProductsModal={setOpenProductsModal} />;
-            case "horarios":
-                return <Schedules />;
-            default:
-                return <Dashboard setActiveTab={handleTabChange} />;
-        }
-    };
 
     const handleTabChange = (tab, options = {}) => {
         setPrevTab(activeTab);
@@ -39,7 +27,6 @@ const CentralAdm = () => {
             setOpenProductsModal(false);
         }
     };
-
 
     const getDirection = () => {
         const activeIndex = tabs.indexOf(activeTab);
@@ -59,6 +46,54 @@ const CentralAdm = () => {
         }),
     };
 
+    // 🟢 enquanto carrega os dados
+    if (loading) {
+        return (
+            <div className="central-adm-loading">
+                <p>Carregando dados da empresa...</p>
+            </div>
+        );
+    }
+
+    // 🟠 caso o usuário não tenha empresa associada
+    if (!company) {
+        return (
+            <div className="central-adm-no-company">
+                <h2>Nenhuma empresa associada à sua conta.</h2>
+                <p>Crie uma empresa ou aguarde ser adicionado como membro.</p>
+            </div>
+        );
+    }
+
+    // 🟢 quando os dados estão prontos
+    const renderContent = () => {
+        switch (activeTab) {
+            case "home":
+                return <Dashboard setActiveTab={handleTabChange} company={company} />;
+            case "pedidos":
+                return (
+                    <Orders
+                        company={company}
+                        initialOrder={activeTab?.params?.openOrder}
+                    />
+                );
+            case "produtos":
+                return (
+                    <Products
+                        company={company}
+                        shouldOpenModal={openProductsModal}
+                        setOpenProductsModal={setOpenProductsModal}
+                    />
+                );
+            case "horarios":
+                return <Schedules company={company} />;
+            case "perfil":
+                return <PerfilAdm />;
+            default:
+                return <Dashboard setActiveTab={handleTabChange} company={company} />;
+        }
+    };
+
     return (
         <div className="central-adm">
             <div className="content">
@@ -76,6 +111,7 @@ const CentralAdm = () => {
                     </motion.div>
                 </AnimatePresence>
             </div>
+
             <TabBarAdm activeTab={activeTab} setActiveTab={handleTabChange} />
         </div>
     );

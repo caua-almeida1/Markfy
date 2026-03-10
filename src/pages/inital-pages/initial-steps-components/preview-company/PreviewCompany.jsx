@@ -123,8 +123,11 @@ export default function PreviewCompany() {
         role: "master"
       });
 
-      // Atualizar /users para indicar que não é mais o primeiro acesso
       const userRef = ref(db, `users/${user.uid}`);
+      await update(userRef, {
+        userType: "admin",
+        initial: false
+      });
       await update(userRef, { initial: false });
 
       setLoading(false);
@@ -188,7 +191,7 @@ export default function PreviewCompany() {
         <SuccessScreen
           companyName={companyData.name}
           companyHandle={companyData.handle}
-          onClose={() => navigate("/central-adm")}
+          onClose={() => navigate(`/central-user/${companyData.handle}/catalog`)}
         />
       )}
     </div>

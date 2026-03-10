@@ -1,14 +1,24 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getDatabase, ref, get } from "firebase/database";
+import { AnimatePresence, motion } from "framer-motion";
 import TabBar from "../../../../components/tabbar";
+import { useAuth } from "../../../../contexts/authContext"; // 🟢 importa o contexto de auth
 
-import "./company-page.css"; // agora com css próprio
+import "./company-page.css";
 
 export default function CompanyPage() {
   const { handle } = useParams();
+  const navigate = useNavigate();
+  const { currentUser, userLoggedIn } = useAuth(); // 🟢 dados do usuário autenticado
+
   const [company, setCompany] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [showManageModal, setShowManageModal] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const currentUrl = window.location.href;
 
   useEffect(() => {
     const fetchCompany = async () => {
@@ -32,40 +42,174 @@ export default function CompanyPage() {
     fetchCompany();
   }, [handle]);
 
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(currentUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Erro ao copiar link:", err);
+    }
+  };
+
+  const goToAdmin = () => {
+    // 🔹 Fecha o modal
+    setShowManageModal(false);
+
+    // 🔹 Se o usuário estiver logado, navega para o painel
+    if (userLoggedIn && currentUser) {
+      navigate("/central-adm");
+    } else {
+      // 🔸 Caso não esteja logado, redireciona ao login
+      alert("Você precisa estar logado para acessar o painel da empresa.");
+      navigate("/");
+    }
+  };
+
   if (loading) return <p>Carregando...</p>;
   if (!company) return <p>Empresa não encontrada.</p>;
 
   return (
     <div className="company-page-wrapper">
-      <div className="company-page-container">
-        <div className="company-page-header">
-          {company.logoPreview && (
-            <img
-              src={company.logoPreview}
-              alt={company.name}
-              className="company-page-logo"
-            />
-          )}
-          <div className="company-page-info">
-            <h2 className="company-page-name">{company.name}</h2>
-            <p className="company-page-handle">@{company.handle}</p>
-            <p className="company-page-description">{company.description}</p>
+      <div className="company-page-content">
+
+        <div className="company-page-container">
+          <div className="company-page-header">
+            {company.logoPreview && (
+              <img
+                src={company.logoPreview}
+                alt={company.name}
+                className="company-page-logo"
+              />
+            )}
+            <div className="company-page-info">
+              <h2 className="company-page-name">{company.name}</h2>
+              <p className="company-page-handle">@{company.handle}</p>
+              <p className="company-page-description">{company.description}</p>
+            </div>
           </div>
-        </div>
 
-        <p className="company-page-contact">📧 {company.email}</p>
-        <p className="company-page-contact">📞 {company.phone}</p>
+          <p className="company-page-contact">📧 {company.email}</p>
+          <p className="company-page-contact">📞 {company.phone}</p>
 
-        <div className="company-page-gallery">
-          <div className="company-page-gallery-item"></div>
-          <div className="company-page-gallery-item"></div>
-          <div className="company-page-gallery-item"></div>
-          <div className="company-page-gallery-item"></div>
+          {/* ======= BOTÕES ======= */}
+          <div className="company-page-btn-row">
+            <button
+              className="company-btn company-btn-share"
+              onClick={() => setShowShareModal(true)}
+            >
+              Compartilhar
+            </button>
+            <button
+              className="company-btn company-btn-manage"
+              onClick={() => setShowManageModal(true)}
+            >
+              Gerenciar
+            </button>
+          </div>
+
+          <div className="company-page-gallery">
+            <div className="company-page-gallery-item"></div>
+            <div className="company-page-gallery-item"></div>
+            <div className="company-page-gallery-item"></div>
+            <div className="company-page-gallery-item"></div>
+          </div>
+
+
         </div>
 
         <div style={{ marginTop: "20px" }}>
           <TabBar />
         </div>
+
+        {/* ======= MODAL DE COMPARTILHAR ======= */}
+        <AnimatePresence>
+          {showShareModal && (
+            <motion.div
+              className="share-modal-overlay"
+              onClick={() => setShowShareModal(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <motion.div
+                className="share-modal-content"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h3>Compartilhar Empresa</h3>
+                <p>Copie o link abaixo para compartilhar:</p>
+
+                <div className="share-modal-input-wrapper">
+                  <input
+                    type="text"
+                    value={currentUrl}
+                    readOnly
+                    className="share-modal-input"
+                  />
+                  <button
+                    className="share-modal-copy-btn"
+                    onClick={copyToClipboard}
+                  >
+                    {copied ? "Copiado!" : "Copiar"}
+                  </button>
+                </div>
+
+                <button
+                  className="share-modal-close-btn"
+                  onClick={() => setShowShareModal(false)}
+                >
+                  Fechar
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ======= MODAL DE CONFIRMAÇÃO DE GERENCIAMENTO ======= */}
+        <AnimatePresence>
+          {showManageModal && (
+            <motion.div
+              className="share-modal-overlay"
+              onClick={() => setShowManageModal(false)}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <motion.div
+                className="share-modal-content"
+                onClick={(e) => e.stopPropagation()}
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <h3>Gerenciar Empresa</h3>
+                <p>Deseja ir para a tela de gerenciamento da sua empresa?</p>
+
+                <div className="share-modal-btn-group">
+                  <button
+                    className="share-modal-confirm-btn"
+                    onClick={goToAdmin}
+                  >
+                    Sim, ir para o painel
+                  </button>
+                  <button
+                    className="share-modal-close-btn"
+                    onClick={() => setShowManageModal(false)}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

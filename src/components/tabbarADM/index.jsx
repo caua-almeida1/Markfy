@@ -2,56 +2,31 @@ import React from "react";
 import { Icon } from "@iconify/react";
 
 const TabBarAdm = ({ activeTab, setActiveTab }) => {
+  const tabs = [
+    { id: "home", label: "Início", icon: "ri:home-line" },
+    { id: "pedidos", label: "Pedidos", icon: "icon-park-outline:order" },
+    { id: "produtos", label: "Produtos", icon: "gg:shopping-bag" },
+    { id: "horarios", label: "Agenda", icon: "uil:schedule" },
+    { id: "perfil", label: "Perfil", icon: "tabler:user" },
+  ];
+
   return (
     <div id="tabbar-adm" className="site">
       <div className="container">
         <nav>
           <ul>
-            <li
-              className={activeTab === "home" ? "active" : ""}
-              onClick={() => setActiveTab("home")}
-            >
-              <a href="#" id="home">
-                <span>Início</span>
-                <Icon icon="ri:home-line" className="icon" />
-              </a>
-            </li>
-            <li
-              className={activeTab === "pedidos" ? "active" : ""}
-              onClick={() => setActiveTab("pedidos")}
-            >
-              <a href="#" id="pedidos">
-                <span>Pedidos</span>
-                <Icon icon="icon-park-outline:order" className="icon" />
-              </a>
-            </li>
-            <li
-              className={activeTab === "produtos" ? "active" : ""}
-              onClick={() => setActiveTab("produtos")}
-            >
-              <a href="#" id="produtos">
-                <span>Produtos</span>
-                <Icon icon="gg:shopping-bag" className="icon" />
-              </a>
-            </li>
-            <li
-              className={activeTab === "horarios" ? "active" : ""}
-              onClick={() => setActiveTab("horarios")}
-            >
-              <a href="#" id="schedules">
-                <span>Agenda</span>
-                <Icon icon="uil:schedule" className="icon" />
-              </a>
-            </li>
-            <li
-              className={activeTab === "perfil" ? "active" : ""}
-              onClick={() => setActiveTab("perfil")}
-            >
-              <a href="#" id="perfil">
-                <span>Perfil</span>
-                <Icon icon="tabler:user" className="icon" />
-              </a>
-            </li>
+            {tabs.map((tab) => (
+              <li
+                key={tab.id}
+                className={activeTab === tab.id ? "active" : ""}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <button type="button" className="nav-button">
+                  <span>{tab.label}</span>
+                  <Icon icon={tab.icon} className="icon" />
+                </button>
+              </li>
+            ))}
           </ul>
         </nav>
       </div>
