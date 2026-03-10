@@ -148,7 +148,7 @@ Interface para criação e gerenciamento dos serviços oferecidos pela empresa.
 1. Clone o repositório
 
 ```bash
-git clone https://github.com/seu-usuario/markfy.git
+git clone https://github.com/caua-almeida1/markfy.git
 ```
 
 2. Entre na pasta do projeto
