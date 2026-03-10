@@ -52,7 +52,7 @@ A interface foi inspirada em plataformas modernas utilizadas no dia a dia, como:
 
 - Instagram
 - TikTok
-- Serviços do Google
+- Google
 
 Isso permite que o usuário tenha uma **experiência familiar e intuitiva**, reduzindo a curva de aprendizado.
 
