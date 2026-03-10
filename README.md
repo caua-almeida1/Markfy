@@ -115,7 +115,7 @@ Interface de autenticação para acesso dos usuários e administradores.
 
 Tela inicial da plataforma onde os usuários podem explorar empresas e serviços.
 
-![Home](./images/home.png)
+![Home](./home.png)
 
 ---
 
@@ -123,7 +123,7 @@ Tela inicial da plataforma onde os usuários podem explorar empresas e serviços
 
 Interface onde um usuário pode criar e configurar sua própria empresa dentro da plataforma.
 
-![Criar Empresa](./images/criar-empresa.png)
+![Criar Empresa](./criarEmpresa.png)
 
 ---
 
@@ -131,7 +131,7 @@ Interface onde um usuário pode criar e configurar sua própria empresa dentro d
 
 Painel administrativo onde é possível gerenciar serviços, profissionais, promoções e agendamentos.
 
-![Gerenciar Empresa](./images/gerenciar-empresa.png)
+![Gerenciar Empresa](./gerenciarEmpresa.png)
 
 ---
 
@@ -139,7 +139,7 @@ Painel administrativo onde é possível gerenciar serviços, profissionais, prom
 
 Interface para criação e gerenciamento dos serviços oferecidos pela empresa.
 
-![Criar Produto](./images/criar-produto.png)
+![Criar Produto](./criarProduto.png)
 
 ---
 
