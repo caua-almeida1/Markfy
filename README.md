@@ -107,7 +107,7 @@ Abaixo estão alguns exemplos de telas da aplicação.
 
 Interface de autenticação para acesso dos usuários e administradores.
 
-![Login](./images/login.png)
+![Login](./login.png)
 
 ---
 
