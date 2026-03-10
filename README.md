@@ -1,70 +1,151 @@
-# Getting Started with Create React App
+# Markfy
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+**Markfy** é uma plataforma web moderna criada para **gerenciamento de agendamentos e serviços**, desenvolvida para atender diferentes tipos de negócios como **barbearias, clínicas, designers, salões de beleza e prestadores de serviço em geral**.
 
-## Available Scripts
+O sistema foi projetado com foco em **automação, organização e facilidade de uso**, permitindo que cada empresa **crie e personalize sua própria estrutura de atendimento**, mantendo controle completo sobre seus serviços, profissionais e agendamentos.
 
-In the project directory, you can run:
+A Markfy também conecta **clientes e empresas**, permitindo que usuários encontrem serviços próximos, agendem horários e acompanhem seus compromissos de forma simples e rápida.
 
-### `npm start`
+Além disso, a plataforma foi projetada seguindo princípios de **design responsivo**, garantindo uma experiência consistente e otimizada em diferentes dispositivos, como **smartphones, tablets e desktops**.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+# 🚀 Funcionalidades
 
-### `npm test`
+## 🏢 Para Empresas / Administradores
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- Criação e personalização da própria empresa
+- Adição de **administradores**
+- Gerenciamento de **produtos e serviços**
+- Criação de **promoções**
+- Visualização do **calendário de agendamentos**
+- Gestão completa de clientes
+- Configuração de **WhatsApp para contato**
+- Personalização da empresa conforme a necessidade do negócio
+- Controle de serviços oferecidos e profissionais disponíveis
 
-### `npm run build`
+O sistema foi desenvolvido para permitir que **cada empresa tenha sua própria estrutura**, podendo organizar seus serviços da forma que preferir.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+---
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 👤 Para Usuários / Clientes
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Usuários comuns podem utilizar a plataforma para encontrar e agendar serviços.
 
-### `npm run eject`
+Funcionalidades incluem:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- Criar **perfil próprio**
+- **Buscar empresas** próximas (ex: barbearias, designers, clínicas, etc)
+- **Agendar serviços**
+- Escolher **profissional de preferência**
+- Visualizar **histórico de agendamentos**
+- Conectar conta utilizando **Google**
+- Gerenciar suas informações pessoais
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+---
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# ⚡ Conceito da Plataforma
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+A **Markfy foi construída com foco em automação e praticidade**, tanto para empresas quanto para clientes.
 
-## Learn More
+A interface foi inspirada em plataformas modernas utilizadas no dia a dia, como:
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+- Instagram
+- TikTok
+- Serviços do Google
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Isso permite que o usuário tenha uma **experiência familiar e intuitiva**, reduzindo a curva de aprendizado.
 
-### Code Splitting
+Além disso, o design foi pensado para **funcionar perfeitamente em dispositivos móveis**, já que grande parte dos agendamentos hoje são feitos diretamente pelo celular.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Mesmo seguindo referências modernas, o sistema mantém **identidade própria, organização e profissionalismo**, garantindo escalabilidade e crescimento do projeto.
 
-### Analyzing the Bundle Size
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+# 🧠 Arquitetura e Organização
 
-### Making a Progressive Web App
+Durante o desenvolvimento da Markfy foram seguidos princípios importantes como:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+- Organização modular do código
+- Componentização
+- Boas práticas de identação
+- Estrutura pensada para **crescimento da aplicação**
+- Separação clara entre lógica, interface e serviços
+- Interface responsiva pensada para **mobile-first**
 
-### Advanced Configuration
+Isso permite que o projeto seja **facilmente expandido no futuro** com novos recursos.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
+# 💻 Tecnologias Utilizadas
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+- **React.js**  
+Framework JavaScript utilizado para construir a interface da aplicação de forma dinâmica e moderna.
 
-### `npm run build` fails to minify
+- **Node.js**  
+Ambiente de execução JavaScript utilizado para serviços e integrações.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **CSS3**  
+Responsável pela estilização da aplicação e estrutura visual da interface, incluindo a implementação da responsividade para diferentes dispositivos.
+
+- **Firebase**  
+Utilizado para serviços em nuvem como:
+  - autenticação de usuários
+  - banco de dados
+  - armazenamento de informações da aplicação
+
+- **EmailJS**  
+Utilizado para envio de e-mails automáticos, como notificações e validações de conta.
+
+---
+
+# 📷 Interface da Plataforma
+
+Abaixo estão alguns exemplos de telas da aplicação.
+
+## 🔐 Login
+
+Interface de autenticação para acesso dos usuários e administradores.
+
+![Login](./images/login.png)
+
+---
+
+## 🏠 Home
+
+Tela inicial da plataforma onde os usuários podem explorar empresas e serviços.
+
+![Home](./images/home.png)
+
+---
+
+## 🏢 Criação de Empresa
+
+Interface onde um usuário pode criar e configurar sua própria empresa dentro da plataforma.
+
+![Criar Empresa](./images/criar-empresa.png)
+
+---
+
+## ⚙️ Gerenciamento da Empresa
+
+Painel administrativo onde é possível gerenciar serviços, profissionais, promoções e agendamentos.
+
+![Gerenciar Empresa](./images/gerenciar-empresa.png)
+
+---
+
+## 📦 Criação de Produtos / Serviços
+
+Interface para criação e gerenciamento dos serviços oferecidos pela empresa.
+
+![Criar Produto](./images/criar-produto.png)
+
+---
+
+# ⚙️ Como Rodar o Projeto
+
+1. Clone o repositório
+
+```bash
+git clone https://github.com/seu-usuario/markfy.git
