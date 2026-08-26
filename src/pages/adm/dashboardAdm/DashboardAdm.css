@@ -16,9 +16,13 @@
         rgb(0 0 0 / 10%) 0 30px 60px -30px;
 } */
 
+input {
+    background-color: transparent !important;
+}
+
 /* =============== HEADER TOP ADM =============== */
 .dashboard-page {
-    padding: 1rem 1.5rem;
+    padding: 1rem;
     overflow-x: hidden;
     width: 100%;
     height: 100vh;
@@ -43,7 +47,6 @@
     border-radius: 50%;
     background-color: var(--white-color);
     color: var(--main-color);
-    /* box-shadow: rgba(0, 0, 0, 0.1) 0px 4px 6px -1px, rgba(0, 0, 0, 0.06) 0px 2px 4px -1px; */
     margin: 0.2rem;
 }
 
@@ -70,25 +73,25 @@
 }
 
 .dashboard-adm-header-content p {
-    font-size: 1rem;
+    font-size: .9rem;
     font-weight: 400;
     color: var(--mkf-text-tertiary);
     margin-bottom: -0.2rem;
 }
 
 .dashboard-adm-header-content h1 {
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 500;
-    color: var(--mkf-text-primary)!important;
+    color: var(--mkf-text-primary) !important;
 }
 
 /* ======== DASHBOARD TOP CONTENT ======= */
 .dashboard-top-content {
-    margin-top: 1.5rem;
+    margin-top: 1rem;
 }
 
 .dashboard-top-content p {
-    font-size: 1.15rem;
+    font-size: 1rem;
     color: var(--second-light-dark-color);
 }
 
@@ -130,13 +133,13 @@
 
 .dashboard-top-content-wallet h1 {
     color: var(--mkf-text-primary);
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 600;
 }
 
 .dashboard-top-content-wallet .icon {
-    font-size: 2.3rem;
-    padding: 0.5rem;
+    font-size: 2rem;
+    padding: 0.45rem;
     border-radius: 50%;
     transition: all 0.3s ease;
     cursor: pointer;
@@ -149,8 +152,8 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%) scale(0);
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 3rem;
+    height: 3rem;
     background-color: var(--main-color);
     opacity: 0;
     border-radius: 50%;
@@ -172,7 +175,6 @@
 
 .wallet-balance {
     display: inline-block;
-    font-size: 2rem;
     font-weight: bold;
     color: var(--mkf-text-primary);
     position: relative;
@@ -193,7 +195,7 @@
 .dashboard-mid-products {
     color: var(--mkf-text-primary);
     display: flex;
-    gap: 1.5rem;
+    gap: 1rem;
     align-items: center;
     justify-content: space-between;
     overflow-x: auto;
@@ -215,15 +217,14 @@
 
 .dashboard-products-list-content button {
     background-color: var(--white-color);
-    padding: 0.85rem;
+    padding: .65rem;
     border-radius: 50%;
-    /* box-shadow: rgba(0, 0, 0, 0.09) 0px 3px 32px; */
 }
 
 .dashboard-products-list-content .icon {
     background-color: var(--white-color);
     color: var(--main-color);
-    font-size: 1.5rem;
+    font-size: 1.35rem;
     border-radius: 50%;
 }
 
@@ -245,23 +246,48 @@
     flex-direction: column;
     align-items: center;
     text-align: center;
-    padding: 10px;
     border-radius: 10px;
-    min-width: 100px;
+    min-width: 72px;
+    padding: 4px;
+}
+
+.dashboard-member-photo,
+.dashboard-member-placeholder {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    overflow: hidden;
+}
+
+.dashboard-member-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--mkf-ui-primary);
+    color: #ffff;
+
+    font-size: 18px;
+    font-weight: 600;
+
+    text-transform: uppercase;
 }
 
 .dashboard-adm-item img {
-    width: 70px;
-    height: 70px;
+    width: 60px;
+    height: 60px;
+
     border-radius: 50%;
     background-color: var(--white-color);
     object-fit: cover;
-    margin-bottom: 10px;
+    margin-bottom: .35rem;
     /* box-shadow: rgba(0, 0, 0, 0.05) 0px 1px 2px 0px; */
 }
 
 .dashboard-adm-item h1 {
-    font-size: 0.8rem;
+    font-size: .72rem;
     font-weight: 500;
     color: var(--mkf-text-primary);
     margin: 0;
@@ -302,11 +328,12 @@
     text-align: center;
     justify-content: center;
     gap: 0.5rem;
-    padding: 1rem 0;
+    padding: .8rem;
     width: 100%;
-    border-radius: var(--border-radius-card1);
+    border-radius: 1rem;
     color: var(--white-color);
     font-weight: 500;
+    font-size: .82rem;
     border: 2px solid transparent;
     overflow: hidden;
     transition: all 0.3s ease;
@@ -336,7 +363,7 @@
 
 .dashboard-buttons-actions .icon {
     color: var(--white-color);
-    font-size: 1.2rem;
+    font-size: 1rem;
     transition: all 0.3s ease;
 }
 
@@ -350,7 +377,7 @@
     padding: 20px;
     border-radius: var(--border-radius-card2);
     box-shadow: rgba(0, 0, 0, 0.03) 0px 10px 50px;
-    margin-top: 20px;
+    margin-top: 1rem;
 }
 
 .dashboard-card-section-header {
@@ -375,12 +402,12 @@
 .dashboard-cards {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.8rem;
+    gap: .6rem;
 }
 
 .dashboard-card {
     background-color: var(--mkf-ui-background);
-    padding: 16px;
+    padding: .8rem;
     border-radius: var(--border-radius-card2);
     text-align: left;
     box-shadow: rgba(0, 0, 0, 0.1) 0px 10px 30px;
@@ -390,7 +417,7 @@
 
 .dashboard-card:hover {
     background-color: var(--mkf-ui-primary);
-    color: white!important;
+    color: white !important;
     transform: translateY(-4px);
     box-shadow: 0 4px 22px var(--mkf-ui-primary);
     cursor: pointer;
@@ -402,13 +429,281 @@
 }
 
 .dashboard-card h2 {
-    font-size: 0.85rem;
+    font-size: .8rem;
     font-weight: 500;
     color: var(--mkf-text-primary);
     margin-bottom: 8px;
 }
 
 .dashboard-card p {
-    font-size: 0.9rem;
+    font-size: .75rem;
     color: var(--mkf-text-tertiary);
+}
+
+/* =========== MODAL ADD OTHER ADMIN =========== */
+
+.dashboard-admin-modal-overlay {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, .35);
+    backdrop-filter: blur(8px);
+
+    opacity: 0;
+    visibility: hidden;
+
+    transition:
+        opacity .3s ease,
+        visibility .3s ease;
+
+    z-index: 999;
+}
+
+.dashboard-admin-modal-overlay--open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.dashboard-admin-modal {
+    display: flex;
+    flex-direction: column;
+
+    max-height: 90vh;
+
+    overflow: hidden;
+    width: min(540px, 92vw);
+
+    background: var(--mkf-ui-white);
+    border-radius: var(--border-radius-card2);
+
+    opacity: 0;
+    transform: translateY(40px) scale(.96);
+
+    transition:
+        opacity .3s ease,
+        transform .3s cubic-bezier(.2, .8, .2, 1);
+
+    box-shadow: 0 30px 60px rgba(0, 0, 0, .12);
+}
+
+.dashboard-admin-modal--open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+.dashboard-admin-modal__header {
+    position: relative;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    padding: 1rem 1.25rem;
+
+    border-bottom: 1px solid var(--mkf-ui-background);
+}
+
+.dashboard-admin-modal__header h2 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.dashboard-admin-modal__close {
+    position: absolute;
+    right: 1.2rem;
+}
+
+.dashboard-admin-modal__close:hover {
+    background: var(--mkf-ui-primary);
+}
+
+.dashboard-admin-modal__close .icon {
+    font-size: 1.4rem;
+    color: var(--mkf-text-primary);
+    transition: .25s;
+}
+
+.dashboard-admin-modal__close:hover .icon {
+    color: var(--white-color);
+}
+
+.dashboard-admin-modal__content {
+    flex: 1;
+
+    padding: 1.5rem;
+
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* ================= SWITCH ================= */
+
+.dashboard-admin-register-switch {
+    position: relative;
+    display: flex;
+
+    width: calc(100% - 4rem);
+    height: 42px;
+
+    margin: 0.15rem auto 0;
+
+    background: var(--mkf-ui-gray-300);
+    border-radius: 2rem;
+
+    overflow: hidden;
+}
+
+.dashboard-admin-register-switch__indicator {
+    position: absolute;
+
+    top: 3px;
+    left: 3px;
+
+    width: calc(50% - 3px);
+    height: 36px;
+
+    border-radius: 22rem;
+    background: var(--mkf-ui-white);
+
+    transition: .28s cubic-bezier(.22, 1, .36, 1);
+}
+
+.dashboard-admin-register-switch__indicator--right {
+    transform: translateX(100%);
+}
+
+.dashboard-admin-register-switch__button {
+    flex: 1;
+
+    z-index: 2;
+
+    border: none;
+    background: transparent;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+
+    color: var(--mkf-text-secondary);
+
+    cursor: pointer;
+
+    transition: color var(--mkf-transition-normal);
+}
+
+.dashboard-admin-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.dashboard-admin-form__group {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+}
+
+.dashboard-admin-form__group label {
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-medium);
+    color: var(--mkf-text-primary);
+}
+
+.dashboard-admin-form__group input,
+.dashboard-admin-form__group select {
+
+    width: 100%;
+
+    padding: .5rem 1rem;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 0.5rem;
+
+    font-size: var(--mkf-font-sm);
+
+    color: var(--mkf-text-primary);
+
+    outline: none;
+
+    transition: var(--mkf-transition-normal);
+}
+
+.dashboard-admin-form__group input:focus,
+.dashboard-admin-form__group select:focus {
+
+    border-color: var(--mkf-ui-primary);
+
+    box-shadow: 0 0 0 4px var(--mkf-ui-primary-light);
+}
+
+.dashboard-admin-form__submit {
+
+    margin-top: .5rem;
+
+    width: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: .6rem;
+
+    padding: 0.8rem;
+
+    border: none;
+
+    border-radius: 2rem;
+
+    background: var(--mkf-ui-primary);
+
+    color: var(--mkf-ui-white);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+
+    cursor: pointer;
+
+    transition: var(--mkf-transition-normal);
+}
+
+.dashboard-admin-form__submit:hover {
+
+    background: var(--mkf-ui-primary-hover);
+}
+
+.dashboard-admin-form__submit .icon {
+    font-size: 1.25rem;
+}
+
+/* ================= MODAL ADMIN RESPONSIVO ================= */
+
+@media (max-width: 768px) {
+
+    .dashboard-admin-modal-overlay {
+        align-items: flex-end;
+    }
+
+    .dashboard-admin-modal {
+
+        width: calc(100% + 2px);
+        max-width: none;
+        min-height: 60vh;
+
+        border-radius: 24px 24px 0 0;
+
+        opacity: 1;
+
+        transform: translateY(100%);
+
+        transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+    }
+
+    .dashboard-admin-modal--open {
+        transform: translateY(0);
+    }
+
 }

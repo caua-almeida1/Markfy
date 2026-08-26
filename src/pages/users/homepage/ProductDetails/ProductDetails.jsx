@@ -4,6 +4,14 @@ import InputMask from "react-input-mask";
 import { getDatabase, ref, onValue, get, update } from "firebase/database";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from '@iconify/react';
+import { getClientId } from "../../../../utils/clientID";
+
+import Toast from "../../../../components/toast/Toast";
+import {
+    getStorage,
+    ref as storageRef,
+    getDownloadURL,
+} from "firebase/storage";
 
 import OrderSummary from "../../../../components/order-summary";
 
@@ -12,8 +20,12 @@ import "./product-details.css";
 import noprofessionalplaceholder from "../../../../img/product-details/not-professional.png";
 
 const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onClose, formatDuration }) => {
+    const clientId = getClientId();
+
     const [productDetailsSelectedProfessionalId, setProductDetailsSelectedProfessionalId] = useState(null);
     const [relatedUsersWithInfo, setRelatedUsersWithInfo] = useState([]);
+    const [professionalPhotos, setProfessionalPhotos] = useState({});
+
     const [showProfessionals, setShowProfessionals] = useState(false);
 
     const [showAllDays, setShowAllDays] = useState(false);
@@ -36,51 +48,180 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     const [showOrderSummary, setShowOrderSummary] = useState(false);
     const [lastAgendamento, setLastAgendamento] = useState(null);
 
-    const [userIp, setUserIp] = useState(null);
+    const [whatsappMemberPhotos, setWhatsappMemberPhotos] = useState({});
+    const [showWhatsappModal, setShowWhatsappModal] = useState(false);
+    const [whatsappMembers, setWhatsappMembers] = useState([]);
+    const [loadingWhatsappMembers, setLoadingWhatsappMembers] = useState(false);
+
+    const [showToast, setShowToast] = useState(false);
+    const [toastType, setToastType] = useState("success");
+    const [toastTitle, setToastTitle] = useState("");
+    const [toastMessage, setToastMessage] = useState("");
+
+    const DEFAULT_BUSINESS_HOURS = {
+        open: "07:00",
+        close: "22:00",
+        intervals: []
+    };
+
+    const WEEK_DAYS = [
+        "sunday",
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday"
+    ];
+
+    const timeToMinutes = (time) => {
+
+        if (!time) return 0;
+
+        const [hour, minute] = time.split(":").map(Number);
+
+        return hour * 60 + minute;
+    };
+
+    const minutesToTime = (minutes) => {
+
+        const hour = Math.floor(minutes / 60);
+        const minute = minutes % 60;
+
+        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    };
+
+    const openToast = (type, title, message) => {
+
+        setToastType(type);
+        setToastTitle(title);
+        setToastMessage(message);
+        setShowToast(true);
+
+    };
+
+    const saveLocalAgendamento = (agendamento) => {
+        try {
+            localStorage.setItem(
+                "markfy-last-agendamento",
+                JSON.stringify({
+                    ...agendamento,
+                    clientId,
+                    companyHandle
+                })
+            );
+        } catch (error) {
+            console.error(
+                "Erro ao salvar agendamento no dispositivo:",
+                error
+            );
+        }
+    };
 
     useEffect(() => {
-        const getIp = async () => {
-            try {
-                const res = await fetch("https://api64.ipify.org?format=json");
-                const data = await res.json();
-                setUserIp(data.ip);
-            } catch (err) {
-                console.error("Erro ao obter IP:", err);
-            }
-        };
-        getIp();
-    }, []);
 
-    useEffect(() => {
         const fetchUsersInfo = async () => {
-            if (!product?.relatedUsers) return;
+
+            if (!product?.relatedUsers?.length) {
+                setRelatedUsersWithInfo([]);
+                setProfessionalPhotos({});
+                return;
+            }
 
             try {
+
                 const db = getDatabase();
+                const storage = getStorage();
+
                 const usersRef = ref(db, "users");
 
-                // Buscar snapshot de todos os usuários
                 const usersSnap = await get(usersRef);
-                const usersData = usersSnap.exists() ? usersSnap.val() : {};
 
-                // Montar os dados completos
-                const enrichedUsers = product.relatedUsers.map(relUser => {
-                    const userInfo = usersData[relUser.id] || {};
-                    return {
-                        id: relUser.id,
-                        role: relUser.role,
-                        name: userInfo.name || "Sem nome",
-                        avatar: userInfo.avatar || null
-                    };
-                });
+                const usersData =
+                    usersSnap.exists()
+                        ? usersSnap.val()
+                        : {};
 
-                setRelatedUsersWithInfo(enrichedUsers);
+                const enrichedUsers =
+                    product.relatedUsers.map((relUser) => {
+
+                        const userInfo =
+                            usersData[relUser.id] || {};
+
+                        return {
+                            id: relUser.id,
+                            role: relUser.role,
+                            name: userInfo.name || "Sem nome"
+                        };
+
+                    });
+
+                setRelatedUsersWithInfo(
+                    enrichedUsers
+                );
+
+                // ==========================================
+                // FOTOS DOS PROFISSIONAIS
+                // ==========================================
+
+                const photos = {};
+
+                await Promise.all(
+                    enrichedUsers.map(async (user) => {
+
+                        try {
+
+                            const profileImageRef =
+                                storageRef(
+                                    storage,
+                                    `users/${user.id}/profileImg`
+                                );
+
+                            const photoUrl =
+                                await getDownloadURL(
+                                    profileImageRef
+                                );
+
+                            photos[user.id] = photoUrl;
+
+                        } catch (error) {
+
+                            // Sem foto = usa inicial
+                            if (
+                                error.code !==
+                                "storage/object-not-found"
+                            ) {
+
+                                console.error(
+                                    `Erro ao carregar foto de ${user.id}:`,
+                                    error
+                                );
+
+                            }
+
+                        }
+
+                    })
+                );
+
+                setProfessionalPhotos(photos);
+
             } catch (err) {
-                console.error("Erro ao buscar informações dos usuários relacionados:", err);
+
+                console.error(
+                    "Erro ao buscar informações dos usuários relacionados:",
+                    err
+                );
+
+                setRelatedUsersWithInfo([]);
+                setProfessionalPhotos({});
+
             }
+
         };
 
         fetchUsersInfo();
+
     }, [product?.relatedUsers]);
 
     const groupedByMonth = availableTimes.reduce((acc, day) => {
@@ -95,120 +236,558 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     const months = Object.keys(groupedByMonth);
 
+    const handleOpenWhatsapp = async () => {
+
+        if (!product?.relatedUsers?.length) {
+            setWhatsappMembers([]);
+            setWhatsappMemberPhotos({});
+            setShowWhatsappModal(true);
+            return;
+        }
+
+        setLoadingWhatsappMembers(true);
+        setShowWhatsappModal(true);
+
+        try {
+
+            const db = getDatabase();
+            const storage = getStorage();
+
+            const whatsappMembersData = [];
+            const photos = {};
+
+            for (const relatedUser of product.relatedUsers) {
+
+                if (!relatedUser?.id) {
+                    continue;
+                }
+
+                // ===============================
+                // WHATSAPP
+                // ===============================
+
+                const whatsappRef = ref(
+                    db,
+                    `companys/${companyHandle}/integrations/whatsapp/${relatedUser.id}`
+                );
+
+                const whatsappSnap =
+                    await get(whatsappRef);
+
+                if (!whatsappSnap.exists()) {
+                    continue;
+                }
+
+                const whatsappData =
+                    whatsappSnap.val();
+
+                if (whatsappData.enabled !== true) {
+                    continue;
+                }
+
+                if (!whatsappData.phone) {
+                    continue;
+                }
+
+                // ===============================
+                // USUÁRIO
+                // ===============================
+
+                const userInfo =
+                    relatedUsersWithInfo.find(
+                        user => user.id === relatedUser.id
+                    );
+
+                // ===============================
+                // FOTO DE PERFIL
+                // ===============================
+
+                try {
+
+                    const profileImageRef =
+                        storageRef(
+                            storage,
+                            `users/${relatedUser.id}/profileImg`
+                        );
+
+                    const photoUrl =
+                        await getDownloadURL(
+                            profileImageRef
+                        );
+
+                    photos[relatedUser.id] = photoUrl;
+
+                } catch (photoError) {
+
+                    // Usuário simplesmente não possui foto
+                    if (
+                        photoError.code !==
+                        "storage/object-not-found"
+                    ) {
+                        console.error(
+                            "Erro ao carregar foto:",
+                            photoError
+                        );
+                    }
+
+                }
+
+                // ===============================
+                // ADICIONAR MEMBRO
+                // ===============================
+
+                whatsappMembersData.push({
+
+                    id: relatedUser.id,
+
+                    name:
+                        userInfo?.name ||
+                        "Profissional",
+
+                    phone:
+                        whatsappData.phone
+
+                });
+
+            }
+
+            setWhatsappMembers(
+                whatsappMembersData
+            );
+
+            setWhatsappMemberPhotos(
+                photos
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao buscar WhatsApp dos profissionais:",
+                error
+            );
+
+            setWhatsappMembers([]);
+            setWhatsappMemberPhotos({});
+
+        } finally {
+
+            setLoadingWhatsappMembers(false);
+
+        }
+
+    };
+
     useEffect(() => {
+
         const fetchAvailableTimes = async () => {
+
             if (!productDetailsSelectedProfessionalId) {
+
                 setAvailableTimes([]);
+
                 return;
+
             }
 
             setLoadingTimes(true);
+
             try {
+
                 const db = getDatabase();
-                const userRef = ref(db, `users/${productDetailsSelectedProfessionalId}`);
+
+                // ==========================================
+                // PROFISSIONAL
+                // ==========================================
+
+                const userRef = ref(
+                    db,
+                    `users/${productDetailsSelectedProfessionalId}`
+                );
+
                 const userSnap = await get(userRef);
 
                 if (!userSnap.exists()) {
+
                     setAvailableTimes([]);
+
                     return;
+
                 }
 
                 const userData = userSnap.val();
 
+                const scheduledTimes =
+                    Array.isArray(userData.scheduledTimes)
+                        ? userData.scheduledTimes
+                        : [];
 
-                const scheduledTimes = userData.scheduledTimes || [];
 
-                // 🔹 Montar calendário de 30 dias
+                // ==========================================
+                // EMPRESA
+                // ==========================================
+
+                const companyRef = ref(
+                    db,
+                    `companys/${companyHandle}`
+                );
+
+                const companySnap = await get(companyRef);
+
+                const companyData =
+                    companySnap.exists()
+                        ? companySnap.val()
+                        : {};
+
+                const businessHours =
+                    companyData.businessHours || {};
+
+
+                // ==========================================
+                // DURAÇÃO DO SERVIÇO
+                // ==========================================
+
+                const serviceDuration =
+                    Number(product.duration) || 0;
+
+
+                // ==========================================
+                // GERAR CALENDÁRIO
+                // ==========================================
+
                 const today = new Date();
+
                 const dates = [];
 
+
                 for (let i = 0; i < 14; i++) {
+
                     const d = new Date(today);
-                    d.setDate(today.getDate() + i);
 
-                    const dd = String(d.getDate()).padStart(2, "0");
-                    const mm = String(d.getMonth() + 1).padStart(2, "0");
-                    const yyyy = d.getFullYear();
-                    const dayStr = `${dd}/${mm}/${yyyy}`;
+                    d.setDate(
+                        today.getDate() + i
+                    );
 
-                    const label = d.toLocaleDateString("pt-BR", {
-                        weekday: "long",
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                    });
-                    // Capitalizar a primeira letra do dia da semana
-                    const formattedDay = label.charAt(0).toUpperCase() + label.slice(1);
-                    // Exemplo: horários fixos entre 9h e 18h (a cada 30 min)
-                    const allSlots = [];
-                    for (let h = 9; h <= 18; h++) {
-                        allSlots.push(`${String(h).padStart(2, "0")}:00`);
-                        allSlots.push(`${String(h).padStart(2, "0")}:30`);
+
+                    const dd = String(
+                        d.getDate()
+                    ).padStart(2, "0");
+
+                    const mm = String(
+                        d.getMonth() + 1
+                    ).padStart(2, "0");
+
+                    const yyyy =
+                        d.getFullYear();
+
+
+                    const dayStr =
+                        `${dd}/${mm}/${yyyy}`;
+
+
+                    const formattedDay = d
+                        .toLocaleDateString(
+                            "pt-BR",
+                            {
+                                weekday: "long",
+                                day: "2-digit",
+                                month: "2-digit",
+                                year: "numeric"
+                            }
+                        )
+                        .replace(
+                            /^./,
+                            char => char.toUpperCase()
+                        );
+
+
+                    // ==========================================
+                    // DIA DA SEMANA
+                    // ==========================================
+
+                    const weekDay =
+                        WEEK_DAYS[d.getDay()];
+
+
+                    /*
+                     * Aceita tanto:
+                     *
+                     * businessHours:
+                     * {
+                     *   monday: {
+                     *      enabled: true,
+                     *      intervals: [...]
+                     *   }
+                     * }
+                     *
+                     * quanto estruturas onde o dia
+                     * possui diretamente os intervalos.
+                     */
+
+                    const dayBusinessHours =
+                        businessHours[weekDay];
+
+
+                    // ==========================================
+                    // HORÁRIO PADRÃO
+                    // ==========================================
+
+                    let businessIntervals = [
+                        {
+                            open: DEFAULT_BUSINESS_HOURS.open,
+                            close: DEFAULT_BUSINESS_HOURS.close
+                        }
+                    ];
+
+
+                    // ==========================================
+                    // EMPRESA CONFIGURADA
+                    // ==========================================
+
+                    if (dayBusinessHours) {
+
+                        // Dia desativado
+                        if (
+                            dayBusinessHours.enabled === false ||
+                            dayBusinessHours.active === false
+                        ) {
+
+                            continue;
+
+                        }
+
+
+                        if (
+                            Array.isArray(
+                                dayBusinessHours.intervals
+                            )
+                        ) {
+
+                            businessIntervals =
+                                dayBusinessHours.intervals
+                                    .filter(interval =>
+                                        interval?.open &&
+                                        interval?.close
+                                    )
+                                    .map(interval => ({
+                                        open: interval.open,
+                                        close: interval.close
+                                    }));
+
+
+                            /*
+                             * Se o dia existe mas não possui
+                             * intervalos, considera fechado.
+                             */
+
+                            if (
+                                businessIntervals.length === 0
+                            ) {
+
+                                continue;
+
+                            }
+
+                        }
+
                     }
 
-                    // Filtrar os que já estão em scheduledTimes
-                    const busy = scheduledTimes
-                        .filter((t) => t.day === dayStr)
-                        .map((t) => t.hour);
 
-                    const busySlots = scheduledTimes.filter((t) => t.day === dayStr);
+                    // ==========================================
+                    // HORÁRIOS OCUPADOS DO PROFISSIONAL
+                    // ==========================================
 
-                    // converter duração do serviço em minutos
-                    const serviceDuration = Number(product.duration) || 0;
+                    const busySlots =
+                        scheduledTimes.filter(
+                            t => t.day === dayStr
+                        );
 
-                    // Cria um Set com todos os horários ocupados (considerando duração)
+
+                    // ==========================================
+                    // GERAR SLOTS
+                    // ==========================================
+
+                    const allSlots = [];
+
+
+                    businessIntervals.forEach(interval => {
+
+                        const openMinutes =
+                            timeToMinutes(
+                                interval.open
+                            );
+
+                        const closeMinutes =
+                            timeToMinutes(
+                                interval.close
+                            );
+
+
+                        /*
+                         * O horário precisa comportar
+                         * o serviço inteiro.
+                         */
+
+                        const lastStart =
+                            closeMinutes -
+                            serviceDuration;
+
+
+                        for (
+                            let minutes = openMinutes;
+                            minutes <= lastStart;
+                            minutes += 30
+                        ) {
+
+                            allSlots.push(
+                                minutesToTime(minutes)
+                            );
+
+                        }
+
+                    });
+
+
+                    // Evita duplicação caso existam
+                    // intervalos sobrepostos.
+
+                    const uniqueSlots = [
+                        ...new Set(allSlots)
+                    ];
+
+
+                    // ==========================================
+                    // BLOQUEAR HORÁRIOS DO PROFISSIONAL
+                    // ==========================================
+
                     const blockedSlots = new Set();
 
-                    busySlots.forEach((t) => {
-                        const [hour, minute] = t.hour.split(":").map(Number);
-                        const start = new Date(`${yyyy}-${mm}-${dd}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00`);
-                        const end = new Date(start.getTime() + serviceDuration * 60000); // adiciona duração do serviço
 
-                        // percorre todos os slots e remove os que caem nesse intervalo
-                        allSlots.forEach((slot) => {
-                            const [sh, sm] = slot.split(":").map(Number);
-                            const slotTime = new Date(`${yyyy}-${mm}-${dd}T${String(sh).padStart(2, "0")}:${String(sm).padStart(2, "0")}:00`);
-                            if (slotTime >= start && slotTime < end) {
+                    busySlots.forEach(t => {
+
+                        if (!t.hour) return;
+
+
+                        const startMinutes =
+                            timeToMinutes(t.hour);
+
+
+                        const endMinutes =
+                            startMinutes +
+                            serviceDuration;
+
+
+                        uniqueSlots.forEach(slot => {
+
+                            const slotMinutes =
+                                timeToMinutes(slot);
+
+
+                            /*
+                             * Considera conflito caso
+                             * o novo horário esteja dentro
+                             * do agendamento existente.
+                             */
+
+                            if (
+                                slotMinutes < endMinutes &&
+                                slotMinutes + serviceDuration > startMinutes
+                            ) {
+
                                 blockedSlots.add(slot);
+
                             }
+
                         });
+
                     });
 
-                    // remove horários bloqueados
-                    let freeSlots = allSlots.filter((s) => !blockedSlots.has(s));
 
-                    // 🔹 Se for o dia de hoje, remove horários que já passaram
-                    const now = new Date();
-                    const todayStr = now.toLocaleDateString("pt-BR");
+                    // ==========================================
+                    // HORÁRIOS LIVRES
+                    // ==========================================
 
-                    if (dayStr === todayStr) {
-                        freeSlots = freeSlots.filter((slot) => {
-                            const [hour, minute] = slot.split(":").map(Number);
-                            const slotTime = new Date();
-                            slotTime.setHours(hour, minute, 0, 0);
-                            return slotTime > now; // só deixa horários futuros
-                        });
+                    let freeSlots =
+                        uniqueSlots.filter(
+                            slot =>
+                                !blockedSlots.has(slot)
+                        );
+
+
+                    // ==========================================
+                    // SE FOR HOJE
+                    // ==========================================
+
+                    if (
+                        d.toDateString() ===
+                        today.toDateString()
+                    ) {
+
+                        const nowMinutes =
+                            today.getHours() * 60 +
+                            today.getMinutes();
+
+
+                        freeSlots =
+                            freeSlots.filter(slot => {
+
+                                return (
+                                    timeToMinutes(slot) >
+                                    nowMinutes
+                                );
+
+                            });
+
                     }
+
+
+                    // ==========================================
+                    // ADICIONAR DIA
+                    // ==========================================
 
                     if (freeSlots.length > 0) {
+
                         dates.push({
+
                             day: dayStr,
+
                             label: formattedDay,
-                            slots: freeSlots,
+
+                            slots: freeSlots
+
                         });
+
                     }
+
                 }
 
+
                 setAvailableTimes(dates);
+
             } catch (err) {
-                console.error("Erro ao buscar horários disponíveis:", err);
+
+                console.error(
+                    "Erro ao buscar horários disponíveis:",
+                    err
+                );
+
+                setAvailableTimes([]);
+
             } finally {
+
                 setLoadingTimes(false);
+
             }
+
         };
 
+
         fetchAvailableTimes();
-    }, [productDetailsSelectedProfessionalId]);
+
+    }, [
+        productDetailsSelectedProfessionalId,
+        companyHandle,
+        product?.duration
+    ]);
 
     const productDetailsCapFirst = (s = "") =>
         s.length ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
@@ -256,82 +835,259 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     // ================ FUNÇÃO DE CONFIRMAR AGENDAMENTO ================
     const toShedule = async (agendamento) => {
-        if (!product || !companyHandle || !productDetailsSelectedProfessionalId) return;
+
+        if (
+            !product ||
+            !companyHandle ||
+            !productDetailsSelectedProfessionalId
+        ) {
+            openToast(
+                "error",
+                "Erro",
+                "Não foi possível realizar o agendamento."
+            );
+
+            return false;
+        }
 
         try {
+
             const db = getDatabase();
 
-            // 🆕 Verifica se o IP já fez agendamento recentemente
-            const schedulesRef = ref(db, `companys/${companyHandle}/schedules`);
-            const schedulesSnap = await get(schedulesRef);
-            const schedulesData = schedulesSnap.exists() ? schedulesSnap.val() : {};
+            // ==========================================
+            // VERIFICAR AGENDAMENTO RECENTE
+            // ==========================================
 
-            const now = new Date();
+            const schedulesRef = ref(
+                db,
+                `companys/${companyHandle}/schedules`
+            );
+
+            const schedulesSnap =
+                await get(schedulesRef);
+
+            const schedulesData =
+                schedulesSnap.exists()
+                    ? schedulesSnap.val()
+                    : {};
+
+            const now = Date.now();
+
             let bloqueado = false;
 
             Object.values(schedulesData).forEach((ag) => {
-                if (!ag.userIp || ag.userIp !== userIp) return;
 
-                const [dd, mm, yyyy] = ag.day.split("/");
-                const [hh, min] = ag.hour.split(":").map(Number);
-                const agDate = new Date(`${yyyy}-${mm}-${dd}T${String(hh).padStart(2, "0")}:${String(min).padStart(2, "0")}:00`);
-                const diffMin = (now - agDate) / 60000;
+                if (
+                    !ag ||
+                    ag.clientId !== clientId ||
+                    !ag.timestamp
+                ) {
+                    return;
+                }
 
-                if (diffMin < 30 && diffMin > -30) {
+                const createdAt =
+                    new Date(ag.timestamp).getTime();
+
+                if (Number.isNaN(createdAt)) {
+                    return;
+                }
+
+                const diffMs =
+                    now - createdAt;
+
+                const diffMinutes =
+                    diffMs / (1000 * 60);
+
+                // Bloqueia pelos 30 minutos após a criação
+                if (
+                    diffMinutes >= 0 &&
+                    diffMinutes < 30
+                ) {
                     bloqueado = true;
                 }
+
             });
 
             if (bloqueado) {
-                alert("⚠️ Você já realizou um agendamento recentemente. Tente novamente em 30 minutos.");
-                return; // 🚫 não salva nada
+
+                openToast(
+                    "error",
+                    "Agendamento recente",
+                    "Você já realizou um agendamento recentemente. Tente novamente em 30 minutos."
+                );
+
+                return false;
             }
 
-            // 🔹 Atualiza contador de pedidos do produto
-            const productRef = ref(db, `companys/${companyHandle}/products/${product.id}`);
-            const updatedOrders = (product.orders || 0) + 1;
-            await update(productRef, { orders: updatedOrders });
+            // ==========================================
+            // ATUALIZAR PEDIDOS DO PRODUTO
+            // ==========================================
 
-            // 🔹 Salva o agendamento na empresa
-            const scheduleId = agendamento.timestamp.replace(/[:.]/g, "-");
-            const newScheduleRef = ref(db, `companys/${companyHandle}/schedules/${scheduleId}`);
+            const productRef = ref(
+                db,
+                `companys/${companyHandle}/products/${product.id}`
+            );
+
+            const updatedOrders =
+                (product.orders || 0) + 1;
+
+            await update(
+                productRef,
+                {
+                    orders: updatedOrders
+                }
+            );
+
+            // ==========================================
+            // SALVAR AGENDAMENTO
+            // ==========================================
+
+            const scheduleId =
+                agendamento.timestamp
+                    .replace(/[:.]/g, "-");
+
+            const newScheduleRef =
+                ref(
+                    db,
+                    `companys/${companyHandle}/schedules/${scheduleId}`
+                );
 
             const agendamentoComStatus = {
                 ...agendamento,
                 status: "pending",
-                userIp: userIp || "unknown",
+                clientId
             };
 
-            await update(newScheduleRef, agendamentoComStatus);
+            await update(
+                newScheduleRef,
+                agendamentoComStatus
+            );
 
-            // 🧩 Atualiza os horários ocupados do profissional
-            const userRef = ref(db, `users/${productDetailsSelectedProfessionalId}`);
-            const userSnap = await get(userRef);
-            const userData = userSnap.exists() ? userSnap.val() : {};
-            const currentTimes = Array.isArray(userData.scheduledTimes)
-                ? userData.scheduledTimes
-                : [];
+            // ==========================================
+            // ATUALIZAR HORÁRIOS DO PROFISSIONAL
+            // ==========================================
+
+            const userRef = ref(
+                db,
+                `users/${productDetailsSelectedProfessionalId}`
+            );
+
+            const userSnap =
+                await get(userRef);
+
+            const userData =
+                userSnap.exists()
+                    ? userSnap.val()
+                    : {};
+
+            const currentTimes =
+                Array.isArray(userData.scheduledTimes)
+                    ? userData.scheduledTimes
+                    : [];
 
             const updatedTimes = [
                 ...currentTimes,
-                { day: agendamento.day, hour: agendamento.hour }
+                {
+                    day: agendamento.day,
+                    hour: agendamento.hour
+                }
             ];
 
-            await update(userRef, { scheduledTimes: updatedTimes });
+            await update(
+                userRef,
+                {
+                    scheduledTimes: updatedTimes
+                }
+            );
 
-            console.log("✅ Agendamento confirmado:", agendamento.day, agendamento.hour);
+            // ==========================================
+            // ATUALIZAR HORÁRIOS NA INTERFACE
+            // ==========================================
 
             setAvailableTimes((prev) =>
                 prev.map((d) =>
                     d.day === agendamento.day
-                        ? { ...d, slots: d.slots.filter((h) => h !== agendamento.hour) }
+                        ? {
+                            ...d,
+                            slots: d.slots.filter(
+                                (h) =>
+                                    h !== agendamento.hour
+                            )
+                        }
                         : d
                 )
             );
 
+            console.log(
+                "✅ Agendamento confirmado:",
+                agendamento.day,
+                agendamento.hour
+            );
+
+            return true;
+
         } catch (error) {
-            console.error("❌ Erro ao salvar agendamento:", error);
+
+            console.error(
+                "❌ Erro ao salvar agendamento:",
+                error
+            );
+
+            openToast(
+                "error",
+                "Não foi possível agendar",
+                "Ocorreu um erro ao realizar o agendamento. Tente novamente."
+            );
+
+            return false;
         }
+    };
+
+    const handleProductBack = () => {
+
+        // Modal de confirmação aberto
+        if (showConfirmationModal) {
+
+            // Etapa de nome
+            if (isAskingPhone) {
+                setIsAskingPhone(false);
+                return;
+            }
+
+            // Etapa de confirmação
+            setShowConfirmationModal(false);
+            return;
+        }
+
+        // Já escolheu um horário → volta para os dias
+        if (selectedSlot) {
+            setSelectedSlot(null);
+            return;
+        }
+
+        // Já escolheu um dia → volta para a seleção de profissional
+        if (selectedDay) {
+            setSelectedDay(null);
+            return;
+        }
+
+        // Está na tela de profissionais → volta para detalhes
+        if (showProfessionals) {
+
+            setShowProfessionals(false);
+
+            setProductDetailsSelectedProfessionalId(null);
+            setSelectedDay(null);
+            setSelectedSlot(null);
+
+            setAvailableTimes([]);
+            setCurrentMonthIndex(0);
+
+            return;
+        }
+
+        // Nenhuma etapa anterior → fecha o produto
+        setVisible(false);
     };
 
     return createPortal(
@@ -347,6 +1103,216 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
+
+                    <AnimatePresence>
+                        {showWhatsappModal && (
+
+                            <motion.div
+                                className="whatsapp-modal-overlay"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => setShowWhatsappModal(false)}
+                            >
+
+                                <motion.div
+                                    className="whatsapp-modal"
+                                    initial={{
+                                        opacity: 0,
+                                        scale: 0.9,
+                                        y: 20
+                                    }}
+                                    animate={{
+                                        opacity: 1,
+                                        scale: 1,
+                                        y: 0
+                                    }}
+                                    exit={{
+                                        opacity: 0,
+                                        scale: 0.9,
+                                        y: 20
+                                    }}
+                                    transition={{
+                                        duration: 0.25,
+                                        ease: "easeOut"
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+
+                                    <div className="whatsapp-modal-header">
+
+                                        <div>
+                                            <h2>Fale com a equipe</h2>
+
+                                            <p>
+                                                Escolha um profissional para entrar
+                                                em contato pelo WhatsApp.
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowWhatsappModal(false)
+                                            }
+                                        >
+                                            <Icon icon="mdi:close" />
+                                        </button>
+
+                                    </div>
+
+                                    <div className="whatsapp-modal-content">
+
+                                        {loadingWhatsappMembers ? (
+
+                                            <div className="whatsapp-modal-loading">
+
+                                                <Icon
+                                                    icon="svg-spinners:ring-resize"
+                                                    width="30"
+                                                />
+
+                                                <p>
+                                                    Carregando contatos...
+                                                </p>
+
+                                            </div>
+
+                                        ) : whatsappMembers.length > 0 ? (
+
+                                            <div className="whatsapp-members-list">
+
+                                                {whatsappMembers.map((member) => (
+
+                                                    <button
+                                                        type="button"
+                                                        className="whatsapp-member"
+                                                        key={member.id}
+                                                        onClick={() => {
+
+                                                            const phone =
+                                                                member.phone
+                                                                    .replace(/\D/g, "");
+
+                                                            window.open(
+                                                                `https://wa.me/${phone}`,
+                                                                "_blank"
+                                                            );
+
+                                                        }}
+                                                    >
+
+                                                        <div className="whatsapp-member-avatar">
+
+                                                            {whatsappMemberPhotos[member.id] ? (
+
+                                                                <img
+                                                                    src={whatsappMemberPhotos[member.id]}
+                                                                    alt={member.name}
+                                                                    className="whatsapp-member-profile-image"
+                                                                    onLoad={(e) => {
+                                                                        console.log(
+                                                                            "✅ Foto carregada:",
+                                                                            member.id,
+                                                                            e.currentTarget.currentSrc
+                                                                        );
+                                                                    }}
+                                                                    onError={(e) => {
+
+                                                                        console.error(
+                                                                            "❌ Erro ao carregar foto:",
+                                                                            member.id,
+                                                                            e.currentTarget.src
+                                                                        );
+
+                                                                        e.currentTarget.style.display = "none";
+
+                                                                        const fallback =
+                                                                            e.currentTarget.parentElement
+                                                                                ?.querySelector(
+                                                                                    ".whatsapp-member-avatar-fallback"
+                                                                                );
+
+                                                                        if (fallback) {
+                                                                            fallback.style.display = "flex";
+                                                                        }
+
+                                                                    }}
+                                                                />
+
+                                                            ) : null}
+
+                                                            <div
+                                                                className="whatsapp-member-avatar-fallback"
+                                                                style={{
+                                                                    display: whatsappMemberPhotos[member.id]
+                                                                        ? "none"
+                                                                        : "flex"
+                                                                }}
+                                                            >
+                                                                {member.name
+                                                                    ?.trim()
+                                                                    ?.charAt(0)
+                                                                    ?.toUpperCase() || "?"}
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div className="whatsapp-member-info">
+
+                                                            <strong>
+                                                                {member.name}
+                                                            </strong>
+
+                                                            <span>
+                                                                {member.phone}
+                                                            </span>
+
+                                                        </div>
+
+                                                        <Icon
+                                                            icon="mage:whatsapp-filled"
+                                                            className="whatsapp-member-icon"
+                                                        />
+
+                                                    </button>
+
+                                                ))}
+
+                                            </div>
+
+                                        ) : (
+
+                                            <div className="whatsapp-modal-empty">
+
+                                                <Icon
+                                                    icon="mage:whatsapp-filled"
+                                                    width="42"
+                                                />
+
+                                                <h3>
+                                                    Nenhum contato disponível
+                                                </h3>
+
+                                                <p>
+                                                    Nenhum profissional relacionado
+                                                    a este produto possui um WhatsApp
+                                                    habilitado.
+                                                </p>
+
+                                            </div>
+
+                                        )}
+
+                                    </div>
+
+                                </motion.div>
+
+                            </motion.div>
+
+                        )}
+                    </AnimatePresence>
+
                     <motion.div
                         key={product.id}
                         className="product-details-container"
@@ -401,9 +1367,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                     <Icon icon="humbleicons:arrow-left" className="icon" />
                                 </button>
 
-                                <button className="product-details-cart" onClick={() => alert("Adicionado ao carrinho!")}>
+                                {/* <button className="product-details-cart" onClick={() => alert("Adicionado ao carrinho!")}>
                                     <Icon icon="lucide:shopping-cart" className="icon" />
-                                </button>
+                                </button> */}
                             </div>
                         </div>
 
@@ -465,11 +1431,18 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                     </div>
 
                                                     <div className="product-details-company-actions">
-                                                        <button className="product-details-email-button">
+                                                        {/* <button className="product-details-email-button">
                                                             <Icon icon="mdi:email" width="24" height="24" />
-                                                        </button>
-                                                        <button className="product-details-whatsap-button">
-                                                            <Icon icon="mage:whatsapp-filled" width="24" height="24" />
+                                                        </button> */}
+                                                        <button
+                                                            className="product-details-whatsap-button"
+                                                            onClick={handleOpenWhatsapp}
+                                                        >
+                                                            <Icon
+                                                                icon="mage:whatsapp-filled"
+                                                                width="24"
+                                                                height="24"
+                                                            />
                                                         </button>
                                                     </div>
                                                 </div>
@@ -497,8 +1470,28 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                             >
                                                 {/* --- BLOCO PROFISSIONAIS --- */}
                                                 <div className="product-details-professional">
-                                                    <div className="product-details-professional-header">
+
+                                                    <div className="product-details-step-header">
+
+                                                        <button
+                                                            type="button"
+                                                            className="product-details-step-back"
+                                                            onClick={() => {
+                                                                setShowProfessionals(false);
+                                                                setProductDetailsSelectedProfessionalId(null);
+                                                                setSelectedDay(null);
+                                                                setSelectedSlot(null);
+                                                                setAvailableTimes([]);
+                                                                setCurrentMonthIndex(0);
+                                                            }}
+                                                        >
+                                                            <Icon icon="humbleicons:arrow-left" />
+
+                                                            <span>Voltar</span>
+                                                        </button>
+
                                                         <h1>Escolha um profissional</h1>
+
                                                     </div>
 
                                                     {Array.isArray(relatedUsersWithInfo) && relatedUsersWithInfo.length > 0 ? (
@@ -514,22 +1507,34 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                         key={id}
                                                                         className={`professional-circle-card ${isSelected ? "selected" : ""}`}
                                                                         onClick={() => {
-                                                                            setProductDetailsSelectedProfessionalId((prev) => {
-                                                                                const newId = prev === id ? null : id;
 
-                                                                                if (newId === null) {
-                                                                                    setIsClosingTimes(true);
+                                                                            // Clicou novamente no profissional já selecionado
+                                                                            if (
+                                                                                productDetailsSelectedProfessionalId === id
+                                                                            ) {
+                                                                                return;
+                                                                            }
 
-                                                                                    setTimeout(() => {
-                                                                                        setSelectedDay(null);
-                                                                                        setSelectedSlot(null);
-                                                                                        setAvailableTimes([]);
-                                                                                        setIsClosingTimes(false);
-                                                                                    }, 300);
-                                                                                }
+                                                                            // ==========================================
+                                                                            // TROCOU DE PROFISSIONAL
+                                                                            // ==========================================
 
-                                                                                return newId;
-                                                                            });
+                                                                            setIsClosingTimes(true);
+
+                                                                            // Limpa imediatamente a seleção anterior
+                                                                            setSelectedDay(null);
+                                                                            setSelectedSlot(null);
+                                                                            setAvailableTimes([]);
+                                                                            setCurrentMonthIndex(0);
+
+                                                                            // Seleciona o novo profissional
+                                                                            setProductDetailsSelectedProfessionalId(id);
+
+                                                                            // Pequeno tempo para a animação de saída
+                                                                            setTimeout(() => {
+                                                                                setIsClosingTimes(false);
+                                                                            }, 300);
+
                                                                         }}
 
                                                                         aria-pressed={isSelected}
@@ -538,21 +1543,30 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                         title={user.name}
                                                                     >
                                                                         <div className="professional-circle-wrap">
-                                                                            {user.avatar ? (
+
+                                                                            {professionalPhotos[user.id] ? (
+
                                                                                 <img
-                                                                                    src={user.avatar}
+                                                                                    src={professionalPhotos[user.id]}
                                                                                     alt={user.name}
                                                                                     className="professional-circle-img"
                                                                                 />
+
                                                                             ) : (
-                                                                                <div className="professional-circle-fallback">{initial}</div>
+
+                                                                                <div className="professional-circle-fallback">
+                                                                                    {initial}
+                                                                                </div>
+
                                                                             )}
 
                                                                             <span
-                                                                                className={`professional-circle-check ${isSelected ? "selected" : ""}`}
+                                                                                className={`professional-circle-check ${isSelected ? "selected" : ""
+                                                                                    }`}
                                                                             >
                                                                                 <Icon icon="material-symbols:check-circle" />
                                                                             </span>
+
                                                                         </div>
 
                                                                         <span className="professional-circle-name">{user.name}</span>
@@ -581,8 +1595,13 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                             <div className="month-header">
                                                                                 <button
                                                                                     disabled={currentMonthIndex === 0}
-                                                                                    onClick={() => setCurrentMonthIndex((i) => i - 1)}
-                                                                                    className={`month-arrow ${currentMonthIndex === 0 ? "disabled" : ""}`}
+                                                                                    onClick={() =>
+                                                                                        setCurrentMonthIndex((i) => i - 1)
+                                                                                    }
+                                                                                    className={`month-arrow ${currentMonthIndex === 0 ? "disabled" : ""
+                                                                                        }`}
+                                                                                    type="button"
+                                                                                    aria-label="Mês anterior"
                                                                                 >
                                                                                     <Icon icon="humbleicons:arrow-left" />
                                                                                 </button>
@@ -785,6 +1804,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                     exit={{ scale: 0.8, opacity: 0 }}
                                     transition={{ duration: 0.25, ease: "easeOut" }}
                                 >
+
                                     {/* ======================= ETAPA 1: Confirmar agendamento ======================= */}
                                     {!isAskingPhone && isConfirmed === false && (
                                         <>
@@ -844,28 +1864,69 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                 <button
                                                     className="confirmation-btn confirm"
                                                     disabled={!userName.trim()}
-                                                    onClick={() => {
+                                                    onClick={async () => {
+
                                                         setIsConfirmed("loading");
 
                                                         const agendamento = {
                                                             productId: product.id,
                                                             productName: product.name,
                                                             productPrice: product.value,
-                                                            professionalId: productDetailsSelectedProfessionalId,
+
+                                                            professionalId:
+                                                                productDetailsSelectedProfessionalId,
+
                                                             professionalName:
                                                                 relatedUsersWithInfo.find(
-                                                                    (u) => u.id === productDetailsSelectedProfessionalId
-                                                                )?.name || "Profissional não identificado",
+                                                                    (u) =>
+                                                                        u.id ===
+                                                                        productDetailsSelectedProfessionalId
+                                                                )?.name ||
+                                                                "Profissional não identificado",
+
                                                             day: selectedDay.day,
-                                                            dayLabel: selectedDay.label,
+
+                                                            dayLabel:
+                                                                selectedDay.label,
+
                                                             hour: selectedSlot,
-                                                            userName: userName.trim(),
-                                                            timestamp: new Date().toISOString(),
+
+                                                            userName:
+                                                                userName.trim(),
+
+                                                            timestamp:
+                                                                new Date().toISOString(),
                                                         };
 
-                                                        console.log("📅 Agendamento iniciado:", agendamento);
+                                                        console.log(
+                                                            "📅 Agendamento iniciado:",
+                                                            agendamento
+                                                        );
 
-                                                        toShedule(agendamento);
+                                                        const success =
+                                                            await toShedule(agendamento);
+
+                                                        // ==========================================
+                                                        // ERRO
+                                                        // ==========================================
+
+                                                        if (!success) {
+
+                                                            setIsConfirmed(false);
+
+                                                            setShowConfirmationModal(false);
+
+                                                            return;
+                                                        }
+
+                                                        saveLocalAgendamento({
+                                                            ...agendamento,
+                                                            status: "pending"
+                                                        });
+
+                                                        // ==========================================
+                                                        // SUCESSO
+                                                        // ==========================================
 
                                                         setLastAgendamento({
                                                             ...agendamento,
@@ -874,16 +1935,6 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                         setIsConfirmed("success");
 
-                                                        // Simula o processamento
-                                                        setTimeout(() => {
-                                                            console.log("✅ Agendamento realizado com sucesso:", agendamento);
-                                                            setTimeout(() => {
-                                                                setIsConfirmed("loading");
-                                                                setTimeout(() => {
-                                                                    setIsConfirmed("success");
-                                                                }, 800);
-                                                            }, 2500);
-                                                        }, 2500);
                                                     }}
                                                 >
                                                     Confirmar Agendamento
@@ -969,15 +2020,33 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         {showOrderSummary && (
                             <OrderSummary
                                 agendamento={lastAgendamento}
-                                onClose={() => {
+
+                                onBack={() => {
                                     setShowOrderSummary(false);
+                                }}
+
+                                onClose={() => {
+
+                                    setShowOrderSummary(false);
+
                                     setVisible(false);
-                                    onClose?.();  
+
+                                    window.dispatchEvent(
+                                        new Event("markfy:go-to-reservations")
+                                    );
+
+                                    onClose?.();
                                 }}
                             />
                         )}
                     </AnimatePresence>
-
+                    <Toast
+                        show={showToast}
+                        type={toastType}
+                        title={toastTitle}
+                        message={toastMessage}
+                        onClose={() => setShowToast(false)}
+                    />
                 </motion.div >
             )
             }

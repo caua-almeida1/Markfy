@@ -17,7 +17,7 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    background: var( --mkf-ui-white);
+    background: var(--mkf-ui-white);
     padding: 24px;
     width: 100%;
     height: 100%;
@@ -31,7 +31,7 @@
 
 }
 
-.order-summary-container span b{
+.order-summary-container span b {
     cursor: pointer;
 }
 
@@ -139,4 +139,38 @@
     font-size: 0.8rem;
     font-weight: 500;
     color: var(--mkf-text-primary);
+}
+
+.order-summary-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    border: 0;
+    background: transparent;
+
+    padding: 6px 0;
+
+    color: #555;
+    font-size: 14px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition:
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.order-summary-back span {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.order-summary-back:hover {
+    color: #111;
+}
+
+.order-summary-back:active {
+    transform: translateX(-3px);
 }

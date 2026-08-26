@@ -12,7 +12,18 @@ const TabBar = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <div id="tabbar" className="site">
+    <div
+      id="tabbar"
+      className="site"
+      style={{
+        position: "fixed",
+        bottom: 0,
+        left: 0,
+        right: 0,
+        zIndex: 99999,
+        display: "block"
+      }}
+    >
       <div className="container">
         <nav>
           <ul>
@@ -23,12 +34,17 @@ const TabBar = ({ activeTab, setActiveTab }) => {
                 className={activeTab === tab.id ? "active" : ""}
                 onClick={() => setActiveTab(tab.id)}
               >
-                <button type="button" className="nav-button">
-
+                <button
+                  type="button"
+                  className="nav-button"
+                  onClick={() => setActiveTab(tab.id)}
+                >
                   <span>{tab.label}</span>
 
-                  <Icon icon={tab.icon} className="icon" />
-
+                  <Icon
+                    icon={tab.icon}
+                    className="icon"
+                  />
                 </button>
 
               </li>

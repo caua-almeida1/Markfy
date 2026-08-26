@@ -2,6 +2,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Icon } from "@iconify/react";
 import { isMobile } from "react-device-detect";
+import { getDatabase, ref, onValue, get, update, remove } from "firebase/database";
+import { useUserCompany } from "../../../../contexts/companyContext/UserCompanyContext";
+import { AnimatePresence } from "framer-motion";
 
 const ProductManagementSlider = ({ product, onClose, onSave }) => {
   const [isClosing, setIsClosing] = useState(false);
@@ -39,6 +42,8 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
   });
 
   const [activeTab, setActiveTab] = useState("info");
+
+  const [editingAdvance, setEditingAdvance] = useState(null);
   const [startY, setStartY] = useState(null);
   const [currentY, setCurrentY] = useState(null);
   const [showDragHandle, setShowDragHandle] = useState(false);
@@ -51,9 +56,57 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
       ? product.images.map((img, index) => ({ id: index + 1, image: img }))
       : []
   );
+
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItemIndex, setNewItemIndex] = useState(null);
   const [removingItemIndex, setRemovingItemIndex] = useState(null);
+
+  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+  const { company, members = [] } = useUserCompany();
+  const [userSearch, setUserSearch] = useState("");
+
+  const filteredUsers = members.filter(member => {
+
+    const alreadyAdded =
+      editedProduct.relatedUsers?.some(
+        related => related.id === member.uid
+      );
+
+    return (
+      !alreadyAdded &&
+      member.name
+        .toLowerCase()
+        .includes(userSearch.toLowerCase())
+    );
+
+  });
+
+  const handleAddRelatedUser = (user) => {
+
+    setEditedProduct(prev => ({
+
+      ...prev,
+
+      relatedUsers: [
+
+        ...(prev.relatedUsers || []),
+
+        {
+          id: user.uid,
+          role: user.role,
+          name: user.name
+
+        }
+
+      ]
+
+    }));
+
+    setUserSearch("");
+
+    setIsAddUserOpen(false);
+
+  };
 
   const handleAddItem = () => {
     if (carouselItems.length >= 5) {
@@ -155,13 +208,70 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
     }, 300); // Tempo deve coincidir com a duração da animação
   };
 
-  const handleSave = () => {
+  const handleAdvanceChange = (type, field, value) => {
+
+    // Permite deixar vazio enquanto está digitando
+    if (value === "") {
+
+      setEditedProduct(prev => ({
+        ...prev,
+        [type]: {
+          ...(prev[type] || {}),
+          [field]: ""
+        }
+      }));
+
+      return;
+    }
+
+    // Somente números
+    value = value.replace(/\D/g, "");
+
+    let numericValue = Number(value);
+
+    // Limites
+    if (field === "hours") {
+      numericValue = Math.min(23, numericValue);
+    }
+
+    if (field === "minutes") {
+      numericValue = Math.min(59, numericValue);
+    }
+
+    if (field === "days") {
+      numericValue = Math.max(0, numericValue);
+    }
+
+    setEditedProduct(prev => ({
+      ...prev,
+      [type]: {
+        ...(prev[type] || {}),
+        [field]: numericValue
+      }
+    }));
+
+  };
+
+  const handleSave = async () => {
+
     const productToSave = {
+
       ...editedProduct,
-      images: carouselItems.map(item => item.image).filter(img => img !== null)
+
+      images: carouselItems
+        .map(item => item.image)
+        .filter(Boolean)
+
     };
-    onSave(productToSave);
-    handleClose();
+
+    const success = await onSave(productToSave);
+
+    if (success) {
+
+      handleClose();
+
+    }
+
   };
 
   const handleInputChange = (e) => {
@@ -236,11 +346,45 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
       setIsLoading(true);
       setActiveTab(tab);
 
-      // Simula tempo de carregamento ao trocar de aba
       setTimeout(() => {
         setIsLoading(false);
       }, 500);
     }
+  };
+
+  useEffect(() => {
+    const loadRelatedUsers = async () => {
+      if (!editedProduct?.relatedUsers?.length) return;
+
+      const db = getDatabase();
+
+      const usersWithNames = await Promise.all(
+        editedProduct.relatedUsers.map(async (user) => {
+          const snap = await get(ref(db, `users/${user.id}`));
+
+          return {
+            ...user,
+            name: snap.exists()
+              ? snap.val().name || "Sem nome"
+              : "Usuário não encontrado"
+          };
+        })
+      );
+
+      setEditedProduct(prev => ({
+        ...prev,
+        relatedUsers: usersWithNames
+      }));
+    };
+
+    loadRelatedUsers();
+  }, [product]);
+
+  const handleRemoveRelatedUser = (userId) => {
+    setEditedProduct(prev => ({
+      ...prev,
+      relatedUsers: prev.relatedUsers.filter(user => user.id !== userId)
+    }));
   };
 
   const renderSkeleton = () => {
@@ -334,6 +478,28 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
         return null;
     }
   };
+
+  const finishAdvanceEdit = (type) => {
+
+    setEditedProduct(prev => ({
+      ...prev,
+      [type]: {
+        days: Number(prev[type]?.days) || 0,
+        hours: Math.min(
+          23,
+          Number(prev[type]?.hours) || 0
+        ),
+        minutes: Math.min(
+          59,
+          Number(prev[type]?.minutes) || 0
+        )
+      }
+    }));
+
+    setEditingAdvance(null);
+  };
+
+
 
   return (
     <div className={`pms-overlay ${isVisible ? 'visible' : ''}`} onClick={handleClose}>
@@ -584,27 +750,208 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
                     <h3 className="pms-section-title">Configurações de Agendamento</h3>
 
                     <div className="pms-setting-item">
-                      <label className="pms-label">Antecedência para agendamento</label>
-                      <div className="pms-setting-value">
-                        {editedProduct.bookingAdvance ?
-                          `${editedProduct.bookingAdvance.days}d ${editedProduct.bookingAdvance.hours}h ${editedProduct.bookingAdvance.minutes}m` :
-                          "Não definido"}
-                      </div>
-                      <button className="pms-edit-setting">
-                        Editar
-                      </button>
+
+                      <label className="pms-label">
+                        Antecedência para agendamento
+                      </label>
+
+                      {editingAdvance === "bookingAdvance" ? (
+
+                        <div className="pms-advance-editor">
+
+                          <div className="pms-advance-field">
+                            <span>Dias</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={editedProduct.bookingAdvance?.days || 0}
+                              onChange={(e) =>
+                                handleAdvanceChange(
+                                  "bookingAdvance",
+                                  "days",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="pms-advance-field">
+                            <span>Horas</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="23"
+                              value={editedProduct.bookingAdvance?.hours || 0}
+                              onChange={(e) =>
+                                handleAdvanceChange(
+                                  "bookingAdvance",
+                                  "hours",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </div>
+
+                          <div className="pms-advance-field">
+                            <span>Minutos</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="59"
+                              value={editedProduct.bookingAdvance?.minutes || 0}
+                              onChange={(e) =>
+                                handleAdvanceChange(
+                                  "bookingAdvance",
+                                  "minutes",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            className="pms-edit-setting"
+                            onClick={() => finishAdvanceEdit("bookingAdvance")}                          >
+                            Concluir
+                          </button>
+
+                        </div>
+
+                      ) : (
+
+                        <>
+                          <div className="pms-setting-value">
+                            {editedProduct.bookingAdvance
+                              ? `${editedProduct.bookingAdvance.days || 0}d ${editedProduct.bookingAdvance.hours || 0}h ${editedProduct.bookingAdvance.minutes || 0}m`
+                              : "Não definido"}
+                          </div>
+
+                          <button
+                            type="button"
+                            className="pms-edit-setting"
+                            onClick={() => setEditingAdvance("bookingAdvance")}
+                          >
+                            Editar
+                          </button>
+                        </>
+
+                      )}
+
                     </div>
 
+
                     <div className="pms-setting-item">
-                      <label className="pms-label">Antecedência para cancelamento</label>
-                      <div className="pms-setting-value">
-                        {editedProduct.cancellationAdvance ?
-                          `${editedProduct.cancellationAdvance.days}d ${editedProduct.cancellationAdvance.hours}h ${editedProduct.cancellationAdvance.minutes}m` :
-                          "Não definido"}
-                      </div>
-                      <button className="pms-edit-setting">
-                        Editar
-                      </button>
+
+                      <label className="pms-label">
+                        Antecedência para cancelamento
+                      </label>
+
+                      {editingAdvance === "cancellationAdvance" ? (
+
+                        <div className="pms-advance-editor">
+
+                          <div className="pms-advance-field">
+
+                            <span>Dias</span>
+
+                            <input
+                              type="number"
+                              min="0"
+                              value={
+                                editedProduct.cancellationAdvance?.days ?? ""
+                              }
+                              onChange={(e) =>
+                                handleAdvanceChange(
+                                  "cancellationAdvance",
+                                  "days",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                          </div>
+
+                          <div className="pms-advance-field">
+
+                            <span>Horas</span>
+
+                            <input
+                              type="number"
+                              min="0"
+                              max="23"
+                              value={
+                                editedProduct.cancellationAdvance?.hours ?? ""
+                              }
+                              onChange={(e) =>
+                                handleAdvanceChange(
+                                  "cancellationAdvance",
+                                  "hours",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                          </div>
+
+                          <div className="pms-advance-field">
+
+                            <span>Minutos</span>
+
+                            <input
+                              type="number"
+                              min="0"
+                              max="59"
+                              value={
+                                editedProduct.cancellationAdvance?.minutes ?? ""
+                              }
+                              onChange={(e) =>
+                                handleAdvanceChange(
+                                  "cancellationAdvance",
+                                  "minutes",
+                                  e.target.value
+                                )
+                              }
+                            />
+
+                          </div>
+
+                          <button
+                            type="button"
+                            className="pms-edit-setting"
+                            onClick={() =>
+                              finishAdvanceEdit("cancellationAdvance")
+                            }
+                          >
+                            Concluir
+                          </button>
+
+                        </div>
+
+                      ) : (
+
+                        <>
+                          <div className="pms-setting-value">
+
+                            {editedProduct.cancellationAdvance
+                              ? `${editedProduct.cancellationAdvance.days || 0}d ${editedProduct.cancellationAdvance.hours || 0}h ${editedProduct.cancellationAdvance.minutes || 0}m`
+                              : "Não definido"}
+
+                          </div>
+
+                          <button
+                            type="button"
+                            className="pms-edit-setting"
+                            onClick={() =>
+                              setEditingAdvance("cancellationAdvance")
+                            }
+                          >
+                            Editar
+                          </button>
+                        </>
+
+                      )}
+
                     </div>
 
                     <div className="pms-setting-item pms-toggle-container">
@@ -680,12 +1027,18 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
                       <div className="pms-users-list">
                         {editedProduct.relatedUsers.map((user, index) => (
                           <div key={index} className="pms-user-item">
-                            <div className="pms-user-avatar">{user.name.charAt(0)}</div>
+                            <div className="pms-user-avatar">{user?.name?.[0] || "?"}</div>
                             <div className="pms-user-info">
-                              <h4>{user.name}</h4>
-                              <p>{user.role}</p>
+                              <h4>{user?.name || "Sem nome"}</h4>
+                              <p>{user?.role || "Sem cargo"}</p>
                             </div>
-                            <button className="pms-remove-user">
+                            <button
+                              className="pms-remove-user"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveRelatedUser(user.id);
+                              }}
+                            >
                               <Icon icon="mdi:trash" />
                             </button>
                           </div>
@@ -694,8 +1047,10 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
                     ) : (
                       <p>Nenhum usuário relacionado</p>
                     )}
-
-                    <button className="pms-add-user">
+                    <button
+                      className="pms-add-user"
+                      onClick={() => setIsAddUserOpen(true)}
+                    >
                       <Icon icon="mdi:plus" />
                       Adicionar Usuário
                     </button>
@@ -714,6 +1069,72 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
             Salvar Alterações
           </button>
         </div>
+
+        <AnimatePresence>
+
+          {isAddUserOpen && (
+
+            <div
+              className="pms-add-user-overlay"
+              onClick={() => setIsAddUserOpen(false)}
+            >
+
+              <div
+                className="pms-add-user-modal"
+                onClick={(e) => e.stopPropagation()}
+              >
+
+                <h3>Adicionar usuário</h3>
+
+                <input
+                  type="text"
+                  placeholder="Pesquisar membro..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                />
+
+                <div className="pms-add-user-list">
+
+                  {filteredUsers.map(user => (
+
+                    <div
+                      key={user.id}
+                      className="pms-add-user-item"
+                      onClick={() => handleAddRelatedUser(user)}
+                    >
+
+                      <div className="pms-user-avatar">
+
+                        {user.name.charAt(0)}
+
+                      </div>
+
+                      <div className="pms-user-info">
+
+                        <h4>{user.name}</h4>
+
+                        <p>{user.role}</p>
+
+                      </div>
+
+                      <Icon
+                        icon="mingcute:add-line"
+                        className="icon"
+                      />
+
+                    </div>
+
+                  ))}
+
+                </div>
+
+              </div>
+
+            </div>
+
+          )}
+
+        </AnimatePresence>
       </div>
     </div>
   );

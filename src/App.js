@@ -13,21 +13,29 @@ import PreviewCompany from "./pages/inital-pages/initial-steps-components/previe
 import Home from "./components/home";
 
 // ========= USERS COMUNS PAGES ===========
-import HomePage from "./pages/users/homepage";
 
 import { AuthProvider } from "./contexts/authContext";
 import { useRoutes } from "react-router-dom";
+import { useEffect } from "react";
+
 import Dashboard from "./pages/adm/dashboardAdm/dashboard";
 import CentralAdm from "./pages/adm/centralAdm";
-import CentralUser from "./pages/users/homepage";
+import HomePage from "./pages/users/homepage";
+import CentralUser from "./pages/users/homepage/centralUser";
 import CompanyPage from "./pages/users/homepage/CompanyPage/CompanyPage";
 
+import { getClientId } from "./utils/clientID";
 // 🔹 IMPORTAR O NOVO CONTEXTO
 import { UserCompanyProvider } from "./contexts/companyContext/UserCompanyContext";
 
+import Invite from "./pages/invite/Invite"
 
 import TestSMS from "./pages/TESTE-SMS/testesms";
 function App() {
+  useEffect(() => {
+    getClientId();
+  }, []);
+
   const routesArray = [
     {
       path: "*",
@@ -36,6 +44,10 @@ function App() {
     {
       path: "/initial-setup",
       element: <InitialSetup />,
+    },
+    {
+      path: "/invite/:inviteId",
+      element: <Invite />,
     },
     {
       path: "/newcompany/:sessionId",

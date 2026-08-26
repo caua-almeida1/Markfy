@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import TabBarAdm from "../../components/tabbarADM/";
 import Dashboard from "./dashboardAdm/dashboard";
@@ -12,6 +12,14 @@ import { useUserCompany } from "../../contexts/companyContext/UserCompanyContext
 import "./centralAdm.css";
 
 const CentralAdm = () => {
+    useEffect(() => {
+        const shouldReload = sessionStorage.getItem("forceAdminReload");
+
+        if (shouldReload) {
+            sessionStorage.removeItem("forceAdminReload");
+            window.location.reload();
+        }
+    }, []);
     const { user, company, loading } = useUserCompany(); // 🟢 obtém dados do usuário logado e empresa
     const tabs = ["home", "pedidos", "produtos", "horarios", "perfil"];
     const [activeTab, setActiveTab] = useState("home");
@@ -46,7 +54,6 @@ const CentralAdm = () => {
         }),
     };
 
-    // 🟢 enquanto carrega os dados
     if (loading) {
         return (
             <div className="central-adm-loading">
@@ -55,7 +62,6 @@ const CentralAdm = () => {
         );
     }
 
-    // 🟠 caso o usuário não tenha empresa associada
     if (!company) {
         return (
             <div className="central-adm-no-company">
@@ -65,7 +71,6 @@ const CentralAdm = () => {
         );
     }
 
-    // 🟢 quando os dados estão prontos
     const renderContent = () => {
         switch (activeTab) {
             case "home":

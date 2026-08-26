@@ -53,14 +53,12 @@ export default function CompanyPage() {
   };
 
   const goToAdmin = () => {
-    // 🔹 Fecha o modal
     setShowManageModal(false);
 
-    // 🔹 Se o usuário estiver logado, navega para o painel
     if (userLoggedIn && currentUser) {
+      sessionStorage.setItem("forceAdminReload", "true");
       navigate("/central-adm");
     } else {
-      // 🔸 Caso não esteja logado, redireciona ao login
       alert("Você precisa estar logado para acessar o painel da empresa.");
       navigate("/");
     }

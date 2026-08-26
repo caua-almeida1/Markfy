@@ -1,0 +1,1182 @@
+/* ================= PAYMENT ================= */
+
+.payment-screen {
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 1rem;
+
+    width: 100%;
+
+}
+
+/* ================= GENERIC PAYMENT ROW ================= */
+
+.payment-config-toggle {
+
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    min-height: 72px;
+
+    padding: 1rem 0;
+
+    border-bottom: 1px solid var(--mkf-ui-border-light);
+
+}
+
+.payment-config-toggle:last-child {
+    border-bottom: none;
+}
+
+
+.payment-config-toggle-left {
+
+    display: flex;
+    align-items: center;
+
+    gap: .9rem;
+
+    flex: 1;
+    min-width: 0;
+
+}
+
+
+.payment-config-toggle-left>div:last-child {
+
+    flex: 1;
+    min-width: 0;
+
+}
+
+
+.payment-config-toggle-left h3 {
+
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-primary);
+
+}
+
+
+.payment-config-toggle-left p {
+
+    margin: .2rem 0 0;
+
+    font-size: var(--mkf-font-3xs);
+    line-height: 1.4;
+
+    color: var(--mkf-text-light);
+
+}
+
+
+/* ================= TOGGLE ================= */
+
+.payment-config-toggle .toggle-switch {
+
+    flex-shrink: 0;
+
+    width: 45px;
+    height: 24px;
+
+    padding: 0;
+
+    border: none;
+    border-radius: 999px;
+
+    background: var(--mkf-ui-gray-300);
+
+    position: relative;
+
+    cursor: pointer;
+
+    transition:
+        background-color .25s ease;
+
+}
+
+
+.payment-config-toggle .toggle-circle {
+
+    width: 18px;
+    height: 18px;
+
+    position: absolute;
+
+    top: 3px;
+    left: 3px;
+
+    border-radius: 50%;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+
+    transition:
+        transform .25s ease;
+
+}
+
+
+.payment-config-toggle .toggle-switch.active {
+
+    background: var(--mkf-ui-primary);
+
+}
+
+
+.payment-config-toggle .toggle-switch.active .toggle-circle {
+
+    transform: translateX(21px);
+
+}
+
+/* ================= INFO ================= */
+
+.payment-info {
+
+    display: flex;
+    align-items: center;
+
+    gap: .8rem;
+
+    padding: 1rem 1.25rem;
+
+    border-radius: 1.25rem;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+}
+
+.payment-info-icon {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: 50%;
+
+    color: var(--mkf-ui-primary);
+}
+
+
+.payment-info-icon svg {
+    font-size: 1.3rem;
+}
+
+.payment-info-content {
+    flex: 1;
+}
+
+.payment-info h3 {
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+
+    color: var(--mkf-text-primary);
+}
+
+.payment-info p {
+    margin-top: .3rem;
+
+    font-size: var(--mkf-font-3xs);
+    line-height: 1.5;
+
+    color: var(--mkf-text-light);
+}
+
+/* ================= OPTIONS ================= */
+
+
+.payment-options {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: .75rem;
+
+}
+
+.payment-option {
+
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+
+    gap: .9rem;
+
+    padding: 1rem 1.25rem;
+
+    border: 1px solid transparent;
+
+    border-radius: 1.25rem;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+
+    text-align: left;
+
+    font-family: "Poppins", sans-serif;
+
+    cursor: pointer;
+
+    transition:
+        border-color .2s ease,
+        background .2s ease,
+        transform .2s ease;
+
+}
+
+.payment-option:hover {
+
+    transform: translateY(-1px);
+
+}
+
+.payment-option.selected {
+
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-background);
+
+}
+
+
+/* ================= OPTION ICON ================= */
+
+.payment-option-icon {
+
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: .8rem;
+
+    background: var(--mkf-ui-background);
+
+    color: var(--mkf-text-light);
+
+    transition:
+        background .2s ease,
+        color .2s ease;
+
+}
+
+.payment-option-icon svg {
+
+    display: block;
+
+    font-size: 1.35rem;
+
+}
+
+.payment-option.selected .payment-option-icon {
+
+    background: var(--mkf-ui-primary);
+
+    color: #fff;
+
+}
+
+
+/* ================= OPTION CONTENT ================= */
+
+.payment-option-content {
+
+    flex: 1;
+
+    min-width: 0;
+
+}
+
+.payment-option-content h3 {
+
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-primary);
+
+}
+
+.payment-option-content p {
+
+    margin: .25rem 0 0;
+
+    font-size: var(--mkf-font-3xs);
+
+    line-height: 1.45;
+
+    color: var(--mkf-text-light);
+
+}
+
+
+/* ================= CHECK ================= */
+
+.payment-option-check {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+
+}
+
+.payment-option-check svg {
+
+    display: block;
+
+    font-size: 1.35rem;
+
+}
+
+.payment-option.selected .payment-option-check {
+
+    color: var(--mkf-ui-primary);
+
+}
+
+
+/* ================= CURRENT PAYMENT ================= */
+
+.payment-current {
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    width: 100%;
+
+    padding: 1rem 1.25rem;
+
+    border-radius: 1.25rem;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+
+}
+
+.payment-current-left {
+
+    display: flex;
+    align-items: center;
+
+    gap: .9rem;
+
+    flex: 1;
+
+    min-width: 0;
+
+}
+
+
+/* ================= EDIT BUTTON ================= */
+
+.payment-edit {
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: .4rem;
+
+    flex-shrink: 0;
+
+    padding: .5rem .75rem;
+
+    border: none;
+
+    border-radius: .7rem;
+
+    background: var(--mkf-ui-background);
+
+    color: var(--mkf-ui-primary);
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: var(--mkf-font-3xs);
+
+    cursor: pointer;
+
+    transition:
+        background .2s ease,
+        color .2s ease;
+
+}
+
+.payment-edit svg {
+
+    display: block;
+
+    font-size: .95rem;
+
+}
+
+.payment-edit:hover {
+
+    background: var(--mkf-ui-primary);
+
+    color: #fff;
+
+}
+
+
+/* ================= PAYMENT METHODS ================= */
+
+.payment-methods-card {
+
+    display: flex;
+
+    flex-direction: column;
+
+    width: 100%;
+
+    padding: 0 1.25rem;
+
+    border-radius: 1.25rem;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+
+}
+
+
+/* ================= METHOD ================= */
+
+.payment-method {
+
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+
+    gap: .9rem;
+
+    padding: 1rem 0;
+
+    border: none;
+
+    border-bottom: 1px solid var(--mkf-ui-border-light);
+
+    background: transparent;
+
+    text-align: left;
+
+    font-family: "Poppins", sans-serif;
+
+    cursor: pointer;
+
+}
+
+.payment-method:last-child {
+
+    border-bottom: none;
+
+}
+
+
+/* ================= METHOD LEFT ================= */
+
+.payment-method-left {
+
+    display: flex;
+    align-items: center;
+
+    gap: .9rem;
+
+    flex: 1;
+
+    min-width: 0;
+
+}
+
+
+/* ================= METHOD ICON ================= */
+
+.payment-method-icon {
+
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: .75rem;
+
+    background: var(--mkf-ui-background);
+
+    color: var(--mkf-text-light);
+
+    transition:
+        background .2s ease,
+        color .2s ease;
+
+}
+
+.payment-method-icon svg {
+
+    display: block;
+
+    font-size: 1.25rem;
+
+}
+
+.payment-method.selected .payment-method-icon {
+
+    background: var(--mkf-ui-primary);
+
+    color: #fff;
+
+}
+
+/* ================= PAYMENT SECTIONS ================= */
+
+.payment-section {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    width: 100%;
+}
+
+.payment-section-title {
+    margin: 0 0 .15rem .25rem;
+
+    font-size: var(--mkf-font-xxs);
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-light);
+}
+
+
+/* ================= PAYMENT TOGGLE CONTENT ================= */
+
+.payment-config-toggle-left {
+    display: flex;
+    align-items: center;
+
+    gap: .9rem;
+
+    flex: 1;
+    min-width: 0;
+}
+
+.payment-config-toggle-left>div:last-child {
+    min-width: 0;
+}
+
+.payment-config-toggle-left h3 {
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-primary);
+}
+
+.payment-config-toggle-left p {
+    margin: .2rem 0 0;
+
+    font-size: var(--mkf-font-3xs);
+    line-height: 1.4;
+
+    color: var(--mkf-text-light);
+}
+
+
+/* ================= DISABLED SECTION ================= */
+
+.payment-section-disabled {
+    opacity: .5;
+    transition: opacity .2s ease;
+}
+
+.payment-section-disabled .payment-methods-card {
+    pointer-events: none;
+}
+
+.payment-section-disabled .payment-method {
+    cursor: not-allowed;
+}
+
+
+/* ================= METHOD ARROW ================= */
+
+.payment-method-arrow {
+    flex-shrink: 0;
+
+    font-size: var(--mkf-font-sm);
+
+    color: var(--mkf-text-tertiary);
+
+    transition: transform .2s ease;
+}
+
+.payment-method:hover .payment-method-arrow {
+    transform: translateX(4px);
+}
+
+/* ================= METHOD CONTENT ================= */
+
+.payment-method h3 {
+
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-primary);
+
+}
+
+.payment-method p {
+
+    margin: .2rem 0 0;
+
+    font-size: var(--mkf-font-3xs);
+
+    line-height: 1.4;
+
+    color: var(--mkf-text-light);
+
+}
+
+
+/* ================= METHOD CHECK ================= */
+
+.payment-method-check {
+
+    display: block;
+
+    flex-shrink: 0;
+
+    font-size: 1.35rem;
+
+    color: var(--mkf-text-light);
+
+    transition: color .2s ease;
+
+}
+
+.payment-method.selected .payment-method-check {
+
+    color: var(--mkf-ui-primary);
+
+}
+
+
+/* ================= ACTIONS ================= */
+
+.payment-actions {
+
+    display: flex;
+    flex-direction: column-reverse;
+    align-items: center;
+
+    gap: .75rem;
+
+    width: 100%;
+
+}
+
+/* ================= CANCEL ================= */
+
+.payment-cancel {
+
+    height: 48px;
+    width: 100%;
+    padding: 0 1.25rem;
+
+    border: none;
+
+    border-radius: 1rem;
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-text-primary);
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: var(--mkf-font-xs);
+
+    cursor: pointer;
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+
+    transition: background .2s ease;
+
+}
+
+.payment-cancel:hover {
+
+    background: var(--mkf-ui-secondary);
+
+}
+
+
+/* ================= SAVE ================= */
+
+.payment-actions .company-save {
+
+    flex: 1;
+
+    margin: 0;
+    padding: 0.75rem 1rem;
+}
+
+
+/* ================= DISABLED ================= */
+
+.company-save.disabled,
+.company-save:disabled {
+
+    opacity: .45;
+
+    cursor: not-allowed;
+
+    pointer-events: none;
+
+}
+
+/* ================= PIX CONFIG ================= */
+
+.payment-config-content {
+
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+
+    gap: .9rem;
+
+    min-height: 58px;
+
+    border-bottom: 1px solid var(--mkf-ui-border-light);
+
+}
+
+.payment-config-content:last-child {
+
+    border-bottom: none;
+
+}
+
+
+/* ================= CONFIG ICON ================= */
+
+.payment-config-icon {
+
+    width: 40px;
+    height: 40px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: .75rem;
+
+    background: var(--mkf-ui-background);
+
+    color: var(--mkf-text-light);
+
+}
+
+.payment-config-icon svg {
+
+    display: block;
+
+    font-size: 1.25rem;
+
+}
+
+
+/* ================= CONFIG INPUT ================= */
+
+.payment-config-input {
+
+    flex: 1;
+
+    min-width: 0;
+
+    width: 100%;
+
+    height: 56px;
+
+    padding: 0;
+
+    border: none;
+
+    outline: none;
+
+    background: transparent;
+
+    color: var(--mkf-text-primary);
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: var(--mkf-font-xs);
+
+    font-weight: var(--mkf-font-medium);
+
+}
+
+.payment-config-input::placeholder {
+
+    color: var(--mkf-text-light);
+
+}
+
+
+/* ================= SELECT ================= */
+
+select.payment-config-input {
+
+    cursor: pointer;
+
+    appearance: none;
+
+    -webkit-appearance: none;
+
+    padding-right: 1.5rem;
+
+}
+
+
+/* ================= CONFIG CARD ================= */
+
+.payment-methods-card:has(.payment-config-content) {
+
+    padding: 0 1.25rem;
+
+}
+
+
+/* ================= PIX ACTION ================= */
+
+.payment-screen .payment-actions {
+
+    margin-top: .25rem;
+
+}
+
+
+/* ================= DISABLED ================= */
+
+.payment-actions .company-save:disabled {
+
+    opacity: .45;
+
+    cursor: not-allowed;
+
+    pointer-events: none;
+
+}
+
+
+/* ================= PIX TOGGLE ROW ================= */
+
+.payment-config-toggle {
+
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    min-height: 56px;
+
+}
+
+.payment-config-toggle-content {
+
+    display: flex;
+    align-items: center;
+
+    flex: 1;
+
+    min-width: 0;
+
+}
+
+.payment-config-toggle-content p {
+
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-primary);
+
+}
+
+
+/* ================= TOGGLE ================= */
+
+.payment-config-toggle .toggle-switch {
+
+    flex-shrink: 0;
+
+    width: 45px;
+    height: 24px;
+
+    padding: 0;
+
+    border: none;
+
+    border-radius: 999px;
+
+    background-color: #ccc;
+
+    position: relative;
+
+    cursor: pointer;
+
+    transition: background-color .25s ease;
+
+}
+
+.payment-config-toggle .toggle-circle {
+
+    width: 18px;
+    height: 18px;
+
+    background-color: white;
+
+    border-radius: 50%;
+
+    position: absolute;
+
+    top: 3px;
+    left: 3px;
+
+    transition: transform .25s ease;
+
+}
+
+.payment-config-toggle .toggle-switch.active {
+
+    background-color: var(--mkf-ui-primary);
+
+}
+
+.payment-config-toggle .toggle-switch.active .toggle-circle {
+
+    transform: translateX(21px);
+
+}
+
+.payment-config-toggle .toggle-switch:disabled {
+
+    opacity: .45;
+
+    cursor: not-allowed;
+
+}
+
+.payment-methods-card--disabled {
+    opacity: .5;
+    pointer-events: none;
+    user-select: none;
+}
+
+.payment-methods-card--disabled .payment-config-input {
+    cursor: not-allowed;
+}
+
+/* ================= CARD BRAND ================= */
+
+.card-number-field {
+    position: relative;
+}
+
+.card-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 42px;
+    height: 28px;
+
+    flex-shrink: 0;
+
+    margin-right: .25rem;
+}
+
+/* ================= TEXT BRANDS ================= */
+
+.card-brand-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-family: Arial, sans-serif;
+
+    font-size: .55rem;
+    font-weight: 800;
+
+    letter-spacing: -.02rem;
+}
+
+.card-brand-text.visa {
+    color: #1434cb;
+    font-size: .75rem;
+    font-style: italic;
+}
+
+.card-brand-text.amex {
+    color: #2e77bc;
+    font-size: .6rem;
+}
+
+.card-brand-text.discover {
+    color: #e86f20;
+    font-size: .5rem;
+}
+
+/* ================= MASTERCARD ================= */
+
+.card-brand-mastercard {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    position: relative;
+
+    width: 30px;
+    height: 20px;
+}
+
+.card-brand-mastercard span {
+    position: absolute;
+
+    width: 18px;
+    height: 18px;
+
+    border-radius: 50%;
+}
+
+.card-brand-mastercard span:first-child {
+    left: 1px;
+    background: #eb001b;
+}
+
+.card-brand-mastercard span:last-child {
+    right: 1px;
+    background: #f79e1b;
+}
+
+.payment-input-error {
+    color: var(--mkf-error);
+}
+
+.payment-input-error::placeholder {
+    color: var(--mkf-error);
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 480px) {
+
+    .payment-info {
+
+        padding: .9rem 1rem;
+
+    }
+
+    .payment-option {
+
+        padding: .9rem 1rem;
+
+    }
+
+    .payment-current {
+
+        padding: .9rem 1rem;
+
+    }
+
+    .payment-edit {
+
+        padding: .45rem .6rem;
+
+    }
+
+    .payment-methods-card {
+
+        padding: 0 1rem;
+
+    }
+
+    .payment-config-content {
+
+        gap: .75rem;
+
+    }
+
+    .payment-config-icon {
+
+        width: 38px;
+        height: 38px;
+
+    }
+
+    .payment-config-icon svg {
+
+        font-size: 1.15rem;
+
+    }
+
+    .payment-config-input {
+
+        font-size: var(--mkf-font-xxs);
+
+    }
+}

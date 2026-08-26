@@ -88,27 +88,49 @@ export default function PreviewCompany() {
   };
 
   const handleRegister = async () => {
-    try {
-      setLoading(true);
+    setLoading(true);
 
+    try {
       const auth = getAuth();
       const user = auth.currentUser;
-      if (!user) throw new Error("Usuário não autenticado");
+
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
 
       let logoURL = null;
+
+      // ============================
+      // Tenta fazer upload da logo
+      // ============================
       if (companyData.logoPreview) {
-        const compressedLogo = await compressImage(companyData.logoPreview, 500, 0.7);
-        const storage = getStorage();
-        const logoRef = storageRef(storage, `companys/${companyData.handle}/logo.png`);
-        await uploadString(logoRef, compressedLogo, "data_url");
-        logoURL = await getDownloadURL(logoRef);
+        try {
+          const compressedLogo = await compressImage(
+            companyData.logoPreview,
+            500,
+            0.7
+          );
+
+          const storage = getStorage();
+          const logoRef = storageRef(
+            storage,
+            `companys/${companyData.handle}/logo.png`
+          );
+
+          await uploadString(logoRef, compressedLogo, "data_url");
+          logoURL = await getDownloadURL(logoRef);
+        } catch (err) {
+          console.warn("Não foi possível enviar a logo:", err);
+          logoURL = null;
+        }
       }
 
       const db = getDatabase();
 
-      // Cadastrar a empresa
-      const companyRef = ref(db, `companys/${companyData.handle}`);
-      await set(companyRef, {
+      // ============================
+      // Criação da empresa (OBRIGATÓRIA)
+      // ============================
+      await set(ref(db, `companys/${companyData.handle}`), {
         name: companyData.name,
         handle: companyData.handle,
         document: companyData.document,
@@ -118,24 +140,40 @@ export default function PreviewCompany() {
         logoPreview: logoURL,
       });
 
-      const memberRef = ref(db, `companys/${companyData.handle}/members/${user.uid}`);
-      await set(memberRef, {
-        role: "master"
-      });
+      // ============================
+      // Adiciona membro (não impede cadastro)
+      // ============================
+      try {
+        await set(
+          ref(db, `companys/${companyData.handle}/members/${user.uid}`),
+          {
+            role: "master",
+          }
+        );
+      } catch (err) {
+        console.warn("Erro ao adicionar membro:", err);
+      }
 
-      const userRef = ref(db, `users/${user.uid}`);
-      await update(userRef, {
-        userType: "admin",
-        initial: false
-      });
-      await update(userRef, { initial: false });
+      // ============================
+      // Atualiza usuário (não impede cadastro)
+      // ============================
+      try {
+        await update(ref(db, `users/${user.uid}`), {
+          userType: "admin",
+          initial: false,
 
-      setLoading(false);
+          companyHandle: companyData.handle
+        });
+      } catch (err) {
+        console.warn("Erro ao atualizar usuário:", err);
+      }
+
       setSuccessScreen(true);
     } catch (error) {
-      setLoading(false);
       console.error("Erro ao cadastrar empresa:", error);
-      alert("Ocorreu um erro ao cadastrar a empresa.");
+      alert("Não foi possível cadastrar a empresa.");
+    } finally {
+      setLoading(false);
     }
   };
 

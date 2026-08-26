@@ -1,15 +1,101 @@
 :root {
+    /* ==================== PRIMÁRIA ==================== */
     --mkf-ui-primary: #092af3;
-    --mkf-ui-primary-hover: #092af3b3;
-    --mkf-ui-secondary: #f5f5f5;
+    --mkf-ui-primary-hover: #0b33ff;
+    --mkf-ui-primary-light: #e9edff;
+    --mkf-ui-primary-lighter: #f5f7ff;
+
+    /* ==================== BACKGROUNDS ==================== */
+    --mkf-ui-white: #ffffff;
+    --mkf-ui-background: #ffffff;
+    --mkf-ui-background-secondary: #f5f5f5;
+    --mkf-ui-background-tertiary: #f0f0f0;
+
+    /* ==================== CINZAS ==================== */
+    --mkf-ui-gray-50: #fafafa;
+    --mkf-ui-gray-100: #f5f5f5;
+    --mkf-ui-gray-200: #eeeeee;
+    --mkf-ui-gray-300: #e3e3e3;
+    --mkf-ui-gray-400: #d6d6d6;
+    --mkf-ui-gray-500: #b8b8b8;
+
+    /* ==================== DEGRADÊS ======================= */
+    --mkf-ui-pro-gradient:
+        linear-gradient(90deg,
+            #111111 0%,
+            #3d3d3d 100%);
+
+    /* ==================== BORDAS ==================== */
     --mkf-ui-border: #eeeeee;
+    --mkf-ui-border-light: #f3f3f3;
+    --mkf-ui-border-dark: #d9d9d9;
+
+    /* ==================== TEXTOS ==================== */
     --mkf-text-primary: #333333;
     --mkf-text-secondary: #555555;
     --mkf-text-tertiary: #666666;
     --mkf-text-light: #999999;
-    --mkf-ui-shadow: rgba(0, 0, 0, 0.1);
-    --mkf-ui-white: #ffffff;
+    --mkf-text-disabled: #bcbcbc;
+
+    /* ==================== FEEDBACK ==================== */
+    --mkf-success: #22c55e;
+    --mkf-success-light: #dcfce7;
+
+    --mkf-warning: #f59e0b;
+    --mkf-warning-light: #fef3c7;
+
+    --mkf-error: #ef4444;
+    --mkf-error-light: #fee2e2;
+
+    --mkf-info: #3b82f6;
+    --mkf-info-light: #dbeafe;
+
+    /* ==================== SOMBRAS ==================== */
+    --mkf-ui-shadow: rgba(0, 0, 0, 0.08);
+    --mkf-ui-shadow-medium: rgba(0, 0, 0, 0.12);
+    --mkf-ui-shadow-strong: rgba(0, 0, 0, 0.18);
+
+    /* ==================== LINKS ==================== */
     --mkf-link-color: #4a6bdf;
+
+    /* ==================== FONT SIZE ==================== */
+    --mkf-font-3xs: 0.5625rem;
+    /* 9px */
+    --mkf-font-2xs: 0.625rem;
+    /* 10px */
+    --mkf-font-xxs: 0.6875rem;
+    /* 11px */
+
+    --mkf-font-xs: 0.75rem;
+    /* 12px */
+    --mkf-font-sm: 0.875rem;
+    /* 14px */
+    --mkf-font-md: 1rem;
+    /* 16px */
+    --mkf-font-lg: 1.125rem;
+    /* 18px */
+    --mkf-font-xl: 1.25rem;
+    /* 20px */
+    --mkf-font-2xl: 1.5rem;
+    /* 24px */
+    --mkf-font-3xl: 1.875rem;
+    /* 30px */
+    --mkf-font-4xl: 2.25rem;
+    /* 36px */
+
+    /* ==================== FONT WEIGHT ==================== */
+    --mkf-font-light: 300;
+    --mkf-font-regular: 400;
+    --mkf-font-medium: 500;
+    --mkf-font-semibold: 600;
+    --mkf-font-bold: 700;
+    --mkf-font-extrabold: 800;
+
+    /* ==================== LINE HEIGHT ==================== */
+    --mkf-line-tight: 1.2;
+    --mkf-line-normal: 1.5;
+    --mkf-line-relaxed: 1.7;
+
 }
 
 .company-page-wrapper {

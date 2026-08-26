@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
-import { getDatabase, ref, push, set, child, onValue, off, get, update } from "firebase/database";
+import {
+    getDatabase,
+    ref,
+    push,
+    set,
+    child,
+    onValue,
+    off,
+    get,
+    update,
+    remove
+} from "firebase/database";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 
@@ -9,11 +20,14 @@ import imageCompression from "browser-image-compression";
 import Thumb1 from "../../../img/adm-content/image-not-found.svg";
 import ThumbProduct from "../../../img/adm-content/file (63).png"
 
+import { useUserCompany } from "../../../contexts/companyContext/UserCompanyContext";
+import Toast from "../../../components/toast/Toast";
 import ProductManagementSlider from "./components/ProductManagementModal"
 
 import "./productsAdm.css";
 
 const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
+    const { company } = useUserCompany();
     const [duration, setDuration] = useState(0);
     const [activeTab, setActiveTab] = useState("ativos");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,6 +42,21 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
+
+    const [showToast, setShowToast] = useState(false);
+    const [toastType, setToastType] = useState("success");
+    const [toastTitle, setToastTitle] = useState("");
+    const [toastMessage, setToastMessage] = useState("");
+
+    const openToast = (type, title, message) => {
+
+        setToastType(type);
+        setToastTitle(title);
+        setToastMessage(message);
+
+        setShowToast(true);
+
+    };
 
     useEffect(() => {
         if (shouldOpenModal) {
@@ -1107,140 +1136,283 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     };
 
     const handleConfirmation = async () => {
+
+        // Impede uma segunda execução enquanto a primeira ainda está acontecendo
+        if (isAddingProduct) return;
+
         setIsAddingProduct(true);
+
         try {
+
             const discountPercentage = calculateDiscountPercentage();
 
-            // Pega todas as imagens do carrossel
             const productImages = Array.isArray(carouselItems)
-                ? carouselItems.map(item => item.image).filter(img => img !== null)
+                ? carouselItems
+                    .map(item => item.image)
+                    .filter(img => img !== null)
                 : [];
 
-            const productImage = productImages.length > 0 ? productImages[0] : Thumb1;
+            const productImage =
+                productImages.length > 0
+                    ? productImages[0]
+                    : Thumb1;
 
             const auth = getAuth();
             const user = auth.currentUser;
-            if (!user) throw new Error("Usuário não autenticado");
+
+            if (!user) {
+                throw new Error("Usuário não autenticado");
+            }
 
             const db = getDatabase();
             const storage = getStorage();
             const companysRef = ref(db, "companys");
 
-            // Buscar todas as empresas
             const snapshot = await get(companysRef);
-            if (!snapshot.exists()) throw new Error("Nenhuma empresa encontrada");
+
+            if (!snapshot.exists()) {
+                throw new Error("Nenhuma empresa encontrada");
+            }
 
             const companies = snapshot.val();
             let companyKey = null;
 
-            // Percorrer empresas para encontrar qual o usuário pertence
             for (const [key, value] of Object.entries(companies)) {
-                if (value.members && value.members[user.uid]) {
+
+                if (
+                    value.members &&
+                    value.members[user.uid]
+                ) {
                     companyKey = key;
                     break;
                 }
+
             }
 
-            if (!companyKey) throw new Error("Usuário não pertence a nenhuma empresa");
+            if (!companyKey) {
+                throw new Error(
+                    "Usuário não pertence a nenhuma empresa"
+                );
+            }
 
-            // Criar ID customizado para o produto
             const generateCustomId = (length = 12) => {
-                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-                return Array.from({ length }, () => chars.charAt(Math.floor(Math.random() * chars.length))).join('');
+
+                const chars =
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+
+                return Array.from(
+                    { length },
+                    () =>
+                        chars.charAt(
+                            Math.floor(
+                                Math.random() * chars.length
+                            )
+                        )
+                ).join("");
+
             };
+
             const customId = generateCustomId(12);
 
             // ===============================
-            // 📷 Upload das imagens comprimidas
+            // 📷 UPLOAD DAS IMAGENS
             // ===============================
-            const uploadPromises = productImages.map(async (imageFile, index) => {
-                // Se for base64, converter para File antes
-                let file;
-                if (typeof imageFile === "string" && imageFile.startsWith("data:")) {
-                    const res = await fetch(imageFile);
-                    const blob = await res.blob();
-                    file = new File([blob], `image_${index}.jpg`, { type: "image/jpeg" });
-                } else {
-                    file = imageFile;
+
+            const uploadPromises = productImages.map(
+                async (imageFile, index) => {
+
+                    let file;
+
+                    if (
+                        typeof imageFile === "string" &&
+                        imageFile.startsWith("data:")
+                    ) {
+
+                        const res = await fetch(imageFile);
+                        const blob = await res.blob();
+
+                        file = new File(
+                            [blob],
+                            `image_${index}.jpg`,
+                            {
+                                type: "image/jpeg"
+                            }
+                        );
+
+                    } else {
+
+                        file = imageFile;
+
+                    }
+
+                    const compressedFile =
+                        await imageCompression(
+                            file,
+                            {
+                                maxSizeMB: 0.3,
+                                maxWidthOrHeight: 1280,
+                                useWebWorker: true
+                            }
+                        );
+
+                    const imgRef = storageRef(
+                        storage,
+                        `companys/${companyKey}/products/${customId}/images/${compressedFile.name}`
+                    );
+
+                    await uploadBytes(
+                        imgRef,
+                        compressedFile
+                    );
+
+                    return await getDownloadURL(
+                        imgRef
+                    );
+
                 }
+            );
 
-                // Comprimir
-                const compressedFile = await imageCompression(file, {
-                    maxSizeMB: 0.3, // ~300kb
-                    maxWidthOrHeight: 1280,
-                    useWebWorker: true
-                });
-
-                // Caminho no storage
-                const imgRef = storageRef(
-                    storage,
-                    `companys/${companyKey}/products/${customId}/images/${compressedFile.name}`
-                );
-
-                // Upload
-                await uploadBytes(imgRef, compressedFile);
-
-                // Pegar URL pública
-                return await getDownloadURL(imgRef);
-            });
-
-            const uploadedImageUrls = await Promise.all(uploadPromises);
+            const uploadedImageUrls =
+                await Promise.all(uploadPromises);
 
             // ===============================
-            // 📝 Montar usuários relacionados
+            // 👤 USUÁRIOS RELACIONADOS
             // ===============================
+
             const relatedUsers = members
-                .filter(member => selectedAdmins.includes(member.id))
+                .filter(member =>
+                    selectedAdmins.includes(member.id)
+                )
                 .map(member => ({
                     id: member.id,
                     role: capitalizeFirst(member.role)
                 }));
+
             // ===============================
-            // 📝 Salvar produto no Realtime
+            // 📝 PRODUTO
             // ===============================
+
             const newProduct = {
+
                 name: productInfo.name,
+
                 status: "ativos",
+
                 value: productInfo.price,
+
                 orders: 0,
+
                 description: productInfo.description,
+
                 duration: productInfo.duration,
+
                 categories: productInfo.categories,
-                discount: discountPercentage !== null ? `${discountPercentage}%` : null,
-                relatedUsers: relatedUsers, // ✅ só selecionados, com role em caps
-                image: uploadedImageUrls[0] || Thumb1,
-                images: uploadedImageUrls,
+
+                discount:
+                    discountPercentage !== null
+                        ? `${discountPercentage}%`
+                        : null,
+
+                relatedUsers,
+
+                image:
+                    uploadedImageUrls[0] || Thumb1,
+
+                images:
+                    uploadedImageUrls,
+
                 originalPrice: priceFrom,
+
                 discountedPrice: priceTo,
-                currency: currency,
-                bookingAdvance: productInfo.bookingAdvance,
-                cancellationAdvance: productInfo.cancellationAdvance,
+
+                currency,
+
+                bookingAdvance:
+                    productInfo.bookingAdvance,
+
+                cancellationAdvance:
+                    productInfo.cancellationAdvance,
+
                 settings: {
+
                     privacy: isPrivate,
-                    notifications: notificationsEnabled,
-                    prepayment: prepaymentRequired,
-                    rescheduling: reschedulingAllowed,
-                    dynamicPricing: productInfo.settings.dynamicPricing,
-                    extraFees: productInfo.settings.extraFees
+
+                    notifications:
+                        notificationsEnabled,
+
+                    prepayment:
+                        prepaymentRequired,
+
+                    rescheduling:
+                        reschedulingAllowed,
+
+                    dynamicPricing:
+                        productInfo.settings.dynamicPricing,
+
+                    extraFees:
+                        productInfo.settings.extraFees
+
                 },
-                createdAt: new Date().toISOString()
+
+                createdAt:
+                    new Date().toISOString()
+
             };
 
-            const productRef = ref(db, `companys/${companyKey}/products/${customId}`);
-            await set(productRef, newProduct);
+            // ===============================
+            // 💾 SALVAR NO REALTIME DATABASE
+            // ===============================
 
-            console.log("Produto salvo em:", `companys/${companyKey}/products/${customId}`);
+            const productRef = ref(
+                db,
+                `companys/${companyKey}/products/${customId}`
+            );
 
+            await set(
+                productRef,
+                newProduct
+            );
+
+            console.log(
+                "Produto salvo em:",
+                `companys/${companyKey}/products/${customId}`
+            );
+
+            // Fecha modal de confirmação
             closeConfirmationModal();
+
+            // Reseta formulário
             resetAllStates();
+
+            // Fecha modal principal
             closeModal();
-            alert('Produto criado com sucesso!');
+
+            // Toast de sucesso
+            openToast(
+                "success",
+                "Produto criado",
+                "O produto foi criado com sucesso."
+            );
+
         } catch (error) {
-            console.error("Erro ao salvar produto:", error);
-            alert('Erro ao criar produto. Por favor, tente novamente.');
+
+            console.error(
+                "Erro ao salvar produto:",
+                error
+            );
+
+            openToast(
+                "error",
+                "Erro ao criar produto",
+                "Não foi possível criar o produto. Tente novamente."
+            );
+
         } finally {
+
             setIsAddingProduct(false);
+
         }
+
     };
 
     const resetAllStates = () => {
@@ -1449,66 +1621,352 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     };
 
+    const removeExpiredArchivedProducts = async (
+        productsData,
+        companyKey,
+        db
+    ) => {
+
+        const now = Date.now();
+
+        // 30 dias em milissegundos
+        const thirtyDays =
+            30 * 24 * 60 * 60 * 1000;
+
+        const expiredProducts =
+            Object.entries(productsData).filter(
+                ([productId, product]) => {
+
+                    // Só verifica produtos arquivados
+                    if (
+                        product.status !== "arquivados"
+                    ) {
+                        return false;
+                    }
+
+                    // Produto antigo que não possui
+                    // archivedAt não será removido
+                    if (!product.archivedAt) {
+                        return false;
+                    }
+
+                    const archivedAt =
+                        new Date(
+                            product.archivedAt
+                        ).getTime();
+
+                    // Data inválida
+                    if (isNaN(archivedAt)) {
+                        return false;
+                    }
+
+                    // Verifica se já passaram 30 dias
+                    return (
+                        now - archivedAt >= thirtyDays
+                    );
+
+                }
+            );
+
+        await Promise.all(
+
+            expiredProducts.map(
+                ([productId]) => {
+
+                    const productRef = ref(
+                        db,
+                        `companys/${companyKey}/products/${productId}`
+                    );
+
+                    return remove(productRef);
+
+                }
+            )
+
+        );
+
+        return expiredProducts.length;
+
+    };
+
     useEffect(() => {
+
+        let unsubscribeProducts = null;
+
         const fetchProducts = async () => {
+
             try {
+
                 setLoading(true);
 
                 const auth = getAuth();
                 const user = auth.currentUser;
-                if (!user) throw new Error("Usuário não autenticado");
+
+                if (!user) {
+                    throw new Error(
+                        "Usuário não autenticado"
+                    );
+                }
 
                 const db = getDatabase();
-                const companysRef = ref(db, "companys");
 
-                // Buscar todas as empresas
-                const snapshot = await get(companysRef);
-                if (!snapshot.exists()) throw new Error("Nenhuma empresa encontrada");
+                const companysRef =
+                    ref(db, "companys");
 
-                const companies = snapshot.val();
+                // ===============================
+                // BUSCAR EMPRESAS
+                // ===============================
+
+                const snapshot =
+                    await get(companysRef);
+
+                if (!snapshot.exists()) {
+                    throw new Error(
+                        "Nenhuma empresa encontrada"
+                    );
+                }
+
+                const companies =
+                    snapshot.val();
+
                 let companyKey = null;
 
-                // Descobrir qual empresa o usuário pertence
-                for (const [key, value] of Object.entries(companies)) {
-                    if (value.members && value.members[user.uid]) {
+                // Descobre a empresa do usuário
+                for (
+                    const [key, value]
+                    of Object.entries(companies)
+                ) {
+
+                    if (
+                        value.members &&
+                        value.members[user.uid]
+                    ) {
+
                         companyKey = key;
+
                         break;
                     }
                 }
 
-                if (!companyKey) throw new Error("Usuário não pertence a nenhuma empresa");
+                if (!companyKey) {
+                    throw new Error(
+                        "Usuário não pertence a nenhuma empresa"
+                    );
+                }
 
-                // Agora vamos ouvir os produtos dessa empresa
-                const productsRef = ref(db, `companys/${companyKey}/products`);
+                // ===============================
+                // PRODUTOS
+                // ===============================
 
-                const unsubscribe = onValue(productsRef, (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        const productsArray = Object.keys(data).map((key) => ({
-                            id: key,
-                            ...data[key],
-                        }));
-                        setProducts(productsArray);
-                    } else {
-                        setProducts([]);
+                const productsRef =
+                    ref(
+                        db,
+                        `companys/${companyKey}/products`
+                    );
+
+                // ===============================
+                // VERIFICA PRODUTOS EXPIRADOS
+                // ===============================
+
+                const productsSnapshot =
+                    await get(productsRef);
+
+                if (productsSnapshot.exists()) {
+
+                    const productsData =
+                        productsSnapshot.val();
+
+                    await removeExpiredArchivedProducts(
+                        productsData,
+                        companyKey,
+                        db
+                    );
+
+                }
+
+                // ===============================
+                // ESCUTA PRODUTOS
+                // ===============================
+
+                unsubscribeProducts = onValue(
+                    productsRef,
+                    (snapshot) => {
+
+                        const data =
+                            snapshot.val();
+
+                        if (data) {
+
+                            const productsArray =
+                                Object.keys(data).map(
+                                    (key) => ({
+                                        id: key,
+                                        ...data[key],
+                                    })
+                                );
+
+                            setProducts(
+                                productsArray
+                            );
+
+                        } else {
+
+                            setProducts([]);
+
+                        }
+
+                        setLoading(false);
+
+                    },
+                    (error) => {
+
+                        console.error(
+                            "Erro ao buscar produtos:",
+                            error
+                        );
+
+                        setLoading(false);
+
                     }
-                    setLoading(false);
-                }, (error) => {
-                    console.error("Erro ao buscar produtos:", error);
-                    setLoading(false);
-                });
+                );
 
-                // Limpa o listener ao desmontar
-                return () => off(productsRef, 'value', unsubscribe);
             } catch (error) {
-                console.error("Erro ao carregar produtos:", error);
+
+                console.error(
+                    "Erro ao carregar produtos:",
+                    error
+                );
+
                 setLoading(false);
+
             }
         };
 
         fetchProducts();
+
+        return () => {
+
+            if (unsubscribeProducts) {
+                unsubscribeProducts();
+            }
+
+        };
+
     }, []);
 
+    const handleArchiveProduct = async (product) => {
+
+        try {
+
+            const db = getDatabase();
+
+            const productRef = ref(
+                db,
+                `companys/${company.handle}/products/${product.id}`
+            );
+
+            const isArchiving = product.status === "ativos";
+
+            if (isArchiving) {
+
+                // ===============================
+                // ARQUIVAR
+                // ===============================
+
+                await update(productRef, {
+
+                    status: "arquivados",
+
+                    // Começa a contar os 30 dias
+                    // a partir do momento em que foi arquivado
+                    archivedAt: new Date().toISOString()
+
+                });
+
+                openToast(
+                    "success",
+                    "Produto arquivado",
+                    "O produto foi arquivado com sucesso."
+                );
+
+            } else {
+
+                // ===============================
+                // RESTAURAR
+                // ===============================
+
+                await update(productRef, {
+
+                    status: "ativos",
+
+                    // Remove a data de arquivamento
+                    // porque o produto voltou a ficar ativo
+                    archivedAt: null
+
+                });
+
+                openToast(
+                    "success",
+                    "Produto restaurado",
+                    "O produto foi restaurado com sucesso."
+                );
+
+            }
+
+        } catch (err) {
+
+            console.error(
+                "Erro ao alterar status do produto:",
+                err
+            );
+
+            openToast(
+                "error",
+                "Erro",
+                "Não foi possível alterar o status do produto."
+            );
+
+        }
+
+    };
+
+    const handleSaveProduct = async (updatedProduct) => {
+
+        try {
+
+            const db = getDatabase();
+
+            await update(
+                ref(
+                    db,
+                    `companys/${company.handle}/products/${updatedProduct.id}`
+                ),
+                updatedProduct
+            );
+
+            setIsManagementModalOpen(false);
+
+            openToast(
+                "success",
+                "Produto atualizado",
+                "As alterações foram salvas com sucesso."
+            );
+
+            return true;
+
+        } catch (err) {
+
+            openToast(
+                "error",
+                "Erro",
+                "Não foi possível salvar o produto."
+            );
+
+            return false;
+
+        }
+
+    };
 
     return (
         <div className="adm_products-page">
@@ -1522,6 +1980,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                         >
                             Ativos
                         </button>
+
                         <button
                             className={activeTab === "arquivados" ? "active" : ""}
                             onClick={() => setActiveTab("arquivados")}
@@ -1529,6 +1988,12 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                             Arquivados
                         </button>
                     </div>
+
+                    {activeTab === "arquivados" && (
+                        <p className="adm_products-archived-info">
+                            Produtos arquivados são excluídos automaticamente após 30 dias.
+                        </p>
+                    )}
                 </div>
             </header>
 
@@ -1593,8 +2058,13 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                         </div>
 
                         <div className="adm_products-card-actions">
-                            <button className="adm_products-btn delete-btn">
-                                Arquivar
+                            <button
+                                className="adm_products-btn delete-btn"
+                                onClick={() => handleArchiveProduct(product)}
+                            >
+                                {product.status === "ativos"
+                                    ? "Arquivar"
+                                    : "Restaurar"}
                             </button>
                             <button
                                 className="adm_products-btn edit-btn"
@@ -1617,11 +2087,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 <ProductManagementSlider
                     product={selectedProduct}
                     onClose={() => setIsManagementModalOpen(false)}
-                    onSave={(updatedProduct) => {
-                        setProducts(prev => prev.map(p =>
-                            p.id === updatedProduct.id ? updatedProduct : p
-                        ));
-                    }}
+                    onSave={handleSaveProduct}
                 />
             )}
 
@@ -2390,14 +2856,24 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                         <button
                                             className="adm_confirmation-modal-btn secondary-btn"
                                             onClick={closeConfirmationModal}
+                                            disabled={isAddingProduct}
                                         >
                                             Cancelar
                                         </button>
                                         <button
-                                            className="adm_confirmation-modal-btn primary-btn"
+                                            className={`adm_confirmation-modal-btn primary-btn ${isAddingProduct ? "loading" : ""
+                                                }`}
                                             onClick={handleConfirmation}
+                                            disabled={isAddingProduct}
                                         >
-                                            Confirmar
+                                            {isAddingProduct ? (
+                                                <>
+                                                    <span className="adm_confirmation-spinner"></span>
+                                                    Criando...
+                                                </>
+                                            ) : (
+                                                "Confirmar"
+                                            )}
                                         </button>
                                     </div>
                                 </div>
@@ -2806,6 +3282,13 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 </div>
             )
             }
+            <Toast
+                show={showToast}
+                type={toastType}
+                title={toastTitle}
+                message={toastMessage}
+                onClose={() => setShowToast(false)}
+            />
         </div >
     );
 };

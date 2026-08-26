@@ -1,0 +1,333 @@
+/* ================= INTEGRATIONS ================= */
+
+.integrations-screen {
+    gap: 1rem;
+}
+
+.integration-card {
+
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    border-radius: 1.25rem;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+
+    overflow: hidden;
+
+}
+
+
+/* ================= HEADER ================= */
+
+.integration-header {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: .9rem;
+
+    padding: 1.25rem 1.5rem;
+
+    border-bottom:
+        1px solid var(--mkf-ui-border-light);
+
+}
+
+.integration-header-icon {
+
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: .8rem;
+
+    background: #e9f8ee;
+
+}
+
+.integration-header-icon svg {
+
+    font-size: 1.45rem;
+
+}
+
+.integration-header h3 {
+
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+
+    font-weight:
+        var(--mkf-font-semibold);
+
+    color:
+        var(--mkf-text-primary);
+
+}
+
+.integration-header p {
+
+    margin-top: .2rem;
+
+    font-size:
+        var(--mkf-font-3xs);
+
+    color:
+        var(--mkf-text-light);
+
+}
+
+
+/* ================= MEMBERS ================= */
+
+.integration-members {
+
+    display: flex;
+
+    flex-direction: column;
+
+    padding: 0 1.5rem;
+
+}
+
+.integration-member {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    padding: 1rem 0;
+
+    border-bottom:
+        1px solid var(--mkf-ui-border-light);
+
+}
+
+.integration-member:last-child {
+
+    border-bottom: none;
+
+}
+
+
+/* ================= MEMBER INFO ================= */
+
+.integration-member-info {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: .75rem;
+
+    min-width: 0;
+
+    flex: 1;
+
+}
+
+.integration-member-avatar {
+
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: 50%;
+
+    background:
+        var(--mkf-ui-background-secondary);
+
+    color:
+        var(--mkf-text-secondary);
+
+    font-size:
+        var(--mkf-font-xs);
+
+    font-weight:
+        var(--mkf-font-semibold);
+
+}
+
+.integration-member-details {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: .1rem;
+
+    min-width: 0;
+
+}
+
+.integration-member-details strong {
+
+    font-size:
+        var(--mkf-font-xs);
+
+    font-weight:
+        var(--mkf-font-medium);
+
+    color:
+        var(--mkf-text-primary);
+
+    white-space: nowrap;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+}
+
+.integration-member-details span {
+
+    font-size:
+        var(--mkf-font-3xs);
+
+    color:
+        var(--mkf-text-light);
+
+}
+
+
+/* ================= ACTIONS ================= */
+
+.integration-member-actions {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: .6rem;
+
+}
+
+.integration-member-actions input {
+
+    width: 125px;
+
+    height: 34px;
+
+    padding:
+        0 .65rem;
+
+    border:
+        1px solid var(--mkf-ui-border-light);
+
+    border-radius: .65rem;
+
+    outline: none;
+
+    background:
+        var(--mkf-ui-background);
+
+    color:
+        var(--mkf-text-primary);
+
+    font-family:
+        "Poppins",
+        sans-serif;
+
+    font-size:
+        var(--mkf-font-3xs);
+
+}
+
+.integration-member-actions input:focus {
+
+    border-color:
+        var(--mkf-ui-primary);
+
+}
+
+
+/* ================= TOGGLE ================= */
+
+.whatsapp-toggle {
+
+    width: 38px;
+    height: 22px;
+
+    padding: 0;
+
+    border: none;
+
+    border-radius: 999px;
+
+    position: relative;
+
+    background:
+        var(--mkf-ui-gray-300);
+
+    cursor: pointer;
+
+    transition:
+        background .2s ease;
+
+}
+
+.whatsapp-toggle span {
+
+    width: 16px;
+    height: 16px;
+
+    position: absolute;
+
+    top: 3px;
+    left: 3px;
+
+    border-radius: 50%;
+
+    background:
+        var(--mkf-ui-white);
+
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, .15);
+
+    transition:
+        transform .2s ease;
+
+}
+
+.whatsapp-toggle.active {
+
+    background:
+        #25d366;
+
+}
+
+.whatsapp-toggle.active span {
+
+    transform:
+        translateX(16px);
+
+}
+
+.integration-member-actions input:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+    background: var(--mkf-ui-gray-100);
+}

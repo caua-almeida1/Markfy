@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from "react-router-dom";
 import SplashScreen from './componentes/spashscreen';
 import MarkfyLogo from "../../../img/logo-markfy.svg";
 import emailjs from "@emailjs/browser";
@@ -18,7 +19,6 @@ import { auth } from '../../../firebase/firebase';
 import { Icon } from '@iconify/react';
 import './mainscreenregister.css';
 
-
 const SERVICE_ID = "service_2l02vyh";
 const TEMPLATE_ID = "template_6g6ub0p";
 const PUBLIC_KEY = "QlWjNn5vihbWi9uLf";
@@ -26,15 +26,74 @@ const PUBLIC_KEY = "QlWjNn5vihbWi9uLf";
 const AuthScreen = () => {
   const [formError, setFormError] = useState('');
 
+  const [searchParams] = useSearchParams();
+
+  const inviteId = searchParams.get("invite");
+  const [inviteData, setInviteData] = useState(null);
+
   useEffect(() => {
     emailjs.init(PUBLIC_KEY);
   }, []);
+
+  useEffect(() => {
+
+    if (!inviteId) return;
+
+    const loadInvite = async () => {
+
+      try {
+
+        const snapshot = await get(
+          ref(realtimeDb, `invites/${inviteId}`)
+        );
+
+        if (!snapshot.exists()) {
+
+          setFormError("Convite inválido.");
+
+          return;
+
+        }
+
+        const invite = snapshot.val();
+
+        if (invite.status !== "pending") {
+
+          setFormError("Este convite não está mais disponível.");
+
+          return;
+
+        }
+
+        setInviteData(invite);
+
+        setFormData(prev => ({
+
+          ...prev,
+
+          email: invite.invitedEmail
+
+        }));
+
+      } catch (err) {
+
+        console.error(err);
+
+        setFormError("Não foi possível validar o convite.");
+
+      }
+
+    };
+
+    loadInvite();
+
+  }, [inviteId]);
   const [step, setStep] = useState('register'); // 'register' | 'verify'
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(!inviteId);
 
   const [formData, setFormData] = useState({
     email: '',
@@ -123,26 +182,108 @@ const AuthScreen = () => {
           name = userData.name || name;
         }
 
-        await checkUserInitial(user.uid, user.email, name);
+        await redirectAfterAuth(
+          user.uid,
+          user.email,
+          user.displayName || "Usuário"
+        );
 
 
       } else {
         // verifica se email já está cadastrado
-        const snapshot = await get(ref(realtimeDb, 'users'));
+        const snapshot = await get(ref(realtimeDb, "users"));
+
         const users = snapshot.val();
-        const emailExists = Object.values(users || {}).some(user => user.email === formData.email);
+
+        const emailExists = Object.values(users || {}).some(
+          user =>
+            user.email?.toLowerCase() ===
+            formData.email.toLowerCase()
+        );
 
         if (emailExists) {
+
           setFormError("Email já cadastrado.");
+
           setIsLoading(false);
+
           return;
+
         }
 
-        // Gera código e envia
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        // =============================
+        // Registro vindo por convite
+        // =============================
+
+        if (inviteId) {
+
+          try {
+
+            const userCredential =
+              await createUserWithEmailAndPassword(
+                auth,
+                formData.email,
+                formData.password
+              );
+
+            const user = userCredential.user;
+
+            const hashedPassword =
+              await hashPassword(formData.password);
+
+            await set(
+              ref(realtimeDb, `users/${user.uid}`),
+              {
+                uid: user.uid,
+                name: formData.name,
+                email: formData.email,
+                password: hashedPassword,
+                provider: "markfy",
+
+                userType: "admin",
+
+                initial: false
+              }
+            );
+
+            await redirectAfterAuth(
+              user.uid,
+              formData.email,
+              formData.name
+            );
+
+            return;
+
+          } catch (err) {
+
+            console.error(err);
+
+            setFormError("Erro ao criar a conta.");
+
+            setIsLoading(false);
+
+            return;
+
+          }
+
+        }
+
+        // =============================
+        // Registro normal
+        // =============================
+
+        const code = Math.floor(
+          100000 + Math.random() * 900000
+        ).toString();
+
         setGeneratedCode(code);
-        await sendVerificationEmail(formData.email, code);
-        setStep('verify');
+
+        await sendVerificationEmail(
+          formData.email,
+          code
+        );
+
+        setStep("verify");
       }
     } catch (error) {
       setFormError("Email ou senha incorreta.");
@@ -152,32 +293,64 @@ const AuthScreen = () => {
   };
 
   const checkUserInitial = async (uid, email, name) => {
-    const userRef = ref(realtimeDb, 'users/' + uid);
+    console.log("checkUserInitial()", uid);
+
+    const userRef = ref(realtimeDb, "users/" + uid);
     const snapshot = await get(userRef);
 
-    if (snapshot.exists()) {
-      const userData = snapshot.val();
-
-      if (userData.initial === true) {
-        navigate('/central-user', {
-          state: { name: userData.name || name, email, id: uid }
-        });
-      } else {
-        navigate('/initial-setup', {
-          state: { name: userData.name || name, email, id: uid }
-        });
-      }
-    } else {
+    if (!snapshot.exists()) {
       await set(userRef, {
         uid,
         name,
         email,
-        initial: false
-
+        initial: true,
+        userType: "common"
       });
 
-      navigate('/initial-setup', { state: { name, email, id: uid } });
+      navigate("/initial-setup", {
+        state: { name, email, id: uid }
+      });
+
+      return;
     }
+
+    const userData = snapshot.val();
+
+    // Primeiro acesso
+    if (userData.initial === true) {
+      navigate("/initial-setup", {
+        state: {
+          name: userData.name || name,
+          email,
+          id: uid
+        }
+      });
+      return;
+    }
+
+    // Já passou do setup
+    if (userData.userType === "admin") {
+      navigate("/central-adm");
+    } else {
+      navigate("/central-user");
+    }
+  };
+
+  const redirectAfterAuth = async (uid, email, name) => {
+
+    if (inviteId) {
+
+      navigate(`/invite/${inviteId}`);
+      return;
+
+    }
+
+    await checkUserInitial(
+      uid,
+      email,
+      name
+    );
+
   };
 
   const hashPassword = async (password) => {
@@ -208,7 +381,11 @@ const AuthScreen = () => {
         usertype: existingData.usertype ?? 'null'
       });
 
-      await checkUserInitial(user.uid, user.email, user.displayName || 'Usuário');
+      await redirectAfterAuth(
+        user.uid,
+        user.email,
+        user.displayName || "Usuário"
+      );
 
     } catch (error) {
       alert(error.message);
@@ -216,25 +393,48 @@ const AuthScreen = () => {
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('authUser');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
+    if (!auth.currentUser) {
 
-      (async () => {
-        const userRef = ref(realtimeDb, 'users/' + parsedUser.uid);
-        const snapshot = await get(userRef);
+      localStorage.removeItem("authUser");
 
-        let name = 'Usuário';
-        if (snapshot.exists()) {
-          const userData = snapshot.val();
-          name = userData.name || name;
-        }
+      return;
 
-        await checkUserInitial(parsedUser.uid, parsedUser.email, name);
-      })();
     }
-  }, []);
 
+    const storedUser = localStorage.getItem("authUser");
+
+    if (!storedUser) return;
+
+    const parsedUser = JSON.parse(storedUser);
+
+    (async () => {
+
+      const userRef = ref(realtimeDb, "users/" + parsedUser.uid);
+
+      const snapshot = await get(userRef);
+
+      // Usuário não existe mais
+      if (!snapshot.exists()) {
+
+        localStorage.removeItem("authUser");
+
+        await auth.signOut();
+
+        return;
+
+      }
+
+      const userData = snapshot.val();
+
+      await checkUserInitial(
+        parsedUser.uid,
+        parsedUser.email,
+        userData.name || "Usuário"
+      );
+
+    })();
+
+  }, []);
 
   useEffect(() => {
     if (!showSplash) {
@@ -263,7 +463,7 @@ const AuthScreen = () => {
   const [verificationCode, setVerificationCode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
 
-  const sendVerificationEmail = async (email: string, code: string) => {
+  const sendVerificationEmail = async (email, code) => {
     try {
       await emailjs.send(
         SERVICE_ID,
@@ -271,13 +471,28 @@ const AuthScreen = () => {
         {
           user_email: email,
           verification_code: code,
+          email_title:
+            "Confirmação de Cadastro - Markfy",
+          email_message:
+            "Obrigado por se cadastrar na Markfy! " +
+            "Para concluir seu cadastro, utilize " +
+            "o código de verificação abaixo.",
         },
         PUBLIC_KEY
       );
+
       console.log("E-mail enviado com sucesso!");
+
     } catch (error) {
-      console.error("Erro ao enviar e-mail:", error);
-      alert("Erro ao enviar o e-mail de verificação. Tente novamente.");
+      console.error(
+        "Erro ao enviar e-mail:",
+        error
+      );
+
+      alert(
+        "Erro ao enviar o e-mail de verificação. " +
+        "Tente novamente."
+      );
     }
   };
 
@@ -326,6 +541,7 @@ const AuthScreen = () => {
                   <input
                     type="email"
                     name="email"
+                    disabled={!!inviteId}
                     placeholder="E-mail"
                     className="auth-input"
                     value={formData.email}
@@ -456,7 +672,11 @@ const AuthScreen = () => {
                     initial: false
                   });
 
-                  await checkUserInitial(user.uid, formData.email, formData.name);
+                  await redirectAfterAuth(
+                    user.uid,
+                    formData.email,
+                    formData.name
+                  );
                 } catch (error) {
                   setFormError("Erro ao criar o usuário. Tente novamente.");
                 } finally {

@@ -9,6 +9,7 @@
     "@ffmpeg/core": "^0.11.0",
     "@ffmpeg/ffmpeg": "^0.11.6",
     "@iconify/react": "^5.1.0",
+    "@mercadopago/sdk-react": "^1.0.7",
     "@mui/material": "^7.3.4",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",

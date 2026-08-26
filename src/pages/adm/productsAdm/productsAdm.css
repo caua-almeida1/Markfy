@@ -86,9 +86,9 @@
 
 .adm_products-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-    padding: 0.5rem 1.5rem;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 1rem;
+    padding: .5rem 1.5rem 2rem;
 }
 
 .adm_products-list p {
@@ -122,7 +122,10 @@
 .adm_products-card-content {
     flex: 1;
     min-width: 0;
-    align-items: center;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 }
 
 .adm_products-card-top-info img {
@@ -154,20 +157,27 @@
 }
 
 .adm_products-card-bottom-info {
-    display: flex;
-    justify-content: space-between;
-    padding-bottom: 0.5rem;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .75rem;
+
     margin-bottom: 1rem;
-    border-bottom: 1px solid var(--light-dark-color);
+    padding-bottom: 1rem;
+
+    border-bottom: 1px solid var(--mkf-ui-border);
 }
 
 .adm_products-card-bottom-info p {
     color: var(--second-light-dark-color);
+    font-size: .72rem;
+
 }
 
 .adm_products-card-bottom-info h1 {
     color: var(--second-black-color);
     font-weight: 600;
+    font-size: .88rem;
+
 }
 
 .adm_products-card-content h2 {
@@ -2278,10 +2288,14 @@
 /* ========= ESTILIZAÇÃO GERENCIAMENTO DOS PRODUTOS ========= */
 .adm_products-image-wrapper {
     position: relative;
-    width: 100px;
-    height: 100px;
-    border-radius: 12px;
+    flex-shrink: 0;
+
+    width: 88px;
+    height: 88px;
+
+    border-radius: 16px;
     overflow: hidden;
+
     cursor: pointer;
 }
 
@@ -2289,8 +2303,6 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    transition: opacity 0.3s ease;
-    flex-shrink: 0;
 }
 
 .adm_products-image-hover {
@@ -2319,7 +2331,6 @@
     margin-bottom: 4px;
 }
 
-/* Modal da galeria */
 .adm_products-gallery-overlay {
     position: fixed;
     top: 0;
@@ -2589,7 +2600,7 @@
 }
 
 .pms-section p {
-    color: var(--button-dark-color)
+    color: var(--mkf-text-tertiary);
 }
 
 .pms-section-title {
@@ -2675,13 +2686,13 @@
 }
 
 .pms-category-tag {
-    background: var(--dark-color);
+    background: var(--mkf-ui-primary);
     border: 1px solid var(--second-lighter-color);
     padding: 0.4rem 1rem;
     border-radius: 20px;
     font-size: 0.8rem;
     font-weight: 500;
-    color: var(--second-black-color);
+    color: var(--mkf-ui-white);
 }
 
 .pms-images-grid {
@@ -3200,4 +3211,314 @@ body.no-scroll {
 
 input:checked+.pms-toggle-slider:before {
     transform: translateX(26px);
+}
+
+.pms-add-user-overlay {
+
+    position: fixed;
+    inset: 0;
+
+    background: rgba(0, 0, 0, .45);
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    z-index: 3000;
+
+}
+
+.pms-add-user-modal {
+
+    width: min(500px, 95%);
+
+    max-height: 80vh;
+
+    overflow: auto;
+
+    background: #fff;
+
+    border-radius: 22px;
+
+    padding: 1.4rem;
+
+}
+
+.pms-add-user-modal input {
+
+    width: 100%;
+
+    padding: .9rem 1rem;
+
+    border-radius: 14px;
+
+    border: 1px solid #ddd;
+
+    margin: 1rem 0;
+
+    box-sizing: border-box;
+
+}
+
+.pms-add-user-list {
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap: .6rem;
+
+}
+
+.pms-add-user-item {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 1rem;
+
+    padding: .8rem;
+
+    border-radius: 14px;
+
+    cursor: pointer;
+
+    transition: .2s;
+
+}
+
+.pms-add-user-item:hover {
+
+    background: #f5f7ff;
+
+}
+
+.pms-add-user-item .icon {
+
+    margin-left: auto;
+
+    font-size: 1.3rem;
+
+    color: var(--mkf-ui-primary);
+
+}
+
+.adm_confirmation-modal-btn.loading {
+    opacity: 0.7;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.adm_confirmation-modal-btn:disabled {
+    cursor: not-allowed;
+}
+
+.adm_confirmation-modal-btn.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.adm_confirmation-spinner {
+    width: 16px;
+    height: 16px;
+
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: currentColor;
+
+    border-radius: 50%;
+
+    animation: admConfirmationSpin 0.7s linear infinite;
+}
+
+@keyframes admConfirmationSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.adm_products-archived-info {
+    margin: 8px 0 0;
+
+    font-size: 13px;
+    line-height: 1.4;
+
+    opacity: 0.65;
+}
+
+.pms-advance-editor {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    width: 100%;
+    margin-top: 12px;
+}
+
+.pms-advance-field {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.pms-advance-field span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #777;
+    padding-left: 2px;
+}
+
+.pms-advance-field input {
+    width: 100%;
+    min-width: 0;
+    height: 42px;
+    padding: 0 10px;
+    border: 1px solid #ddd;
+    border-radius: 11px;
+    background: #fff;
+    font-size: 14px;
+    text-align: center;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.pms-advance-field input:focus {
+    border-color: var(--mkf-ui-primary);
+}
+
+.pms-advance-editor .pms-edit-setting {
+    grid-column: 1 / -1;
+    width: 100%;
+    margin-top: 2px;
+}
+
+/* ============ RESPONSIBILIDADE ============ */
+@media (max-width:768px) {
+
+    .adm_products-list {
+
+        grid-template-columns: 1fr;
+
+        gap: .85rem;
+
+        padding: .5rem 1rem 6rem;
+
+    }
+
+    .adm_products-card {
+
+        padding: .9rem;
+
+        border-radius: 18px;
+
+    }
+
+    .adm_products-card-top-info {
+
+        gap: .8rem;
+
+        align-items: flex-start;
+
+    }
+
+    .adm_products-image-wrapper {
+
+        width: 72px;
+        height: 72px;
+
+        border-radius: 14px;
+
+    }
+
+    .adm_products-card-name {
+
+        font-size: .92rem;
+
+    }
+
+    .adm_products-card-description {
+
+        font-size: .75rem;
+
+        -webkit-line-clamp: 2;
+
+    }
+
+    .adm_products-card-bottom-info {
+
+        gap: .5rem;
+
+        margin: 1rem 0;
+
+    }
+
+    .adm_products-card-bottom-info h1 {
+
+        font-size: .8rem;
+
+    }
+
+    .adm_products-card-bottom-info p {
+
+        font-size: .68rem;
+
+    }
+
+    .adm_products-card-actions {
+
+        gap: .55rem;
+
+    }
+
+    .adm_products-btn {
+
+        padding: .8rem;
+
+        font-size: .74rem;
+
+        border-radius: 14px;
+
+    }
+
+    .pms-slider {
+        overflow-x: hidden;
+        box-sizing: border-box;
+    }
+
+    .pms-content-container {
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+
+    .pms-content {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .pms-section {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .pms-images-grid {
+
+        grid-template-columns: repeat(2, 1fr);
+
+        gap: .8rem;
+
+    }
+
+    .pms-image-item {
+
+        width: 100%;
+
+        aspect-ratio: 1;
+
+        height: auto;
+
+    }
+
 }

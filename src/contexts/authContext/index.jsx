@@ -17,8 +17,32 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, initializeUser);
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+
+      console.log("AUTH:", user);
+
+      if (user) {
+
+        try {
+          await user.reload();
+        } catch (e) {
+
+          console.log("USUÁRIO INVÁLIDO, DESLOGANDO");
+
+          await auth.signOut();
+
+          return;
+        }
+
+      }
+
+      initializeUser(user);
+
+    });
+
     return unsubscribe;
+
   }, []);
 
   async function initializeUser(user) {
@@ -33,10 +57,10 @@ export function AuthProvider({ children }) {
       setIsEmailUser(isEmail);
 
       // check if the auth provider is google or not
-    //   const isGoogle = user.providerData.some(
-    //     (provider) => provider.providerId === GoogleAuthProvider.PROVIDER_ID
-    //   );
-    //   setIsGoogleUser(isGoogle);
+      //   const isGoogle = user.providerData.some(
+      //     (provider) => provider.providerId === GoogleAuthProvider.PROVIDER_ID
+      //   );
+      //   setIsGoogleUser(isGoogle);
 
       setUserLoggedIn(true);
     } else {
