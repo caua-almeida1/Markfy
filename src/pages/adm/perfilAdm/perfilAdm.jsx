@@ -34,14 +34,18 @@ import PixConfigScreen from "./screens/settings/payment/PixConfigScreen";
 import CardConfigScreen from "./screens/settings/payment/CardConfigScreen";
 import CardCreditScreen from "./screens/settings/payment/CardCreditScreen";
 
-const PerfilAdm = () => {
+const PerfilAdm = ({ initialScreen = "home" }) => {
     const [userData, setUserData] = useState(null);
 
     const [darkMode, setDarkMode] = useState(false);
 
     const navigate = useNavigate();
 
-    const [screenStack, setScreenStack] = useState(["home"]);
+    const [screenStack, setScreenStack] = useState(
+        initialScreen === "home"
+            ? ["home"]
+            : ["home", initialScreen]
+    );
     const screen = screenStack[screenStack.length - 1];
 
     useEffect(() => {
@@ -135,7 +139,7 @@ const PerfilAdm = () => {
 
             await signOut(getAuth());
 
-            navigate("/");
+            navigate("/Login");
         } catch (err) {
             console.error(err);
         }

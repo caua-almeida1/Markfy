@@ -24,15 +24,35 @@ const CentralAdm = () => {
     const tabs = ["home", "pedidos", "produtos", "horarios", "perfil"];
     const [activeTab, setActiveTab] = useState("home");
     const [prevTab, setPrevTab] = useState("home");
+
     const [openProductsModal, setOpenProductsModal] = useState(false);
+    const [profileInitialScreen, setProfileInitialScreen] = useState("home");
 
     const handleTabChange = (tab, options = {}) => {
+
         setPrevTab(activeTab);
+
+        if (tab === "perfil") {
+
+            setProfileInitialScreen(
+                options.initialScreen || "home"
+            );
+
+        }
+
         setActiveTab(tab);
-        if (tab === "produtos" && options.openModal) {
+
+        if (
+            tab === "produtos" &&
+            options.openModal
+        ) {
+
             setOpenProductsModal(true);
+
         } else {
+
             setOpenProductsModal(false);
+
         }
     };
 
@@ -93,7 +113,11 @@ const CentralAdm = () => {
             case "horarios":
                 return <Schedules company={company} />;
             case "perfil":
-                return <PerfilAdm />;
+                return (
+                    <PerfilAdm
+                        initialScreen={profileInitialScreen}
+                    />
+                );
             default:
                 return <Dashboard setActiveTab={handleTabChange} company={company} />;
         }

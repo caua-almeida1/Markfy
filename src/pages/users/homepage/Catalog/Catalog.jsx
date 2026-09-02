@@ -1,0 +1,1325 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Icon } from "@iconify/react";
+import { getDatabase, ref, onValue } from "firebase/database";
+
+import ProductDetails from "../ProductDetails/ProductDetails";
+import Thumb1 from "../../../../img/1.jpg";
+
+import "./Catalog.css";
+
+const Catalog = () => {
+
+    const { handle } = useParams();
+
+    const [products, setProducts] = useState([]);
+
+    const [companyName, setCompanyName] = useState("");
+    const [companyLogo, setCompanyLogo] = useState("");
+    const [companyHandle, setCompanyHandle] = useState("");
+
+    const [selectedProduct, setSelectedProduct] = useState(null);
+
+    const [searchTerm, setSearchTerm] = useState("");
+
+    const [loadedImages, setLoadedImages] = useState({});
+
+    // ==========================================
+    // ORDENAÇÃO
+    // ==========================================
+
+    const [sortOption, setSortOption] = useState("relevance");
+    const [showSortMenu, setShowSortMenu] = useState(false);
+
+
+    // ==========================================
+    // CARREGAR EMPRESA E PRODUTOS
+    // ==========================================
+
+    useEffect(() => {
+
+        if (!handle) return;
+
+        const db = getDatabase();
+
+        const companyRef = ref(
+            db,
+            `companys/${handle}`
+        );
+
+        const unsubscribe = onValue(
+            companyRef,
+            (snapshot) => {
+
+                const data = snapshot.val();
+
+                if (!data) {
+
+                    setProducts([]);
+
+                    setCompanyName("");
+                    setCompanyLogo("");
+                    setCompanyHandle(handle);
+
+                    return;
+
+                }
+
+
+                // ==========================================
+                // EMPRESA
+                // ==========================================
+
+                setCompanyName(
+                    data.name || ""
+                );
+
+                setCompanyLogo(
+                    data.logoPreview || ""
+                );
+
+                setCompanyHandle(
+                    data.handle || handle
+                );
+
+
+                // ==========================================
+                // PRODUTOS
+                // ==========================================
+
+                const productsArray = data.products
+                    ? Object.entries(data.products)
+                        .filter(
+                            ([, product]) =>
+                                product?.status !== "arquivados"
+                        )
+                        .map(([id, product], index) => ({
+                            id,
+                            ...product,
+
+                            // Guarda a posição original para
+                            // manter a ordem de relevância.
+                            originalIndex: index
+                        }))
+                    : [];
+
+
+                setProducts(productsArray);
+
+            },
+            (error) => {
+
+                console.error(
+                    "Erro ao carregar catálogo:",
+                    error
+                );
+
+                setProducts([]);
+
+            }
+        );
+
+
+        return () => unsubscribe();
+
+    }, [handle]);
+
+
+    // ==========================================
+    // IMAGEM
+    // ==========================================
+
+    const handleImageLoad = (id) => {
+
+        setLoadedImages((prev) => ({
+            ...prev,
+            [id]: true
+        }));
+
+    };
+
+
+    // ==========================================
+    // DURAÇÃO
+    // ==========================================
+
+    const formatDuration = (minutes) => {
+
+        if (
+            minutes === undefined ||
+            minutes === null ||
+            minutes === "" ||
+            isNaN(minutes)
+        ) {
+            return "";
+        }
+
+        const value = Number(minutes);
+
+        if (value <= 0) {
+            return "";
+        }
+
+        const hours = Math.floor(
+            value / 60
+        );
+
+        const remainingMinutes =
+            value % 60;
+
+
+        if (
+            hours > 0 &&
+            remainingMinutes > 0
+        ) {
+
+            return `${hours}h ${remainingMinutes}min`;
+
+        }
+
+
+        if (hours > 0) {
+
+            return `${hours}h`;
+
+        }
+
+
+        return `${remainingMinutes}min`;
+
+    };
+
+
+    // ==========================================
+    // CONVERTER PREÇO
+    // ==========================================
+
+    const getPriceValue = (product) => {
+
+        if (!product) {
+            return 0;
+        }
+
+        const rawValue =
+            product.value ??
+            product.price ??
+            0;
+
+        if (typeof rawValue === "number") {
+            return rawValue;
+        }
+
+        const normalized =
+            String(rawValue)
+                .replace(/[^\d,.-]/g, "")
+                .replace(/\./g, "")
+                .replace(",", ".");
+
+        const number =
+            Number(normalized);
+
+        return Number.isNaN(number)
+            ? 0
+            : number;
+
+    };
+
+
+    // ==========================================
+    // CONVERTER DURAÇÃO
+    // ==========================================
+
+    const getDurationValue = (product) => {
+
+        const duration =
+            Number(product?.duration);
+
+        return Number.isNaN(duration)
+            ? 0
+            : duration;
+
+    };
+
+
+    // ==========================================
+    // FILTRAR + ORDENAR
+    // ==========================================
+
+    const filteredProducts = useMemo(() => {
+
+        const search =
+            searchTerm
+                .trim()
+                .toLowerCase();
+
+
+        // ==========================================
+        // FILTRO
+        // ==========================================
+
+        const filtered = products.filter(
+            (product) => {
+
+                if (!search) {
+                    return true;
+                }
+
+                const productName =
+                    product.name
+                        ?.toLowerCase() || "";
+
+
+                const categories =
+                    Array.isArray(
+                        product.categories
+                    )
+                        ? product.categories
+                            .join(" ")
+                            .toLowerCase()
+                        : "";
+
+
+                const description =
+                    product.description
+                        ?.toLowerCase() || "";
+
+
+                return (
+                    productName.includes(search) ||
+                    categories.includes(search) ||
+                    description.includes(search)
+                );
+
+            }
+        );
+
+
+        // ==========================================
+        // ORDENAÇÃO
+        // ==========================================
+
+        return [...filtered].sort(
+            (a, b) => {
+
+                switch (sortOption) {
+
+                    // ==================================
+                    // MAIS RELEVANTES
+                    // ==================================
+
+                    case "relevance":
+
+                        return (
+                            (a.originalIndex ?? 0) -
+                            (b.originalIndex ?? 0)
+                        );
+
+
+                    // ==================================
+                    // NOME A → Z
+                    // ==================================
+
+                    case "nameAsc":
+
+                        return (
+                            (a.name || "")
+                                .localeCompare(
+                                    b.name || "",
+                                    "pt-BR",
+                                    {
+                                        sensitivity: "base"
+                                    }
+                                )
+                        );
+
+
+                    // ==================================
+                    // NOME Z → A
+                    // ==================================
+
+                    case "nameDesc":
+
+                        return (
+                            (b.name || "")
+                                .localeCompare(
+                                    a.name || "",
+                                    "pt-BR",
+                                    {
+                                        sensitivity: "base"
+                                    }
+                                )
+                        );
+
+
+                    // ==================================
+                    // MENOR PREÇO
+                    // ==================================
+
+                    case "priceAsc":
+
+                        return (
+                            getPriceValue(a) -
+                            getPriceValue(b)
+                        );
+
+
+                    // ==================================
+                    // MAIOR PREÇO
+                    // ==================================
+
+                    case "priceDesc":
+
+                        return (
+                            getPriceValue(b) -
+                            getPriceValue(a)
+                        );
+
+
+                    // ==================================
+                    // MENOR DURAÇÃO
+                    // ==================================
+
+                    case "durationAsc":
+
+                        return (
+                            getDurationValue(a) -
+                            getDurationValue(b)
+                        );
+
+
+                    // ==================================
+                    // MAIOR DURAÇÃO
+                    // ==================================
+
+                    case "durationDesc":
+
+                        return (
+                            getDurationValue(b) -
+                            getDurationValue(a)
+                        );
+
+
+                    default:
+
+                        return (
+                            (a.originalIndex ?? 0) -
+                            (b.originalIndex ?? 0)
+                        );
+
+                }
+
+            }
+        );
+
+    }, [
+        products,
+        searchTerm,
+        sortOption
+    ]);
+
+
+    // ==========================================
+    // TEXTO DA ORDENAÇÃO ATUAL
+    // ==========================================
+
+    const getSortLabel = () => {
+
+        switch (sortOption) {
+
+            case "nameAsc":
+                return "Nome A → Z";
+
+            case "nameDesc":
+                return "Nome Z → A";
+
+            case "priceAsc":
+                return "Menor preço";
+
+            case "priceDesc":
+                return "Maior preço";
+
+            case "durationAsc":
+                return "Menor duração";
+
+            case "durationDesc":
+                return "Maior duração";
+
+            case "relevance":
+            default:
+                return "Mais relevantes";
+
+        }
+
+    };
+
+
+    // ==========================================
+    // SELECIONAR ORDENAÇÃO
+    // ==========================================
+
+    const handleSortChange = (option) => {
+
+        setSortOption(option);
+
+        setShowSortMenu(false);
+
+    };
+
+
+    // ==========================================
+    // ABRIR PRODUTO
+    // ==========================================
+
+    const openProduct = (product) => {
+
+        setSelectedProduct(product);
+
+    };
+
+
+    // ==========================================
+    // FECHAR PRODUTO
+    // ==========================================
+
+    const closeProduct = () => {
+
+        setSelectedProduct(null);
+
+    };
+
+
+    return (
+
+        <div className="catalog-page">
+
+
+            {/* =================================================
+                HEADER
+            ================================================= */}
+
+            <div className="catalog-page-header">
+
+
+                {/* =============================================
+                    TÍTULO
+                ============================================== */}
+
+                <div className="catalog-page-title">
+
+                    <h2>
+                        Catálogo
+                    </h2>
+
+                    <p>
+
+                        {filteredProducts.length}
+
+                        {" "}
+
+                        {filteredProducts.length === 1
+                            ? "serviço disponível"
+                            : "serviços disponíveis"}
+
+                    </p>
+
+                </div>
+
+
+                {/* =============================================
+                    CONTROLES
+                ============================================== */}
+
+                <div className="catalog-header-controls">
+
+
+                    {/* =========================================
+                        PESQUISA
+                    ========================================== */}
+
+                    <div className="catalog-search">
+
+                        <Icon
+                            icon="mdi:magnify"
+                        />
+
+
+                        <input
+                            type="text"
+                            placeholder="Pesquisar serviço..."
+                            value={searchTerm}
+                            onChange={(event) =>
+                                setSearchTerm(
+                                    event.target.value
+                                )
+                            }
+                        />
+
+
+                        {searchTerm && (
+
+                            <button
+                                type="button"
+                                aria-label="Limpar pesquisa"
+                                onClick={() =>
+                                    setSearchTerm("")
+                                }
+                            >
+
+                                <Icon
+                                    icon="mdi:close"
+                                />
+
+                            </button>
+
+                        )}
+
+                    </div>
+
+
+                    {/* =========================================
+                        BOTÃO ORDENAR
+                    ========================================== */}
+
+                    <div className="catalog-sort-wrapper">
+
+                        <button
+                            type="button"
+                            className={`catalog-sort-button ${showSortMenu
+                                    ? "active"
+                                    : ""
+                                }`}
+                            onClick={() =>
+                                setShowSortMenu(
+                                    prev => !prev
+                                )
+                            }
+                            aria-label="Ordenar catálogo"
+                            aria-expanded={
+                                showSortMenu
+                            }
+                        >
+
+                            <Icon
+                                icon="solar:sort-vertical-outline"
+                            />
+
+                            <span>
+                                Ordenar
+                            </span>
+
+                        </button>
+
+
+                        {/* =====================================
+                            MENU
+                        ====================================== */}
+
+                        {showSortMenu && (
+
+                            <>
+
+                                <div
+                                    className="catalog-sort-backdrop"
+                                    onClick={() =>
+                                        setShowSortMenu(false)
+                                    }
+                                />
+
+
+                                <div className="catalog-sort-menu">
+
+
+                                    {/* =============================
+                                        HEADER DO MENU
+                                    ============================== */}
+
+                                    <div className="catalog-sort-menu-header">
+
+                                        <div>
+
+                                            <strong>
+                                                Ordenar catálogo
+                                            </strong>
+
+                                            <span>
+                                                {getSortLabel()}
+                                            </span>
+
+                                        </div>
+
+
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setShowSortMenu(
+                                                    false
+                                                )
+                                            }
+                                            aria-label="Fechar"
+                                        >
+
+                                            <Icon
+                                                icon="mdi:close"
+                                            />
+
+                                        </button>
+
+                                    </div>
+
+
+                                    {/* =============================
+                                        OPÇÕES
+                                    ============================== */}
+
+                                    <div className="catalog-sort-options">
+
+
+                                        {/* MAIS RELEVANTES */}
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                sortOption ===
+                                                    "relevance"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                handleSortChange(
+                                                    "relevance"
+                                                )
+                                            }
+                                        >
+
+                                            <div className="catalog-sort-option-icon">
+
+                                                <Icon
+                                                    icon="solar:star-outline"
+                                                />
+
+                                            </div>
+
+
+                                            <div className="catalog-sort-option-content">
+
+                                                <strong>
+                                                    Mais relevantes
+                                                </strong>
+
+                                                <span>
+                                                    Ordem padrão do catálogo
+                                                </span>
+
+                                            </div>
+
+
+                                            {sortOption ===
+                                                "relevance" && (
+
+                                                    <Icon
+                                                        icon="material-symbols:check"
+                                                        className="catalog-sort-option-check"
+                                                    />
+
+                                                )}
+
+                                        </button>
+
+
+                                        {/* NOME A → Z */}
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                sortOption ===
+                                                    "nameAsc"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                handleSortChange(
+                                                    "nameAsc"
+                                                )
+                                            }
+                                        >
+
+                                            <div className="catalog-sort-option-icon">
+
+                                                <Icon
+                                                    icon="solar:text-field-outline"
+                                                />
+
+                                            </div>
+
+
+                                            <div className="catalog-sort-option-content">
+
+                                                <strong>
+                                                    Nome A → Z
+                                                </strong>
+
+                                                <span>
+                                                    Ordem alfabética crescente
+                                                </span>
+
+                                            </div>
+
+
+                                            {sortOption ===
+                                                "nameAsc" && (
+
+                                                    <Icon
+                                                        icon="material-symbols:check"
+                                                        className="catalog-sort-option-check"
+                                                    />
+
+                                                )}
+
+                                        </button>
+
+
+                                        {/* NOME Z → A */}
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                sortOption ===
+                                                    "nameDesc"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                handleSortChange(
+                                                    "nameDesc"
+                                                )
+                                            }
+                                        >
+
+                                            <div className="catalog-sort-option-icon">
+
+                                                <Icon
+                                                    icon="solar:text-field-outline"
+                                                />
+
+                                            </div>
+
+
+                                            <div className="catalog-sort-option-content">
+
+                                                <strong>
+                                                    Nome Z → A
+                                                </strong>
+
+                                                <span>
+                                                    Ordem alfabética decrescente
+                                                </span>
+
+                                            </div>
+
+
+                                            {sortOption ===
+                                                "nameDesc" && (
+
+                                                    <Icon
+                                                        icon="material-symbols:check"
+                                                        className="catalog-sort-option-check"
+                                                    />
+
+                                                )}
+
+                                        </button>
+
+
+                                        {/* MENOR PREÇO */}
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                sortOption ===
+                                                    "priceAsc"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                handleSortChange(
+                                                    "priceAsc"
+                                                )
+                                            }
+                                        >
+
+                                            <div className="catalog-sort-option-icon">
+
+                                                <Icon
+                                                    icon="solar:tag-price-outline"
+                                                />
+
+                                            </div>
+
+
+                                            <div className="catalog-sort-option-content">
+
+                                                <strong>
+                                                    Menor preço
+                                                </strong>
+
+                                                <span>
+                                                    Do menor para o maior
+                                                </span>
+
+                                            </div>
+
+
+                                            {sortOption ===
+                                                "priceAsc" && (
+
+                                                    <Icon
+                                                        icon="material-symbols:check"
+                                                        className="catalog-sort-option-check"
+                                                    />
+
+                                                )}
+
+                                        </button>
+
+
+                                        {/* MAIOR PREÇO */}
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                sortOption ===
+                                                    "priceDesc"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                handleSortChange(
+                                                    "priceDesc"
+                                                )
+                                            }
+                                        >
+
+                                            <div className="catalog-sort-option-icon">
+
+                                                <Icon
+                                                    icon="solar:tag-price-outline"
+                                                />
+
+                                            </div>
+
+
+                                            <div className="catalog-sort-option-content">
+
+                                                <strong>
+                                                    Maior preço
+                                                </strong>
+
+                                                <span>
+                                                    Do maior para o menor
+                                                </span>
+
+                                            </div>
+
+
+                                            {sortOption ===
+                                                "priceDesc" && (
+
+                                                    <Icon
+                                                        icon="material-symbols:check"
+                                                        className="catalog-sort-option-check"
+                                                    />
+
+                                                )}
+
+                                        </button>
+
+
+                                        {/* MENOR DURAÇÃO */}
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                sortOption ===
+                                                    "durationAsc"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                handleSortChange(
+                                                    "durationAsc"
+                                                )
+                                            }
+                                        >
+
+                                            <div className="catalog-sort-option-icon">
+
+                                                <Icon
+                                                    icon="solar:clock-circle-outline"
+                                                />
+
+                                            </div>
+
+
+                                            <div className="catalog-sort-option-content">
+
+                                                <strong>
+                                                    Menor duração
+                                                </strong>
+
+                                                <span>
+                                                    Serviços mais rápidos primeiro
+                                                </span>
+
+                                            </div>
+
+
+                                            {sortOption ===
+                                                "durationAsc" && (
+
+                                                    <Icon
+                                                        icon="material-symbols:check"
+                                                        className="catalog-sort-option-check"
+                                                    />
+
+                                                )}
+
+                                        </button>
+
+
+                                        {/* MAIOR DURAÇÃO */}
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                sortOption ===
+                                                    "durationDesc"
+                                                    ? "selected"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                handleSortChange(
+                                                    "durationDesc"
+                                                )
+                                            }
+                                        >
+
+                                            <div className="catalog-sort-option-icon">
+
+                                                <Icon
+                                                    icon="solar:clock-circle-outline"
+                                                />
+
+                                            </div>
+
+
+                                            <div className="catalog-sort-option-content">
+
+                                                <strong>
+                                                    Maior duração
+                                                </strong>
+
+                                                <span>
+                                                    Serviços mais longos primeiro
+                                                </span>
+
+                                            </div>
+
+
+                                            {sortOption ===
+                                                "durationDesc" && (
+
+                                                    <Icon
+                                                        icon="material-symbols:check"
+                                                        className="catalog-sort-option-check"
+                                                    />
+
+                                                )}
+
+                                        </button>
+
+
+                                    </div>
+
+                                </div>
+
+                            </>
+
+                        )}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {/* =================================================
+                LISTA
+            ================================================= */}
+
+            <div className="catalog-list">
+
+                {filteredProducts.length > 0 ? (
+
+                    filteredProducts.map(
+                        (product) => (
+
+                            <div
+                                key={product.id}
+                                className="catalog-product"
+                                onClick={() =>
+                                    openProduct(product)
+                                }
+                            >
+
+
+                                {/* =================================
+                                    IMAGEM
+                                ================================== */}
+
+                                <div className="catalog-product-image-wrapper">
+
+
+                                    {!loadedImages[
+                                        product.id
+                                    ] && (
+
+                                            <div className="catalog-product-image-skeleton" />
+
+                                        )}
+
+
+                                    <img
+                                        src={
+                                            product.images?.[0]
+                                                ? product.images[0]
+                                                : Thumb1
+                                        }
+                                        alt={
+                                            product.name ||
+                                            "Serviço"
+                                        }
+                                        className="catalog-product-image"
+
+                                        onLoad={() =>
+                                            handleImageLoad(
+                                                product.id
+                                            )
+                                        }
+
+                                        onError={(event) => {
+
+                                            event.currentTarget.src =
+                                                Thumb1;
+
+                                            handleImageLoad(
+                                                product.id
+                                            );
+
+                                        }}
+
+                                        style={{
+                                            opacity:
+                                                loadedImages[
+                                                    product.id
+                                                ]
+                                                    ? 1
+                                                    : 0
+                                        }}
+                                    />
+
+                                </div>
+
+
+                                {/* =================================
+                                    INFORMAÇÕES
+                                ================================== */}
+
+                                <div className="catalog-product-info">
+
+
+                                    <div className="catalog-product-main-info">
+
+
+                                        {product.categories?.length > 0 && (
+
+                                            <span className="catalog-product-category">
+
+                                                {
+                                                    product.categories[0]
+                                                }
+
+                                            </span>
+
+                                        )}
+
+
+                                        <h3>
+                                            {product.name}
+                                        </h3>
+
+
+                                        <div className="catalog-product-meta">
+
+
+                                            {product.duration && (
+
+                                                <span>
+
+                                                    <Icon
+                                                        icon="solar:clock-circle-outline"
+                                                    />
+
+                                                    {formatDuration(
+                                                        product.duration
+                                                    )}
+
+                                                </span>
+
+                                            )}
+
+
+                                            {/* {product.description && (
+
+                                                <span className="catalog-product-description">
+
+                                                    {
+                                                        product.description
+                                                    }
+
+                                                </span>
+
+                                            )} */}
+
+                                        </div>
+
+                                    </div>
+
+
+                                    {/* =================================
+                                        PREÇO + AÇÃO
+                                    ================================== */}
+
+                                    <div className="catalog-product-action">
+
+
+                                        <div className="catalog-product-price">
+
+                                            <strong>
+                                                {product.value}
+                                            </strong>
+
+                                        </div>
+
+
+                                        <button
+                                            type="button"
+                                            className="catalog-product-schedule"
+
+                                            onClick={(event) => {
+
+                                                event.stopPropagation();
+
+                                                openProduct(
+                                                    product
+                                                );
+
+                                            }}
+                                        >
+
+                                            Agendar
+
+                                            <Icon
+                                                icon="humbleicons:arrow-right"
+                                            />
+
+                                        </button>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        )
+                    )
+
+                ) : (
+
+                    <div className="catalog-empty">
+
+                        <Icon
+                            icon={
+                                searchTerm
+                                    ? "mdi:magnify-close"
+                                    : "solar:box-outline"
+                            }
+                        />
+
+                        <h3>
+
+                            {searchTerm
+                                ? "Nenhum serviço encontrado"
+                                : "Nenhum serviço disponível"}
+
+                        </h3>
+
+                        <p>
+
+                            {searchTerm
+                                ? "Tente pesquisar por outro nome, categoria ou serviço."
+                                : "Esta empresa ainda não possui serviços disponíveis."
+                            }
+
+                        </p>
+
+                    </div>
+
+                )}
+
+            </div>
+
+
+            {/* =================================================
+                DETALHES
+            ================================================= */}
+
+            {selectedProduct && (
+
+                <ProductDetails
+
+                    product={
+                        selectedProduct
+                    }
+
+                    companyLogo={
+                        companyLogo
+                    }
+
+                    companyName={
+                        companyName
+                    }
+
+                    companyHandle={
+                        companyHandle
+                    }
+
+                    onClose={
+                        closeProduct
+                    }
+
+                    formatDuration={
+                        formatDuration
+                    }
+
+                />
+
+            )}
+
+        </div>
+
+    );
+
+};
+
+export default Catalog;

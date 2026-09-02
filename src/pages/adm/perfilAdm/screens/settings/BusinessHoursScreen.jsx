@@ -18,6 +18,8 @@ const DAYS = [
     { id: "saturday", label: "Sábado" }
 ];
 
+const MAX_INTERVALS = 3;
+
 const createInitialSchedule = () => {
 
     const schedule = {};
@@ -26,12 +28,13 @@ const createInitialSchedule = () => {
 
         schedule[day.id] = {
             enabled: true,
-            intervals: [
-                {
-                    open: "08:00",
-                    close: "18:00"
-                }
-            ]
+
+            open: "08:00",
+
+            close: "18:00",
+
+            intervals: []
+
         };
 
     });
@@ -57,38 +60,76 @@ const BusinessHoursScreen = () => {
     const [toastTitle, setToastTitle] = useState("");
     const [toastMessage, setToastMessage] = useState("");
 
+    // ==========================================
+    // CARREGAR HORÁRIOS DO BANCO
+    // ==========================================
+
     useEffect(() => {
 
         if (!company) return;
 
-        const savedHours = company.businessHours;
+        const savedHours =
+            company.businessHours;
 
         if (!savedHours) return;
 
-        const data = createInitialSchedule();
+        const data =
+            createInitialSchedule();
 
         DAYS.forEach((day) => {
 
-            if (savedHours[day.id]) {
+            const savedDay =
+                savedHours[day.id];
 
-                data[day.id] = {
-                    enabled:
-                        savedHours[day.id].enabled ?? true,
-
-                    intervals:
-                        savedHours[day.id].intervals || []
-                };
-
+            if (!savedDay) {
+                return;
             }
+
+            let intervals =
+                Array.isArray(savedDay.intervals)
+                    ? savedDay.intervals
+                    : [];
+
+            // Mantém no máximo 3 pausas
+            intervals =
+                intervals.slice(0, MAX_INTERVALS);
+
+            data[day.id] = {
+
+                enabled:
+                    savedDay.enabled ?? true,
+
+                open:
+                    savedDay.open || "08:00",
+
+                close:
+                    savedDay.close || "18:00",
+
+                intervals
+
+            };
 
         });
 
         setSchedule(data);
-        setInitialSchedule(data);
+
+        setInitialSchedule(
+            JSON.parse(
+                JSON.stringify(data)
+            )
+        );
 
     }, [company]);
 
-    const openToast = (type, title, message) => {
+    // ==========================================
+    // TOAST
+    // ==========================================
+
+    const openToast = (
+        type,
+        title,
+        message
+    ) => {
 
         setToastType(type);
         setToastTitle(title);
@@ -97,6 +138,10 @@ const BusinessHoursScreen = () => {
 
     };
 
+    // ==========================================
+    // ATIVAR / DESATIVAR DIA
+    // ==========================================
+
     const toggleDay = (dayId) => {
 
         setSchedule(prev => ({
@@ -104,13 +149,43 @@ const BusinessHoursScreen = () => {
             ...prev,
 
             [dayId]: {
+
                 ...prev[dayId],
-                enabled: !prev[dayId].enabled
+
+                enabled:
+                    !prev[dayId].enabled
+
             }
 
         }));
 
     };
+
+    const updateBusinessHour = (
+        dayId,
+        field,
+        value
+    ) => {
+
+        setSchedule(prev => ({
+
+            ...prev,
+
+            [dayId]: {
+
+                ...prev[dayId],
+
+                [field]: value
+
+            }
+
+        }));
+
+    };
+
+    // ==========================================
+    // ALTERAR INTERVALO
+    // ==========================================
 
     const updateInterval = (
         dayId,
@@ -126,8 +201,11 @@ const BusinessHoursScreen = () => {
             ];
 
             intervals[intervalIndex] = {
+
                 ...intervals[intervalIndex],
+
                 [field]: value
+
             };
 
             return {
@@ -135,8 +213,11 @@ const BusinessHoursScreen = () => {
                 ...prev,
 
                 [dayId]: {
+
                     ...prev[dayId],
+
                     intervals
+
                 }
 
             };
@@ -145,15 +226,28 @@ const BusinessHoursScreen = () => {
 
     };
 
+    // ==========================================
+    // ADICIONAR INTERVALO
+    // ==========================================
+
     const addInterval = (dayId) => {
 
         setSchedule(prev => {
 
-            const currentIntervals = prev[dayId].intervals;
+            const currentIntervals =
+                Array.isArray(
+                    prev[dayId].intervals
+                )
+                    ? prev[dayId].intervals
+                    : [];
 
-            // Máximo de 3 intervalos
-            if (currentIntervals.length >= 3) {
+            if (
+                currentIntervals.length >=
+                MAX_INTERVALS
+            ) {
+
                 return prev;
+
             }
 
             return {
@@ -165,12 +259,14 @@ const BusinessHoursScreen = () => {
                     ...prev[dayId],
 
                     intervals: [
+
                         ...currentIntervals,
 
                         {
-                            open: "13:00",
-                            close: "18:00"
+                            open: "12:00",
+                            close: "13:00"
                         }
+
                     ]
 
                 }
@@ -180,6 +276,10 @@ const BusinessHoursScreen = () => {
         });
 
     };
+
+    // ==========================================
+    // REMOVER INTERVALO
+    // ==========================================
 
     const removeInterval = (
         dayId,
@@ -199,8 +299,11 @@ const BusinessHoursScreen = () => {
                 ...prev,
 
                 [dayId]: {
+
                     ...prev[dayId],
+
                     intervals
+
                 }
 
             };
@@ -209,35 +312,235 @@ const BusinessHoursScreen = () => {
 
     };
 
+    // ==========================================
+    // VERIFICAR ALTERAÇÕES
+    // ==========================================
+
     const hasChanges =
         JSON.stringify(schedule) !==
         JSON.stringify(initialSchedule);
+
+    // ==========================================
+    // CONVERTER HORÁRIO
+    // ==========================================
+
+    const timeToMinutes = (time) => {
+
+        if (!time) {
+            return null;
+        }
+
+        const [
+            hour,
+            minute
+        ] = time
+            .split(":")
+            .map(Number);
+
+        if (
+            Number.isNaN(hour) ||
+            Number.isNaN(minute)
+        ) {
+
+            return null;
+
+        }
+
+        return (
+            hour * 60 +
+            minute
+        );
+
+    };
+
+    // ==========================================
+    // VALIDAR HORÁRIOS
+    // ==========================================
 
     const validateSchedule = () => {
 
         for (const day of DAYS) {
 
-            const data = schedule[day.id];
+            const data =
+                schedule[day.id];
 
-            if (!data.enabled) continue;
+            // ==========================================
+            // DIA FECHADO
+            // ==========================================
 
-            if (!data.intervals.length) {
+            if (!data.enabled) {
+                continue;
+            }
 
-                return `Adicione pelo menos um horário para ${day.label}.`;
+            // ==========================================
+            // HORÁRIO PRINCIPAL
+            // ==========================================
+
+            const open =
+                timeToMinutes(data.open);
+
+            const close =
+                timeToMinutes(data.close);
+
+            if (
+                open === null ||
+                close === null
+            ) {
+
+                return (
+                    `Informe corretamente o horário ` +
+                    `de funcionamento de ${day.label}.`
+                );
 
             }
 
-            for (const interval of data.intervals) {
+            if (open >= close) {
 
-                if (!interval.open || !interval.close) {
+                return (
+                    `O horário de fechamento de ` +
+                    `${day.label} deve ser maior que ` +
+                    `o horário de abertura.`
+                );
 
-                    return `Preencha os horários de ${day.label}.`;
+            }
+
+            // ==========================================
+            // LIMITE DE PAUSAS
+            // ==========================================
+
+            if (
+                data.intervals.length >
+                MAX_INTERVALS
+            ) {
+
+                return (
+                    `${day.label} pode possuir no máximo ` +
+                    `${MAX_INTERVALS} intervalos.`
+                );
+
+            }
+
+            // ==========================================
+            // VALIDAR PAUSAS
+            // ==========================================
+
+            for (
+                const interval
+                of data.intervals
+            ) {
+
+                if (
+                    !interval?.open ||
+                    !interval?.close
+                ) {
+
+                    return (
+                        `Preencha todos os horários ` +
+                        `das pausas de ${day.label}.`
+                    );
 
                 }
 
-                if (interval.open >= interval.close) {
+                const intervalOpen =
+                    timeToMinutes(
+                        interval.open
+                    );
 
-                    return `O horário de fechamento de ${day.label} deve ser maior que o horário de abertura.`;
+                const intervalClose =
+                    timeToMinutes(
+                        interval.close
+                    );
+
+                if (
+                    intervalOpen === null ||
+                    intervalClose === null
+                ) {
+
+                    return (
+                        `Existe uma pausa com horário ` +
+                        `inválido em ${day.label}.`
+                    );
+
+                }
+
+                // ==========================================
+                // PAUSA PRECISA TER DURAÇÃO
+                // ==========================================
+
+                if (
+                    intervalOpen >= intervalClose
+                ) {
+
+                    return (
+                        `O horário final da pausa de ` +
+                        `${day.label} deve ser maior ` +
+                        `que o horário inicial.`
+                    );
+
+                }
+
+                // ==========================================
+                // PAUSA PRECISA ESTAR DENTRO
+                // DO HORÁRIO DE FUNCIONAMENTO
+                // ==========================================
+
+                if (
+                    intervalOpen < open ||
+                    intervalClose > close
+                ) {
+
+                    return (
+                        `A pausa de ${day.label} deve ` +
+                        `estar dentro do horário de ` +
+                        `funcionamento (${data.open} às ${data.close}).`
+                    );
+
+                }
+
+            }
+
+            // ==========================================
+            // PAUSAS NÃO PODEM SE SOBREPOR
+            // ==========================================
+
+            const sortedIntervals =
+                [...data.intervals]
+                    .map(interval => ({
+                        open:
+                            timeToMinutes(
+                                interval.open
+                            ),
+                        close:
+                            timeToMinutes(
+                                interval.close
+                            )
+                    }))
+                    .sort(
+                        (a, b) =>
+                            a.open - b.open
+                    );
+
+            for (
+                let i = 1;
+                i < sortedIntervals.length;
+                i++
+            ) {
+
+                const previous =
+                    sortedIntervals[i - 1];
+
+                const current =
+                    sortedIntervals[i];
+
+                if (
+                    current.open <
+                    previous.close
+                ) {
+
+                    return (
+                        `As pausas de ${day.label} ` +
+                        `não podem se sobrepor.`
+                    );
 
                 }
 
@@ -249,9 +552,14 @@ const BusinessHoursScreen = () => {
 
     };
 
+    // ==========================================
+    // SALVAR
+    // ==========================================
+
     const handleSave = async () => {
 
-        const error = validateSchedule();
+        const error =
+            validateSchedule();
 
         if (error) {
 
@@ -267,7 +575,8 @@ const BusinessHoursScreen = () => {
 
         try {
 
-            const db = getDatabase();
+            const db =
+                getDatabase();
 
             await update(
                 ref(
@@ -275,11 +584,16 @@ const BusinessHoursScreen = () => {
                     `companys/${company.handle}`
                 ),
                 {
-                    businessHours: schedule
+                    businessHours:
+                        schedule
                 }
             );
 
-            setInitialSchedule(schedule);
+            setInitialSchedule(
+                JSON.parse(
+                    JSON.stringify(schedule)
+                )
+            );
 
             openToast(
                 "success",
@@ -289,7 +603,10 @@ const BusinessHoursScreen = () => {
 
         } catch (error) {
 
-            console.error(error);
+            console.error(
+                "Erro ao salvar horários:",
+                error
+            );
 
             openToast(
                 "error",
@@ -321,6 +638,10 @@ const BusinessHoursScreen = () => {
                                 }`}
                             key={day.id}
                         >
+
+                            {/* ============================= */}
+                            {/* HEADER DO DIA */}
+                            {/* ============================= */}
 
                             <div className="business-day-header">
 
@@ -354,50 +675,104 @@ const BusinessHoursScreen = () => {
 
                             </div>
 
+                            {/* ============================= */}
+                            {/* INTERVALOS */}
+                            {/* ============================= */}
+
                             {dayData.enabled && (
 
                                 <div className="business-intervals">
 
-                                    {dayData.intervals.map(
-                                        (interval, index) => (
+                                    {/* ================================= */}
+                                    {/* HORÁRIO DE FUNCIONAMENTO */}
+                                    {/* ================================= */}
 
-                                            <div
-                                                className="business-interval"
-                                                key={index}
-                                            >
+                                    <div className="business-hours-section">
 
-                                                <input
-                                                    type="time"
-                                                    value={interval.open}
-                                                    onChange={(e) =>
-                                                        updateInterval(
-                                                            day.id,
-                                                            index,
-                                                            "open",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                />
+                                        <div className="business-hours-section-title">
+                                            Horário de funcionamento
+                                        </div>
 
-                                                <span>
-                                                    até
-                                                </span>
+                                        <div className="business-hours-row">
 
-                                                <input
-                                                    type="time"
-                                                    value={interval.close}
-                                                    onChange={(e) =>
-                                                        updateInterval(
-                                                            day.id,
-                                                            index,
-                                                            "close",
-                                                            e.target.value
-                                                        )
-                                                    }
-                                                />
+                                            <input
+                                                type="time"
+                                                value={dayData.open}
+                                                onChange={(e) =>
+                                                    updateBusinessHour(
+                                                        day.id,
+                                                        "open",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
 
-                                                {dayData.intervals.length >
-                                                    1 && (
+                                            <span>até</span>
+
+                                            <input
+                                                type="time"
+                                                value={dayData.close}
+                                                onChange={(e) =>
+                                                    updateBusinessHour(
+                                                        day.id,
+                                                        "close",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+
+                                        </div>
+
+                                    </div>
+
+
+                                    {/* ================================= */}
+                                    {/* PAUSAS */}
+                                    {/* ================================= */}
+
+                                    <div className="business-breaks-section">
+
+                                        <div className="business-hours-section-title">
+                                            Pausas
+                                        </div>
+
+                                        {dayData.intervals.map(
+                                            (interval, index) => (
+
+                                                <div className="business-interval">
+                                                    <div className="business-interval-label">
+                                                        Pausa {index + 1}
+                                                    </div>
+
+                                                    <div className="business-interval-fields">
+
+                                                        <input
+                                                            type="time"
+                                                            value={interval.open}
+                                                            onChange={(e) =>
+                                                                updateInterval(
+                                                                    day.id,
+                                                                    index,
+                                                                    "open",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                        />
+
+                                                        <span>até</span>
+
+                                                        <input
+                                                            type="time"
+                                                            value={interval.close}
+                                                            onChange={(e) =>
+                                                                updateInterval(
+                                                                    day.id,
+                                                                    index,
+                                                                    "close",
+                                                                    e.target.value
+                                                                )
+                                                            }
+                                                        />
 
                                                         <button
                                                             type="button"
@@ -409,39 +784,49 @@ const BusinessHoursScreen = () => {
                                                                 )
                                                             }
                                                         >
-
                                                             <Icon icon="solar:trash-bin-trash-outline" />
-
                                                         </button>
 
-                                                    )}
+                                                    </div>
+                                                </div>
 
-                                            </div>
+                                            )
+                                        )}
 
-                                        )
-                                    )}
+                                        {/* ================================= */}
+                                        {/* ADICIONAR PAUSA */}
+                                        {/* ================================= */}
 
-                                    {dayData.intervals.length < 3 && (
+                                        {dayData.intervals.length <
+                                            MAX_INTERVALS && (
 
-                                        <button
-                                            type="button"
-                                            className="business-add-interval"
-                                            onClick={() =>
-                                                addInterval(day.id)
-                                            }
-                                        >
+                                                <button
+                                                    type="button"
+                                                    className="business-add-interval"
+                                                    onClick={() =>
+                                                        addInterval(day.id)
+                                                    }
+                                                >
 
-                                            <Icon icon="solar:add-circle-outline" />
+                                                    <Icon
+                                                        icon="solar:add-circle-outline"
+                                                    />
 
-                                            Adicionar intervalo
+                                                    Adicionar pausa
 
-                                        </button>
+                                                </button>
 
-                                    )}
+                                            )}
+
+                                    </div>
 
                                 </div>
 
                             )}
+
+                            {/* ============================= */}
+                            {/* FECHADO */}
+                            {/* ============================= */}
 
                             {!dayData.enabled && (
 
@@ -459,6 +844,10 @@ const BusinessHoursScreen = () => {
 
             </div>
 
+            {/* ============================= */}
+            {/* SALVAR */}
+            {/* ============================= */}
+
             <button
                 disabled={!hasChanges}
                 onClick={handleSave}
@@ -469,6 +858,10 @@ const BusinessHoursScreen = () => {
             >
                 Salvar alterações
             </button>
+
+            {/* ============================= */}
+            {/* TOAST */}
+            {/* ============================= */}
 
             <Toast
                 show={showToast}

@@ -30,6 +30,13 @@ const HomePage = () => {
     const [selectedCategory, setSelectedCategory] = useState(null);
     const [categoryKey, setCategoryKey] = useState(0);
 
+    const orderedCategories = selectedCategory
+        ? [
+            ...categories.filter(cat => cat.label === selectedCategory),
+            ...categories.filter(cat => cat.label !== selectedCategory)
+        ]
+        : categories;
+
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [loadedImages, setLoadedImages] = useState({});
 
@@ -273,7 +280,7 @@ const HomePage = () => {
 
                             <div className="content-home-page-category">
 
-                                {categories.map((cat, index) => (
+                                {orderedCategories.map((cat, index) => (
 
                                     <div
                                         key={index}
@@ -312,239 +319,378 @@ const HomePage = () => {
                 MAIS RELEVANTES
             ========================= */}
 
-                        <div className="content-home-page-header">
-
-                            <div className="content-home-page-header-action">
-
-                                <h2>
-                                    Mais Relevantes
-                                </h2>
-
-                                <span
-                                    onClick={() => {
-                                        setShowAllProducts(true);
-                                        setSelectedCategory(null);
-                                    }}
-                                >
-                                    Ver Mais
-                                </span>
-
-                            </div>
-
-
-                            <div className="content-home-page-offers">
-
-                                {products.length > 0 ? (
-
-                                    products
-                                        .slice(0, 3)
-                                        .map((product) => (
-
-                                            <div
-                                                key={`${product.id}-${categoryKey}`}
-                                                className="home-page-offer-item product-reveal-onload"
-                                                onClick={() =>
-                                                    setSelectedProduct(product)
-                                                }
-                                            >
-
-                                                <div className="image-wrapper">
-
-                                                    {!loadedImages[product.id] && (
-                                                        <div className="image-skeleton" />
-                                                    )}
-
-                                                    <img
-                                                        src={
-                                                            product.images
-                                                                ? product.images[0]
-                                                                : Thumb1
-                                                        }
-                                                        alt={product.name}
-                                                        onLoad={() =>
-                                                            handleImageLoad(product.id)
-                                                        }
-                                                        onError={(e) => {
-
-                                                            e.target.src = Thumb1;
-
-                                                            handleImageLoad(product.id);
-
-                                                        }}
-                                                        style={{
-                                                            opacity:
-                                                                loadedImages[product.id]
-                                                                    ? 1
-                                                                    : 0
-                                                        }}
-                                                    />
-
-                                                </div>
-
-
-                                                <div className="home-page-offer-item-content">
-
-                                                    <button>
-                                                        {product.categories &&
-                                                            product.categories.length > 0
-                                                            ? product.categories[0]
-                                                            : "Serviço"}
-                                                    </button>
-
-                                                    <p>
-                                                        {product.name}
-                                                    </p>
-
-                                                    <h1>
-                                                        {product.value}
-                                                    </h1>
-
-                                                </div>
-
-                                            </div>
-
-                                        ))
-
-                                ) : (
-
-                                    <p>
-                                        Nenhuma oferta disponível.
-                                    </p>
-
-                                )}
-
-                            </div>
-
-                        </div>
-
-
                         {/* =========================
-                PRODUTOS
-            ========================= */}
+    PRODUTOS DA HOME
+========================= */}
 
-                        <div className="content-home-page-header">
+                        <div className="home-products-sections">
 
-                            <div className="content-home-page-header-action all-products-section">
+                            {/* =====================================================
+        CATEGORIA / TODOS OS PRODUTOS
+    ====================================================== */}
 
-                                <h2>
-                                    {selectedCategory
-                                        ? selectedCategory
-                                        : "Todos os Produtos"}
-                                </h2>
+                            {selectedCategory && (
 
-                                <span
-                                    onClick={() => {
-                                        setShowAllProducts(true);
-                                        setSelectedCategory(null);
-                                    }}
-                                >
-                                    Ver Tudo
-                                </span>
+                                <div className="content-home-page-header">
 
-                            </div>
+                                    <div className="content-home-page-header-action all-products-section">
 
+                                        <h2>
+                                            {selectedCategory}
+                                        </h2>
 
-                            <div className="content-home-page-all-products">
-
-                                {products.length > 0 ? (
-
-                                    categoryProducts.map(product => (
-
-                                        <div
-                                            key={product.id}
-                                            className="home-page-product-item product-reveal-onload"
-                                            onClick={() =>
-                                                setSelectedProduct(product)
-                                            }
+                                        <span
+                                            onClick={() => {
+                                                setShowAllProducts(true);
+                                                setSelectedCategory(null);
+                                            }}
                                         >
+                                            Ver Tudo
+                                        </span>
 
-                                            <div className="product-image-container">
+                                    </div>
 
-                                                <div className="image-wrapper">
 
-                                                    {!loadedImages[product.id] && (
-                                                        <div className="image-skeleton" />
-                                                    )}
+                                    <div className="content-home-page-all-products">
 
-                                                    <img
-                                                        src={
-                                                            product.images
-                                                                ? product.images[0]
-                                                                : Thumb1
-                                                        }
-                                                        alt={product.name}
-                                                        className="product-image"
-                                                        onLoad={() =>
-                                                            handleImageLoad(product.id)
-                                                        }
-                                                        onError={(e) => {
+                                        {categoryProducts.length > 0 ? (
 
-                                                            e.target.src = Thumb1;
+                                            categoryProducts.map((product) => (
 
-                                                            handleImageLoad(product.id);
+                                                <div
+                                                    key={`${product.id}-${categoryKey}`}
+                                                    className="home-page-product-item product-reveal-onload"
+                                                    onClick={() =>
+                                                        setSelectedProduct(product)
+                                                    }
+                                                >
 
-                                                        }}
-                                                        style={{
-                                                            opacity:
-                                                                loadedImages[product.id]
-                                                                    ? 1
-                                                                    : 0
-                                                        }}
-                                                    />
+                                                    {/* IMAGEM */}
+
+                                                    <div className="product-image-container">
+
+                                                        <div className="image-wrapper">
+
+                                                            {!loadedImages[product.id] && (
+                                                                <div className="image-skeleton" />
+                                                            )}
+
+                                                            <img
+                                                                src={
+                                                                    product.images?.[0]
+                                                                        ? product.images[0]
+                                                                        : Thumb1
+                                                                }
+                                                                alt={product.name}
+                                                                className="product-image"
+                                                                onLoad={() =>
+                                                                    handleImageLoad(product.id)
+                                                                }
+                                                                onError={(e) => {
+
+                                                                    e.target.src = Thumb1;
+
+                                                                    handleImageLoad(product.id);
+
+                                                                }}
+                                                                style={{
+                                                                    opacity:
+                                                                        loadedImages[product.id]
+                                                                            ? 1
+                                                                            : 0
+                                                                }}
+                                                            />
+
+                                                        </div>
+
+                                                    </div>
+
+
+                                                    {/* INFORMAÇÕES */}
+
+                                                    <div className="product-details">
+
+                                                        <h3 className="product-name">
+                                                            {product.name}
+                                                        </h3>
+
+                                                        <h1 className="product-price">
+
+                                                            {product.value}
+
+                                                            <p>
+                                                                /
+                                                                {formatDuration(
+                                                                    product.duration
+                                                                )}
+                                                            </p>
+
+                                                        </h1>
+
+                                                        <button
+                                                            className="product-button"
+                                                        >
+                                                            Agendar
+                                                        </button>
+
+                                                    </div>
 
                                                 </div>
 
-                                            </div>
+                                            ))
+
+                                        ) : (
+
+                                            <p className="no-results">
+                                                Nenhum produto nesta categoria
+                                            </p>
+
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+                            )}
 
 
-                                            <div className="product-details">
+                            {/* =====================================================
+        MAIS RELEVANTES
+    ====================================================== */}
 
-                                                <h3 className="product-name">
-                                                    {product.name}
-                                                </h3>
+                            <div className="content-home-page-header">
 
-                                                <h1 className="product-price">
+                                <div className="content-home-page-header-action">
 
-                                                    {product.value}
+                                    <h2>
+                                        Mais Relevantes
+                                    </h2>
 
-                                                    <p>
-                                                        /
-                                                        {formatDuration(
-                                                            product.duration
-                                                        )}
-                                                    </p>
+                                    <span
+                                        onClick={() => {
+                                            setShowAllProducts(true);
+                                            setSelectedCategory(null);
+                                        }}
+                                    >
+                                        Ver Mais
+                                    </span>
 
-                                                </h1>
+                                </div>
 
-                                                <button
-                                                    className="product-button"
+
+                                <div className="content-home-page-offers">
+
+                                    {products.length > 0 ? (
+
+                                        products
+                                            .slice(0, 3)
+                                            .map((product) => (
+
+                                                <div
+                                                    key={`${product.id}-${categoryKey}`}
+                                                    className="home-page-offer-item product-reveal-onload"
+                                                    onClick={() =>
+                                                        setSelectedProduct(product)
+                                                    }
                                                 >
-                                                    Agendar
-                                                </button>
 
-                                            </div>
+                                                    <div className="image-wrapper">
 
-                                        </div>
+                                                        {!loadedImages[product.id] && (
+                                                            <div className="image-skeleton" />
+                                                        )}
 
-                                    ))
+                                                        <img
+                                                            src={
+                                                                product.images?.[0]
+                                                                    ? product.images[0]
+                                                                    : Thumb1
+                                                            }
+                                                            alt={product.name}
+                                                            onLoad={() =>
+                                                                handleImageLoad(product.id)
+                                                            }
+                                                            onError={(e) => {
 
-                                ) : (
+                                                                e.target.src = Thumb1;
 
-                                    <p>
-                                        Nenhum produto encontrado.
-                                    </p>
+                                                                handleImageLoad(product.id);
 
-                                )}
+                                                            }}
+                                                            style={{
+                                                                opacity:
+                                                                    loadedImages[product.id]
+                                                                        ? 1
+                                                                        : 0
+                                                            }}
+                                                        />
 
-                                {categoryProducts.length === 0 && (
+                                                    </div>
 
-                                    <p className="no-results">
-                                        Nenhum produto nesta categoria
-                                    </p>
 
-                                )}
+                                                    <div className="home-page-offer-item-content">
+
+                                                        <button>
+                                                            {product.categories?.length > 0
+                                                                ? product.categories[0]
+                                                                : "Serviço"}
+                                                        </button>
+
+                                                        <p>
+                                                            {product.name}
+                                                        </p>
+
+                                                        <h1>
+                                                            {product.value}
+                                                        </h1>
+
+                                                    </div>
+
+                                                </div>
+
+                                            ))
+
+                                    ) : (
+
+                                        <p>
+                                            Nenhuma oferta disponível.
+                                        </p>
+
+                                    )}
+
+                                </div>
 
                             </div>
+
+
+                            {/* =====================================================
+        TODOS OS PRODUTOS
+    ====================================================== */}
+
+                            {!selectedCategory && (
+
+                                <div className="content-home-page-header">
+
+                                    <div className="content-home-page-header-action all-products-section">
+
+                                        <h2>
+                                            Todos os Produtos
+                                        </h2>
+
+                                        <span
+                                            onClick={() => {
+                                                window.dispatchEvent(
+                                                    new CustomEvent("markfy:go-to-catalog")
+                                                );
+                                            }}
+                                        >
+                                            Ver Tudo
+                                        </span>
+
+                                    </div>
+
+
+                                    <div className="content-home-page-all-products">
+
+                                        {products.length > 0 ? (
+
+                                            products.map((product) => (
+
+                                                <div
+                                                    key={product.id}
+                                                    className="home-page-product-item product-reveal-onload"
+                                                    onClick={() =>
+                                                        setSelectedProduct(product)
+                                                    }
+                                                >
+
+                                                    {/* IMAGEM */}
+
+                                                    <div className="product-image-container">
+
+                                                        <div className="image-wrapper">
+
+                                                            {!loadedImages[product.id] && (
+                                                                <div className="image-skeleton" />
+                                                            )}
+
+                                                            <img
+                                                                src={
+                                                                    product.images?.[0]
+                                                                        ? product.images[0]
+                                                                        : Thumb1
+                                                                }
+                                                                alt={product.name}
+                                                                className="product-image"
+                                                                onLoad={() =>
+                                                                    handleImageLoad(product.id)
+                                                                }
+                                                                onError={(e) => {
+
+                                                                    e.target.src = Thumb1;
+
+                                                                    handleImageLoad(product.id);
+
+                                                                }}
+                                                                style={{
+                                                                    opacity:
+                                                                        loadedImages[product.id]
+                                                                            ? 1
+                                                                            : 0
+                                                                }}
+                                                            />
+
+                                                        </div>
+
+                                                    </div>
+
+
+                                                    {/* INFORMAÇÕES */}
+
+                                                    <div className="product-details">
+
+                                                        <h3 className="product-name">
+                                                            {product.name}
+                                                        </h3>
+
+                                                        <h1 className="product-price">
+
+                                                            {product.value}
+
+                                                            <p>
+                                                                /
+                                                                {formatDuration(
+                                                                    product.duration
+                                                                )}
+                                                            </p>
+
+                                                        </h1>
+
+                                                        <button
+                                                            className="product-button"
+                                                        >
+                                                            Agendar
+                                                        </button>
+
+                                                    </div>
+
+                                                </div>
+
+                                            ))
+
+                                        ) : (
+
+                                            <p className="no-results">
+                                                Nenhum produto encontrado.
+                                            </p>
+
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+                            )}
 
                         </div>
 

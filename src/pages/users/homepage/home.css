@@ -670,7 +670,7 @@ nav li.active .nav-button {
 .content-home-page-header .home-page-offer-item p {
     color: var(--white-color);
     font-size: 1rem;
-    max-width: 70px;
+    max-width: 150px;
 }
 
 .content-home-page-header .home-page-offer-item button {
@@ -688,6 +688,10 @@ nav li.active .nav-button {
 
 .content-home-page-header .home-page-offer-item button:hover {
     background: darken(var(--mkf-ui-primary), 10%);
+}
+
+.content-home-page-header span{
+    cursor: pointer;
 }
 
 /* =========== SEÇÃO PAGE HOME CATEGORIAS ======== */
@@ -745,9 +749,32 @@ nav li.active .nav-button {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
+/* ==========================================
+   SEÇÕES DE PRODUTOS
+========================================== */
+
+.home-products-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.home-products-sections .content-home-page-header {
+    margin-bottom: 1.2rem;
+}
+
+.home-products-sections .content-home-page-header-action {
+    margin-bottom: 0.8rem;
+}
+
+.home-products-sections .content-home-page-all-products {
+    padding-top: 0.3rem;
+    padding-bottom: 0.3rem;
+}
+
 /* ============== SEÇÃO TODOS OS PRODUTOS ============ */
 .all-products-section {
-    margin-top: 2.5rem;
+    margin-top: 0;
 }
 
 .content-home-page-all-products {
@@ -2103,6 +2130,7 @@ nav li.active .nav-button {
 
     color: var(--mkf-text-tertiary);
 }
+
 
 
 /* ==========================================

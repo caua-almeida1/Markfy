@@ -6,7 +6,7 @@ const TabBar = ({ activeTab, setActiveTab }) => {
   const tabs = [
     { id: "home", label: "Início", icon: "ri:home-line" },
     { id: "reservas", label: "Reservas", icon: "mingcute:calendar-line" },
-    { id: "produtos", label: "Produtos", icon: "gg:shopping-bag" },
+    { id: "catalog", label: "Catálogo", icon: "gg:shopping-bag" },
     { id: "carrinho", label: "Carrinho", icon: "humbleicons:cart" },
     { id: "perfil", label: "Perfil", icon: "tabler:user" },
   ];

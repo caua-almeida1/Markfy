@@ -6,9 +6,11 @@ import TabBar from "../../../components/tabbar";
 
 import HomePage from "../homepage";
 import Reservations from "./Reservations/reservartions";
+import Catalog from "./Catalog/Catalog";
 // import Products from "./products/products";
 // import Cart from "./cart/cart";
 import CompanyPage from "./CompanyPage/CompanyPage";
+
 
 import "./centralUser.css";
 
@@ -17,7 +19,7 @@ const CentralUser = () => {
     const tabs = [
         "home",
         "reservas",
-        "produtos",
+        "catalog",
         "carrinho",
         "perfil"
     ];
@@ -112,8 +114,8 @@ const CentralUser = () => {
             case "reservas":
                 return <Reservations />;
 
-            case "produtos":
-                return renderComingSoon();
+            case "catalog":
+                return <Catalog />;
 
             case "carrinho":
                 return renderComingSoon();
@@ -148,6 +150,31 @@ const CentralUser = () => {
                 "markfy:go-to-reservations",
                 handleGoToReservations
             );
+        };
+
+    }, []);
+
+    useEffect(() => {
+
+        const handleGoToCatalog = () => {
+
+            setPrevTab("home");
+            setActiveTab("catalog");
+
+        };
+
+        window.addEventListener(
+            "markfy:go-to-catalog",
+            handleGoToCatalog
+        );
+
+        return () => {
+
+            window.removeEventListener(
+                "markfy:go-to-catalog",
+                handleGoToCatalog
+            );
+
         };
 
     }, []);

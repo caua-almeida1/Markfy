@@ -22,9 +22,10 @@ const Reservations = () => {
     const [sortOption, setSortOption] = useState("priority");
     const [showSortMenu, setShowSortMenu] = useState(false);
 
-    // ==========================================
-    // CARREGAR RESERVAS
-    // ==========================================
+
+    /* =====================================================
+       CARREGAR RESERVAS
+    ===================================================== */
 
     useEffect(() => {
 
@@ -49,23 +50,12 @@ const Reservations = () => {
 
                 const snapshot = await get(schedulesRef);
 
-                // ==========================================
-                // NÃO EXISTE MAIS SCHEDULES
-                // ==========================================
-
                 if (!snapshot.exists()) {
-
                     setReservations([]);
-
                     return;
                 }
 
                 const schedules = snapshot.val();
-
-                // ==========================================
-                // PEGAR SOMENTE RESERVAS EXISTENTES
-                // DO CLIENTE LOGADO
-                // ==========================================
 
                 const firebaseReservations =
                     Object.entries(schedules)
@@ -100,9 +90,11 @@ const Reservations = () => {
         loadReservations();
 
     }, [handle]);
-    // ==========================================
-    // STATUS DA RESERVA
-    // ==========================================
+
+
+    /* =====================================================
+       STATUS
+    ===================================================== */
 
     const getReservationStatus = (status) => {
 
@@ -128,7 +120,7 @@ const Reservations = () => {
 
             default:
                 return {
-                    label: status || "Status desconhecido",
+                    label: status || "Desconhecido",
                     className: "unknown"
                 };
 
@@ -136,43 +128,10 @@ const Reservations = () => {
 
     };
 
-    // ==========================================
-    // ABRIR MODAL
-    // ==========================================
 
-    const openCancelModal = (reservation) => {
-
-        if (
-            reservation.status !== "pending"
-        ) {
-            return;
-        }
-
-        setSelectedReservation(reservation);
-        setCancelError("");
-        setShowCancelModal(true);
-
-    };
-
-    // ==========================================
-    // FECHAR MODAL
-    // ==========================================
-
-    const closeCancelModal = () => {
-
-        if (cancelling) {
-            return;
-        }
-
-        setShowCancelModal(false);
-        setSelectedReservation(null);
-        setCancelError("");
-
-    };
-
-    // ==========================================
-    // DATA/HORA DA RESERVA
-    // ==========================================
+    /* =====================================================
+       DATA
+    ===================================================== */
 
     const getReservationDate = (reservation) => {
 
@@ -185,26 +144,20 @@ const Reservations = () => {
 
         try {
 
-            // Exemplo:
-            // day = "26/08/2026"
-            // hour = "18:30"
-
             const [
                 day,
                 month,
                 year
-            ] =
-                reservation.day
-                    .split("/")
-                    .map(Number);
+            ] = reservation.day
+                .split("/")
+                .map(Number);
 
             const [
                 hours,
                 minutes
-            ] =
-                reservation.hour
-                    .split(":")
-                    .map(Number);
+            ] = reservation.hour
+                .split(":")
+                .map(Number);
 
             if (
                 !day ||
@@ -239,7 +192,7 @@ const Reservations = () => {
         } catch (error) {
 
             console.error(
-                "Erro ao interpretar data da reserva:",
+                "Erro ao interpretar data:",
                 error
             );
 
@@ -250,14 +203,10 @@ const Reservations = () => {
     };
 
 
-
-    // ==========================================
-    // DATA DA RESERVA PARA ORDENAÇÃO
-    // ==========================================
-
     const getReservationTimestamp = (reservation) => {
 
-        const date = getReservationDate(reservation);
+        const date =
+            getReservationDate(reservation);
 
         if (!date) {
             return Number.MAX_SAFE_INTEGER;
@@ -268,9 +217,9 @@ const Reservations = () => {
     };
 
 
-    // ==========================================
-    // PRIORIDADE DO STATUS
-    // ==========================================
+    /* =====================================================
+       PRIORIDADE
+    ===================================================== */
 
     const getStatusPriority = (status) => {
 
@@ -293,21 +242,15 @@ const Reservations = () => {
     };
 
 
-    // ==========================================
-    // ORDENAR RESERVAS
-    // ==========================================
+    /* =====================================================
+       ORDENAÇÃO
+    ===================================================== */
 
     const getSortedReservations = () => {
 
         const sorted = [...reservations];
 
         switch (sortOption) {
-
-            // ==========================================
-            // PADRÃO
-            // PENDENTE → COMPLETADO → CANCELADO
-            // DENTRO DE CADA GRUPO: MAIS PRÓXIMO
-            // ==========================================
 
             case "priority":
 
@@ -319,7 +262,9 @@ const Reservations = () => {
                     const statusB =
                         getStatusPriority(b.status);
 
-                    if (statusA !== statusB) {
+                    if (
+                        statusA !== statusB
+                    ) {
                         return statusA - statusB;
                     }
 
@@ -330,10 +275,6 @@ const Reservations = () => {
 
                 });
 
-
-            // ==========================================
-            // MAIS PRÓXIMA
-            // ==========================================
 
             case "nearest":
 
@@ -347,10 +288,6 @@ const Reservations = () => {
                 });
 
 
-            // ==========================================
-            // MAIS DISTANTE
-            // ==========================================
-
             case "furthest":
 
                 return sorted.sort((a, b) => {
@@ -363,10 +300,6 @@ const Reservations = () => {
                 });
 
 
-            // ==========================================
-            // STATUS
-            // ==========================================
-
             case "status":
 
                 return sorted.sort((a, b) => {
@@ -377,7 +310,9 @@ const Reservations = () => {
                     const statusB =
                         getStatusPriority(b.status);
 
-                    if (statusA !== statusB) {
+                    if (
+                        statusA !== statusB
+                    ) {
                         return statusA - statusB;
                     }
 
@@ -398,9 +333,9 @@ const Reservations = () => {
     };
 
 
-    // ==========================================
-    // CONVERTER ANTECEDÊNCIA PARA MILISSEGUNDOS
-    // ==========================================
+    /* =====================================================
+       ANTECEDÊNCIA
+    ===================================================== */
 
     const getAdvanceInMilliseconds = (advance) => {
 
@@ -418,16 +353,13 @@ const Reservations = () => {
             Number(advance.minutes) || 0;
 
         return (
-            (days * 24 * 60 * 60 * 1000) +
-            (hours * 60 * 60 * 1000) +
-            (minutes * 60 * 1000)
+            days * 24 * 60 * 60 * 1000 +
+            hours * 60 * 60 * 1000 +
+            minutes * 60 * 1000
         );
 
     };
 
-    // ==========================================
-    // FORMATAR ANTECEDÊNCIA
-    // ==========================================
 
     const formatAdvance = (advance) => {
 
@@ -449,10 +381,7 @@ const Reservations = () => {
         if (days > 0) {
 
             parts.push(
-                `${days} ${days === 1
-                    ? "dia"
-                    : "dias"
-                }`
+                `${days} ${days === 1 ? "dia" : "dias"}`
             );
 
         }
@@ -460,10 +389,7 @@ const Reservations = () => {
         if (hours > 0) {
 
             parts.push(
-                `${hours} ${hours === 1
-                    ? "hora"
-                    : "horas"
-                }`
+                `${hours} ${hours === 1 ? "hora" : "horas"}`
             );
 
         }
@@ -471,35 +397,55 @@ const Reservations = () => {
         if (minutes > 0) {
 
             parts.push(
-                `${minutes} ${minutes === 1
-                    ? "minuto"
-                    : "minutos"
-                }`
+                `${minutes} ${minutes === 1 ? "minuto" : "minutos"}`
             );
 
         }
 
-        return parts.length > 0
+        return parts.length
             ? parts.join(" e ")
             : "sem antecedência";
 
     };
 
 
+    /* =====================================================
+       CANCELAMENTO
+    ===================================================== */
 
-    // ==========================================
-    // CANCELAR RESERVA
-    // ==========================================
+    const openCancelModal = (reservation) => {
+
+        if (
+            reservation.status !== "pending"
+        ) {
+            return;
+        }
+
+        setSelectedReservation(reservation);
+        setCancelError("");
+        setShowCancelModal(true);
+
+    };
+
+
+    const closeCancelModal = () => {
+
+        if (cancelling) {
+            return;
+        }
+
+        setShowCancelModal(false);
+        setSelectedReservation(null);
+        setCancelError("");
+
+    };
+
 
     const handleCancelReservation = async () => {
 
         if (!selectedReservation) {
             return;
         }
-
-        // ==========================================
-        // SÓ PENDING PODE SER CANCELADO
-        // ==========================================
 
         if (
             selectedReservation.status !== "pending"
@@ -527,18 +473,10 @@ const Reservations = () => {
             const reservation =
                 selectedReservation;
 
-            // ==========================================
-            // REFERÊNCIA DA RESERVA
-            // ==========================================
-
             const reservationRef = ref(
                 db,
                 `companys/${handle}/schedules/${reservation.id}`
             );
-
-            // ==========================================
-            // BUSCAR RESERVA NOVAMENTE
-            // ==========================================
 
             const reservationSnapshot =
                 await get(reservationRef);
@@ -556,10 +494,6 @@ const Reservations = () => {
             const currentReservation =
                 reservationSnapshot.val();
 
-            // ==========================================
-            // VERIFICAR STATUS REAL DO FIREBASE
-            // ==========================================
-
             if (
                 currentReservation.status !== "pending"
             ) {
@@ -568,22 +502,18 @@ const Reservations = () => {
                     currentReservation.status ===
                     "cancelados"
                 ) {
-
                     throw new Error(
                         "Esta reserva já foi cancelada."
                     );
-
                 }
 
                 if (
                     currentReservation.status ===
                     "completed"
                 ) {
-
                     throw new Error(
                         "Esta reserva já foi concluída."
                     );
-
                 }
 
                 throw new Error(
@@ -591,10 +521,6 @@ const Reservations = () => {
                 );
 
             }
-
-            // ==========================================
-            // DATA DA RESERVA
-            // ==========================================
 
             const reservationDate =
                 getReservationDate(
@@ -608,10 +534,6 @@ const Reservations = () => {
                 );
 
             }
-
-            // ==========================================
-            // BUSCAR PRODUTO
-            // ==========================================
 
             let cancellationAdvance = null;
 
@@ -642,17 +564,12 @@ const Reservations = () => {
 
             }
 
-            // ==========================================
-            // VERIFICAR ANTECEDÊNCIA
-            // ==========================================
-
             const advanceMs =
                 getAdvanceInMilliseconds(
                     cancellationAdvance
                 );
 
-            const now =
-                Date.now();
+            const now = Date.now();
 
             const reservationTime =
                 reservationDate.getTime();
@@ -660,7 +577,6 @@ const Reservations = () => {
             const minimumCancelTime =
                 reservationTime - advanceMs;
 
-            // Já passou do limite
             if (
                 now > minimumCancelTime
             ) {
@@ -673,10 +589,6 @@ const Reservations = () => {
 
             }
 
-            // ==========================================
-            // CANCELAR NO FIREBASE
-            // ==========================================
-
             const cancelledAt =
                 new Date().toISOString();
 
@@ -688,10 +600,6 @@ const Reservations = () => {
                     cancelledBy: "client"
                 }
             );
-
-            // ==========================================
-            // ATUALIZAR ESTADO DA TELA
-            // ==========================================
 
             setReservations(prev =>
                 prev.map(item =>
@@ -706,10 +614,6 @@ const Reservations = () => {
                 )
             );
 
-            // ==========================================
-            // ATUALIZAR RESERVA LOCAL
-            // ==========================================
-
             const localData =
                 localStorage.getItem(
                     "markfy-last-agendamento"
@@ -721,11 +625,6 @@ const Reservations = () => {
 
                     const localReservation =
                         JSON.parse(localData);
-
-                    /*
-                     * O timestamp é utilizado como
-                     * identificador da reserva local.
-                     */
 
                     if (
                         localReservation?.timestamp ===
@@ -745,14 +644,10 @@ const Reservations = () => {
                     }
 
                 } catch {
-                    // Ignora erro do localStorage
+                    // Ignorar erro local
                 }
 
             }
-
-            // ==========================================
-            // FECHAR MODAL
-            // ==========================================
 
             setShowCancelModal(false);
             setSelectedReservation(null);
@@ -779,297 +674,217 @@ const Reservations = () => {
     };
 
 
+    /* =====================================================
+       MENU DE ORDENAÇÃO
+    ===================================================== */
 
-    // ==========================================
-    // LOADING
-    // ==========================================
+    const renderSortMenu = () => {
 
-    if (loading) {
+        if (!showSortMenu) {
+            return null;
+        }
+
+        const options = [
+            {
+                id: "priority",
+                icon: "solar:sort-by-time-outline",
+                title: "Prioridade",
+                description:
+                    "Pendentes, concluídas e canceladas"
+            },
+            {
+                id: "nearest",
+                icon: "solar:calendar-search-outline",
+                title: "Mais próximas",
+                description:
+                    "Primeiro o próximo agendamento"
+            },
+            {
+                id: "furthest",
+                icon: "solar:calendar-add-outline",
+                title: "Mais distantes",
+                description:
+                    "Primeiro o agendamento mais distante"
+            },
+            {
+                id: "status",
+                icon: "solar:filter-outline",
+                title: "Por status",
+                description:
+                    "Pendentes → concluídas → canceladas"
+            }
+        ];
 
         return (
-            <div className="reservations-page">
+            <>
+                <div
+                    className="reservations-sort-backdrop"
+                    onClick={() =>
+                        setShowSortMenu(false)
+                    }
+                />
 
-                <div className="reservations-header">
+                <div
+                    className="reservations-sort-menu"
+                    onClick={(e) =>
+                        e.stopPropagation()
+                    }
+                >
 
-                    <div>
+                    <div className="reservations-sort-menu-header">
 
-                        <h1>
-                            Reservas
-                        </h1>
+                        <div>
 
-                        <p>
-                            Seus agendamentos
-                        </p>
+                            <strong>
+                                Ordenar reservas
+                            </strong>
 
-                    </div>
+                            <span>
+                                Escolha como deseja visualizar
+                            </span>
 
-                    <div className="reservations-sort-wrapper">
+                        </div>
 
                         <button
                             type="button"
-                            className={`reservations-sort-button ${showSortMenu ? "active" : ""
-                                }`}
                             onClick={() =>
-                                setShowSortMenu(prev => !prev)
+                                setShowSortMenu(false)
                             }
-                            aria-label="Ordenar reservas"
-                            aria-expanded={showSortMenu}
+                            aria-label="Fechar"
                         >
-
-                            <Icon
-                                icon="solar:sort-vertical-outline"
-                            />
-
+                            <Icon icon="mdi:close" />
                         </button>
 
-                        {showSortMenu && (
+                    </div>
 
-                            <>
+                    <div className="reservations-sort-options">
 
-                                <div
-                                    className="reservations-sort-backdrop"
-                                    onClick={() =>
-                                        setShowSortMenu(false)
-                                    }
-                                />
+                        {options.map(option => (
 
-                                <div className="reservations-sort-menu">
+                            <button
+                                key={option.id}
+                                type="button"
+                                className={
+                                    sortOption === option.id
+                                        ? "selected"
+                                        : ""
+                                }
+                                onClick={() => {
 
-                                    <div className="reservations-sort-menu-header">
+                                    setSortOption(
+                                        option.id
+                                    );
 
-                                        <div>
+                                    setShowSortMenu(false);
 
-                                            <strong>
-                                                Ordenar reservas
-                                            </strong>
+                                }}
+                            >
 
-                                            <span>
-                                                Escolha como deseja visualizar
-                                            </span>
+                                <div className="sort-option-icon">
 
-                                        </div>
-
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                setShowSortMenu(false)
-                                            }
-                                            aria-label="Fechar"
-                                        >
-                                            <Icon icon="mdi:close" />
-                                        </button>
-
-                                    </div>
-
-                                    <div className="reservations-sort-options">
-
-                                        <button
-                                            type="button"
-                                            className={
-                                                sortOption === "priority"
-                                                    ? "selected"
-                                                    : ""
-                                            }
-                                            onClick={() => {
-
-                                                setSortOption(
-                                                    "priority"
-                                                );
-
-                                                setShowSortMenu(false);
-
-                                            }}
-                                        >
-
-                                            <div className="sort-option-icon">
-
-                                                <Icon
-                                                    icon="solar:sort-by-time-outline"
-                                                />
-
-                                            </div>
-
-                                            <div className="sort-option-content">
-
-                                                <strong>
-                                                    Prioridade
-                                                </strong>
-
-                                                <span>
-                                                    Pendentes, concluídas e canceladas
-                                                </span>
-
-                                            </div>
-
-                                            {sortOption === "priority" && (
-
-                                                <Icon
-                                                    icon="material-symbols:check"
-                                                    className="sort-option-check"
-                                                />
-
-                                            )}
-
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            className={
-                                                sortOption === "nearest"
-                                                    ? "selected"
-                                                    : ""
-                                            }
-                                            onClick={() => {
-
-                                                setSortOption(
-                                                    "nearest"
-                                                );
-
-                                                setShowSortMenu(false);
-
-                                            }}
-                                        >
-
-                                            <div className="sort-option-icon">
-
-                                                <Icon
-                                                    icon="solar:calendar-search-outline"
-                                                />
-
-                                            </div>
-
-                                            <div className="sort-option-content">
-
-                                                <strong>
-                                                    Mais próximas
-                                                </strong>
-
-                                                <span>
-                                                    Primeiro o próximo agendamento
-                                                </span>
-
-                                            </div>
-
-                                            {sortOption === "nearest" && (
-
-                                                <Icon
-                                                    icon="material-symbols:check"
-                                                    className="sort-option-check"
-                                                />
-
-                                            )}
-
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            className={
-                                                sortOption === "furthest"
-                                                    ? "selected"
-                                                    : ""
-                                            }
-                                            onClick={() => {
-
-                                                setSortOption(
-                                                    "furthest"
-                                                );
-
-                                                setShowSortMenu(false);
-
-                                            }}
-                                        >
-
-                                            <div className="sort-option-icon">
-
-                                                <Icon
-                                                    icon="solar:calendar-add-outline"
-                                                />
-
-                                            </div>
-
-                                            <div className="sort-option-content">
-
-                                                <strong>
-                                                    Mais distantes
-                                                </strong>
-
-                                                <span>
-                                                    Primeiro o agendamento mais distante
-                                                </span>
-
-                                            </div>
-
-                                            {sortOption === "furthest" && (
-
-                                                <Icon
-                                                    icon="material-symbols:check"
-                                                    className="sort-option-check"
-                                                />
-
-                                            )}
-
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            className={
-                                                sortOption === "status"
-                                                    ? "selected"
-                                                    : ""
-                                            }
-                                            onClick={() => {
-
-                                                setSortOption(
-                                                    "status"
-                                                );
-
-                                                setShowSortMenu(false);
-
-                                            }}
-                                        >
-
-                                            <div className="sort-option-icon">
-
-                                                <Icon
-                                                    icon="solar:filter-outline"
-                                                />
-
-                                            </div>
-
-                                            <div className="sort-option-content">
-
-                                                <strong>
-                                                    Por status
-                                                </strong>
-
-                                                <span>
-                                                    Pendentes → concluídas → canceladas
-                                                </span>
-
-                                            </div>
-
-                                            {sortOption === "status" && (
-
-                                                <Icon
-                                                    icon="material-symbols:check"
-                                                    className="sort-option-check"
-                                                />
-
-                                            )}
-
-                                        </button>
-
-                                    </div>
+                                    <Icon
+                                        icon={option.icon}
+                                    />
 
                                 </div>
 
-                            </>
+                                <div className="sort-option-content">
 
-                        )}
+                                    <strong>
+                                        {option.title}
+                                    </strong>
+
+                                    <span>
+                                        {option.description}
+                                    </span>
+
+                                </div>
+
+                                {sortOption === option.id && (
+
+                                    <Icon
+                                        icon="material-symbols:check"
+                                        className="sort-option-check"
+                                    />
+
+                                )}
+
+                            </button>
+
+                        ))}
 
                     </div>
 
                 </div>
+            </>
+        );
+
+    };
+
+
+    /* =====================================================
+       HEADER
+    ===================================================== */
+
+    const renderHeader = () => (
+
+        <div className="reservations-header">
+
+            <div className="reservations-header-content">
+
+                <h1>
+                    Reservas
+                </h1>
+
+                <p>
+                    Seus agendamentos
+                </p>
+
+            </div>
+
+            <div className="reservations-sort-wrapper">
+
+                <button
+                    type="button"
+                    className={`reservations-sort-button ${showSortMenu
+                            ? "active"
+                            : ""
+                        }`}
+                    onClick={() =>
+                        setShowSortMenu(
+                            prev => !prev
+                        )
+                    }
+                    aria-label="Ordenar reservas"
+                    aria-expanded={showSortMenu}
+                >
+
+                    <Icon
+                        icon="solar:sort-vertical-outline"
+                    />
+
+                </button>
+
+                {renderSortMenu()}
+
+            </div>
+
+        </div>
+
+    );
+
+
+    /* =====================================================
+       LOADING
+    ===================================================== */
+
+    if (loading) {
+
+        return (
+
+            <div className="reservations-page">
+
+                {renderHeader()}
 
                 <div className="reservations-loading">
 
@@ -1077,254 +892,32 @@ const Reservations = () => {
 
                     <div className="reservation-skeleton" />
 
+                    <div className="reservation-skeleton" />
+
                 </div>
 
             </div>
+
         );
 
     }
 
-    // ==========================================
-    // TELA
-    // ==========================================
+
+    /* =====================================================
+       TELA PRINCIPAL
+    ===================================================== */
 
     return (
 
         <div className="reservations-page">
 
-            <div className="reservations-header">
-
-                <div>
-
-                    <h1>
-                        Reservas
-                    </h1>
-
-                    <p>
-                        Seus agendamentos
-                    </p>
-
-                </div>
-
-                <div className="reservations-sort-wrapper">
-
-                    <button
-                        type="button"
-                        className={`reservations-sort-button ${showSortMenu ? "active" : ""
-                            }`}
-                        onClick={() => setShowSortMenu(prev => !prev)}
-                        aria-label="Ordenar reservas"
-                        aria-expanded={showSortMenu}
-                    >
-
-                        <Icon
-                            icon="solar:sort-vertical-outline"
-                        />
-
-                    </button>
-
-                    {showSortMenu && (
-
-                        <>
-
-                            <div
-                                className="reservations-sort-backdrop"
-                                onClick={() => setShowSortMenu(false)}
-                            />
-
-                            <div className="reservations-sort-menu">
-
-                                <div className="reservations-sort-menu-header">
-
-                                    <div>
-
-                                        <strong>
-                                            Ordenar reservas
-                                        </strong>
-
-                                        <span>
-                                            Escolha como deseja visualizar
-                                        </span>
-
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowSortMenu(false)}
-                                        aria-label="Fechar"
-                                    >
-                                        <Icon icon="mdi:close" />
-                                    </button>
-
-                                </div>
-
-                                <div className="reservations-sort-options">
-
-                                    <button
-                                        type="button"
-                                        className={
-                                            sortOption === "priority"
-                                                ? "selected"
-                                                : ""
-                                        }
-                                        onClick={() => {
-                                            setSortOption("priority");
-                                            setShowSortMenu(false);
-                                        }}
-                                    >
-
-                                        <div className="sort-option-icon">
-                                            <Icon icon="solar:sort-by-time-outline" />
-                                        </div>
-
-                                        <div className="sort-option-content">
-
-                                            <strong>
-                                                Prioridade
-                                            </strong>
-
-                                            <span>
-                                                Pendentes, concluídas e canceladas
-                                            </span>
-
-                                        </div>
-
-                                        {sortOption === "priority" && (
-                                            <Icon
-                                                icon="material-symbols:check"
-                                                className="sort-option-check"
-                                            />
-                                        )}
-
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className={
-                                            sortOption === "nearest"
-                                                ? "selected"
-                                                : ""
-                                        }
-                                        onClick={() => {
-                                            setSortOption("nearest");
-                                            setShowSortMenu(false);
-                                        }}
-                                    >
-
-                                        <div className="sort-option-icon">
-                                            <Icon icon="solar:calendar-search-outline" />
-                                        </div>
-
-                                        <div className="sort-option-content">
-
-                                            <strong>
-                                                Mais próximas
-                                            </strong>
-
-                                            <span>
-                                                Primeiro o próximo agendamento
-                                            </span>
-
-                                        </div>
-
-                                        {sortOption === "nearest" && (
-                                            <Icon
-                                                icon="material-symbols:check"
-                                                className="sort-option-check"
-                                            />
-                                        )}
-
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className={
-                                            sortOption === "furthest"
-                                                ? "selected"
-                                                : ""
-                                        }
-                                        onClick={() => {
-                                            setSortOption("furthest");
-                                            setShowSortMenu(false);
-                                        }}
-                                    >
-
-                                        <div className="sort-option-icon">
-                                            <Icon icon="solar:calendar-add-outline" />
-                                        </div>
-
-                                        <div className="sort-option-content">
-
-                                            <strong>
-                                                Mais distantes
-                                            </strong>
-
-                                            <span>
-                                                Primeiro o agendamento mais distante
-                                            </span>
-
-                                        </div>
-
-                                        {sortOption === "furthest" && (
-                                            <Icon
-                                                icon="material-symbols:check"
-                                                className="sort-option-check"
-                                            />
-                                        )}
-
-                                    </button>
-
-                                    <button
-                                        type="button"
-                                        className={
-                                            sortOption === "status"
-                                                ? "selected"
-                                                : ""
-                                        }
-                                        onClick={() => {
-                                            setSortOption("status");
-                                            setShowSortMenu(false);
-                                        }}
-                                    >
-
-                                        <div className="sort-option-icon">
-                                            <Icon icon="solar:filter-outline" />
-                                        </div>
-
-                                        <div className="sort-option-content">
-
-                                            <strong>
-                                                Por status
-                                            </strong>
-
-                                            <span>
-                                                Pendentes → concluídas → canceladas
-                                            </span>
-
-                                        </div>
-
-                                        {sortOption === "status" && (
-                                            <Icon
-                                                icon="material-symbols:check"
-                                                className="sort-option-check"
-                                            />
-                                        )}
-
-                                    </button>
-
-                                </div>
-
-                            </div>
-
-                        </>
-
-                    )}
-
-                </div>
-
-            </div>
+            {renderHeader()}
 
             {reservations.length === 0 ? (
+
+                /* ==========================================
+                   EMPTY
+                ========================================== */
 
                 <div className="reservations-empty">
 
@@ -1349,95 +942,210 @@ const Reservations = () => {
 
             ) : (
 
-                <div className="reservations-list">
+                /* ==========================================
+                   RESERVAS
+                ========================================== */
 
-                    {getSortedReservations().map(
-                        (reservation) => {
+                <div className="reservations-container">
 
-                            const status =
-                                getReservationStatus(
-                                    reservation.status
-                                );
+                    {/* ======================================
+                       CABEÇALHO DESKTOP
+                    ====================================== */}
 
-                            return (
+                    <div className="reservations-table-header">
 
-                                <div
-                                    className="reservation-card"
-                                    key={reservation.id}
-                                >
+                        <span>
+                            Data e horário
+                        </span>
 
-                                    <div className="reservation-card-top">
+                        <span>
+                            Serviço
+                        </span>
+
+                        <span>
+                            Profissional
+                        </span>
+
+                        <span>
+                            Status
+                        </span>
+
+                        <span>
+                            Valor
+                        </span>
+
+                        <span>
+                            Ação
+                        </span>
+
+                    </div>
+
+
+                    {/* ======================================
+                       LISTA
+                    ====================================== */}
+
+                    <div className="reservations-list">
+
+                        {getSortedReservations().map(
+                            reservation => {
+
+                                const status =
+                                    getReservationStatus(
+                                        reservation.status
+                                    );
+
+                                return (
+
+                                    <article
+                                        className="reservation-card"
+                                        key={reservation.id}
+                                    >
+
+                                        {/* ====================
+                                           DATA
+                                        ==================== */}
 
                                         <div className="reservation-date">
 
-                                            <span>
-                                                {reservation.day}
+                                            <div className="reservation-date-icon">
+
+                                                <Icon
+                                                    icon="solar:calendar-outline"
+                                                />
+
+                                            </div>
+
+                                            <div className="reservation-date-content">
+
+                                                <strong>
+                                                    {reservation.day}
+                                                </strong>
+
+                                                <span>
+                                                    {reservation.hour}
+                                                </span>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        {/* ====================
+                                           SERVIÇO
+                                        ==================== */}
+
+                                        <div className="reservation-service">
+
+                                            <span className="reservation-mobile-label">
+                                                Serviço
                                             </span>
 
                                             <strong>
-                                                {reservation.hour}
+                                                {
+                                                    reservation.productName ||
+                                                    "Serviço"
+                                                }
                                             </strong>
 
-                                        </div>
+                                            <span className="reservation-service-client">
 
-                                        <span
-                                            className={`reservation-status ${status.className}`}
-                                        >
-                                            {status.label}
-                                        </span>
+                                                <Icon
+                                                    icon="solar:user-circle-outline"
+                                                />
 
-                                    </div>
-
-                                    <div className="reservation-info">
-
-                                        <h2>
-                                            {
-                                                reservation.productName
-                                            }
-                                        </h2>
-
-                                        <div className="reservation-info-row">
-
-                                            <Icon
-                                                icon="solar:user-outline"
-                                            />
-
-                                            <span>
-                                                {
-                                                    reservation.professionalName ||
-                                                    "Profissional"
-                                                }
-                                            </span>
-
-                                        </div>
-
-                                        <div className="reservation-info-row">
-
-                                            <Icon
-                                                icon="solar:user-circle-outline"
-                                            />
-
-                                            <span>
                                                 {
                                                     reservation.userName ||
                                                     "Cliente"
                                                 }
+
                                             </span>
 
                                         </div>
 
-                                    </div>
 
-                                    <div className="reservation-card-footer">
+                                        {/* ====================
+                                           PROFISSIONAL
+                                        ==================== */}
 
-                                        <span>
-                                            {
-                                                reservation.productPrice
-                                            }
-                                        </span>
+                                        <div className="reservation-professional">
 
-                                        {reservation.status ===
-                                            "pending" && (
+                                            <span className="reservation-mobile-label">
+                                                Profissional
+                                            </span>
+
+                                            <div className="reservation-professional-content">
+
+                                                <div className="reservation-professional-icon">
+
+                                                    <Icon
+                                                        icon="solar:user-outline"
+                                                    />
+
+                                                </div>
+
+                                                <span>
+                                                    {
+                                                        reservation.professionalName ||
+                                                        "Profissional"
+                                                    }
+                                                </span>
+
+                                            </div>
+
+                                        </div>
+
+
+                                        {/* ====================
+                                           STATUS
+                                        ==================== */}
+
+                                        <div className="reservation-status-wrapper">
+
+                                            <span className="reservation-mobile-label">
+                                                Status
+                                            </span>
+
+                                            <span
+                                                className={`reservation-status ${status.className}`}
+                                            >
+                                                <span className="reservation-status-dot" />
+
+                                                {status.label}
+
+                                            </span>
+
+                                        </div>
+
+
+                                        {/* ====================
+                                           VALOR
+                                        ==================== */}
+
+                                        <div className="reservation-price">
+
+                                            <span className="reservation-mobile-label">
+                                                Valor
+                                            </span>
+
+                                            <strong>
+                                                {
+                                                    reservation.productPrice ||
+                                                    "—"
+                                                }
+                                            </strong>
+
+                                        </div>
+
+
+                                        {/* ====================
+                                           AÇÃO
+                                        ==================== */}
+
+                                        <div className="reservation-actions">
+
+                                            {reservation.status ===
+                                                "pending" ? (
 
                                                 <button
                                                     type="button"
@@ -1453,28 +1161,39 @@ const Reservations = () => {
                                                         icon="solar:close-circle-outline"
                                                     />
 
-                                                    Cancelar
+                                                    <span>
+                                                        Cancelar
+                                                    </span>
 
                                                 </button>
 
+                                            ) : (
+
+                                                <span className="reservation-no-action">
+                                                    —
+                                                </span>
+
                                             )}
 
-                                    </div>
+                                        </div>
 
-                                </div>
+                                    </article>
 
-                            );
+                                );
 
-                        }
-                    )}
+                            }
+                        )}
+
+                    </div>
 
                 </div>
 
             )}
 
-            {/* ==========================================
-                MODAL / SLIDE UP DE CANCELAMENTO
-            ========================================== */}
+
+            {/* =================================================
+                MODAL DE CANCELAMENTO
+            ================================================= */}
 
             {showCancelModal &&
                 selectedReservation && (
@@ -1517,7 +1236,7 @@ const Reservations = () => {
 
                             </p>
 
-                            {cancelError && (
+                            {cancelError ? (
 
                                 <div className="reservation-cancel-error">
 
@@ -1531,15 +1250,11 @@ const Reservations = () => {
 
                                 </div>
 
-                            )}
-
-                            {!cancelError && (
+                            ) : (
 
                                 <p className="reservation-cancel-warning">
-
                                     Essa ação não poderá
                                     ser desfeita.
-
                                 </p>
 
                             )}

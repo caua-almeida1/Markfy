@@ -60,7 +60,7 @@ export default function CompanyPage() {
       navigate("/central-adm");
     } else {
       alert("Você precisa estar logado para acessar o painel da empresa.");
-      navigate("/");
+      navigate("/Login");
     }
   };
 

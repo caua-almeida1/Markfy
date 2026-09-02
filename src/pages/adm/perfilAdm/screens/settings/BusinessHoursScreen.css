@@ -1,11 +1,19 @@
-/* ================= BUSINESS HOURS ================= */
+/* =========================================================
+   BUSINESS HOURS
+   ========================================================= */
 
 .business-hours-card {
     padding: 0 1.5rem;
 }
 
+
+/* =========================================================
+   DIA
+   ========================================================= */
+
 .business-day {
     width: 100%;
+
     padding: 1rem 0;
 
     border-bottom: 1px solid var(--mkf-ui-border-light);
@@ -21,10 +29,12 @@
     opacity: .55;
 }
 
-/* ================= HEADER ================= */
+
+/* =========================================================
+   HEADER DO DIA
+   ========================================================= */
 
 .business-day-header {
-
     width: 100%;
 
     display: flex;
@@ -34,126 +44,175 @@
     gap: 1rem;
 }
 
-.business-day-left {
 
+/* =========================================================
+   NOME DO DIA
+   ========================================================= */
+
+.business-day-left {
     display: flex;
     align-items: center;
 
-    gap: 1rem;
+    gap: .85rem;
 
     flex: 1;
-
     min-width: 0;
 }
 
 .business-day-left .company-input-icon {
-
     margin: 0;
 
+    flex-shrink: 0;
 }
 
 .business-day-left span {
-
     font-size: var(--mkf-font-xs);
 
     font-weight: var(--mkf-font-medium);
 
     color: var(--mkf-text-primary);
 
+    white-space: nowrap;
 }
 
-/* ================= TOGGLE ================= */
+
+/* =========================================================
+   TOGGLE
+   ========================================================= */
 
 .business-day-toggle {
+    position: relative;
 
     width: 38px;
     height: 22px;
 
+    flex-shrink: 0;
+
     padding: 0;
 
     border: none;
-
     border-radius: 999px;
 
     background: var(--mkf-ui-gray-300);
 
-    position: relative;
-
     cursor: pointer;
 
-    transition: background .2s ease;
-
+    transition:
+        background .2s ease;
 }
 
 .business-day-toggle span {
-
-    width: 16px;
-    height: 16px;
-
     position: absolute;
 
     top: 3px;
     left: 3px;
 
+    width: 16px;
+    height: 16px;
+
     border-radius: 50%;
 
     background: var(--mkf-ui-white);
 
-    box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, .15);
 
-    transition: transform .2s ease;
-
+    transition:
+        transform .2s ease;
 }
 
 .business-day-toggle.active {
-
     background: var(--mkf-ui-primary);
-
 }
 
 .business-day-toggle.active span {
-
     transform: translateX(16px);
-
 }
 
-/* ================= INTERVALS ================= */
+
+/* =========================================================
+   CONTEÚDO DOS HORÁRIOS
+   ========================================================= */
 
 .business-intervals {
-
     display: flex;
 
     flex-direction: column;
 
-    gap: .6rem;
+    gap: 1.1rem;
 
-    margin-top: .85rem;
+    margin-top: 1rem;
 
-    padding-left: 2.35rem;
-
+    margin-left: 2.35rem;
 }
 
-.business-interval {
 
+/* =========================================================
+   SEÇÃO
+   ========================================================= */
+
+.business-hours-section,
+.business-breaks-section {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: .55rem;
+}
+
+
+/* =========================================================
+   TÍTULO DA SEÇÃO
+   ========================================================= */
+
+.business-hours-section-title {
+    font-size: var(--mkf-font-xxs);
+
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-light);
+
+    line-height: 1.4;
+}
+
+
+/* =========================================================
+   SEPARAÇÃO ENTRE FUNCIONAMENTO E PAUSAS
+   ========================================================= */
+
+.business-breaks-section {
+    padding-top: 1rem;
+
+    border-top: 1px solid var(--mkf-ui-border-light);
+}
+
+
+/* =========================================================
+   LINHA DE HORÁRIO
+   ========================================================= */
+
+.business-interval {
     display: flex;
 
     align-items: center;
 
-    gap: .5rem;
-
+    gap: .55rem;
 }
 
+
+/* =========================================================
+   INPUTS
+   ========================================================= */
+
 .business-interval input {
+    width: 108px;
+    height: 38px;
 
-    width: 105px;
-
-    height: 36px;
-
-    padding: 0 .65rem;
+    padding: 0 .7rem;
 
     border: 1px solid var(--mkf-ui-border-light);
 
-    border-radius: .7rem;
+    border-radius: .65rem;
 
     outline: none;
 
@@ -163,30 +222,80 @@
 
     font-family: "Poppins", sans-serif;
 
-    font-size: var(--mkf-font-xs);
+    font-size: var(--mkf-font-xxs);
 
-    transition: border-color .2s ease;
+    transition:
+        border-color .2s ease,
+        box-shadow .2s ease;
+}
 
+.business-interval input:hover {
+    border-color: var(--mkf-ui-gray-300);
 }
 
 .business-interval input:focus {
-
     border-color: var(--mkf-ui-primary);
 
+    box-shadow:
+        0 0 0 3px
+        color-mix(
+            in srgb,
+            var(--mkf-ui-primary) 10%,
+            transparent
+        );
 }
 
-.business-interval>span {
+
+/* =========================================================
+   "ATÉ"
+   ========================================================= */
+
+.business-interval > span {
+    flex-shrink: 0;
 
     font-size: var(--mkf-font-xxs);
 
     color: var(--mkf-text-light);
-
 }
 
-/* ================= REMOVE ================= */
+
+/* =========================================================
+   PAUSA
+   ========================================================= */
+
+.business-interval-label {
+    min-width: 58px;
+
+    font-size: var(--mkf-font-xxs);
+
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-secondary);
+
+    white-space: nowrap;
+}
+
+
+/* =========================================================
+   CAMPOS DA PAUSA
+   ========================================================= */
+
+.business-interval-fields {
+    display: flex;
+
+    align-items: center;
+
+    gap: .55rem;
+
+    flex: 1;
+}
+
+
+/* =========================================================
+   REMOVER PAUSA
+   ========================================================= */
 
 .business-remove {
-
     width: 32px;
     height: 32px;
 
@@ -195,7 +304,13 @@
     align-items: center;
     justify-content: center;
 
+    flex-shrink: 0;
+
+    padding: 0;
+
     border: none;
+
+    border-radius: .55rem;
 
     background: transparent;
 
@@ -203,25 +318,26 @@
 
     cursor: pointer;
 
-    border-radius: 50%;
-
+    transition:
+        background .2s ease,
+        color .2s ease;
 }
 
 .business-remove:hover {
-
     background: var(--mkf-error-light);
-
 }
 
 .business-remove svg {
-
     font-size: 1rem;
-
 }
 
-/* ================= ADD ================= */
+
+/* =========================================================
+   ADICIONAR PAUSA
+   ========================================================= */
 
 .business-add-interval {
+    width: fit-content;
 
     display: flex;
 
@@ -229,7 +345,7 @@
 
     gap: .4rem;
 
-    width: fit-content;
+    margin-top: .15rem;
 
     padding: .25rem 0;
 
@@ -247,26 +363,111 @@
 
     cursor: pointer;
 
+    transition:
+        opacity .2s ease;
+}
+
+.business-add-interval:hover {
+    opacity: .75;
 }
 
 .business-add-interval svg {
-
     font-size: 1rem;
-
 }
 
-/* ================= CLOSED ================= */
+
+/* =========================================================
+   DIA FECHADO
+   ========================================================= */
 
 .business-closed {
-
     display: block;
 
-    margin-top: .5rem;
+    margin-top: .65rem;
 
     margin-left: 2.35rem;
 
     font-size: var(--mkf-font-xxs);
 
     color: var(--mkf-text-light);
+}
+
+.business-hours-row {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+}
+
+.business-hours-row input {
+    width: 108px;
+    height: 38px;
+
+    padding: 0 .7rem;
+
+    border: 1px solid var(--mkf-ui-border-light);
+    border-radius: .65rem;
+
+    outline: none;
+
+    background: var(--mkf-ui-background);
+    color: var(--mkf-text-primary);
+
+    font-family: "Poppins", sans-serif;
+    font-size: var(--mkf-font-xxs);
+}
+
+.business-hours-row span {
+    font-size: var(--mkf-font-xxs);
+    color: var(--mkf-text-light);
+}
+
+/* =========================================================
+   RESPONSIVO
+   ========================================================= */
+
+@media (max-width: 600px) {
+
+    .business-hours-card {
+        padding: 0 1rem;
+    }
+
+    .business-intervals {
+        margin-left: 0;
+
+        padding-left: 2.35rem;
+    }
+
+    .business-interval {
+        flex-wrap: wrap;
+    }
+
+    .business-interval-fields {
+        width: 100%;
+    }
+
+    .business-interval-fields input {
+        flex: 1;
+        width: auto;
+    }
+
+}
+
+@media (max-width: 420px) {
+
+    .business-intervals {
+        padding-left: 0;
+    }
+
+    .business-interval input {
+        width: 100px;
+    }
+
+    .business-interval-fields {
+        gap: .4rem;
+    }
+
+    .business-interval-fields input {
+        min-width: 0;
+    }
 
 }

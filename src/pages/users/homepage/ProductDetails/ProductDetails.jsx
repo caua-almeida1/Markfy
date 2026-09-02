@@ -76,9 +76,17 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     const timeToMinutes = (time) => {
 
-        if (!time) return 0;
+        if (!time) return null;
 
-        const [hour, minute] = time.split(":").map(Number);
+        const [hour, minute] =
+            time.split(":").map(Number);
+
+        if (
+            Number.isNaN(hour) ||
+            Number.isNaN(minute)
+        ) {
+            return null;
+        }
 
         return hour * 60 + minute;
     };
@@ -508,53 +516,61 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         WEEK_DAYS[d.getDay()];
 
 
-                    /*
-                     * Aceita tanto:
-                     *
-                     * businessHours:
-                     * {
-                     *   monday: {
-                     *      enabled: true,
-                     *      intervals: [...]
-                     *   }
-                     * }
-                     *
-                     * quanto estruturas onde o dia
-                     * possui diretamente os intervalos.
-                     */
+                    // ==========================================
+                    // CONFIGURAÇÃO DO DIA
+                    // ==========================================
 
                     const dayBusinessHours =
                         businessHours[weekDay];
 
 
                     // ==========================================
-                    // HORÁRIO PADRÃO
+                    // HORÁRIO DE FUNCIONAMENTO
                     // ==========================================
 
-                    let businessIntervals = [
-                        {
-                            open: DEFAULT_BUSINESS_HOURS.open,
-                            close: DEFAULT_BUSINESS_HOURS.close
-                        }
-                    ];
+                    let businessOpen =
+                        DEFAULT_BUSINESS_HOURS.open;
+
+                    let businessClose =
+                        DEFAULT_BUSINESS_HOURS.close;
+
+                    let businessBreaks = [];
 
 
                     // ==========================================
-                    // EMPRESA CONFIGURADA
+                    // DIA CONFIGURADO
                     // ==========================================
 
                     if (dayBusinessHours) {
 
-                        // Dia desativado
+                        // --------------------------------------
+                        // DIA FECHADO
+                        // --------------------------------------
+
                         if (
                             dayBusinessHours.enabled === false ||
                             dayBusinessHours.active === false
                         ) {
-
                             continue;
-
                         }
 
+
+                        // --------------------------------------
+                        // HORÁRIO PRINCIPAL
+                        // --------------------------------------
+
+                        businessOpen =
+                            dayBusinessHours.open ||
+                            DEFAULT_BUSINESS_HOURS.open;
+
+                        businessClose =
+                            dayBusinessHours.close ||
+                            DEFAULT_BUSINESS_HOURS.close;
+
+
+                        // --------------------------------------
+                        // PAUSAS
+                        // --------------------------------------
 
                         if (
                             Array.isArray(
@@ -562,7 +578,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             )
                         ) {
 
-                            businessIntervals =
+                            businessBreaks =
                                 dayBusinessHours.intervals
                                     .filter(interval =>
                                         interval?.open &&
@@ -571,23 +587,165 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                     .map(interval => ({
                                         open: interval.open,
                                         close: interval.close
-                                    }));
-
-
-                            /*
-                             * Se o dia existe mas não possui
-                             * intervalos, considera fechado.
-                             */
-
-                            if (
-                                businessIntervals.length === 0
-                            ) {
-
-                                continue;
-
-                            }
+                                    }))
+                                    .sort(
+                                        (a, b) =>
+                                            timeToMinutes(a.open) -
+                                            timeToMinutes(b.open)
+                                    );
 
                         }
+
+                    }
+
+
+                    // ==========================================
+                    // CONVERTER HORÁRIOS
+                    // ==========================================
+
+                    const businessOpenMinutes =
+                        timeToMinutes(businessOpen);
+
+                    const businessCloseMinutes =
+                        timeToMinutes(businessClose);
+
+
+                    if (
+                        businessOpenMinutes === null ||
+                        businessCloseMinutes === null ||
+                        businessOpenMinutes >= businessCloseMinutes
+                    ) {
+                        continue;
+                    }
+
+
+                    // ==========================================
+                    // CRIAR PERÍODOS DISPONÍVEIS
+                    // DESCONTANDO AS PAUSAS
+                    // ==========================================
+
+                    const businessIntervals = [];
+
+                    let currentStart =
+                        businessOpenMinutes;
+
+
+                    // ==========================================
+                    // PERCORRER PAUSAS
+                    // ==========================================
+
+                    businessBreaks.forEach((breakInterval) => {
+
+                        const breakOpen =
+                            timeToMinutes(
+                                breakInterval.open
+                            );
+
+                        const breakClose =
+                            timeToMinutes(
+                                breakInterval.close
+                            );
+
+
+                        // --------------------------------------
+                        // PAUSA INVÁLIDA
+                        // --------------------------------------
+
+                        if (
+                            breakOpen === null ||
+                            breakClose === null ||
+                            breakOpen >= breakClose
+                        ) {
+                            return;
+                        }
+
+
+                        // --------------------------------------
+                        // PAUSA FORA DO HORÁRIO
+                        // --------------------------------------
+
+                        if (
+                            breakClose <= businessOpenMinutes ||
+                            breakOpen >= businessCloseMinutes
+                        ) {
+                            return;
+                        }
+
+
+                        // --------------------------------------
+                        // LIMITAR PAUSA AO HORÁRIO DA EMPRESA
+                        // --------------------------------------
+
+                        const effectiveBreakOpen =
+                            Math.max(
+                                breakOpen,
+                                businessOpenMinutes
+                            );
+
+                        const effectiveBreakClose =
+                            Math.min(
+                                breakClose,
+                                businessCloseMinutes
+                            );
+
+
+                        // --------------------------------------
+                        // PERÍODO ANTES DA PAUSA
+                        // --------------------------------------
+
+                        if (
+                            currentStart <
+                            effectiveBreakOpen
+                        ) {
+
+                            businessIntervals.push({
+                                open:
+                                    minutesToTime(
+                                        currentStart
+                                    ),
+
+                                close:
+                                    minutesToTime(
+                                        effectiveBreakOpen
+                                    )
+                            });
+
+                        }
+
+
+                        // --------------------------------------
+                        // CONTINUAR APÓS A PAUSA
+                        // --------------------------------------
+
+                        currentStart =
+                            Math.max(
+                                currentStart,
+                                effectiveBreakClose
+                            );
+
+                    });
+
+
+                    // ==========================================
+                    // PERÍODO FINAL
+                    // ==========================================
+
+                    if (
+                        currentStart <
+                        businessCloseMinutes
+                    ) {
+
+                        businessIntervals.push({
+                            open:
+                                minutesToTime(
+                                    currentStart
+                                ),
+
+                            close:
+                                minutesToTime(
+                                    businessCloseMinutes
+                                )
+                        });
 
                     }
 
@@ -603,13 +761,13 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
 
                     // ==========================================
-                    // GERAR SLOTS
+                    // GERAR TODOS OS SLOTS
                     // ==========================================
 
                     const allSlots = [];
 
 
-                    businessIntervals.forEach(interval => {
+                    businessIntervals.forEach((interval) => {
 
                         const openMinutes =
                             timeToMinutes(
@@ -622,15 +780,39 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             );
 
 
-                        /*
-                         * O horário precisa comportar
-                         * o serviço inteiro.
-                         */
+                        // --------------------------------------
+                        // INTERVALO INVÁLIDO
+                        // --------------------------------------
+
+                        if (
+                            openMinutes === null ||
+                            closeMinutes === null ||
+                            openMinutes >= closeMinutes
+                        ) {
+                            return;
+                        }
+
+
+                        // --------------------------------------
+                        // ÚLTIMO HORÁRIO POSSÍVEL
+                        // --------------------------------------
 
                         const lastStart =
                             closeMinutes -
                             serviceDuration;
 
+
+                        if (
+                            lastStart <
+                            openMinutes
+                        ) {
+                            return;
+                        }
+
+
+                        // --------------------------------------
+                        // HORÁRIOS DE 30 EM 30 MINUTOS
+                        // --------------------------------------
 
                         for (
                             let minutes = openMinutes;
@@ -638,37 +820,73 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             minutes += 30
                         ) {
 
-                            allSlots.push(
-                                minutesToTime(minutes)
-                            );
+                            const slotStart =
+                                minutes;
+
+                            const slotEnd =
+                                slotStart +
+                                serviceDuration;
+
+
+                            // --------------------------------------
+                            // O SERVIÇO PRECISA CABER INTEIRO
+                            // --------------------------------------
+
+                            if (
+                                slotStart >= openMinutes &&
+                                slotEnd <= closeMinutes
+                            ) {
+
+                                allSlots.push(
+                                    minutesToTime(
+                                        slotStart
+                                    )
+                                );
+
+                            }
 
                         }
 
                     });
 
 
-                    // Evita duplicação caso existam
-                    // intervalos sobrepostos.
+                    // ==========================================
+                    // REMOVER DUPLICADOS
+                    // ==========================================
 
                     const uniqueSlots = [
                         ...new Set(allSlots)
-                    ];
+                    ].sort(
+                        (a, b) =>
+                            timeToMinutes(a) -
+                            timeToMinutes(b)
+                    );
 
 
                     // ==========================================
                     // BLOQUEAR HORÁRIOS DO PROFISSIONAL
                     // ==========================================
 
-                    const blockedSlots = new Set();
+                    const blockedSlots =
+                        new Set();
 
 
-                    busySlots.forEach(t => {
+                    busySlots.forEach((t) => {
 
-                        if (!t.hour) return;
+                        if (!t.hour) {
+                            return;
+                        }
 
 
                         const startMinutes =
-                            timeToMinutes(t.hour);
+                            timeToMinutes(
+                                t.hour
+                            );
+
+
+                        if (startMinutes === null) {
+                            return;
+                        }
 
 
                         const endMinutes =
@@ -676,21 +894,25 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             serviceDuration;
 
 
-                        uniqueSlots.forEach(slot => {
+                        uniqueSlots.forEach((slot) => {
 
                             const slotMinutes =
                                 timeToMinutes(slot);
 
 
-                            /*
-                             * Considera conflito caso
-                             * o novo horário esteja dentro
-                             * do agendamento existente.
-                             */
+                            if (slotMinutes === null) {
+                                return;
+                            }
+
+
+                            // --------------------------------------
+                            // VERIFICAR CONFLITO
+                            // --------------------------------------
 
                             if (
                                 slotMinutes < endMinutes &&
-                                slotMinutes + serviceDuration > startMinutes
+                                slotMinutes + serviceDuration >
+                                startMinutes
                             ) {
 
                                 blockedSlots.add(slot);
@@ -728,14 +950,11 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
 
                         freeSlots =
-                            freeSlots.filter(slot => {
-
-                                return (
+                            freeSlots.filter(
+                                slot =>
                                     timeToMinutes(slot) >
                                     nowMinutes
-                                );
-
-                            });
+                            );
 
                     }
 
@@ -744,7 +963,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                     // ADICIONAR DIA
                     // ==========================================
 
-                    if (freeSlots.length > 0) {
+                    if (
+                        freeSlots.length > 0
+                    ) {
 
                         dates.push({
 
@@ -805,12 +1026,79 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
             ? [product.images]
             : [];
 
-    const toggleExpanded = () => setExpanded(!expanded);
+    const toggleExpanded = () => {
+        setExpanded(prev => !prev);
+    };
 
-    const displayText = expanded
-        ? product.description
-        : product.description.length > maxLength
-            ? product.description.slice(0, maxLength) + "..."
+    const stripHtml = (html = "") => {
+        const temp = document.createElement("div");
+
+        temp.innerHTML = html;
+
+        return (
+            temp.textContent ||
+            temp.innerText ||
+            ""
+        );
+    };
+
+    const createTruncatedHtml = (html, maxLength) => {
+        if (!html) return "";
+
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+
+        let currentLength = 0;
+        let finished = false;
+
+        const walk = (node) => {
+            if (finished) return;
+
+            if (node.nodeType === Node.TEXT_NODE) {
+                const remaining = maxLength - currentLength;
+
+                if (node.textContent.length > remaining) {
+                    node.textContent =
+                        node.textContent.slice(0, remaining);
+
+                    currentLength = maxLength;
+                    finished = true;
+                } else {
+                    currentLength += node.textContent.length;
+                }
+
+                return;
+            }
+
+            const children = Array.from(node.childNodes);
+
+            for (const child of children) {
+                if (finished) {
+                    node.removeChild(child);
+                    continue;
+                }
+
+                walk(child);
+            }
+        };
+
+        walk(temp);
+
+        return temp.innerHTML;
+    };
+
+    const descriptionText =
+        stripHtml(product.description);
+
+    const shouldTruncate =
+        descriptionText.length > maxLength;
+
+    const truncatedDescription =
+        shouldTruncate
+            ? createTruncatedHtml(
+                product.description,
+                maxLength
+            )
             : product.description;
 
     useEffect(() => {
@@ -1089,6 +1377,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         // Nenhuma etapa anterior → fecha o produto
         setVisible(false);
     };
+
+
 
     return createPortal(
         <AnimatePresence
@@ -1446,17 +1736,33 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                         </button>
                                                     </div>
                                                 </div>
-
                                                 <h1>Descrição</h1>
+
                                                 {product.description && (
-                                                    <p className="product-details-description">
-                                                        {displayText}{" "}
-                                                        {product.description.length > maxLength && (
-                                                            <span className="read-more-inline" onClick={toggleExpanded}>
-                                                                {expanded ? " Ler menos" : " Ler mais"}
-                                                            </span>
+                                                    <div className="product-details-description">
+
+                                                        <div
+                                                            className="product-details-description-formatted"
+                                                            dangerouslySetInnerHTML={{
+                                                                __html: expanded
+                                                                    ? product.description
+                                                                    : truncatedDescription
+                                                            }}
+                                                        />
+
+                                                        {shouldTruncate && (
+                                                            <button
+                                                                type="button"
+                                                                className="read-more-inline"
+                                                                onClick={toggleExpanded}
+                                                            >
+                                                                {expanded
+                                                                    ? "Ler menos"
+                                                                    : "Ler mais"}
+                                                            </button>
                                                         )}
-                                                    </p>
+
+                                                    </div>
                                                 )}
                                             </motion.div>
                                         ) : (

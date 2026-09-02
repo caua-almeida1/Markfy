@@ -5,6 +5,9 @@ import {
     getAuth,
     onAuthStateChanged,
     updateProfile,
+    EmailAuthProvider,
+    reauthenticateWithCredential,
+    updatePassword,
 } from "firebase/auth";
 
 import {
@@ -49,6 +52,14 @@ const ProfileScreen = () => {
     const [toastType, setToastType] = useState("success");
     const [toastTitle, setToastTitle] = useState("");
     const [toastMessage, setToastMessage] = useState("");
+
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
 
     /*
@@ -409,17 +420,33 @@ const ProfileScreen = () => {
      * ALTERAÇÕES
      * ==========================================
      */
+    const hasPasswordChanges =
+        !!currentPassword ||
+        !!newPassword ||
+        !!confirmPassword;
 
     const hasChanges =
         name !== initialName ||
-        !!photoFile;
+        !!photoFile ||
+        hasPasswordChanges;
 
+    /*
+* ==========================================
+* ALTERAR SENHA
+* ==========================================
+*/
 
     /*
      * ==========================================
      * SALVAR
      * ==========================================
      */
+
+    /*
+  * ==========================================
+  * SALVAR
+  * ==========================================
+  */
 
     const handleSave = async () => {
 
@@ -436,8 +463,122 @@ const ProfileScreen = () => {
             );
 
             return;
+        }
+
+        const hasPasswordChanges =
+            !!currentPassword ||
+            !!newPassword ||
+            !!confirmPassword;
+
+        /*
+         * ==========================================
+         * VALIDAR SENHA
+         * ==========================================
+         */
+
+        if (hasPasswordChanges) {
+
+            if (!currentPassword) {
+
+                openToast(
+                    "error",
+                    "Senha atual obrigatória",
+                    "Informe sua senha atual para alterar a senha.",
+                );
+
+                return;
+            }
+
+            if (!newPassword) {
+
+                openToast(
+                    "error",
+                    "Nova senha obrigatória",
+                    "Informe a nova senha.",
+                );
+
+                return;
+            }
+
+            if (!confirmPassword) {
+
+                openToast(
+                    "error",
+                    "Confirmação obrigatória",
+                    "Confirme sua nova senha.",
+                );
+
+                return;
+            }
+
+            if (newPassword.length < 8) {
+
+                openToast(
+                    "error",
+                    "Senha muito curta",
+                    "A nova senha deve possuir pelo menos 8 caracteres.",
+                );
+
+                return;
+            }
+
+            if (!/[A-Z]/.test(newPassword)) {
+
+                openToast(
+                    "error",
+                    "Senha inválida",
+                    "A nova senha deve possuir pelo menos uma letra maiúscula.",
+                );
+
+                return;
+            }
+
+            if (!/[a-z]/.test(newPassword)) {
+
+                openToast(
+                    "error",
+                    "Senha inválida",
+                    "A nova senha deve possuir pelo menos uma letra minúscula.",
+                );
+
+                return;
+            }
+
+            if (!/[0-9]/.test(newPassword)) {
+
+                openToast(
+                    "error",
+                    "Senha inválida",
+                    "A nova senha deve possuir pelo menos um número.",
+                );
+
+                return;
+            }
+
+            if (newPassword === currentPassword) {
+
+                openToast(
+                    "error",
+                    "Senha inválida",
+                    "A nova senha deve ser diferente da senha atual.",
+                );
+
+                return;
+            }
+
+            if (newPassword !== confirmPassword) {
+
+                openToast(
+                    "error",
+                    "Senhas não coincidem",
+                    "A confirmação da nova senha não corresponde à nova senha.",
+                );
+
+                return;
+            }
 
         }
+
 
         try {
 
@@ -451,9 +592,58 @@ const ProfileScreen = () => {
 
 
             /*
-             * ==============================
+             * ==========================================
+             * ALTERAR SENHA
+             * ==========================================
+             */
+
+            if (hasPasswordChanges) {
+
+                if (!user.email) {
+
+                    openToast(
+                        "error",
+                        "Não foi possível alterar",
+                        "Sua conta não possui um e-mail associado.",
+                    );
+
+                    return;
+                }
+
+                const credential =
+                    EmailAuthProvider.credential(
+                        user.email,
+                        currentPassword,
+                    );
+
+                /*
+                 * Reautenticar primeiro.
+                 * Se a senha atual estiver errada,
+                 * o erro será capturado abaixo.
+                 */
+
+                await reauthenticateWithCredential(
+                    user,
+                    credential,
+                );
+
+                /*
+                 * Só altera a senha depois
+                 * da autenticação ser confirmada.
+                 */
+
+                await updatePassword(
+                    user,
+                    newPassword,
+                );
+
+            }
+
+
+            /*
+             * ==========================================
              * UPLOAD DA FOTO
-             * ==============================
+             * ==========================================
              */
 
             if (photoFile) {
@@ -490,9 +680,9 @@ const ProfileScreen = () => {
 
 
             /*
-             * ==============================
+             * ==========================================
              * FIREBASE AUTHENTICATION
-             * ==============================
+             * ==========================================
              */
 
             await updateProfile(
@@ -505,9 +695,9 @@ const ProfileScreen = () => {
 
 
             /*
-             * ==============================
+             * ==========================================
              * REALTIME DATABASE
-             * ==============================
+             * ==========================================
              */
 
             await update(
@@ -522,9 +712,9 @@ const ProfileScreen = () => {
 
 
             /*
-             * ==============================
+             * ==========================================
              * ATUALIZAR ESTADO
-             * ==============================
+             * ==========================================
              */
 
             setName(cleanName);
@@ -533,32 +723,98 @@ const ProfileScreen = () => {
             setPhotoFile(null);
             setPhotoPreview(photoUrl);
 
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+
 
             /*
-             * ==============================
+             * ==========================================
              * SUCESSO
-             * ==============================
+             * ==========================================
              */
 
             openToast(
                 "success",
-                "Perfil atualizado",
-                "Seu nome e sua foto foram atualizados com sucesso.",
+                "Alterações salvas",
+                hasPasswordChanges
+                    ? "Seu perfil e sua senha foram atualizados com sucesso."
+                    : "Seu perfil foi atualizado com sucesso.",
             );
 
         } catch (error) {
 
             console.error(
-                "Erro ao atualizar perfil:",
+                "Erro ao salvar alterações:",
                 error,
             );
 
-            openToast(
-                "error",
-                "Erro ao atualizar",
-                error.message ||
-                "Não foi possível atualizar seu perfil.",
-            );
+
+            /*
+             * ==========================================
+             * ERROS DO FIREBASE
+             * ==========================================
+             */
+
+            switch (error.code) {
+
+                case "auth/invalid-credential":
+
+                case "auth/wrong-password":
+
+                    openToast(
+                        "error",
+                        "Senha atual incorreta",
+                        "A senha atual informada não está correta.",
+                    );
+
+                    break;
+
+
+                case "auth/too-many-requests":
+
+                    openToast(
+                        "error",
+                        "Muitas tentativas",
+                        "Por segurança, aguarde alguns minutos antes de tentar novamente.",
+                    );
+
+                    break;
+
+
+                case "auth/requires-recent-login":
+
+                    openToast(
+                        "error",
+                        "Verificação necessária",
+                        "Por segurança, faça login novamente antes de alterar sua senha.",
+                    );
+
+                    break;
+
+
+                case "auth/weak-password":
+
+                    openToast(
+                        "error",
+                        "Senha fraca",
+                        "A nova senha não atende aos requisitos de segurança.",
+                    );
+
+                    break;
+
+
+                default:
+
+                    openToast(
+                        "error",
+                        "Não foi possível salvar",
+                        "Ocorreu um erro ao salvar as alterações. Tente novamente.",
+                    );
+
+                    break;
+
+            }
 
         } finally {
 
@@ -697,6 +953,210 @@ const ProfileScreen = () => {
 
             </div>
 
+            {/* ================= SENHA ================= */}
+
+            <div className="company-card profile-password-card">
+
+                <div className="profile-password-fields">
+
+                    {/* SENHA ATUAL */}
+
+                    <div className="company-input-group">
+
+                        <Icon
+                            icon="solar:lock-outline"
+                            className="company-input-icon"
+                        />
+
+                        <input
+                            className="company-input"
+                            type={showCurrentPassword ? "text" : "password"}
+                            placeholder="Senha atual"
+                            value={currentPassword}
+                            onChange={(event) =>
+                                setCurrentPassword(event.target.value)
+                            }
+                            autoComplete="current-password"
+                        />
+
+                        <button
+                            type="button"
+                            className="profile-password-toggle"
+                            onClick={() =>
+                                setShowCurrentPassword((value) => !value)
+                            }
+                            aria-label={
+                                showCurrentPassword
+                                    ? "Ocultar senha"
+                                    : "Mostrar senha"
+                            }
+                        >
+                            <Icon
+                                icon={
+                                    showCurrentPassword
+                                        ? "solar:eye-closed-outline"
+                                        : "solar:eye-outline"
+                                }
+                            />
+                        </button>
+
+                    </div>
+
+
+                    {/* NOVA SENHA */}
+
+                    <div className="company-input-group">
+
+                        <Icon
+                            icon="solar:lock-password-outline"
+                            className="company-input-icon"
+                        />
+
+                        <input
+                            className="company-input"
+                            type={showNewPassword ? "text" : "password"}
+                            placeholder="Nova senha"
+                            value={newPassword}
+                            onChange={(event) =>
+                                setNewPassword(event.target.value)
+                            }
+                            autoComplete="new-password"
+                        />
+
+                        <button
+                            type="button"
+                            className="profile-password-toggle"
+                            onClick={() =>
+                                setShowNewPassword((value) => !value)
+                            }
+                            aria-label={
+                                showNewPassword
+                                    ? "Ocultar senha"
+                                    : "Mostrar senha"
+                            }
+                        >
+                            <Icon
+                                icon={
+                                    showNewPassword
+                                        ? "solar:eye-closed-outline"
+                                        : "solar:eye-outline"
+                                }
+                            />
+                        </button>
+
+                    </div>
+
+                    <div className="company-input-group">
+
+                        <Icon
+                            icon="solar:shield-check-outline"
+                            className="company-input-icon"
+                        />
+
+                        <input
+                            className="company-input"
+                            type={showConfirmPassword ? "text" : "password"}
+                            placeholder="Confirmar nova senha"
+                            value={confirmPassword}
+                            onChange={(event) =>
+                                setConfirmPassword(event.target.value)
+                            }
+                            autoComplete="new-password"
+                        />
+
+                        <button
+                            type="button"
+                            className="profile-password-toggle"
+                            onClick={() =>
+                                setShowConfirmPassword((value) => !value)
+                            }
+                            aria-label={
+                                showConfirmPassword
+                                    ? "Ocultar senha"
+                                    : "Mostrar senha"
+                            }
+                        >
+                            <Icon
+                                icon={
+                                    showConfirmPassword
+                                        ? "solar:eye-closed-outline"
+                                        : "solar:eye-outline"
+                                }
+                            />
+                        </button>
+
+                    </div>
+
+
+                    {/* REQUISITOS */}
+
+                    <div className="profile-password-requirements">
+
+                        <span>
+                            A senha deve possuir:
+                        </span>
+
+                        <div className="profile-password-requirements-list">
+
+                            <span className={
+                                newPassword.length >= 8
+                                    ? "valid"
+                                    : ""
+                            }>
+                                <Icon icon={
+                                    newPassword.length >= 8
+                                        ? "solar:check-circle-outline"
+                                        : "solar:circle-outline"
+                                } />
+                                8 caracteres
+                            </span>
+
+                            <span className={
+                                /[A-Z]/.test(newPassword)
+                                    ? "valid"
+                                    : ""
+                            }>
+                                <Icon icon={
+                                    /[A-Z]/.test(newPassword)
+                                        ? "solar:check-circle-outline"
+                                        : "solar:circle-outline"
+                                } />
+                                Uma letra maiúscula
+                            </span>
+
+                            <span className={
+                                /[a-z]/.test(newPassword)
+                                    ? "valid"
+                                    : ""
+                            }>
+                                <Icon icon={
+                                    /[a-z]/.test(newPassword)
+                                        ? "solar:check-circle-outline"
+                                        : "solar:circle-outline"
+                                } />
+                                Uma letra minúscula
+                            </span>
+
+                            <span className={
+                                /[0-9]/.test(newPassword)
+                                    ? "valid"
+                                    : ""
+                            }>
+                                <Icon icon={
+                                    /[0-9]/.test(newPassword)
+                                        ? "solar:check-circle-outline"
+                                        : "solar:circle-outline"
+                                } />
+                                Um número
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
 
             {/* ================= SALVAR ================= */}
 
@@ -705,8 +1165,8 @@ const ProfileScreen = () => {
                 disabled={!hasChanges || saving}
                 onClick={handleSave}
                 className={`company-save ${!hasChanges || saving
-                        ? "disabled"
-                        : ""
+                    ? "disabled"
+                    : ""
                     }`}
             >
 

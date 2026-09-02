@@ -1,59 +1,135 @@
-import React, { useState, useEffect } from "react";
+// Orders.jsx
+
+import React, { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
-import { getDatabase, ref, onValue, get, update, remove } from "firebase/database";
+import {
+    getDatabase,
+    ref,
+    onValue,
+    get,
+    update,
+    remove
+} from "firebase/database";
 import { motion, AnimatePresence } from "framer-motion";
+
 import "./orders.css";
 import placeholder from "../../../img/1.jpg";
 import Toast from "../../../components/toast/Toast";
 
 const Orders = ({ company, initialOrder }) => {
+
+    /* =========================================================
+       ESTADOS PRINCIPAIS
+    ========================================================= */
+
     const [activeTab, setActiveTab] = useState("ativos");
+
     const [orders, setOrders] = useState([]);
+
     const [loading, setLoading] = useState(true);
-    const [orderToDelete, setOrderToDelete] = useState(null);
-    const [openOrderDetails, setOpenOrderDetails] = useState(null);
+
     const [searchTerm, setSearchTerm] = useState("");
+
+    const [openOrderDetails, setOpenOrderDetails] = useState(null);
+
+    const [orderToDelete, setOrderToDelete] = useState(null);
+
     const [orderToCancel, setOrderToCancel] = useState(null);
 
-    // FILTROS
+
+    /* =========================================================
+       FILTROS
+    ========================================================= */
+
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    const [selectedPeriod, setSelectedPeriod] = useState("all");
+
+    const [selectedProfessionals, setSelectedProfessionals] = useState([]);
+
+    const [selectedServices, setSelectedServices] = useState([]);
+
+
+    const [tempPeriod, setTempPeriod] = useState("all");
+
+    const [tempProfessionals, setTempProfessionals] = useState([]);
+
+    const [tempServices, setTempServices] = useState([]);
+
+
+    const [professionalSearch, setProfessionalSearch] = useState("");
+
+    const [serviceSearch, setServiceSearch] = useState("");
+
+
+    /* =========================================================
+       ORDENAÇÃO
+    ========================================================= */
+
     const [isSortOpen, setIsSortOpen] = useState(false);
 
     const [selectedSort, setSelectedSort] = useState("dateAsc");
+
     const [tempSort, setTempSort] = useState("dateAsc");
 
-    const [selectedPeriod, setSelectedPeriod] = useState("all");
-    const [selectedProfessionals, setSelectedProfessionals] = useState([]);
-    const [selectedServices, setSelectedServices] = useState([]);
 
-    // filtros temporários (modal)
-    const [tempPeriod, setTempPeriod] = useState("all");
-    const [tempProfessionals, setTempProfessionals] = useState([]);
-    const [tempServices, setTempServices] = useState([]);
-
-    const periodOptions = [
-        { id: "all", label: "Todos" },
-        { id: "today", label: "Hoje" },
-        { id: "tomorrow", label: "Amanhã" },
-        { id: "week", label: "Esta semana" },
-        { id: "next7", label: "Próximos 7 dias" },
-        { id: "month", label: "Este mês" },
-    ];
+    /* =========================================================
+       TOAST
+    ========================================================= */
 
     const [showToast, setShowToast] = useState(false);
+
     const [toastType, setToastType] = useState("success");
+
     const [toastTitle, setToastTitle] = useState("");
+
     const [toastMessage, setToastMessage] = useState("");
+
 
     const openToast = (type, title, message) => {
 
         setToastType(type);
+
         setToastTitle(title);
+
         setToastMessage(message);
 
         setShowToast(true);
 
     };
+
+
+    /* =========================================================
+       OPÇÕES
+    ========================================================= */
+
+    const periodOptions = [
+        {
+            id: "all",
+            label: "Todos"
+        },
+        {
+            id: "today",
+            label: "Hoje"
+        },
+        {
+            id: "tomorrow",
+            label: "Amanhã"
+        },
+        {
+            id: "week",
+            label: "Esta semana"
+        },
+        {
+            id: "next7",
+            label: "Próximos 7 dias"
+        },
+        {
+            id: "month",
+            label: "Este mês"
+        }
+    ];
+
 
     const sortOptions = [
         {
@@ -90,150 +166,851 @@ const Orders = ({ company, initialOrder }) => {
         }
     ];
 
+
+    /* =========================================================
+       UTILITÁRIOS
+    ========================================================= */
+
     const parseOrderDate = (order) => {
-        if (!order.day) return null;
 
-        const [day, month, year] = order.day.split("/").map(Number);
+        if (!order?.day) return null;
 
-        return new Date(year, month - 1, day);
+        const [day, month, year] =
+            order.day.split("/").map(Number);
+
+        if (!day || !month || !year) {
+            return null;
+        }
+
+        return new Date(
+            year,
+            month - 1,
+            day
+        );
+
     };
 
-    const [professionalSearch, setProfessionalSearch] = useState("");
-    const [serviceSearch, setServiceSearch] = useState("");
 
-    const professionals = [
-        ...new Set(
-            orders
-                .map(order => order.professionalName)
-                .filter(Boolean)
-        )
-    ];
+    const parseOrderDateTime = (order) => {
 
-    const services = [
-        ...new Set(
-            orders
-                .map(order => order.productName)
-                .filter(Boolean)
-        )
-    ];
+        if (!order?.day) return null;
+
+        const [day, month, year] =
+            order.day.split("/").map(Number);
+
+        const [hour, minute] =
+            (order.hour || "00:00")
+                .split(":")
+                .map(Number);
+
+        if (!day || !month || !year) {
+            return null;
+        }
+
+        return new Date(
+            year,
+            month - 1,
+            day,
+            hour || 0,
+            minute || 0
+        );
+
+    };
+
+
+    const truncate = (text, max = 20) => {
+
+        if (!text) return "—";
+
+        return text.length > max
+            ? `${text.slice(0, max)}...`
+            : text;
+
+    };
+
+
+    const parsePrice = (value) => {
+
+        if (typeof value === "number") {
+            return value;
+        }
+
+        if (!value) return 0;
+
+        return Number(
+            String(value)
+                .replace(/[^\d,.-]/g, "")
+                .replace(/\./g, "")
+                .replace(",", ".")
+        ) || 0;
+
+    };
+
+
+    const formatStatus = (status) => {
+
+        switch (status) {
+
+            case "ativos":
+            case "pending":
+                return "Ativo";
+
+            case "completos":
+            case "completed":
+                return "Completo";
+
+            case "cancelados":
+            case "cancelled":
+            case "canceled":
+                return "Cancelado";
+
+            default:
+                return "Ativo";
+
+        }
+
+    };
+
+
+    const getStatusIcon = (status) => {
+
+        switch (status) {
+
+            case "completos":
+                return "lucide:check-circle";
+
+            case "cancelados":
+                return "lucide:x-circle";
+
+            default:
+                return "lucide:clock-3";
+
+        }
+
+    };
+
+
+    /* =========================================================
+       CARREGAR PEDIDOS
+    ========================================================= */
 
     useEffect(() => {
+
         if (!company?.handle) return;
 
         const db = getDatabase();
-        const schedulesRef = ref(db, `companys/${company.handle}/schedules`);
 
-        const unsubscribe = onValue(schedulesRef, async (snapshot) => {
-            const data = snapshot.val();
-            if (!data) {
-                setOrders([]);
-                setLoading(false);
-                return;
-            }
+        const schedulesRef =
+            ref(
+                db,
+                `companys/${company.handle}/schedules`
+            );
 
-            const productsRef = ref(db, `companys/${company.handle}/products`);
-            const productsSnap = await get(productsRef);
-            const productsData = productsSnap.exists() ? productsSnap.val() : {};
 
-            const formatted = Object.entries(data).map(([id, item]) => {
-                const product = productsData[item.productId] || {};
-                const firstImage = Array.isArray(product.images)
-                    ? product.images[0]
-                    : product.images || placeholder;
+        const unsubscribe = onValue(
+            schedulesRef,
+            async (snapshot) => {
 
-                // ============ NOVA LÓGICA DE CÁLCULO DE HORÁRIO ============
-                let endTimeDisplay = item.hour || "—";
+                const data = snapshot.val();
 
-                if (item.hour && product?.duration) {
-                    const durationMinutes = Number(product.duration);
-                    if (!isNaN(durationMinutes)) {
-                        const [startHour, startMin] = item.hour.split(":").map(Number);
-                        const totalMinutes = startHour * 60 + startMin + durationMinutes;
-                        const endHour = Math.floor(totalMinutes / 60) % 24;
-                        const endMin = totalMinutes % 60;
-                        const formattedEnd = `${endHour.toString().padStart(2, "0")}:${endMin
-                            .toString()
-                            .padStart(2, "0")}`;
 
-                        endTimeDisplay = `${item.hour} - ${formattedEnd}`;
+                if (!data) {
 
-                        // 🧾 Log detalhado da conta
-                        console.log("📋 --- Cálculo de duração ---");
-                        console.log("🕒 Início:", item.hour);
-                        console.log("⏱️ Duração (min):", durationMinutes);
-                        console.log("🧮 Total em minutos:", startHour * 60 + startMin, "+", durationMinutes, "=", totalMinutes);
-                        console.log("➡️ Resultado:", endTimeDisplay);
-                        console.log("---------------------------");
-                    } else {
-                        console.warn("⚠️ Duração inválida para o produto:", product.name, product.duration);
-                    }
-                } else {
-                    console.warn("⚠️ Sem hora ou duração definida para o agendamento:", item);
+                    setOrders([]);
+
+                    setLoading(false);
+
+                    return;
+
                 }
-                // ===========================================================
 
-                return {
-                    id,
-                    ...item,
-                    productName: product.name || "Serviço",
-                    productValue: product.value || "—",
-                    productImage: firstImage || placeholder,
-                    professionalName: item.professionalName || "Profissional",
-                    duration: product.duration || null,
-                    fullHour: endTimeDisplay,
-                    statusDisplay:
-                        item.status === "pending" || item.status === "ativos"
-                            ? "ativos"
-                            : item.status === "completed"
-                                ? "completos"
-                                : "cancelados",
-                };
-            });
-            const sortedOrders = formatted.sort((a, b) => {
+
                 try {
-                    const [dayA, monthA, yearA] = (a.day || "").split("/").map(Number);
-                    const [hourA, minuteA] = (a.hour || "00:00").split(":").map(Number);
-                    const dateA = new Date(yearA, monthA - 1, dayA, hourA, minuteA);
 
-                    const [dayB, monthB, yearB] = (b.day || "").split("/").map(Number);
-                    const [hourB, minuteB] = (b.hour || "00:00").split(":").map(Number);
-                    const dateB = new Date(yearB, monthB - 1, dayB, hourB, minuteB);
+                    const productsRef =
+                        ref(
+                            db,
+                            `companys/${company.handle}/products`
+                        );
 
-                    return dateA - dateB;
-                } catch (err) {
-                    console.error("Erro ao ordenar pedidos:", err);
-                    return 0;
+
+                    const productsSnap =
+                        await get(productsRef);
+
+
+                    const productsData =
+                        productsSnap.exists()
+                            ? productsSnap.val()
+                            : {};
+
+
+                    const formatted =
+                        Object.entries(data).map(
+                            ([id, item]) => {
+
+                                const product =
+                                    productsData[
+                                    item.productId
+                                    ] || {};
+
+
+                                let firstImage =
+                                    placeholder;
+
+
+                                if (
+                                    Array.isArray(
+                                        product.images
+                                    )
+                                ) {
+
+                                    firstImage =
+                                        product.images[0] ||
+                                        placeholder;
+
+                                } else if (
+                                    product.images
+                                ) {
+
+                                    firstImage =
+                                        product.images;
+
+                                }
+
+
+                                /* =========================
+                                   HORÁRIO FINAL
+                                ========================= */
+
+                                let endTimeDisplay =
+                                    item.hour || "—";
+
+
+                                if (
+                                    item.hour &&
+                                    product?.duration
+                                ) {
+
+                                    const durationMinutes =
+                                        Number(
+                                            product.duration
+                                        );
+
+
+                                    if (
+                                        !Number.isNaN(
+                                            durationMinutes
+                                        )
+                                    ) {
+
+                                        const [
+                                            startHour,
+                                            startMin
+                                        ] =
+                                            item.hour
+                                                .split(":")
+                                                .map(Number);
+
+
+                                        const totalMinutes =
+                                            startHour * 60 +
+                                            startMin +
+                                            durationMinutes;
+
+
+                                        const endHour =
+                                            Math.floor(
+                                                totalMinutes / 60
+                                            ) % 24;
+
+
+                                        const endMin =
+                                            totalMinutes % 60;
+
+
+                                        const formattedEnd =
+                                            `${String(
+                                                endHour
+                                            ).padStart(2, "0")}:${String(
+                                                endMin
+                                            ).padStart(2, "0")}`;
+
+
+                                        endTimeDisplay =
+                                            `${item.hour} - ${formattedEnd}`;
+
+                                    }
+
+                                }
+
+
+                                /* =========================
+                                   STATUS
+                                ========================= */
+
+                                let statusDisplay =
+                                    "ativos";
+
+
+                                if (
+                                    item.status ===
+                                    "completed"
+                                ) {
+
+                                    statusDisplay =
+                                        "completos";
+
+                                } else if (
+                                    item.status ===
+                                    "cancelados" ||
+                                    item.status ===
+                                    "cancelled" ||
+                                    item.status ===
+                                    "canceled"
+                                ) {
+
+                                    statusDisplay =
+                                        "cancelados";
+
+                                } else {
+
+                                    statusDisplay =
+                                        "ativos";
+
+                                }
+
+
+                                return {
+
+                                    id,
+
+                                    ...item,
+
+                                    productName:
+                                        product.name ||
+                                        "Serviço",
+
+                                    productValue:
+                                        product.value ||
+                                        "—",
+
+                                    productImage:
+                                        firstImage,
+
+                                    professionalName:
+                                        item.professionalName ||
+                                        "Profissional",
+
+                                    duration:
+                                        product.duration ||
+                                        null,
+
+                                    fullHour:
+                                        endTimeDisplay,
+
+                                    statusDisplay
+
+                                };
+
+                            }
+                        );
+
+
+                    formatted.sort(
+                        (a, b) => {
+
+                            const dateA =
+                                parseOrderDateTime(a);
+
+                            const dateB =
+                                parseOrderDateTime(b);
+
+                            if (!dateA || !dateB) {
+                                return 0;
+                            }
+
+                            return dateA - dateB;
+
+                        }
+                    );
+
+
+                    setOrders(formatted);
+
+                    setLoading(false);
+
+                } catch (error) {
+
+                    console.error(
+                        "Erro ao carregar pedidos:",
+                        error
+                    );
+
+                    setOrders([]);
+
+                    setLoading(false);
+
                 }
-            });
 
-            setOrders(sortedOrders);
+            }
+        );
 
-            setLoading(false);
-        });
 
         return () => unsubscribe();
+
     }, [company]);
 
+
+    /* =========================================================
+       PEDIDO INICIAL
+    ========================================================= */
+
     useEffect(() => {
+
         if (initialOrder) {
-            setOpenOrderDetails(initialOrder);
+
+            setOpenOrderDetails(
+                initialOrder
+            );
+
         }
+
     }, [initialOrder]);
 
-    const handleComplete = async (order) => {
+
+    /* =========================================================
+       LISTAS DE FILTROS
+    ========================================================= */
+
+    const professionals = useMemo(() => {
+
+        return [
+            ...new Set(
+                orders
+                    .map(
+                        order =>
+                            order.professionalName
+                    )
+                    .filter(Boolean)
+            )
+        ];
+
+    }, [orders]);
+
+
+    const services = useMemo(() => {
+
+        return [
+            ...new Set(
+                orders
+                    .map(
+                        order =>
+                            order.productName
+                    )
+                    .filter(Boolean)
+            )
+        ];
+
+    }, [orders]);
+
+
+    /* =========================================================
+       FILTRAGEM + ORDENAÇÃO
+    ========================================================= */
+
+    const filteredOrders = useMemo(() => {
+
+        return orders
+
+            .filter((order) => {
+
+                /* =========================
+                   ABA
+                ========================= */
+
+                const matchesTab =
+                    order.statusDisplay ===
+                    activeTab;
+
+
+                /* =========================
+                   PESQUISA
+                ========================= */
+
+                const normalizedSearch =
+                    searchTerm
+                        .trim()
+                        .toLowerCase();
+
+
+                const matchesSearch =
+                    !normalizedSearch ||
+                    order.productName
+                        ?.toLowerCase()
+                        .includes(
+                            normalizedSearch
+                        ) ||
+                    order.userName
+                        ?.toLowerCase()
+                        .includes(
+                            normalizedSearch
+                        ) ||
+                    order.clientName
+                        ?.toLowerCase()
+                        .includes(
+                            normalizedSearch
+                        ) ||
+                    order.professionalName
+                        ?.toLowerCase()
+                        .includes(
+                            normalizedSearch
+                        );
+
+
+                /* =========================
+                   PROFISSIONAL
+                ========================= */
+
+                const matchesProfessional =
+                    selectedProfessionals.length === 0 ||
+                    selectedProfessionals.includes(
+                        order.professionalName
+                    );
+
+
+                /* =========================
+                   SERVIÇO
+                ========================= */
+
+                const matchesService =
+                    selectedServices.length === 0 ||
+                    selectedServices.includes(
+                        order.productName
+                    );
+
+
+                /* =========================
+                   PERÍODO
+                ========================= */
+
+                let matchesPeriod = true;
+
+
+                const today =
+                    new Date();
+
+
+                today.setHours(
+                    0,
+                    0,
+                    0,
+                    0
+                );
+
+
+                const tomorrow =
+                    new Date(today);
+
+
+                tomorrow.setDate(
+                    tomorrow.getDate() + 1
+                );
+
+
+                const orderDate =
+                    parseOrderDate(order);
+
+
+                if (orderDate) {
+
+                    orderDate.setHours(
+                        0,
+                        0,
+                        0,
+                        0
+                    );
+
+
+                    switch (
+                    selectedPeriod
+                    ) {
+
+                        case "today":
+
+                            matchesPeriod =
+                                orderDate.getTime() ===
+                                today.getTime();
+
+                            break;
+
+
+                        case "tomorrow":
+
+                            matchesPeriod =
+                                orderDate.getTime() ===
+                                tomorrow.getTime();
+
+                            break;
+
+
+                        case "week": {
+
+                            const endWeek =
+                                new Date(today);
+
+                            endWeek.setDate(
+                                today.getDate() + 7
+                            );
+
+                            matchesPeriod =
+                                orderDate >= today &&
+                                orderDate <= endWeek;
+
+                            break;
+
+                        }
+
+
+                        case "next7": {
+
+                            const next7 =
+                                new Date(today);
+
+                            next7.setDate(
+                                today.getDate() + 7
+                            );
+
+                            matchesPeriod =
+                                orderDate >= today &&
+                                orderDate <= next7;
+
+                            break;
+
+                        }
+
+
+                        case "month":
+
+                            matchesPeriod =
+                                orderDate.getMonth() ===
+                                today.getMonth() &&
+                                orderDate.getFullYear() ===
+                                today.getFullYear();
+
+                            break;
+
+
+                        default:
+
+                            matchesPeriod = true;
+
+                    }
+
+                }
+
+
+                return (
+                    matchesTab &&
+                    matchesSearch &&
+                    matchesProfessional &&
+                    matchesService &&
+                    matchesPeriod
+                );
+
+            })
+
+
+            .sort((a, b) => {
+
+                switch (selectedSort) {
+
+                    case "dateAsc": {
+
+                        const dateA =
+                            parseOrderDateTime(a);
+
+                        const dateB =
+                            parseOrderDateTime(b);
+
+                        return (
+                            (dateA?.getTime() || 0) -
+                            (dateB?.getTime() || 0)
+                        );
+
+                    }
+
+
+                    case "dateDesc": {
+
+                        const dateA =
+                            parseOrderDateTime(a);
+
+                        const dateB =
+                            parseOrderDateTime(b);
+
+                        return (
+                            (dateB?.getTime() || 0) -
+                            (dateA?.getTime() || 0)
+                        );
+
+                    }
+
+
+                    case "nameAsc":
+
+                        return (
+                            a.userName ||
+                            a.clientName ||
+                            ""
+                        ).localeCompare(
+                            b.userName ||
+                            b.clientName ||
+                            ""
+                        );
+
+
+                    case "nameDesc":
+
+                        return (
+                            b.userName ||
+                            b.clientName ||
+                            ""
+                        ).localeCompare(
+                            a.userName ||
+                            a.clientName ||
+                            ""
+                        );
+
+
+                    case "serviceAsc":
+
+                        return (
+                            a.productName || ""
+                        ).localeCompare(
+                            b.productName || ""
+                        );
+
+
+                    case "serviceDesc":
+
+                        return (
+                            b.productName || ""
+                        ).localeCompare(
+                            a.productName || ""
+                        );
+
+
+                    case "priceAsc":
+
+                        return (
+                            parsePrice(
+                                a.productValue
+                            ) -
+                            parsePrice(
+                                b.productValue
+                            )
+                        );
+
+
+                    case "priceDesc":
+
+                        return (
+                            parsePrice(
+                                b.productValue
+                            ) -
+                            parsePrice(
+                                a.productValue
+                            )
+                        );
+
+
+                    default:
+
+                        return 0;
+
+                }
+
+            });
+
+    }, [
+        orders,
+        activeTab,
+        searchTerm,
+        selectedPeriod,
+        selectedProfessionals,
+        selectedServices,
+        selectedSort
+    ]);
+
+
+    /* =========================================================
+       CONTADORES
+    ========================================================= */
+
+    const orderCounts = useMemo(() => {
+
+        return {
+
+            ativos:
+                orders.filter(
+                    order =>
+                        order.statusDisplay ===
+                        "ativos"
+                ).length,
+
+            completos:
+                orders.filter(
+                    order =>
+                        order.statusDisplay ===
+                        "completos"
+                ).length,
+
+            cancelados:
+                orders.filter(
+                    order =>
+                        order.statusDisplay ===
+                        "cancelados"
+                ).length
+
+        };
+
+    }, [orders]);
+
+
+    /* =========================================================
+       CONCLUIR
+    ========================================================= */
+
+    const handleComplete = async (
+        order
+    ) => {
 
         try {
 
-            const db = getDatabase();
+            const db =
+                getDatabase();
 
-            const orderRef = ref(
-                db,
-                `companys/${company.handle}/schedules/${order.id}`
+
+            const orderRef =
+                ref(
+                    db,
+                    `companys/${company.handle}/schedules/${order.id}`
+                );
+
+
+            await update(
+                orderRef,
+                {
+                    status:
+                        "completed"
+                }
             );
 
-            await update(orderRef, {
-                status: "completed"
-            });
+
+            setOpenOrderDetails(
+                null
+            );
+
 
             openToast(
                 "success",
@@ -241,7 +1018,12 @@ const Orders = ({ company, initialOrder }) => {
                 "O atendimento foi finalizado com sucesso."
             );
 
-        } catch {
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
 
             openToast(
                 "error",
@@ -253,20 +1035,36 @@ const Orders = ({ company, initialOrder }) => {
 
     };
 
-    const handleCancel = async (order) => {
+
+    /* =========================================================
+       CANCELAR
+    ========================================================= */
+
+    const handleCancel = async (
+        order
+    ) => {
 
         try {
 
-            const db = getDatabase();
+            const db =
+                getDatabase();
 
-            const orderRef = ref(
-                db,
-                `companys/${company.handle}/schedules/${order.id}`
+
+            const orderRef =
+                ref(
+                    db,
+                    `companys/${company.handle}/schedules/${order.id}`
+                );
+
+
+            await update(
+                orderRef,
+                {
+                    status:
+                        "cancelados"
+                }
             );
 
-            await update(orderRef, {
-                status: "cancelados"
-            });
 
             openToast(
                 "success",
@@ -274,7 +1072,12 @@ const Orders = ({ company, initialOrder }) => {
                 "O agendamento foi cancelado com sucesso."
             );
 
-        } catch {
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
 
             openToast(
                 "error",
@@ -286,22 +1089,40 @@ const Orders = ({ company, initialOrder }) => {
 
     };
 
+
+    /* =========================================================
+       EXCLUIR
+    ========================================================= */
+
     const handleDelete = async () => {
 
-        if (!orderToDelete) return;
+        if (!orderToDelete) {
+            return;
+        }
+
 
         try {
 
-            const db = getDatabase();
+            const db =
+                getDatabase();
 
-            const orderRef = ref(
-                db,
-                `companys/${company.handle}/schedules/${orderToDelete.id}`
+
+            const orderRef =
+                ref(
+                    db,
+                    `companys/${company.handle}/schedules/${orderToDelete.id}`
+                );
+
+
+            await remove(
+                orderRef
             );
 
-            await remove(orderRef);
 
-            setOrderToDelete(null);
+            setOrderToDelete(
+                null
+            );
+
 
             openToast(
                 "success",
@@ -309,7 +1130,12 @@ const Orders = ({ company, initialOrder }) => {
                 "O agendamento foi removido com sucesso."
             );
 
-        } catch {
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
 
             openToast(
                 "error",
@@ -321,491 +1147,1089 @@ const Orders = ({ company, initialOrder }) => {
 
     };
 
-    const filteredOrders = orders
-        .filter((order) => {
 
-            // Aba
-            const matchesTab = order.statusDisplay === activeTab;
+    /* =========================================================
+       AÇÕES DOS FILTROS
+    ========================================================= */
 
-            // Pesquisa
-            const matchesSearch =
-                searchTerm === "" ||
-                order.productName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                order.userName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const openFilters = () => {
 
-            // Profissional
-            const matchesProfessional =
-                selectedProfessionals.length === 0 ||
-                selectedProfessionals.includes(order.professionalName);
+        setTempPeriod(
+            selectedPeriod
+        );
 
-            // Serviço
-            const matchesService =
-                selectedServices.length === 0 ||
-                selectedServices.includes(order.productName);
+        setTempProfessionals(
+            selectedProfessionals
+        );
 
-            // Período
-            let matchesPeriod = true;
+        setTempServices(
+            selectedServices
+        );
 
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
+        setProfessionalSearch("");
 
-            const tomorrow = new Date(today);
-            tomorrow.setDate(today.getDate() + 1);
+        setServiceSearch("");
 
-            const orderDate = parseOrderDate(order);
+        setIsFilterOpen(
+            true
+        );
 
-            if (orderDate) {
-
-                orderDate.setHours(0, 0, 0, 0);
-
-                switch (selectedPeriod) {
-
-                    case "today":
-                        matchesPeriod =
-                            orderDate.getTime() === today.getTime();
-                        break;
-
-                    case "tomorrow":
-                        matchesPeriod =
-                            orderDate.getTime() === tomorrow.getTime();
-                        break;
-
-                    case "week": {
-
-                        const endWeek = new Date(today);
-                        endWeek.setDate(today.getDate() + 7);
-
-                        matchesPeriod =
-                            orderDate >= today &&
-                            orderDate <= endWeek;
-
-                        break;
-                    }
-
-                    case "next7": {
-
-                        const next7 = new Date(today);
-                        next7.setDate(today.getDate() + 7);
-
-                        matchesPeriod =
-                            orderDate >= today &&
-                            orderDate <= next7;
-
-                        break;
-                    }
-
-                    case "month":
-
-                        matchesPeriod =
-                            orderDate.getMonth() === today.getMonth() &&
-                            orderDate.getFullYear() === today.getFullYear();
-
-                        break;
-
-                    default:
-                        matchesPeriod = true;
-
-                }
-
-            }
-
-            return (
-                matchesTab &&
-                matchesSearch &&
-                matchesProfessional &&
-                matchesService &&
-                matchesPeriod
-            );
-
-        })
-        .sort((a, b) => {
-
-            switch (selectedSort) {
-
-                case "dateAsc": {
-
-                    const dateA = new Date(
-                        `${a.day.split("/").reverse().join("-")}T${a.hour || "00:00"}`
-                    );
-
-                    const dateB = new Date(
-                        `${b.day.split("/").reverse().join("-")}T${b.hour || "00:00"}`
-                    );
-
-                    return dateA - dateB;
-                }
-
-                case "dateDesc": {
-
-                    const dateA = new Date(
-                        `${a.day.split("/").reverse().join("-")}T${a.hour || "00:00"}`
-                    );
-
-                    const dateB = new Date(
-                        `${b.day.split("/").reverse().join("-")}T${b.hour || "00:00"}`
-                    );
-
-                    return dateB - dateA;
-                }
-
-                case "nameAsc":
-                    return (a.userName || "").localeCompare(b.userName || "");
-
-                case "nameDesc":
-                    return (b.userName || "").localeCompare(a.userName || "");
-
-                case "serviceAsc":
-                    return (a.productName || "").localeCompare(b.productName || "");
-
-                case "serviceDesc":
-                    return (b.productName || "").localeCompare(a.productName || "");
-
-                case "priceAsc": {
-
-                    const priceA = Number(
-                        (a.productValue || "")
-                            .replace(/[^\d,]/g, "")
-                            .replace(/\./g, "")
-                            .replace(",", ".")
-                    );
-
-                    const priceB = Number(
-                        (b.productValue || "")
-                            .replace(/[^\d,]/g, "")
-                            .replace(/\./g, "")
-                            .replace(",", ".")
-                    );
-
-                    return priceA - priceB;
-                }
-
-                case "priceDesc": {
-
-                    const priceA = Number(
-                        (a.productValue || "")
-                            .replace(/[^\d,]/g, "")
-                            .replace(/\./g, "")
-                            .replace(",", ".")
-                    );
-
-                    const priceB = Number(
-                        (b.productValue || "")
-                            .replace(/[^\d,]/g, "")
-                            .replace(/\./g, "")
-                            .replace(",", ".")
-                    );
-
-                    return priceB - priceA;
-                }
-
-                default:
-                    return 0;
-
-            }
-
-        });
-
-    useEffect(() => {
-        if (openOrderDetails) {
-            console.log("Produto aberto:", openOrderDetails.productName);
-            console.log("Duration (minutos):", openOrderDetails.duration);
-        }
-    }, [openOrderDetails]);
-
-    if (loading) {
-        return <div className="orders-page"><p>Carregando pedidos...</p></div>;
-    }
-
-    const truncate = (text, max = 16) => {
-        if (!text) return "—";
-        return text.length > max ? `${text.slice(0, max)}...` : text;
     };
 
 
+    const applyFilters = () => {
 
-    return (
-        <div className="orders-page">
-            <header className="orders-header">
-                <div className="header-content">
-                    <h1>Pedidos</h1>
-                    <div className="orders-header-tabs">
-                        {["ativos", "completos", "cancelados"].map((tab) => (
-                            <button
-                                key={tab}
-                                className={activeTab === tab ? "active" : ""}
-                                onClick={() => setActiveTab(tab)}
-                            >
-                                {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                            </button>
-                        ))}
-                    </div>
+        setSelectedPeriod(
+            tempPeriod
+        );
+
+        setSelectedProfessionals(
+            tempProfessionals
+        );
+
+        setSelectedServices(
+            tempServices
+        );
+
+        setIsFilterOpen(
+            false
+        );
+
+    };
+
+
+    const clearTempFilters = () => {
+
+        setTempPeriod(
+            "all"
+        );
+
+        setTempProfessionals(
+            []
+        );
+
+        setTempServices(
+            []
+        );
+
+    };
+
+
+    /* =========================================================
+       BADGE / FILTROS ATIVOS
+    ========================================================= */
+
+    const activeFiltersCount =
+        (
+            selectedPeriod !== "all"
+                ? 1
+                : 0
+        ) +
+        selectedProfessionals.length +
+        selectedServices.length;
+
+
+    /* =========================================================
+       LOADING
+    ========================================================= */
+
+    if (loading) {
+
+        return (
+
+            <div className="orders-page">
+
+                <div className="orders-loading">
+
+                    <div className="orders-loading-spinner" />
+
+                    <p>
+                        Carregando pedidos...
+                    </p>
+
                 </div>
 
-
-            </header>
-
-            <div className="orders-search-bar">
-                <Icon icon="tabler:search" className="icon search-icon" />
-                <input
-                    type="text"
-                    placeholder="Pesquisar por cliente ou produto..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
             </div>
 
+        );
 
-            <div className="orders-actions-bar">
-                <button
-                    className="orders-action-button"
-                    onClick={() => {
+    }
 
-                        setTempPeriod(selectedPeriod);
-                        setTempProfessionals(selectedProfessionals);
-                        setTempServices(selectedServices);
 
-                        setIsFilterOpen(true);
+    /* =========================================================
+       RENDER
+    ========================================================= */
 
-                    }}
-                >
-                    <Icon icon="mage:filter-fill" className="icon" />
-                    Filtrar
-                </button>
+    return (
 
-                <button
-                    className="orders-action-button"
-                    onClick={() => {
-                        setTempSort(selectedSort);
-                        setIsSortOpen(true);
-                    }}
-                >
-                    <Icon icon="tabler:arrows-sort" className="icon" />
-                    Ordenar
-                </button>
+        <div className="orders-page">
 
-            </div>
+            <main className="orders-main">
 
-            <div className="orders-filter-chips">
+                {/* =================================================
+                    HEADER
+                ================================================= */}
 
-                {selectedPeriod !== "all" && (
-                    <button
-                        className="orders-filter-chip"
-                        onClick={() => setSelectedPeriod("all")}
-                    >
-                        {periodOptions.find(p => p.id === selectedPeriod)?.label}
+                <header className="orders-header">
+
+                    <div className="orders-header-main">
+
+                        <div className="orders-header-title">
+
+                            <span className="orders-eyebrow">
+                                Gestão
+                            </span>
+
+                            <h1>
+                                Pedidos
+                            </h1>
+
+                            <p>
+                                Acompanhe e gerencie todos os
+                                agendamentos da sua empresa.
+                            </p>
+
+                        </div>
+
+                        <div className="orders-header-summary">
+
+                            <div className="orders-summary-item">
+
+                                <span>
+                                    Total
+                                </span>
+
+                                <strong>
+                                    {orders.length}
+                                </strong>
+
+                            </div>
+
+                            <div className="orders-summary-divider" />
+
+                            <div className="orders-summary-item">
+
+                                <span>
+                                    Ativos
+                                </span>
+
+                                <strong>
+                                    {orderCounts.ativos}
+                                </strong>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </header>
+
+
+                {/* =================================================
+                    STATUS NAVIGATION
+                ================================================= */}
+
+                <section className="orders-status-section">
+
+                    <div className="orders-status-tabs">
+
+                        {[
+                            {
+                                id: "ativos",
+                                label: "Ativos",
+                                icon: "lucide:clock-3"
+                            },
+                            {
+                                id: "completos",
+                                label: "Completos",
+                                icon: "lucide:check-circle-2"
+                            },
+                            {
+                                id: "cancelados",
+                                label: "Cancelados",
+                                icon: "lucide:x-circle"
+                            }
+                        ].map((tab) => (
+
+                            <button
+                                key={tab.id}
+                                type="button"
+                                className={
+                                    activeTab === tab.id
+                                        ? "active"
+                                        : ""
+                                }
+                                onClick={() =>
+                                    setActiveTab(
+                                        tab.id
+                                    )
+                                }
+                            >
+
+                                <Icon
+                                    icon={tab.icon}
+                                />
+
+                                <span>
+                                    {tab.label}
+                                </span>
+
+                                <strong>
+                                    {orderCounts[tab.id]}
+                                </strong>
+
+                            </button>
+
+                        ))}
+
+                    </div>
+
+                </section>
+
+
+                {/* =================================================
+                    TOOLBAR
+                ================================================= */}
+
+                <section className="orders-toolbar">
+
+                    <div className="orders-search">
 
                         <Icon
-                            icon="mingcute:close-line"
-                            className="icon"
+                            icon="lucide:search"
+                            className="orders-search-icon"
                         />
-                    </button>
+
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) =>
+                                setSearchTerm(
+                                    e.target.value
+                                )
+                            }
+                            placeholder="Pesquisar cliente, serviço ou profissional..."
+                        />
+
+                        {searchTerm && (
+
+                            <button
+                                type="button"
+                                className="orders-search-clear"
+                                onClick={() =>
+                                    setSearchTerm("")
+                                }
+                            >
+
+                                <Icon
+                                    icon="lucide:x"
+                                />
+
+                            </button>
+
+                        )}
+
+                    </div>
+
+
+                    <div className="orders-toolbar-actions">
+
+                        <button
+                            type="button"
+                            className={
+                                `orders-toolbar-button ${activeFiltersCount > 0
+                                    ? "has-filter"
+                                    : ""
+                                }`
+                            }
+                            onClick={
+                                openFilters
+                            }
+                        >
+
+                            <Icon
+                                icon="lucide:filter"
+                            />
+
+                            <span>
+                                Filtrar
+                            </span>
+
+                            {activeFiltersCount > 0 && (
+
+                                <b>
+                                    {activeFiltersCount}
+                                </b>
+
+                            )}
+
+                        </button>
+
+
+                        <button
+                            type="button"
+                            className="orders-toolbar-button"
+                            onClick={() => {
+
+                                setTempSort(
+                                    selectedSort
+                                );
+
+                                setIsSortOpen(
+                                    true
+                                );
+
+                            }}
+                        >
+
+                            <Icon
+                                icon="lucide:arrow-up-down"
+                            />
+
+                            <span>
+                                Ordenar
+                            </span>
+
+                        </button>
+
+                    </div>
+
+                </section>
+
+
+                {/* =================================================
+                    FILTER CHIPS
+                ================================================= */}
+
+                {activeFiltersCount > 0 && (
+
+                    <div className="orders-filter-chips">
+
+                        {selectedPeriod !== "all" && (
+
+                            <button
+                                type="button"
+                                className="orders-filter-chip"
+                                onClick={() =>
+                                    setSelectedPeriod(
+                                        "all"
+                                    )
+                                }
+                            >
+
+                                <span>
+                                    {
+                                        periodOptions.find(
+                                            item =>
+                                                item.id ===
+                                                selectedPeriod
+                                        )?.label
+                                    }
+                                </span>
+
+                                <Icon
+                                    icon="lucide:x"
+                                />
+
+                            </button>
+
+                        )}
+
+
+                        {selectedProfessionals.map(
+                            (professional) => (
+
+                                <button
+                                    key={
+                                        professional
+                                    }
+                                    type="button"
+                                    className="orders-filter-chip"
+                                    onClick={() =>
+                                        setSelectedProfessionals(
+                                            prev =>
+                                                prev.filter(
+                                                    item =>
+                                                        item !==
+                                                        professional
+                                                )
+                                        )
+                                    }
+                                >
+
+                                    <span>
+                                        {truncate(
+                                            professional,
+                                            22
+                                        )}
+                                    </span>
+
+                                    <Icon
+                                        icon="lucide:x"
+                                    />
+
+                                </button>
+
+                            )
+                        )}
+
+
+                        {selectedServices.map(
+                            (service) => (
+
+                                <button
+                                    key={service}
+                                    type="button"
+                                    className="orders-filter-chip"
+                                    onClick={() =>
+                                        setSelectedServices(
+                                            prev =>
+                                                prev.filter(
+                                                    item =>
+                                                        item !==
+                                                        service
+                                                )
+                                        )
+                                    }
+                                >
+
+                                    <span>
+                                        {truncate(
+                                            service,
+                                            24
+                                        )}
+                                    </span>
+
+                                    <Icon
+                                        icon="lucide:x"
+                                    />
+
+                                </button>
+
+                            )
+                        )}
+
+                    </div>
+
                 )}
 
-                {selectedProfessionals.map((professional) => (
-                    <button
-                        key={professional}
-                        className="orders-filter-chip"
-                        onClick={() =>
-                            setSelectedProfessionals(prev =>
-                                prev.filter(item => item !== professional)
-                            )
-                        }
-                    >
-                        {truncate(professional, 14)}
 
-                        <Icon
-                            icon="mingcute:close-line"
-                            className="icon"
-                        />
-                    </button>
-                ))}
+                {/* =================================================
+                    LIST HEADER
+                ================================================= */}
 
-                {selectedServices.map((service) => (
-                    <button
-                        key={service}
-                        className="orders-filter-chip"
-                        onClick={() =>
-                            setSelectedServices(prev =>
-                                prev.filter(item => item !== service)
-                            )
-                        }
-                    >
-                        {truncate(service, 18)}
+                <section className="orders-list-section">
 
-                        <Icon
-                            icon="mingcute:close-line"
-                            className="icon"
-                        />
-                    </button>
-                ))}
+                    <div className="orders-list-header">
 
-            </div>
+                        <div>
+                            <span>
+                                {filteredOrders.length}
+                            </span>
 
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="orders-content"
-                >
-                    {filteredOrders.length > 0 ? (
-                        filteredOrders.map((order) => (
-                            <div className="order-card" key={order.id}>
-                                <div className="order-card-header">
-                                    <img
-                                        src={order.productImage || placeholder}
-                                        alt={order.productName}
-                                    />
-                                    <div className="order-card-infos-product">
-                                        <div className="order-card-product-name-status">
-                                            <h3>{order.productName}</h3>
+                            <p>
+                                {filteredOrders.length === 1
+                                    ? "pedido encontrado"
+                                    : "pedidos encontrados"}
+                            </p>
+                        </div>
 
-                                            <Icon
-                                                icon="tabler:dots"
-                                                className="icon dots-icon"
-                                                onClick={() => setOpenOrderDetails(order)}
-                                            />
-                                        </div>
+                        <span className="orders-current-sort">
 
-                                        <div className="order-info-description">
-                                            <div className="order-info-description-line-flex">
-                                                <div className="order-description-item">
-                                                    <Icon icon="tabler:clock-hour-4-filled" className="icon" />
-                                                    {order.fullHour || order.hour || "—"}
+                            {sortOptions.find(
+                                option =>
+                                    option.id ===
+                                    selectedSort
+                            )?.label}
+
+                        </span>
+
+                    </div>
+
+
+                    {/* =================================================
+                        LIST
+                    ================================================= */}
+
+                    <AnimatePresence mode="wait">
+
+                        <motion.div
+                            key={
+                                `${activeTab}-${selectedSort}-${searchTerm}-${selectedPeriod}`
+                            }
+                            className="orders-list"
+                            initial={{
+                                opacity: 0,
+                                y: 8
+                            }}
+                            animate={{
+                                opacity: 1,
+                                y: 0
+                            }}
+                            exit={{
+                                opacity: 0,
+                                y: -8
+                            }}
+                            transition={{
+                                duration: 0.2
+                            }}
+                        >
+
+                            {/* =========================================
+                                TABLE HEADER
+                            ========================================= */}
+
+                            {filteredOrders.length > 0 && (
+
+                                <div className="orders-table-header">
+
+                                    <span>
+                                        Serviço
+                                    </span>
+
+                                    <span>
+                                        Cliente
+                                    </span>
+
+                                    <span>
+                                        Profissional
+                                    </span>
+
+                                    <span>
+                                        Data e horário
+                                    </span>
+
+                                    <span>
+                                        Valor
+                                    </span>
+
+                                    <span>
+                                        Status
+                                    </span>
+
+                                    <span>
+                                        Ações
+                                    </span>
+
+                                </div>
+
+                            )}
+
+
+                            {/* =========================================
+                                ORDERS
+                            ========================================= */}
+
+                            {filteredOrders.length > 0 ? (
+
+                                filteredOrders.map(
+                                    (order) => {
+
+                                        const clientName =
+                                            order.userName ||
+                                            order.clientName ||
+                                            "Cliente";
+
+
+                                        return (
+
+                                            <article
+                                                className="orders-row"
+                                                key={
+                                                    order.id
+                                                }
+                                            >
+
+                                                {/* =====================
+                                                    SERVICE
+                                                ===================== */}
+
+                                                <div className="orders-row-service">
+
+                                                    <div className="orders-product-image">
+
+                                                        <img
+                                                            src={
+                                                                order.productImage ||
+                                                                placeholder
+                                                            }
+                                                            alt={
+                                                                order.productName
+                                                            }
+                                                            onError={(
+                                                                e
+                                                            ) => {
+
+                                                                e.currentTarget.src =
+                                                                    placeholder;
+
+                                                            }}
+                                                        />
+
+                                                    </div>
+
+                                                    <div className="orders-product-info">
+
+                                                        <strong>
+                                                            {
+                                                                order.productName
+                                                            }
+                                                        </strong>
+
+                                                        <span>
+                                                            ID #{order.id}
+                                                        </span>
+
+                                                    </div>
 
                                                 </div>
-                                                <div className="order-description-item">
-                                                    <Icon icon="lets-icons:date-fill" className="icon" />
-                                                    {order.day || "—"}
-                                                </div>
-                                            </div>
-                                            <div className="order-description-item">
-                                                <Icon icon="eos-icons:master" className="icon" />
-                                                <span className="professional-name">
-                                                    {order.professionalName}
-                                                </span>
 
-                                                <p className="order-description-item">
-                                                    <Icon icon="jam:coin-f" className="icon" />
-                                                    {order.productValue}
-                                                </p>
-                                            </div>
-                                        </div>
+
+                                                {/* =====================
+                                                    CLIENT
+                                                ===================== */}
+
+                                                <div className="orders-row-client">
+
+                                                    <div className="orders-client-avatar">
+
+                                                        {clientName
+                                                            .charAt(
+                                                                0
+                                                            )
+                                                            .toUpperCase()}
+
+                                                    </div>
+
+                                                    <div className="orders-client-info">
+
+                                                        <strong>
+                                                            {
+                                                                truncate(
+                                                                    clientName,
+                                                                    24
+                                                                )
+                                                            }
+                                                        </strong>
+
+                                                        <span>
+                                                            Cliente
+                                                        </span>
+
+                                                    </div>
+
+                                                </div>
+
+
+                                                {/* =====================
+                                                    PROFESSIONAL
+                                                ===================== */}
+
+                                                <div className="orders-row-professional">
+
+                                                    <div className="orders-info-icon">
+
+                                                        <Icon
+                                                            icon="lucide:user-round"
+                                                        />
+
+                                                    </div>
+
+                                                    <span>
+                                                        {
+                                                            truncate(
+                                                                order.professionalName,
+                                                                22
+                                                            )
+                                                        }
+                                                    </span>
+
+                                                </div>
+
+
+                                                {/* =====================
+                                                    DATE
+                                                ===================== */}
+
+                                                <div className="orders-row-date">
+
+                                                    <div>
+
+                                                        <Icon
+                                                            icon="lucide:calendar-days"
+                                                        />
+
+                                                        <span>
+                                                            {
+                                                                order.dayLabel ||
+                                                                order.day ||
+                                                                "—"
+                                                            }
+                                                        </span>
+
+                                                    </div>
+
+                                                    <div>
+
+                                                        <Icon
+                                                            icon="lucide:clock-3"
+                                                        />
+
+                                                        <span>
+                                                            {
+                                                                order.fullHour ||
+                                                                order.hour ||
+                                                                "—"
+                                                            }
+                                                        </span>
+
+                                                    </div>
+
+                                                </div>
+
+
+                                                {/* =====================
+                                                    VALUE
+                                                ===================== */}
+
+                                                <div className="orders-row-value">
+
+                                                    <strong>
+                                                        {
+                                                            order.productValue
+                                                        }
+                                                    </strong>
+
+                                                </div>
+
+
+                                                {/* =====================
+                                                    STATUS
+                                                ===================== */}
+
+                                                <div className="orders-row-status">
+
+                                                    <span
+                                                        className={
+                                                            `orders-status-badge ${order.statusDisplay}`
+                                                        }
+                                                    >
+
+                                                        <Icon
+                                                            icon={
+                                                                getStatusIcon(
+                                                                    order.statusDisplay
+                                                                )
+                                                            }
+                                                        />
+
+                                                        {
+                                                            formatStatus(
+                                                                order.statusDisplay
+                                                            )
+                                                        }
+
+                                                    </span>
+
+                                                </div>
+
+
+                                                {/* =====================
+                                                    ACTIONS
+                                                ===================== */}
+
+                                                <div className="orders-row-actions">
+
+                                                    <button
+                                                        type="button"
+                                                        className="orders-row-details"
+                                                        onClick={() =>
+                                                            setOpenOrderDetails(
+                                                                order
+                                                            )
+                                                        }
+                                                        title="Ver detalhes"
+                                                    >
+
+                                                        <Icon
+                                                            icon="lucide:ellipsis"
+                                                        />
+
+                                                    </button>
+
+
+                                                    {activeTab ===
+                                                        "ativos" && (
+
+                                                            <button
+                                                                type="button"
+                                                                className="orders-row-complete"
+                                                                onClick={() =>
+                                                                    handleComplete(
+                                                                        order
+                                                                    )
+                                                                }
+                                                                title="Completar pedido"
+                                                            >
+
+                                                                <Icon
+                                                                    icon="lucide:check"
+                                                                />
+
+                                                            </button>
+
+                                                        )}
+
+                                                </div>
+
+                                            </article>
+
+                                        );
+
+                                    }
+                                )
+
+                            ) : (
+
+                                <div className="orders-empty">
+
+                                    <div className="orders-empty-icon">
+
+                                        <Icon
+                                            icon={
+                                                searchTerm ||
+                                                    activeFiltersCount
+                                                    ? "lucide:search-x"
+                                                    : "lucide:inbox"
+                                            }
+                                        />
+
                                     </div>
+
+                                    <h3>
+
+                                        {searchTerm ||
+                                            activeFiltersCount
+                                            ? "Nenhum pedido encontrado"
+                                            : `Nenhum pedido ${activeTab === "ativos"
+                                                ? "ativo"
+                                                : activeTab ===
+                                                    "completos"
+                                                    ? "completo"
+                                                    : "cancelado"
+                                            }`}
+
+                                    </h3>
+
+                                    <p>
+
+                                        {searchTerm ||
+                                            activeFiltersCount
+                                            ? "Tente alterar sua pesquisa ou remover alguns filtros."
+                                            : "Quando houver pedidos nesta categoria, eles aparecerão aqui."}
+
+                                    </p>
+
+
+                                    {(searchTerm ||
+                                        activeFiltersCount) && (
+
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+
+                                                    setSearchTerm(
+                                                        ""
+                                                    );
+
+                                                    setSelectedPeriod(
+                                                        "all"
+                                                    );
+
+                                                    setSelectedProfessionals(
+                                                        []
+                                                    );
+
+                                                    setSelectedServices(
+                                                        []
+                                                    );
+
+                                                }}
+                                            >
+                                                Limpar filtros
+                                            </button>
+
+                                        )}
+
                                 </div>
 
-                                <div className="order-card-footer">
-                                    {(activeTab === "completos" || activeTab === "cancelados") && (
-                                        <button
-                                            className="order-cancel-button"
-                                            onClick={() => setOrderToDelete(order)}
-                                        >
-                                            Excluir
-                                        </button>
-                                    )}
+                            )}
 
-                                    {activeTab === "ativos" && (
-                                        <>
-                                            <button
-                                                className="order-cancel-button order"
-                                                onClick={() => setOrderToCancel(order)}
-                                            >
-                                                Cancelar
-                                            </button>
-                                            <button
-                                                className="order-view-button"
-                                                onClick={() => handleComplete(order)}
-                                            >
-                                                Completar Pedido
-                                            </button>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        ))
-                    ) : (
-                        <p>Nenhum pedido encontrado para esta aba.</p>
-                    )}
-                </motion.div>
-            </AnimatePresence>
+                        </motion.div>
+
+                    </AnimatePresence>
+
+                </section>
+
+            </main>
+
+
+            {/* =====================================================
+                MODAL DE ORDENAÇÃO
+            ===================================================== */}
 
             <AnimatePresence>
 
                 {isSortOpen && (
 
                     <motion.div
-                        className="orders-filter-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setIsSortOpen(false)}
+                        className="orders-modal-overlay"
+                        initial={{
+                            opacity: 0
+                        }}
+                        animate={{
+                            opacity: 1
+                        }}
+                        exit={{
+                            opacity: 0
+                        }}
+                        onClick={() =>
+                            setIsSortOpen(
+                                false
+                            )
+                        }
                     >
 
                         <motion.div
-                            className="orders-filter-modal"
-                            onClick={(e) => e.stopPropagation()}
-                            initial={{ scale: .9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: .9, opacity: 0 }}
+                            className="orders-sort-modal"
+                            initial={{
+                                opacity: 0,
+                                scale: 0.94,
+                                y: 10
+                            }}
+                            animate={{
+                                opacity: 1,
+                                scale: 1,
+                                y: 0
+                            }}
+                            exit={{
+                                opacity: 0,
+                                scale: 0.94,
+                                y: 10
+                            }}
+                            transition={{
+                                duration: 0.2
+                            }}
+                            onClick={(e) =>
+                                e.stopPropagation()
+                            }
                         >
 
-                            <div className="orders-filter-header">
+                            <div className="orders-modal-header">
 
-                                <h2>Ordenar pedidos</h2>
+                                <div>
 
-                                <button onClick={() => setIsSortOpen(false)}>
-                                    <Icon icon="mingcute:close-line" />
+                                    <span>
+                                        Preferência
+                                    </span>
+
+                                    <h2>
+                                        Ordenar pedidos
+                                    </h2>
+
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setIsSortOpen(
+                                            false
+                                        )
+                                    }
+                                >
+
+                                    <Icon
+                                        icon="lucide:x"
+                                    />
+
                                 </button>
 
                             </div>
 
-                            <div className="orders-filter-content">
 
-                                <div className="orders-filter-options">
+                            <div className="orders-sort-options">
 
-                                    {sortOptions.map(option => (
+                                {sortOptions.map(
+                                    (option) => (
 
                                         <button
-                                            key={option.id}
-                                            className={`orders-filter-option ${tempSort === option.id ? "active" : ""
-                                                }`}
-                                            onClick={() => setTempSort(option.id)}
+                                            key={
+                                                option.id
+                                            }
+                                            type="button"
+                                            className={
+                                                tempSort ===
+                                                    option.id
+                                                    ? "active"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                setTempSort(
+                                                    option.id
+                                                )
+                                            }
                                         >
 
-                                            {option.label}
+                                            <span>
+                                                {
+                                                    option.label
+                                                }
+                                            </span>
 
-                                            {tempSort === option.id && (
-                                                <Icon
-                                                    icon="mingcute:check-fill"
-                                                    className="icon"
-                                                />
-                                            )}
+                                            {tempSort ===
+                                                option.id && (
+
+                                                    <Icon
+                                                        icon="lucide:check"
+                                                    />
+
+                                                )}
 
                                         </button>
 
-                                    ))}
-
-                                </div>
+                                    )
+                                )}
 
                             </div>
 
-                            <div className="orders-filter-footer">
+
+                            <div className="orders-modal-footer">
 
                                 <button
-                                    className="orders-filter-clear"
-                                    onClick={() => setTempSort("dateAsc")}
+                                    type="button"
+                                    className="orders-modal-secondary"
+                                    onClick={() =>
+                                        setTempSort(
+                                            "dateAsc"
+                                        )
+                                    }
                                 >
                                     Padrão
                                 </button>
 
                                 <button
-                                    className="orders-filter-apply"
+                                    type="button"
+                                    className="orders-modal-primary"
                                     onClick={() => {
 
-                                        setSelectedSort(tempSort);
-                                        setIsSortOpen(false);
+                                        setSelectedSort(
+                                            tempSort
+                                        );
+
+                                        setIsSortOpen(
+                                            false
+                                        );
 
                                     }}
                                 >
@@ -822,423 +2246,426 @@ const Orders = ({ company, initialOrder }) => {
 
             </AnimatePresence>
 
+
+            {/* =====================================================
+                MODAL DE FILTROS
+            ===================================================== */}
+
             <AnimatePresence>
-                {openOrderDetails && (
+
+                {isFilterOpen && (
+
                     <motion.div
-                        className="order-details-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={(e) => {
-                            if (e.target.classList.contains("order-details-overlay")) {
-                                setOpenOrderDetails(null);
-                            }
+                        className="orders-modal-overlay"
+                        initial={{
+                            opacity: 0
                         }}
+                        animate={{
+                            opacity: 1
+                        }}
+                        exit={{
+                            opacity: 0
+                        }}
+                        onClick={() =>
+                            setIsFilterOpen(
+                                false
+                            )
+                        }
                     >
+
                         <motion.div
-                            className="order-details-container"
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            transition={{ type: "spring", stiffness: 250, damping: 25 }}
-                        >
-                            {/* ===== HEADER FIXO ===== */}
-                            <header className="order-details-header">
-                                <div className="order-details-header-content">
-                                    <div>
-                                        <h3 className="order-details-title">Detalhes do Agendamento</h3>
-                                        <p className="order-details-id">ID: {openOrderDetails.id}</p>
-                                    </div>
-
-                                    {/* Ícone X para fechar */}
-                                    <button
-                                        className="order-details-close-icon"
-                                        onClick={() => setOpenOrderDetails(null)}
-                                        aria-label="Fechar"
-                                    >
-                                        ✕
-                                    </button>
-                                </div>
-                            </header>
-
-                            {/* ===== CONTEÚDO SCROLLÁVEL ===== */}
-                            <div className="order-details-scrollable">
-                                <h3 className="order-section-title">Informações do Serviço</h3>
-                                <section className="order-details-service">
-                                    <img
-                                        src={openOrderDetails.productImage}
-                                        alt={openOrderDetails.productName}
-                                        className="order-details-image"
-                                    />
-
-                                    <div className="order-details-service-info">
-                                        <div className="order-service-row">
-                                            <span className="order-service-label">Serviço:</span>
-                                            <span className="order-service-value">
-                                                {truncate(openOrderDetails.productName, 18)}
-                                            </span>
-                                        </div>
-
-                                        <div className="order-service-row">
-                                            <span className="order-service-label">Valor:</span>
-                                            <span className="order-service-value">{openOrderDetails.productValue}</span>
-                                        </div>
-
-                                        <div className="order-service-row">
-                                            <span className="order-service-label">Profissional:</span>
-                                            <span className="order-service-value">
-                                                {truncate(openOrderDetails.professionalName, 16)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </section>
-
-                                <h3 className="order-section-title">Informações do Agendamento</h3>
-                                <section className="order-details-info">
-                                    <div className="order-info-row">
-                                        <span className="order-info-label">Data:</span>
-                                        <span className="order-info-value">
-                                            {openOrderDetails.dayLabel || openOrderDetails.day}
-                                        </span>
-                                    </div>
-
-                                    <div className="order-info-row">
-                                        <span className="order-info-label">Horário:</span>
-                                        <span className="order-info-value">  {openOrderDetails.fullHour || openOrderDetails.hour}
-                                        </span>
-                                    </div>
-
-                                    <div className="order-info-row">
-                                        <span className="order-info-label">Cliente:</span>
-                                        <span className="order-info-value">
-                                            {truncate(openOrderDetails.userName, 16)}
-                                        </span>
-                                    </div>
-
-                                    <div className="order-info-row">
-                                        <span className="order-info-label">Status:</span>
-                                        <span className="order-info-value">{openOrderDetails.statusDisplay}</span>
-                                    </div>
-                                </section>
-                            </div>
-
-                            {/* ===== BOTÕES AÇÕES ===== */}
-                            <div className="order-details-actions">
-                                <button
-                                    className="order-details-delete-btn"
-                                    onClick={() => {
-                                        setOrderToDelete(openOrderDetails);
-                                        setOpenOrderDetails(null);
-                                    }}
-                                >
-                                    Excluir
-                                </button>
-
-                                {openOrderDetails.statusDisplay === "ativos" && (
-                                    <button
-                                        className="order-details-complete-btn"
-                                        onClick={() => handleComplete(openOrderDetails)}
-                                    >
-                                        Completar Pedido
-                                    </button>
-                                )}
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {orderToDelete && (
-                    <motion.div
-                        className="orders-modal__overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                    >
-                        <motion.div
-                            className="orders-modal__container"
-                            initial={{ scale: 0.7, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.7, opacity: 0 }}
-                            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-                        >
-                            <h3 className="orders-modal__title">Excluir pedido?</h3>
-                            <p className="orders-modal__message">
-                                Tem certeza que deseja excluir este pedido? Esta ação não pode ser desfeita.
-                            </p>
-                            <div className="orders-modal__buttons">
-                                <button className="orders-modal__btn--delete" onClick={handleDelete}>
-                                    Excluir
-                                </button>
-                                <button className="orders-modal__btn--cancel" onClick={() => setOrderToDelete(null)}>
-                                    Cancelar
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-                {orderToCancel && (
-                    <motion.div
-                        className="orders-modal__overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                    >
-                        <motion.div
-                            className="orders-modal__container"
+                            className="orders-filter-modal-new"
                             initial={{
-                                scale: 0.75,
                                 opacity: 0,
-                                y: 20
+                                scale: 0.94,
+                                y: 10
                             }}
                             animate={{
-                                scale: 1,
                                 opacity: 1,
+                                scale: 1,
                                 y: 0
                             }}
                             exit={{
-                                scale: 0.75,
                                 opacity: 0,
-                                y: 20
+                                scale: 0.94,
+                                y: 10
                             }}
                             transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 24
+                                duration: 0.2
                             }}
+                            onClick={(e) =>
+                                e.stopPropagation()
+                            }
                         >
-                            <h3 className="orders-modal__title">
-                                Cancelar pedido?
-                            </h3>
 
-                            <p className="orders-modal__message">
-                                Tem certeza que deseja cancelar este pedido?
-                                O cliente poderá ser notificado sobre o cancelamento.
-                            </p>
+                            <div className="orders-modal-header">
 
-                            <div className="orders-modal__buttons">
+                                <div>
 
-                                <button
-                                    className="orders-modal__btn--delete"
-                                    onClick={async () => {
+                                    <span>
+                                        Refinar resultados
+                                    </span>
 
-                                        await handleCancel(orderToCancel);
+                                    <h2>
+                                        Filtrar pedidos
+                                    </h2>
 
-                                        setOrderToCancel(null);
-
-                                    }}
-                                >
-                                    Cancelar Pedido
-                                </button>
+                                </div>
 
                                 <button
-                                    className="orders-modal__btn--cancel"
-                                    onClick={() => setOrderToCancel(null)}
+                                    type="button"
+                                    onClick={() =>
+                                        setIsFilterOpen(
+                                            false
+                                        )
+                                    }
                                 >
-                                    Voltar
+
+                                    <Icon
+                                        icon="lucide:x"
+                                    />
+
                                 </button>
 
                             </div>
 
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
-            <AnimatePresence>
-                {isFilterOpen && (
-                    <motion.div
-                        className="orders-filter-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={() => setIsFilterOpen(false)}
-                    >
-                        <motion.div
-                            className="orders-filter-modal"
-                            onClick={(e) => e.stopPropagation()}
-                            initial={{
-                                y: window.innerWidth <= 768 ? 100 : 0,
-                                scale: window.innerWidth > 768 ? .9 : 1,
-                                opacity: 0
-                            }}
-                            animate={{
-                                y: 0,
-                                scale: 1,
-                                opacity: 1
-                            }}
-                            exit={{
-                                y: window.innerWidth <= 768 ? 100 : 0,
-                                scale: window.innerWidth > 768 ? .9 : 1,
-                                opacity: 0
-                            }}
-                            transition={{
-                                duration: .28
-                            }}
-                        >
+                            <div className="orders-filter-modal-content">
 
-                            <div className="orders-filter-header">
+                                {/* =========================
+                                    PERÍODO
+                                ========================= */}
 
-                                <h2>Filtrar pedidos</h2>
+                                <section className="orders-filter-block">
 
-                                <button onClick={() => setIsFilterOpen(false)}>
-                                    <Icon icon="mingcute:close-line" />
-                                </button>
+                                    <div className="orders-filter-block-header">
 
-                            </div>
+                                        <h3>
+                                            Período
+                                        </h3>
 
-                            <div className="orders-filter-content">
+                                        <span>
+                                            Escolha uma janela
+                                        </span>
 
-                                <section className="orders-filter-section">
+                                    </div>
 
-                                    <h3>Período</h3>
+                                    <div className="orders-filter-period-grid">
 
-                                    <div className="orders-filter-options">
-                                        {periodOptions.map((period) => (
-                                            <button
-                                                key={period.id}
-                                                className={`orders-filter-option ${tempPeriod === period.id ? "active" : ""
-                                                    }`}
-                                                onClick={() => setTempPeriod(period.id)}
-                                            >
-                                                {period.label}
+                                        {periodOptions.map(
+                                            (period) => (
 
-                                                {tempPeriod === period.id && (
-                                                    <Icon
-                                                        icon="mingcute:check-fill"
-                                                        className="icon"
-                                                    />
-                                                )}
-                                            </button>
-                                        ))}
+                                                <button
+                                                    key={
+                                                        period.id
+                                                    }
+                                                    type="button"
+                                                    className={
+                                                        tempPeriod ===
+                                                            period.id
+                                                            ? "active"
+                                                            : ""
+                                                    }
+                                                    onClick={() =>
+                                                        setTempPeriod(
+                                                            period.id
+                                                        )
+                                                    }
+                                                >
+
+                                                    {
+                                                        period.label
+                                                    }
+
+                                                    {tempPeriod ===
+                                                        period.id && (
+
+                                                            <Icon
+                                                                icon="lucide:check"
+                                                            />
+
+                                                        )}
+
+                                                </button>
+
+                                            )
+                                        )}
+
                                     </div>
 
                                 </section>
 
-                                <section className="orders-filter-section">
 
-                                    <h3>Profissional</h3>
+                                {/* =========================
+                                    PROFISSIONAL
+                                ========================= */}
 
-                                    <input
-                                        type="text"
-                                        placeholder="Pesquisar profissional..."
-                                        value={professionalSearch}
-                                        onChange={(e) => setProfessionalSearch(e.target.value)}
-                                    />
+                                <section className="orders-filter-block">
 
-                                    <div className="orders-filter-list">
+                                    <div className="orders-filter-block-header">
+
+                                        <h3>
+                                            Profissional
+                                        </h3>
+
+                                        <span>
+                                            Selecione um ou mais
+                                        </span>
+
+                                    </div>
+
+
+                                    <div className="orders-filter-search">
+
+                                        <Icon
+                                            icon="lucide:search"
+                                        />
+
+                                        <input
+                                            type="text"
+                                            placeholder="Pesquisar profissional..."
+                                            value={
+                                                professionalSearch
+                                            }
+                                            onChange={(
+                                                e
+                                            ) =>
+                                                setProfessionalSearch(
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+
+                                    </div>
+
+
+                                    <div className="orders-filter-selection-list">
+
                                         {professionals
-                                            .filter(name =>
-                                                name.toLowerCase().includes(professionalSearch.toLowerCase())
-                                            )
-                                            .map(name => (
-
-                                                <button
-                                                    key={name}
-                                                    className={`orders-filter-option ${tempProfessionals.includes(name) ? "active" : ""
-                                                        }`}
-                                                    onClick={() =>
-                                                        setTempProfessionals(prev =>
-                                                            prev.includes(name)
-                                                                ? prev.filter(item => item !== name)
-                                                                : [...prev, name]
+                                            .filter(
+                                                name =>
+                                                    name
+                                                        .toLowerCase()
+                                                        .includes(
+                                                            professionalSearch
+                                                                .toLowerCase()
                                                         )
-                                                    }
-                                                >
-                                                    <span>{truncate(name, 14)}</span>
+                                            )
+                                            .map(
+                                                name => (
 
-                                                    {tempProfessionals.includes(name) && (
-                                                        <Icon
-                                                            icon="mingcute:check-fill"
-                                                            className="icon"
-                                                        />
-                                                    )}
+                                                    <button
+                                                        key={
+                                                            name
+                                                        }
+                                                        type="button"
+                                                        className={
+                                                            tempProfessionals.includes(
+                                                                name
+                                                            )
+                                                                ? "active"
+                                                                : ""
+                                                        }
+                                                        onClick={() =>
+                                                            setTempProfessionals(
+                                                                prev =>
+                                                                    prev.includes(
+                                                                        name
+                                                                    )
+                                                                        ? prev.filter(
+                                                                            item =>
+                                                                                item !==
+                                                                                name
+                                                                        )
+                                                                        : [
+                                                                            ...prev,
+                                                                            name
+                                                                        ]
+                                                            )
+                                                        }
+                                                    >
 
-                                                </button>
+                                                        <span>
+                                                            {
+                                                                name
+                                                            }
+                                                        </span>
 
-                                            ))}
+                                                        {tempProfessionals.includes(
+                                                            name
+                                                        ) && (
+
+                                                                <Icon
+                                                                    icon="lucide:check"
+                                                                />
+
+                                                            )}
+
+                                                    </button>
+
+                                                )
+                                            )}
+
+                                        {professionals.length ===
+                                            0 && (
+
+                                                <p className="orders-filter-empty">
+                                                    Nenhum profissional
+                                                    encontrado.
+                                                </p>
+
+                                            )}
+
                                     </div>
 
                                 </section>
 
-                                <section className="orders-filter-section">
 
-                                    <h3>Serviço</h3>
+                                {/* =========================
+                                    SERVIÇO
+                                ========================= */}
 
-                                    <input
-                                        type="text"
-                                        placeholder="Pesquisar serviço..."
-                                        value={serviceSearch}
-                                        onChange={(e) => setServiceSearch(e.target.value)}
-                                    />
+                                <section className="orders-filter-block">
 
-                                    <div className="orders-filter-list">
+                                    <div className="orders-filter-block-header">
+
+                                        <h3>
+                                            Serviço
+                                        </h3>
+
+                                        <span>
+                                            Selecione um ou mais
+                                        </span>
+
+                                    </div>
+
+
+                                    <div className="orders-filter-search">
+
+                                        <Icon
+                                            icon="lucide:search"
+                                        />
+
+                                        <input
+                                            type="text"
+                                            placeholder="Pesquisar serviço..."
+                                            value={
+                                                serviceSearch
+                                            }
+                                            onChange={(
+                                                e
+                                            ) =>
+                                                setServiceSearch(
+                                                    e.target.value
+                                                )
+                                            }
+                                        />
+
+                                    </div>
+
+
+                                    <div className="orders-filter-selection-list">
+
                                         {services
-                                            .filter(name =>
-                                                name.toLowerCase().includes(serviceSearch.toLowerCase())
-                                            )
-                                            .map(name => (
-
-                                                <button
-                                                    key={name}
-                                                    className={`orders-filter-option ${tempServices.includes(name) ? "active" : ""
-                                                        }`}
-                                                    onClick={() =>
-                                                        setTempServices(prev =>
-                                                            prev.includes(name)
-                                                                ? prev.filter(item => item !== name)
-                                                                : [...prev, name]
+                                            .filter(
+                                                name =>
+                                                    name
+                                                        .toLowerCase()
+                                                        .includes(
+                                                            serviceSearch
+                                                                .toLowerCase()
                                                         )
-                                                    }
-                                                >
-                                                    <span>{truncate(name, 18)}</span>
+                                            )
+                                            .map(
+                                                name => (
 
-                                                    {tempServices.includes(name) && (
-                                                        <Icon
-                                                            icon="mingcute:check-fill"
-                                                            className="icon"
-                                                        />
-                                                    )}
+                                                    <button
+                                                        key={
+                                                            name
+                                                        }
+                                                        type="button"
+                                                        className={
+                                                            tempServices.includes(
+                                                                name
+                                                            )
+                                                                ? "active"
+                                                                : ""
+                                                        }
+                                                        onClick={() =>
+                                                            setTempServices(
+                                                                prev =>
+                                                                    prev.includes(
+                                                                        name
+                                                                    )
+                                                                        ? prev.filter(
+                                                                            item =>
+                                                                                item !==
+                                                                                name
+                                                                        )
+                                                                        : [
+                                                                            ...prev,
+                                                                            name
+                                                                        ]
+                                                            )
+                                                        }
+                                                    >
 
-                                                </button>
+                                                        <span>
+                                                            {
+                                                                name
+                                                            }
+                                                        </span>
 
-                                            ))}
+                                                        {tempServices.includes(
+                                                            name
+                                                        ) && (
+
+                                                                <Icon
+                                                                    icon="lucide:check"
+                                                                />
+
+                                                            )}
+
+                                                    </button>
+
+                                                )
+                                            )}
+
+                                        {services.length ===
+                                            0 && (
+
+                                                <p className="orders-filter-empty">
+                                                    Nenhum serviço
+                                                    encontrado.
+                                                </p>
+
+                                            )}
+
                                     </div>
 
                                 </section>
 
                             </div>
 
-                            <div className="orders-filter-footer">
+
+                            <div className="orders-modal-footer">
 
                                 <button
-                                    className="orders-filter-clear"
-                                    onClick={() => {
-
-                                        setTempPeriod("all");
-                                        setTempProfessionals([]);
-                                        setTempServices([]);
-
-                                    }}
+                                    type="button"
+                                    className="orders-modal-secondary"
+                                    onClick={
+                                        clearTempFilters
+                                    }
                                 >
                                     Limpar
                                 </button>
 
                                 <button
-                                    className="orders-filter-apply"
-                                    onClick={() => {
-
-                                        setSelectedPeriod(tempPeriod);
-                                        setSelectedProfessionals(tempProfessionals);
-                                        setSelectedServices(tempServices);
-
-                                        setIsFilterOpen(false);
-
-                                    }}
+                                    type="button"
+                                    className="orders-modal-primary"
+                                    onClick={
+                                        applyFilters
+                                    }
                                 >
                                     Aplicar filtros
                                 </button>
@@ -1246,119 +2673,943 @@ const Orders = ({ company, initialOrder }) => {
                             </div>
 
                         </motion.div>
+
                     </motion.div>
+
                 )}
+
             </AnimatePresence>
+
+
+            {/* =====================================================
+                MODAL DETALHES
+            ===================================================== */}
+
+            <AnimatePresence>
+
+                {openOrderDetails && (
+
+                    <motion.div
+                        className="orders-details-overlay"
+                        initial={{
+                            opacity: 0
+                        }}
+                        animate={{
+                            opacity: 1
+                        }}
+                        exit={{
+                            opacity: 0
+                        }}
+                        onClick={(e) => {
+
+                            if (
+                                e.target.classList.contains(
+                                    "orders-details-overlay"
+                                )
+                            ) {
+
+                                setOpenOrderDetails(
+                                    null
+                                );
+
+                            }
+
+                        }}
+                    >
+
+                        <motion.div
+                            className="orders-details-modal"
+                            initial={{
+                                opacity: 0,
+                                scale: 0.95,
+                                y: 15
+                            }}
+                            animate={{
+                                opacity: 1,
+                                scale: 1,
+                                y: 0
+                            }}
+                            exit={{
+                                opacity: 0,
+                                scale: 0.95,
+                                y: 15
+                            }}
+                            transition={{
+                                type: "spring",
+                                stiffness: 280,
+                                damping: 25
+                            }}
+                        >
+
+                            {/* =========================
+                                HEADER
+                            ========================= */}
+
+                            <header className="orders-details-header">
+
+                                <div>
+
+                                    <span>
+                                        Pedido
+                                    </span>
+
+                                    <h2>
+                                        Detalhes do agendamento
+                                    </h2>
+
+                                    <p>
+                                        #{openOrderDetails.id}
+                                    </p>
+
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setOpenOrderDetails(
+                                            null
+                                        )
+                                    }
+                                >
+
+                                    <Icon
+                                        icon="lucide:x"
+                                    />
+
+                                </button>
+
+                            </header>
+
+
+                            {/* =========================
+                                BODY
+                            ========================= */}
+
+                            <div className="orders-details-body">
+
+                                {/* =====================
+                                    PRODUCT
+                                ===================== */}
+
+                                <section className="orders-details-product">
+
+                                    <div className="orders-details-product-image">
+
+                                        <img
+                                            src={
+                                                openOrderDetails.productImage ||
+                                                placeholder
+                                            }
+                                            alt={
+                                                openOrderDetails.productName
+                                            }
+                                            onError={(
+                                                e
+                                            ) => {
+
+                                                e.currentTarget.src =
+                                                    placeholder;
+
+                                            }}
+                                        />
+
+                                    </div>
+
+
+                                    <div className="orders-details-product-info">
+
+                                        <span>
+                                            Serviço
+                                        </span>
+
+                                        <h3>
+                                            {
+                                                openOrderDetails.productName
+                                            }
+                                        </h3>
+
+                                        <strong>
+                                            {
+                                                openOrderDetails.productValue
+                                            }
+                                        </strong>
+
+                                    </div>
+
+
+                                    <span
+                                        className={
+                                            `orders-status-badge ${openOrderDetails.statusDisplay}`
+                                        }
+                                    >
+
+                                        <Icon
+                                            icon={
+                                                getStatusIcon(
+                                                    openOrderDetails.statusDisplay
+                                                )
+                                            }
+                                        />
+
+                                        {
+                                            formatStatus(
+                                                openOrderDetails.statusDisplay
+                                            )
+                                        }
+
+                                    </span>
+
+                                </section>
+
+
+                                {/* =====================
+                                    INFORMATION GRID
+                                ===================== */}
+
+                                <section className="orders-details-grid">
+
+                                    <div className="orders-details-item">
+
+                                        <span>
+                                            Cliente
+                                        </span>
+
+                                        <strong>
+                                            {
+                                                truncate(
+                                                    openOrderDetails.userName ||
+                                                    openOrderDetails.clientName ||
+                                                    "Cliente",
+                                                    28
+                                                )
+                                            }
+                                        </strong>
+
+                                    </div>
+
+
+                                    <div className="orders-details-item">
+
+                                        <span>
+                                            Profissional
+                                        </span>
+
+                                        <strong>
+                                            {
+                                                truncate(
+                                                    openOrderDetails.professionalName,
+                                                    28
+                                                )
+                                            }
+                                        </strong>
+
+                                    </div>
+
+
+                                    <div className="orders-details-item">
+
+                                        <span>
+                                            Data
+                                        </span>
+
+                                        <strong>
+                                            {
+                                                openOrderDetails.dayLabel ||
+                                                openOrderDetails.day ||
+                                                "—"
+                                            }
+                                        </strong>
+
+                                    </div>
+
+
+                                    <div className="orders-details-item">
+
+                                        <span>
+                                            Horário
+                                        </span>
+
+                                        <strong>
+                                            {
+                                                openOrderDetails.fullHour ||
+                                                openOrderDetails.hour ||
+                                                "—"
+                                            }
+                                        </strong>
+
+                                    </div>
+
+
+                                    <div className="orders-details-item">
+
+                                        <span>
+                                            Duração
+                                        </span>
+
+                                        <strong>
+                                            {openOrderDetails.duration
+                                                ? `${openOrderDetails.duration} min`
+                                                : "—"}
+                                        </strong>
+
+                                    </div>
+
+
+                                    <div className="orders-details-item">
+
+                                        <span>
+                                            Valor
+                                        </span>
+
+                                        <strong>
+                                            {
+                                                openOrderDetails.productValue
+                                            }
+                                        </strong>
+
+                                    </div>
+
+                                </section>
+
+
+                                {/* =====================
+                                    ID DO PRODUTO
+                                ===================== */}
+
+                                {openOrderDetails.productId && (
+
+                                    <section className="orders-details-reference">
+
+                                        <div>
+
+                                            <span>
+                                                Produto relacionado
+                                            </span>
+
+                                            <strong>
+                                                #{openOrderDetails.productId}
+                                            </strong>
+
+                                        </div>
+
+                                        <Icon
+                                            icon="lucide:package"
+                                        />
+
+                                    </section>
+
+                                )}
+
+                            </div>
+
+
+                            {/* =========================
+                                ACTIONS
+                            ========================= */}
+
+                            <footer className="orders-details-actions">
+
+                                <button
+                                    type="button"
+                                    className="orders-details-delete"
+                                    onClick={() => {
+
+                                        setOrderToDelete(
+                                            openOrderDetails
+                                        );
+
+                                        setOpenOrderDetails(
+                                            null
+                                        );
+
+                                    }}
+                                >
+
+                                    <Icon
+                                        icon="lucide:trash-2"
+                                    />
+
+                                    Excluir
+
+                                </button>
+
+
+                                {openOrderDetails.statusDisplay ===
+                                    "ativos" && (
+
+                                        <>
+
+                                            <button
+                                                type="button"
+                                                className="orders-details-cancel"
+                                                onClick={() => {
+
+                                                    setOrderToCancel(
+                                                        openOrderDetails
+                                                    );
+
+                                                    setOpenOrderDetails(
+                                                        null
+                                                    );
+
+                                                }}
+                                            >
+
+                                                Cancelar
+
+                                            </button>
+
+
+                                            <button
+                                                type="button"
+                                                className="orders-details-complete"
+                                                onClick={() =>
+                                                    handleComplete(
+                                                        openOrderDetails
+                                                    )
+                                                }
+                                            >
+
+                                                <Icon
+                                                    icon="lucide:check"
+                                                />
+
+                                                Completar pedido
+
+                                            </button>
+
+                                        </>
+
+                                    )}
+
+                            </footer>
+
+                        </motion.div>
+
+                    </motion.div>
+
+                )}
+
+            </AnimatePresence>
+
+
+            {/* =====================================================
+                MODAL EXCLUSÃO
+            ===================================================== */}
+
+            <AnimatePresence>
+
+                {orderToDelete && (
+
+                    <motion.div
+                        className="orders-confirm-overlay"
+                        initial={{
+                            opacity: 0
+                        }}
+                        animate={{
+                            opacity: 1
+                        }}
+                        exit={{
+                            opacity: 0
+                        }}
+                    >
+
+                        <motion.div
+                            className="orders-confirm-modal"
+                            initial={{
+                                opacity: 0,
+                                scale: 0.92
+                            }}
+                            animate={{
+                                opacity: 1,
+                                scale: 1
+                            }}
+                            exit={{
+                                opacity: 0,
+                                scale: 0.92
+                            }}
+                        >
+
+                            <div className="orders-confirm-icon danger">
+
+                                <Icon
+                                    icon="lucide:trash-2"
+                                />
+
+                            </div>
+
+                            <h2>
+                                Excluir pedido?
+                            </h2>
+
+                            <p>
+                                Tem certeza que deseja excluir
+                                este pedido? Essa ação não pode
+                                ser desfeita.
+                            </p>
+
+                            <div className="orders-confirm-actions">
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setOrderToDelete(
+                                            null
+                                        )
+                                    }
+                                >
+                                    Voltar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="danger"
+                                    onClick={
+                                        handleDelete
+                                    }
+                                >
+                                    Excluir pedido
+                                </button>
+
+                            </div>
+
+                        </motion.div>
+
+                    </motion.div>
+
+                )}
+
+            </AnimatePresence>
+
+
+            {/* =====================================================
+                MODAL CANCELAMENTO
+            ===================================================== */}
+
+            <AnimatePresence>
+
+                {orderToCancel && (
+
+                    <motion.div
+                        className="orders-confirm-overlay"
+                        initial={{
+                            opacity: 0
+                        }}
+                        animate={{
+                            opacity: 1
+                        }}
+                        exit={{
+                            opacity: 0
+                        }}
+                    >
+
+                        <motion.div
+                            className="orders-confirm-modal"
+                            initial={{
+                                opacity: 0,
+                                scale: 0.92
+                            }}
+                            animate={{
+                                opacity: 1,
+                                scale: 1
+                            }}
+                            exit={{
+                                opacity: 0,
+                                scale: 0.92
+                            }}
+                        >
+
+                            <div className="orders-confirm-icon warning">
+
+                                <Icon
+                                    icon="lucide:circle-alert"
+                                />
+
+                            </div>
+
+                            <h2>
+                                Cancelar pedido?
+                            </h2>
+
+                            <p>
+                                Tem certeza que deseja cancelar
+                                este agendamento? O cliente poderá
+                                ser notificado sobre o cancelamento.
+                            </p>
+
+                            <div className="orders-confirm-actions">
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setOrderToCancel(
+                                            null
+                                        )
+                                    }
+                                >
+                                    Voltar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="warning"
+                                    onClick={async () => {
+
+                                        await handleCancel(
+                                            orderToCancel
+                                        );
+
+                                        setOrderToCancel(
+                                            null
+                                        );
+
+                                        setOpenOrderDetails(
+                                            null
+                                        );
+
+                                    }}
+                                >
+                                    Cancelar pedido
+                                </button>
+
+                            </div>
+
+                        </motion.div>
+
+                    </motion.div>
+
+                )}
+
+            </AnimatePresence>
+
+
+            {/* =====================================================
+                TOAST
+            ===================================================== */}
 
             <Toast
                 show={showToast}
                 type={toastType}
                 title={toastTitle}
                 message={toastMessage}
-                onClose={() => setShowToast(false)}
+                onClose={() =>
+                    setShowToast(false)
+                }
             />
+
         </div>
+
     );
+
 };
 
-export const OrderDetailsModal = ({ order, onClose, onComplete, onCancel }) => {
-    if (!order) return null;
 
-    const truncate = (text, max = 16) => {
+/* ================================================================
+   MODAL EXTERNO DE DETALHES
+================================================================ */
+
+export const OrderDetailsModal = ({
+    order,
+    onClose,
+    onComplete,
+    onCancel
+}) => {
+
+    if (!order) {
+        return null;
+    }
+
+
+    const truncate = (
+        text,
+        max = 20
+    ) => {
+
         if (!text) return "—";
-        return text.length > max ? `${text.slice(0, max)}...` : text;
+
+        return text.length > max
+            ? `${text.slice(0, max)}...`
+            : text;
+
     };
 
+
+    const getStatusLabel = (
+        status
+    ) => {
+
+        if (
+            status === "completed" ||
+            status === "completos"
+        ) {
+            return "Completo";
+        }
+
+        if (
+            status === "cancelados" ||
+            status === "cancelled"
+        ) {
+            return "Cancelado";
+        }
+
+        return "Ativo";
+
+    };
+
+
     return (
+
         <motion.div
-            className="order-details-overlay"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className="orders-details-overlay"
+            initial={{
+                opacity: 0
+            }}
+            animate={{
+                opacity: 1
+            }}
+            exit={{
+                opacity: 0
+            }}
             onClick={(e) => {
-                if (e.target.classList.contains("order-details-overlay")) onClose();
+
+                if (
+                    e.target.classList.contains(
+                        "orders-details-overlay"
+                    )
+                ) {
+
+                    onClose();
+
+                }
+
             }}
         >
-            <motion.div
-                className="order-details-container"
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.9, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 250, damping: 25 }}
-            >
-                <header className="order-details-header">
-                    <div className="order-details-header-content">
-                        <div>
-                            <h3 className="order-details-title">Detalhes do Agendamento</h3>
-                            <p className="order-details-id">ID: {order.id}</p>
-                        </div>
 
-                        <button
-                            className="order-details-close-icon"
-                            onClick={onClose}
-                            aria-label="Fechar"
-                        >
-                            ✕
-                        </button>
+            <motion.div
+                className="orders-details-modal"
+                initial={{
+                    opacity: 0,
+                    scale: 0.95,
+                    y: 15
+                }}
+                animate={{
+                    opacity: 1,
+                    scale: 1,
+                    y: 0
+                }}
+                exit={{
+                    opacity: 0,
+                    scale: 0.95,
+                    y: 15
+                }}
+            >
+
+                <header className="orders-details-header">
+
+                    <div>
+
+                        <span>
+                            Pedido
+                        </span>
+
+                        <h2>
+                            Detalhes do agendamento
+                        </h2>
+
+                        <p>
+                            #{order.id}
+                        </p>
+
                     </div>
+
+                    <button
+                        type="button"
+                        onClick={
+                            onClose
+                        }
+                    >
+
+                        <Icon
+                            icon="lucide:x"
+                        />
+
+                    </button>
+
                 </header>
 
-                <div className="order-details-scrollable">
-                    <h3 className="order-section-title">Informações do Serviço</h3>
-                    <section className="order-details-service">
-                        <img
-                            src={order.productImage}
-                            alt={order.productName}
-                            className="order-details-image"
-                        />
-                        <div className="order-details-service-info">
-                            <div className="order-service-row">
-                                <span className="order-service-label">Serviço:</span>
-                                <span className="order-service-value">
-                                    {truncate(order.productName, 18)}
-                                </span>                            </div>
-                            <div className="order-service-row">
-                                <span className="order-service-label">Valor:</span>
-                                <span className="order-service-value">{order.productValue}</span>
-                            </div>
-                            <div className="order-service-row">
-                                <span className="order-service-label">Cliente:</span>
-                                <span className="order-service-value">
-                                    {truncate(order.clientName, 16)}
-                                </span>
-                            </div>
+
+                <div className="orders-details-body">
+
+                    <section className="orders-details-product">
+
+                        <div className="orders-details-product-image">
+
+                            <img
+                                src={
+                                    order.productImage ||
+                                    placeholder
+                                }
+                                alt={
+                                    order.productName
+                                }
+                            />
+
                         </div>
+
+                        <div className="orders-details-product-info">
+
+                            <span>
+                                Serviço
+                            </span>
+
+                            <h3>
+                                {
+                                    order.productName
+                                }
+                            </h3>
+
+                            <strong>
+                                {
+                                    order.productValue
+                                }
+                            </strong>
+
+                        </div>
+
+                        <span
+                            className={
+                                `orders-status-badge ${order.statusDisplay ||
+                                order.status
+                                }`
+                            }
+                        >
+                            {getStatusLabel(
+                                order.statusDisplay ||
+                                order.status
+                            )}
+                        </span>
+
                     </section>
 
-                    <h3 className="order-section-title">Informações do Agendamento</h3>
-                    <section className="order-details-info">
-                        <div className="order-info-row">
-                            <span className="order-info-label">Data:</span>
-                            <span className="order-info-value">{order.day}</span>
-                        </div>
-                        <div className="order-info-row">
-                            <span className="order-info-label">Horário:</span>
-                            <span className="order-info-value">{order.fullHour || order.hour}</span>
-                        </div>
-                        <div className="order-info-row">
-                            <span className="order-info-label">Status:</span>
-                            <span className="order-info-value">{order.status}</span>
-                        </div>
-                    </section>
 
-                    <div className="order-details-actions">
-                        <button className="order-cancel-button" onClick={() => onCancel(order)}>
-                            Cancelar
-                        </button>
-                        <button className="order-view-button" onClick={() => onComplete(order)}>
-                            Completar Pedido
-                        </button>
-                    </div>
+                    <section className="orders-details-grid">
+
+                        <div className="orders-details-item">
+
+                            <span>
+                                Cliente
+                            </span>
+
+                            <strong>
+                                {
+                                    truncate(
+                                        order.clientName ||
+                                        order.userName,
+                                        28
+                                    )
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div className="orders-details-item">
+
+                            <span>
+                                Profissional
+                            </span>
+
+                            <strong>
+                                {
+                                    truncate(
+                                        order.professionalName,
+                                        28
+                                    )
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div className="orders-details-item">
+
+                            <span>
+                                Data
+                            </span>
+
+                            <strong>
+                                {
+                                    order.dayLabel ||
+                                    order.day ||
+                                    "—"
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div className="orders-details-item">
+
+                            <span>
+                                Horário
+                            </span>
+
+                            <strong>
+                                {
+                                    order.fullHour ||
+                                    order.hour ||
+                                    "—"
+                                }
+                            </strong>
+
+                        </div>
+
+                    </section>
 
                 </div>
+
+
+                <footer className="orders-details-actions">
+
+                    <button
+                        type="button"
+                        className="orders-details-cancel"
+                        onClick={() =>
+                            onCancel(
+                                order
+                            )
+                        }
+                    >
+                        Cancelar
+                    </button>
+
+                    <button
+                        type="button"
+                        className="orders-details-complete"
+                        onClick={() =>
+                            onComplete(
+                                order
+                            )
+                        }
+                    >
+
+                        <Icon
+                            icon="lucide:check"
+                        />
+
+                        Completar pedido
+
+                    </button>
+
+                </footer>
+
             </motion.div>
+
         </motion.div>
+
     );
+
 };
+
 
 export default Orders;

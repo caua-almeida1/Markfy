@@ -1,0 +1,2531 @@
+/* =========================================================
+   MARKFY LANDING PAGE
+   Desktop First
+========================================================= */
+
+html {
+    scroll-behavior: smooth!important;
+}
+
+.markfy-landing section[id] {
+    scroll-margin-top: -10px;
+}
+:root {
+    --markfy-blue: #092af3;
+    --markfy-blue-dark: #061fc0;
+    --markfy-white: #ffffff;
+    --markfy-black: #08090d;
+    --markfy-text: #10121a;
+    --markfy-muted: #686d7b;
+    --markfy-border: #e8eaf0;
+    --markfy-soft: #f5f7fb;
+    --markfy-radius: 24px;
+    --markfy-container: 1380px;
+
+    --markfy-shadow:
+        0 30px 80px rgba(9, 42, 243, 0.12);
+
+    --markfy-transition: cubic-bezier(0.22, 1, 0.36, 1);
+    --markfy-transition-fast: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+.markfy-header.is-scrolled {
+    padding: 12px 0;
+}
+
+.markfy-header.is-scrolled .markfy-header__inner {
+    height: 62px;
+
+    background:
+        rgba(255, 255, 255, 0.94);
+
+    box-shadow:
+        0 12px 40px rgba(12, 22, 65, 0.1);
+}
+
+.markfy-header.is-scrolled .markfy-nav a {
+    height: 62px;
+}
+
+.markfy-header.is-scrolled .markfy-nav a::after {
+    bottom: 15px;
+}
+
+/* =========================================================
+   BASE
+========================================================= */
+
+body.landing-active {
+    margin: 0;
+    padding: 0;
+
+    width: 100%;
+    min-height: 100vh;
+
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    background: var(--markfy-white);
+    color: var(--markfy-text);
+}
+
+body.landing-active *,
+body.landing-active *::before,
+body.landing-active *::after {
+    box-sizing: border-box;
+}
+
+body.landing-active {
+    font-family:
+        "Inter",
+        "Poppins",
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body.landing-active {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.markfy-landing {
+    width: 100%;
+    min-height: 100vh;
+    overflow-x: hidden;
+    overflow-y: visible;
+}
+
+.markfy-container {
+    width: min(calc(100% - 80px),
+            var(--markfy-container));
+
+    margin: 0 auto;
+}
+
+
+/* =========================================================
+   SCROLL PROGRESS
+========================================================= */
+
+.markfy-scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 3px;
+
+    background: var(--markfy-blue);
+
+    transform-origin: left center;
+
+    z-index: 9999;
+
+    will-change: transform;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.markfy-header {
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+
+    z-index: 100;
+
+    padding: 24px 0;
+}
+
+.markfy-header__inner {
+    width: min(calc(100% - 80px),
+            1480px);
+
+    margin: 0 auto;
+
+    height: 72px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 10px 0 24px;
+
+    border: 1px solid rgba(255, 255, 255, 0.7);
+
+    background:
+        rgba(255, 255, 255, 0.78);
+
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+
+    border-radius: 100px;
+
+    box-shadow:
+        0 15px 50px rgba(12, 22, 65, 0.06);
+}
+
+.markfy-header__inner {
+    position: relative;
+}
+
+.markfy-nav {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* LOGO */
+
+.markfy-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    text-decoration: none;
+
+    color: var(--markfy-text);
+
+    flex-shrink: 0;
+}
+
+.markfy-logo__mark {
+    width: 36px;
+    height: 36px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--markfy-blue);
+    color: white;
+
+    border-radius: 10px;
+
+    font-size: 16px;
+    font-weight: 800;
+
+    letter-spacing: -0.05em;
+
+    box-shadow:
+        0 7px 20px rgba(9, 42, 243, 0.24);
+}
+
+.markfy-logo__name {
+    font-size: 21px;
+    font-weight: 750;
+
+    letter-spacing: -0.06em;
+}
+
+/* =========================================================
+   NAV
+========================================================= */
+
+.markfy-nav {
+    display: flex;
+    align-items: center;
+
+    gap: 38px;
+
+    margin-left: auto;
+    margin-right: auto;
+    background: none !important;
+
+    box-shadow: none;
+}
+
+.markfy-nav a {
+    position: relative;
+
+    display: inline-flex;
+    align-items: center;
+
+    height: 72px;
+
+    color: #505461;
+
+    text-decoration: none;
+
+    font-size: 14px;
+    font-weight: 550;
+
+    white-space: nowrap;
+
+    transition:
+        color 250ms var(--markfy-transition);
+}
+
+.markfy-nav a::after {
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+    bottom: 20px;
+
+    width: 0;
+    height: 2px;
+
+    border-radius: 10px;
+
+    background: var(--markfy-blue);
+
+    transform: translateX(-50%);
+
+    transition:
+        width 300ms var(--markfy-transition);
+}
+
+.markfy-nav a:hover {
+    color: var(--markfy-blue);
+}
+
+.markfy-nav a:hover::after {
+    width: 18px;
+}
+
+/* HEADER ACTIONS */
+
+.markfy-header__actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.markfy-header__login {
+    border: 0;
+    background: transparent;
+
+    padding: 12px 15px;
+
+    font-size: 14px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    color: var(--markfy-text);
+
+    transition:
+        color 250ms var(--markfy-transition);
+}
+
+.markfy-header__login:hover {
+    color: var(--markfy-blue);
+}
+
+
+/* =========================================================
+   BUTTONS
+========================================================= */
+
+.markfy-button {
+    border: 0;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+
+    min-height: 54px;
+
+    padding: 0 23px;
+
+    border-radius: 100px;
+
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    text-decoration: none;
+
+    transition:
+        transform 350ms var(--markfy-transition),
+        box-shadow 350ms var(--markfy-transition),
+        background 350ms var(--markfy-transition),
+        color 350ms var(--markfy-transition);
+}
+
+.markfy-button markfy-button--small span {
+    font-size: 2rem;
+    color: var(--markfy-white);
+
+    transition:
+        transform 350ms var(--markfy-transition);
+}
+
+.markfy-button:hover {
+    transform: translateY(-3px);
+}
+
+/* .markfy-button:hover svg {
+    transform: translate(2px, -2px);
+} */
+
+.markfy-button--small {
+    min-height: 50px;
+
+    padding: 0 19px;
+
+    background: var(--markfy-blue);
+    color: white;
+
+    box-shadow:
+        0 10px 25px rgba(9, 42, 243, 0.18);
+}
+
+.markfy-button--primary {
+    background: var(--markfy-blue);
+    color: white;
+
+    box-shadow:
+        0 16px 35px rgba(9, 42, 243, 0.24);
+}
+
+.markfy-button--primary:hover,
+.markfy-button--small:hover {
+    background: var(--markfy-blue-dark);
+
+    box-shadow:
+        0 20px 45px rgba(9, 42, 243, 0.32);
+}
+
+.markfy-button--ghost {
+    background: transparent;
+
+    color: var(--markfy-text);
+
+    border: 1px solid var(--markfy-border);
+}
+
+.markfy-button--ghost:hover {
+    border-color: #cfd3df;
+
+    background: #fafbfc;
+}
+
+.markfy-button--white {
+    background: white;
+    color: var(--markfy-blue);
+
+    box-shadow:
+        0 20px 45px rgba(0, 0, 0, 0.16);
+}
+
+.markfy-button--outline-white {
+    background: transparent;
+
+    color: white;
+
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.markfy-button--outline-white:hover {
+    background: rgba(255, 255, 255, 0.08);
+
+    border-color: rgba(255, 255, 255, 0.7);
+}
+
+
+/* =========================================================
+   EYEBROW
+========================================================= */
+
+.markfy-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+
+    color: var(--markfy-blue);
+
+    font-size: 11px;
+    font-weight: 750;
+
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.markfy-eyebrow__dot {
+    width: 7px;
+    height: 7px;
+
+    border-radius: 50%;
+
+    background: var(--markfy-blue);
+
+    box-shadow:
+        0 0 0 5px rgba(9, 42, 243, 0.08);
+}
+
+.markfy-eyebrow--light {
+    color: white;
+}
+
+.markfy-eyebrow--light .markfy-eyebrow__dot {
+    background: white;
+
+    box-shadow:
+        0 0 0 5px rgba(255, 255, 255, 0.1);
+}
+
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.markfy-hero {
+    position: relative;
+
+    min-height: 100svh;
+
+    padding-top: 170px;
+    padding-bottom: 100px;
+
+    display: flex;
+    align-items: center;
+
+    isolation: isolate;
+
+    background:
+        radial-gradient(circle at 72% 35%,
+            rgba(9, 42, 243, 0.09),
+            transparent 31%),
+        linear-gradient(180deg,
+            #ffffff 0%,
+            #fbfcff 100%);
+}
+
+.markfy-hero__background {
+    position: absolute;
+
+    inset: 0;
+
+    pointer-events: none;
+
+    z-index: -1;
+}
+
+.markfy-hero__glow {
+    position: absolute;
+
+    width: 700px;
+    height: 700px;
+
+    right: -180px;
+    top: 100px;
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(circle,
+            rgba(9, 42, 243, 0.1),
+            transparent 68%);
+
+    filter: blur(10px);
+}
+
+.markfy-hero__grid {
+    position: absolute;
+
+    inset: 0;
+
+    opacity: 0.35;
+
+    background-image:
+        linear-gradient(rgba(9, 42, 243, 0.035) 1px,
+            transparent 1px),
+        linear-gradient(90deg,
+            rgba(9, 42, 243, 0.035) 1px,
+            transparent 1px);
+
+    background-size: 70px 70px;
+
+    mask-image:
+        linear-gradient(to bottom,
+            black,
+            transparent 75%);
+}
+
+
+/* HERO CONTAINER */
+
+.markfy-hero>.markfy-container {
+    position: relative;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 0.88fr) minmax(600px, 1.12fr);
+
+    align-items: center;
+
+    gap: 60px;
+}
+
+
+/* HERO CONTENT */
+
+.markfy-hero__content {
+    position: relative;
+
+    z-index: 3;
+
+    padding-bottom: 35px;
+}
+
+.markfy-hero__title {
+    margin: 28px 0 25px;
+
+    max-width: 720px;
+
+    font-size:
+        clamp(64px,
+            6vw,
+            94px);
+
+    line-height: 0.93;
+
+    letter-spacing: -0.075em;
+
+    font-weight: 760;
+
+    color: #080a11;
+}
+
+.markfy-hero__title span {
+    color: var(--markfy-blue);
+}
+
+.markfy-hero__description {
+    max-width: 570px;
+
+    margin: 0;
+
+    color: var(--markfy-muted);
+
+    font-size: 17px;
+
+    line-height: 1.7;
+
+    letter-spacing: -0.015em;
+}
+
+.markfy-hero__actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    margin-top: 38px;
+}
+
+.markfy-hero__trust {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+
+    margin-top: 45px;
+}
+
+.markfy-hero__trust p {
+    max-width: 260px;
+
+    margin: 0;
+
+    color: #858996;
+
+    font-size: 12px;
+
+    line-height: 1.5;
+}
+
+.markfy-hero__avatars {
+    display: flex;
+    align-items: center;
+}
+
+.markfy-avatar {
+    position: relative;
+
+    width: 38px;
+    height: 38px;
+
+    margin-left: -9px;
+
+    overflow: hidden;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border:
+        2px solid white;
+
+    border-radius: 50%;
+
+    background: #dfe3ec;
+
+    box-shadow:
+        0 4px 12px rgba(15, 25, 55, 0.08);
+
+    transition:
+        transform 400ms ease-in-out,
+        box-shadow 400ms ease-in-out,
+        border-color 400ms ease-in-out;
+}
+
+.markfy-avatar:first-child {
+    margin-left: 0;
+}
+
+.markfy-avatar:hover {
+    z-index: 5;
+
+    transform:
+        translateY(-5px) scale(1.08);
+
+    box-shadow:
+        0 10px 22px rgba(15, 25, 55, 0.16);
+}
+
+
+/* FOTO */
+
+.markfy-avatar img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+
+    object-position: center;
+
+    transition:
+        transform 500ms ease-in-out;
+}
+
+.markfy-avatar:hover img {
+    transform:
+        scale(1.08);
+}
+
+.markfy-avatar--more {
+    background:
+        var(--markfy-blue);
+
+    color: white;
+
+    font-size: 15px;
+    font-weight: 500;
+
+    cursor: default;
+}
+
+.markfy-avatar--more span {
+    display: block;
+
+    line-height: 1;
+
+    transition:
+        transform 400ms ease-in-out;
+}
+
+.markfy-avatar--more:hover span {
+    transform:
+        rotate(90deg) scale(1.1);
+}
+
+/* =========================================================
+   HERO MOCKUP
+========================================================= */
+
+.markfy-hero__visual {
+    position: relative;
+
+    min-height: 570px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.markfy-hero__visual-label {
+    position: absolute;
+
+    top: 4px;
+    right: 45px;
+
+    font-size: 9px;
+    font-weight: 750;
+
+    letter-spacing: 0.15em;
+
+    color: #a2a6b1;
+}
+
+.markfy-main-mockup {
+    position: relative;
+
+    width: min(720px, 100%);
+    aspect-ratio: 1.25;
+
+    padding: 11px;
+
+    border-radius: 27px;
+
+    background:
+        linear-gradient(145deg,
+            #ffffff,
+            #eef1fa);
+
+    border: 1px solid #e2e5ee;
+
+    box-shadow:
+        0 45px 100px rgba(16, 29, 72, 0.16),
+        0 10px 25px rgba(16, 29, 72, 0.06);
+
+    transform:
+        perspective(1200px) rotateY(-4deg) rotateX(2deg);
+
+    transition:
+        transform 800ms var(--markfy-transition),
+        box-shadow 800ms var(--markfy-transition);
+}
+
+.markfy-main-mockup:hover {
+    transform:
+        perspective(1200px) rotateY(0deg) rotateX(0deg) translateY(-8px);
+
+    border-color:
+        rgba(9, 42, 243, 0.18);
+
+    box-shadow:
+        0 60px 120px rgba(16, 29, 72, 0.20),
+
+        0 15px 35px rgba(9, 42, 243, 0.08);
+}
+
+.markfy-main-mockup:hover .markfy-main-mockup__image {
+    transform:
+        scale(1.015);
+}
+
+.markfy-main-mockup__image {
+    display: block;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: contain;
+    object-position: center;
+
+    border-radius: 18px;
+
+    background: #f7f8fc;
+
+    transition:
+        transform 800ms var(--markfy-transition),
+        filter 500ms var(--markfy-transition);
+}
+
+.markfy-mockup-placeholder {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 9px;
+
+    border-radius: 19px;
+
+    background:
+        linear-gradient(135deg,
+            #f7f8fc,
+            #eef1f8);
+
+    border: 1px dashed #d5d9e4;
+
+    color: #9499a8;
+
+    text-align: center;
+}
+
+.markfy-mockup-placeholder svg {
+    width: 40px;
+    height: 40px;
+
+    color: var(--markfy-blue);
+
+    opacity: 0.75;
+}
+
+.markfy-mockup-placeholder span {
+    font-size: 14px;
+    font-weight: 700;
+
+    color: #656b79;
+}
+
+.markfy-mockup-placeholder small {
+    max-width: 240px;
+
+    font-size: 10px;
+
+    line-height: 1.5;
+
+    color: #9ca1ae;
+}
+
+
+/* FLOATING CARDS */
+
+.markfy-floating-card {
+    position: absolute;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 14px 17px;
+
+    border: 1px solid rgba(255, 255, 255, 0.8);
+
+    border-radius: 17px;
+
+    background:
+        rgba(255, 255, 255, 0.92);
+
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+
+    box-shadow:
+        0 20px 50px rgba(16, 29, 72, 0.13);
+
+    z-index: 5;
+}
+
+.markfy-floating-card--top {
+    top: 75px;
+    right: -5px;
+}
+
+.markfy-floating-card--bottom {
+    bottom: 55px;
+    left: -15px;
+}
+
+.markfy-floating-card__icon,
+.markfy-floating-card__check {
+    width: 38px;
+    height: 38px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 11px;
+
+    background: rgba(9, 42, 243, 0.08);
+
+    color: var(--markfy-blue);
+}
+
+.markfy-floating-card__check {
+    background: #e9f9ef;
+    color: #1fa05a;
+}
+
+.markfy-floating-card svg {
+    width: 19px;
+    height: 19px;
+}
+
+.markfy-floating-card strong {
+    display: block;
+
+    color: #12141b;
+
+    font-size: 13px;
+    font-weight: 750;
+}
+
+.markfy-floating-card span {
+    display: block;
+
+    margin-top: 2px;
+
+    color: #9195a1;
+
+    font-size: 10px;
+}
+
+
+/* =========================================================
+   SCROLL INDICATOR
+========================================================= */
+
+.markfy-scroll-indicator {
+    position: absolute;
+
+    left: 50%;
+    bottom: 28px;
+
+    transform: translateX(-50%);
+
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    color: #9ca0ac;
+
+    text-decoration: none;
+
+    font-size: 10px;
+    font-weight: 650;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.08em;
+}
+
+.markfy-scroll-indicator svg {
+    width: 14px;
+    height: 14px;
+
+    animation:
+        markfyScrollArrow 2s infinite;
+}
+
+@keyframes markfyScrollArrow {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(5px);
+    }
+}
+
+
+/* =========================================================
+   SOCIAL PROOF
+========================================================= */
+
+.markfy-social-proof {
+    padding: 55px 0 70px;
+
+    border-top: 1px solid #f0f1f5;
+    border-bottom: 1px solid #f0f1f5;
+
+    background: white;
+}
+
+.markfy-social-proof__title {
+    margin: 0 0 35px;
+
+    text-align: center;
+
+    color: #a0a4af;
+
+    font-size: 11px;
+    font-weight: 650;
+
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.markfy-social-proof__logos {
+    display: grid;
+
+    grid-template-columns:
+        repeat(5, 1fr);
+
+    align-items: center;
+
+    gap: 30px;
+}
+
+.markfy-social-proof__logos span {
+    color: #b4b8c2;
+
+    text-align: center;
+
+    font-size: 15px;
+    font-weight: 750;
+
+    letter-spacing: -0.04em;
+}
+
+
+/* =========================================================
+   SECTION HEADING
+========================================================= */
+
+.markfy-section-heading {
+    max-width: 680px;
+}
+
+.markfy-section-heading--center {
+    margin: 0 auto;
+
+    text-align: center;
+}
+
+.markfy-section-heading h2 {
+    margin: 25px 0 22px;
+
+    font-size:
+        clamp(48px,
+            4.5vw,
+            70px);
+
+    line-height: 0.98;
+
+    letter-spacing: -0.065em;
+
+    font-weight: 750;
+}
+
+.markfy-section-heading h2 span {
+    color: var(--markfy-blue);
+}
+
+.markfy-section-heading p {
+    max-width: 590px;
+
+    margin: 0;
+
+    color: var(--markfy-muted);
+
+    font-size: 16px;
+
+    line-height: 1.7;
+}
+
+
+/* =========================================================
+   INTRO / PLATFORM
+========================================================= */
+.markfy-intro {
+    padding: 100px 0 170px;
+    background: white;
+}
+
+.markfy-large-mockup {
+    position: relative;
+
+    width: 100%;
+
+    margin: 80px auto 0;
+
+    padding: 8px;
+
+    border: 1px solid #e2e5ed;
+
+    border-radius: 30px;
+
+    background:
+        linear-gradient(
+            135deg,
+            #ffffff,
+            #f1f3f9
+        );
+
+    box-shadow:
+        0 45px 100px rgba(20, 30, 65, 0.12);
+
+    overflow: hidden;
+}
+
+.markfy-large-mockup__image {
+    display: block;
+
+    width: 102%;
+    max-width: none;
+
+    height: auto;
+
+    margin-left: -1%;
+
+    object-fit: contain;
+}
+
+.markfy-large-mockup::before {
+    content: "";
+
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 5px;
+
+    background:
+        linear-gradient(
+            90deg,
+            var(--markfy-blue),
+            #5069ff,
+            var(--markfy-blue)
+        );
+
+    z-index: 2;
+}
+
+.markfy-large-mockup .markfy-mockup-placeholder {
+    border-radius: 20px;
+}
+/* =========================================================
+   FEATURES
+========================================================= */
+
+.markfy-features {
+    padding: 160px 0;
+
+    background: #f7f8fb;
+}
+
+.markfy-features__grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    gap: 18px;
+
+    margin-top: 80px;
+}
+
+.markfy-feature-card {
+    position: relative;
+
+    min-height: 520px;
+
+    padding: 30px;
+
+    display: flex;
+    flex-direction: column;
+
+    border: 1px solid #e7e9ef;
+
+    border-radius: var(--markfy-radius);
+
+    background: white;
+
+    overflow: hidden;
+
+    transition:
+        transform 500ms var(--markfy-transition),
+        box-shadow 500ms var(--markfy-transition),
+        border-color 500ms var(--markfy-transition);
+}
+
+.markfy-feature-card:hover {
+    transform: translateY(-9px);
+
+    border-color: rgba(9, 42, 243, 0.15);
+
+    box-shadow:
+        0 30px 70px rgba(16, 29, 72, 0.1);
+}
+
+.markfy-feature-card__number {
+    color: #b0b4bf;
+
+    font-size: 10px;
+    font-weight: 700;
+
+    letter-spacing: 0.1em;
+}
+
+.markfy-feature-card__icon {
+    width: 52px;
+    height: 52px;
+
+    margin-top: 60px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 15px;
+
+    background:
+        rgba(9, 42, 243, 0.08);
+
+    color: var(--markfy-blue);
+}
+
+.markfy-feature-card__icon svg {
+    width: 25px;
+    height: 25px;
+}
+
+.markfy-feature-card h3 {
+    margin: 25px 0 10px;
+
+    color: #11131a;
+
+    font-size: 21px;
+    font-weight: 720;
+
+    letter-spacing: -0.04em;
+}
+
+.markfy-feature-card p {
+    margin: 0;
+
+    color: #777c89;
+
+    font-size: 13px;
+
+    line-height: 1.7;
+}
+
+.markfy-feature-card__visual {
+    position: absolute;
+
+    left: 30px;
+    right: 30px;
+    bottom: 30px;
+
+    height: 120px;
+
+    overflow: hidden;
+
+    border-radius: 16px;
+
+    background: #f5f7fb;
+}
+
+.markfy-mini-placeholder {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px dashed #d7dbe6;
+
+    color: rgba(9, 42, 243, 0.3);
+}
+
+.markfy-mini-placeholder svg {
+    width: 28px;
+    height: 28px;
+}
+
+
+/* =========================================================
+   SHOWCASE
+========================================================= */
+
+.markfy-showcase {
+    padding: 180px 0;
+
+    background: white;
+}
+
+.markfy-showcase>.markfy-container {
+    display: grid;
+
+    grid-template-columns:
+        0.75fr 1.25fr;
+
+    gap: 110px;
+
+    align-items: center;
+}
+
+.markfy-showcase__content {
+    max-width: 540px;
+}
+
+.markfy-showcase__content h2 {
+    margin: 25px 0;
+
+    font-size:
+        clamp(50px,
+            4.3vw,
+            68px);
+
+    line-height: 0.98;
+
+    letter-spacing: -0.065em;
+}
+
+.markfy-showcase__content h2 span {
+    color: var(--markfy-blue);
+}
+
+.markfy-showcase__content>p {
+    color: var(--markfy-muted);
+
+    font-size: 16px;
+
+    line-height: 1.75;
+}
+
+.markfy-check-list {
+    margin: 35px 0;
+
+    padding: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+
+    list-style: none;
+}
+
+.markfy-check-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    color: #3e424d;
+
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.markfy-check-list svg {
+    width: 19px;
+    height: 19px;
+
+    color: var(--markfy-blue);
+}
+
+.markfy-showcase__visual {
+    position: relative;
+}
+
+.markfy-showcase-mockup {
+    position: relative;
+
+    width: 100%;
+
+    aspect-ratio: 1.35;
+
+    padding: 12px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(135deg,
+            #f0f2f8,
+            #ffffff);
+
+    border: 1px solid #e2e5ec;
+
+    box-shadow:
+        0 40px 90px rgba(20, 30, 65, 0.14);
+
+    transform:
+        perspective(1200px) rotateY(3deg);
+
+    transition:
+        transform 700ms var(--markfy-transition);
+}
+
+.markfy-showcase-mockup:hover {
+    transform:
+        perspective(1200px) rotateY(0deg) translateY(-8px);
+}
+
+
+/* =========================================================
+   BLUE SECTION
+========================================================= */
+
+.markfy-blue-section {
+    position: relative;
+
+    min-height: 800px;
+
+    padding: 130px 0;
+
+    background: var(--markfy-blue);
+
+    color: white;
+
+    overflow: hidden;
+
+    isolation: isolate;
+}
+
+.markfy-blue-section__background {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: -1;
+}
+
+.markfy-blue-section__grid {
+    position: absolute;
+
+    inset: 0;
+
+    opacity: 0.18;
+
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.2) 1px,
+            transparent 1px),
+        linear-gradient(90deg,
+            rgba(255, 255, 255, 0.2) 1px,
+            transparent 1px);
+
+    background-size: 80px 80px;
+
+    mask-image:
+        radial-gradient(circle at center,
+            black,
+            transparent 75%);
+}
+
+.markfy-blue-section::before {
+    content: "";
+
+    position: absolute;
+
+    width: 700px;
+    height: 700px;
+
+    right: -250px;
+    top: 50%;
+
+    transform: translateY(-50%);
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(circle,
+            rgba(255, 255, 255, 0.14),
+            transparent 68%);
+
+    filter: blur(10px);
+
+    z-index: -1;
+}
+
+.markfy-blue-section>.markfy-container {
+    display: grid;
+
+    grid-template-columns:
+        0.8fr 1.2fr;
+
+    gap: 100px;
+
+    align-items: center;
+}
+
+.markfy-blue-section__content {
+    max-width: 560px;
+}
+
+.markfy-blue-section__content h2 {
+    margin: 27px 0;
+
+    font-size:
+        clamp(52px,
+            4.7vw,
+            74px);
+
+    line-height: 0.95;
+
+    letter-spacing: -0.07em;
+}
+
+.markfy-blue-section__content p {
+    max-width: 480px;
+
+    margin: 0;
+
+    color: rgba(255, 255, 255, 0.7);
+
+    font-size: 16px;
+
+    line-height: 1.7;
+}
+
+.markfy-blue-section__content .markfy-button {
+    margin-top: 35px;
+}
+
+.markfy-blue-section__visual {
+    position: relative;
+}
+
+.markfy-blue-mockup {
+    width: 100%;
+
+    aspect-ratio: 1.25;
+
+    padding: 12px;
+
+    border-radius: 28px;
+
+    background:
+        rgba(255, 255, 255, 0.13);
+
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    box-shadow:
+        0 50px 100px rgba(0, 0, 0, 0.18);
+
+    transform:
+        perspective(1200px) rotateY(-4deg);
+
+    transition:
+        transform 700ms var(--markfy-transition);
+}
+
+.markfy-blue-mockup:hover {
+    transform:
+        perspective(1200px) rotateY(0deg) translateY(-8px);
+}
+
+.markfy-blue-mockup .markfy-mockup-placeholder {
+    background:
+        rgba(255, 255, 255, 0.06);
+
+    border-color:
+        rgba(255, 255, 255, 0.2);
+
+    color:
+        rgba(255, 255, 255, 0.55);
+}
+
+.markfy-blue-mockup .markfy-mockup-placeholder span {
+    color: white;
+}
+
+.markfy-blue-mockup .markfy-mockup-placeholder small {
+    color:
+        rgba(255, 255, 255, 0.5);
+}
+
+.markfy-blue-mockup .markfy-mockup-placeholder svg {
+    color: white;
+}
+
+
+/* =========================================================
+   RESULTS
+========================================================= */
+
+.markfy-results {
+    padding: 170px 0;
+
+    background: white;
+}
+
+.markfy-results__grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(4, 1fr);
+
+    margin-top: 90px;
+
+    border-top: 1px solid var(--markfy-border);
+    border-bottom: 1px solid var(--markfy-border);
+}
+
+.markfy-result {
+    min-height: 180px;
+
+    padding: 40px 30px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    border-right: 1px solid var(--markfy-border);
+}
+
+.markfy-result:last-child {
+    border-right: 0;
+}
+
+.markfy-result strong {
+    color: var(--markfy-blue);
+
+    font-size: 58px;
+    line-height: 1;
+
+    letter-spacing: -0.065em;
+
+    font-weight: 750;
+}
+
+.markfy-result span {
+    margin-top: 10px;
+
+    color: #858a97;
+
+    font-size: 12px;
+}
+
+
+/* =========================================================
+   TESTIMONIAL
+========================================================= */
+
+.markfy-testimonial {
+    max-width: 900px;
+
+    margin: 120px auto 0;
+
+    text-align: center;
+}
+
+.markfy-testimonial__quote {
+    width: 45px;
+    height: 45px;
+
+    margin: 0 auto 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: var(--markfy-blue);
+
+    background:
+        rgba(9, 42, 243, 0.08);
+
+    border-radius: 14px;
+}
+
+.markfy-testimonial__quote svg {
+    width: 23px;
+    height: 23px;
+}
+
+.markfy-testimonial blockquote {
+    margin: 0;
+
+    color: #191b23;
+
+    font-size:
+        clamp(24px,
+            2.4vw,
+            34px);
+
+    line-height: 1.35;
+
+    letter-spacing: -0.04em;
+}
+
+.markfy-testimonial__author {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+
+    margin-top: 35px;
+
+    text-align: left;
+}
+
+.markfy-testimonial__avatar {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 50%;
+
+    background: var(--markfy-blue);
+
+    color: white;
+
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.markfy-testimonial__author strong {
+    display: block;
+
+    color: #20232b;
+
+    font-size: 12px;
+}
+
+.markfy-testimonial__author span {
+    display: block;
+
+    margin-top: 3px;
+
+    color: #979ba6;
+
+    font-size: 10px;
+}
+
+
+/* =========================================================
+   ABOUT
+========================================================= */
+
+.markfy-about {
+    padding: 160px 0;
+
+    background: #f7f8fb;
+}
+
+.markfy-about>.markfy-container {
+    display: grid;
+
+    grid-template-columns:
+        1fr 0.9fr;
+
+    gap: 120px;
+
+    align-items: center;
+}
+
+.markfy-about__image {
+    width: 100%;
+
+    aspect-ratio: 1.1;
+
+    padding: 12px;
+
+    border-radius: 28px;
+
+    background:
+        linear-gradient(145deg,
+            #ffffff,
+            #eef1f7);
+
+    border: 1px solid #e3e6ed;
+
+    box-shadow:
+        0 40px 90px rgba(20, 30, 65, 0.1);
+}
+
+.markfy-about__image .markfy-mockup-placeholder {
+    border-radius: 20px;
+}
+
+.markfy-about__content {
+    max-width: 580px;
+}
+
+.markfy-about__content h2 {
+    margin: 25px 0;
+
+    font-size:
+        clamp(45px,
+            4.2vw,
+            65px);
+
+    line-height: 0.98;
+
+    letter-spacing: -0.065em;
+}
+
+.markfy-about__content h2 span {
+    color: var(--markfy-blue);
+
+    display: inline-block;
+}
+
+.markfy-about__content p {
+    margin: 0 0 18px;
+
+    color: #777c89;
+
+    font-size: 15px;
+
+    line-height: 1.75;
+}
+
+.markfy-text-button {
+    margin-top: 25px;
+
+    padding: 0;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+
+    border: 0;
+
+    background: transparent;
+
+    color: var(--markfy-blue);
+
+    font-family: inherit;
+
+    font-size: 13px;
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+.markfy-text-button svg {
+    width: 17px;
+    height: 17px;
+
+    transition:
+        transform 300ms var(--markfy-transition);
+}
+
+.markfy-text-button:hover svg {
+    transform: translate(3px, -3px);
+}
+
+
+/* =========================================================
+   FINAL CTA
+========================================================= */
+
+.markfy-final-cta {
+    position: relative;
+
+    min-height: 650px;
+
+    display: flex;
+    align-items: center;
+
+    padding: 120px 0;
+
+    background: var(--markfy-blue);
+
+    color: white;
+
+    overflow: hidden;
+
+    isolation: isolate;
+}
+
+.markfy-final-cta__background {
+    position: absolute;
+
+    inset: 0;
+
+    z-index: -1;
+}
+
+.markfy-final-cta__grid {
+    position: absolute;
+
+    inset: 0;
+
+    opacity: 0.16;
+
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.22) 1px,
+            transparent 1px),
+        linear-gradient(90deg,
+            rgba(255, 255, 255, 0.22) 1px,
+            transparent 1px);
+
+    background-size: 70px 70px;
+}
+
+.markfy-final-cta__glow {
+    position: absolute;
+
+    width: 900px;
+    height: 900px;
+
+    left: 50%;
+    top: 50%;
+
+    transform:
+        translate(-50%, -50%);
+
+    border-radius: 50%;
+
+    background:
+        radial-gradient(circle,
+            rgba(255, 255, 255, 0.15),
+            transparent 67%);
+
+    filter: blur(10px);
+}
+
+.markfy-final-cta__content {
+    max-width: 850px;
+
+    margin: 0 auto;
+
+    text-align: center;
+}
+
+.markfy-final-cta__content h2 {
+    margin: 28px 0 24px;
+
+    font-size:
+        clamp(58px,
+            6vw,
+            90px);
+
+    line-height: 0.93;
+
+    letter-spacing: -0.075em;
+}
+
+.markfy-final-cta__content h2 span {
+    display: inline-block;
+
+    color: #bfc9ff;
+}
+
+.markfy-final-cta__content p {
+    max-width: 570px;
+
+    margin: 0 auto;
+
+    color: rgba(255, 255, 255, 0.7);
+
+    font-size: 16px;
+
+    line-height: 1.7;
+}
+
+.markfy-final-cta__actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+
+    margin-top: 38px;
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.markfy-footer {
+    padding: 80px 0 30px;
+
+    background: #08090d;
+
+    color: white;
+}
+
+.markfy-footer .markfy-logo {
+    color: white;
+}
+
+.markfy-footer__top {
+    display: flex;
+    justify-content: space-between;
+
+    padding-bottom: 70px;
+
+    border-bottom:
+        1px solid rgba(255, 255, 255, 0.1);
+}
+
+.markfy-footer__brand p {
+    max-width: 220px;
+
+    margin: 20px 0 0;
+
+    color: #777b87;
+
+    font-size: 12px;
+
+    line-height: 1.6;
+}
+
+.markfy-footer__links {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 150px);
+
+    gap: 60px;
+}
+
+.markfy-footer__links>div {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.markfy-footer__links strong {
+    margin-bottom: 8px;
+
+    color: white;
+
+    font-size: 11px;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.08em;
+}
+
+.markfy-footer__links a {
+    color: #777b87;
+
+    text-decoration: none;
+
+    font-size: 12px;
+
+    transition:
+        color 250ms var(--markfy-transition);
+}
+
+.markfy-footer__links a:hover {
+    color: white;
+}
+
+.markfy-footer__bottom {
+    padding-top: 25px;
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    color: #555963;
+
+    font-size: 10px;
+}
+
+.markfy-footer__bottom div {
+    display: flex;
+    gap: 25px;
+}
+
+.markfy-footer__bottom a {
+    color: #555963;
+
+    text-decoration: none;
+
+    transition:
+        color 250ms var(--markfy-transition);
+}
+
+.markfy-footer__bottom a:hover {
+    color: white;
+}
+
+
+/* =========================================================
+   RESPONSIVE — LARGE DESKTOP
+========================================================= */
+
+@media (max-width: 1400px) {
+
+    .markfy-container {
+        width: min(calc(100% - 60px),
+                1280px);
+    }
+
+    .markfy-hero>.markfy-container {
+        grid-template-columns:
+            0.85fr 1.15fr;
+
+        gap: 40px;
+    }
+
+    .markfy-nav {
+        margin-left: 40px;
+    }
+
+    .markfy-main-mockup {
+        width: 650px;
+    }
+
+    .markfy-features__grid {
+        gap: 14px;
+    }
+
+}
+
+
+/* =========================================================
+   RESPONSIVE — TABLET / SMALL DESKTOP
+========================================================= */
+
+@media (max-width: 1100px) {
+
+    .markfy-container {
+        width: min(calc(100% - 48px),
+                960px);
+    }
+
+    .markfy-header__inner {
+        width: calc(100% - 48px);
+    }
+
+    .markfy-nav {
+        display: none;
+    }
+
+    .markfy-hero {
+        min-height: auto;
+
+        padding-top: 170px;
+        padding-bottom: 100px;
+    }
+
+    .markfy-hero>.markfy-container {
+        grid-template-columns: 1fr;
+
+        gap: 70px;
+    }
+
+    .markfy-hero__content {
+        text-align: center;
+    }
+
+    .markfy-hero__description {
+        margin: 0 auto;
+    }
+
+    .markfy-hero__actions {
+        justify-content: center;
+    }
+
+    .markfy-hero__trust {
+        justify-content: center;
+    }
+
+    .markfy-hero__visual {
+        min-height: 500px;
+    }
+
+    .markfy-main-mockup {
+        width: min(750px, 100%);
+    }
+
+    .markfy-features__grid {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .markfy-showcase>.markfy-container {
+        grid-template-columns: 1fr;
+
+        gap: 70px;
+    }
+
+    .markfy-showcase__content {
+        max-width: 700px;
+    }
+
+    .markfy-blue-section>.markfy-container {
+        grid-template-columns: 1fr;
+
+        gap: 70px;
+    }
+
+    .markfy-blue-section__content {
+        max-width: 700px;
+    }
+
+    .markfy-about>.markfy-container {
+        grid-template-columns: 1fr;
+
+        gap: 70px;
+    }
+
+    .markfy-about__content {
+        max-width: 700px;
+    }
+
+}
+
+
+/* =========================================================
+   RESPONSIVE — MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+    .markfy-landing .markfy-hero__title span {
+        font-size:
+            clamp(64px,
+                6vw,
+                94px);
+    }
+
+    .markfy-section-heading span {
+        font-size:
+            clamp(48px,
+                4.5vw,
+                70px);
+    }
+
+    .markfy-container {
+        width: calc(100% - 32px);
+    }
+
+    .markfy-header {
+        padding: 14px 0;
+    }
+
+    .markfy-header__inner {
+        width: calc(100% - 24px);
+
+        height: 62px;
+
+        padding-left: 14px;
+        padding-right: 7px;
+    }
+
+    .markfy-header__login {
+        display: none;
+    }
+
+    .markfy-logo__mark {
+        width: 32px;
+        height: 32px;
+    }
+
+    .markfy-logo__name {
+        font-size: 19px;
+    }
+
+    .markfy-button--small {
+        min-height: 46px;
+
+        padding: 0 15px;
+
+        font-size: 12px;
+    }
+
+    .markfy-hero {
+        padding-top: 135px;
+        padding-bottom: 80px;
+    }
+
+    .markfy-hero__title {
+        font-size: clamp(48px, 15vw, 70px);
+    }
+
+    .markfy-hero__description {
+        font-size: 14px;
+    }
+
+    .markfy-hero__actions {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    .markfy-hero__actions .markfy-button {
+        width: 100%;
+    }
+
+    .markfy-hero__trust {
+        flex-direction: column;
+    }
+
+    .markfy-hero__visual {
+        min-height: 350px;
+    }
+
+    .markfy-main-mockup {
+        width: 100%;
+
+        transform: none;
+    }
+
+    .markfy-floating-card--top {
+        right: -5px;
+        top: 15px;
+    }
+
+    .markfy-floating-card--bottom {
+        left: -5px;
+        bottom: 15px;
+    }
+
+    .markfy-social-proof__logos {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .markfy-social-proof__logos span:last-child {
+        grid-column: 1 / -1;
+    }
+
+    .markfy-intro,
+    .markfy-features,
+    .markfy-showcase,
+    .markfy-results,
+    .markfy-about {
+        padding: 100px 0;
+    }
+
+    .markfy-section-heading h2,
+    .markfy-showcase__content h2,
+    .markfy-about__content h2 {
+        font-size: 45px;
+    }
+
+    .markfy-large-mockup {
+        margin-top: 50px;
+
+        aspect-ratio: 1.15;
+    }
+
+    .markfy-features__grid {
+        grid-template-columns: 1fr;
+
+        margin-top: 50px;
+    }
+
+    .markfy-feature-card {
+        min-height: 470px;
+    }
+
+    .markfy-showcase__content h2 {
+        font-size: 48px;
+    }
+
+    .markfy-blue-section {
+        padding: 100px 0;
+    }
+
+    .markfy-blue-section__content h2 {
+        font-size: 48px;
+    }
+
+    .markfy-results__grid {
+        grid-template-columns:
+            repeat(2, 1fr);
+    }
+
+    .markfy-result {
+        min-height: 150px;
+
+        border-bottom: 1px solid var(--markfy-border);
+    }
+
+    .markfy-result:nth-child(2) {
+        border-right: 0;
+    }
+
+    .markfy-result:nth-child(3) {
+        border-bottom: 0;
+    }
+
+    .markfy-result:nth-child(4) {
+        border-right: 0;
+        border-bottom: 0;
+    }
+
+    .markfy-result strong {
+        font-size: 45px;
+    }
+
+    .markfy-testimonial {
+        margin-top: 80px;
+    }
+
+    .markfy-testimonial blockquote {
+        font-size: 23px;
+    }
+
+    .markfy-final-cta {
+        min-height: 580px;
+
+        padding: 90px 0;
+    }
+
+    .markfy-final-cta__content h2 {
+        font-size: 52px;
+    }
+
+    .markfy-final-cta__actions {
+        flex-direction: column;
+
+        align-items: stretch;
+    }
+
+    .markfy-footer__top {
+        flex-direction: column;
+
+        gap: 60px;
+    }
+
+    .markfy-footer__links {
+        grid-template-columns:
+            repeat(3, 1fr);
+
+        gap: 20px;
+    }
+
+    .markfy-footer__bottom {
+        flex-direction: column;
+
+        align-items: flex-start;
+
+        gap: 20px;
+    }
+
+}
+
+
+/* =========================================================
+   EXTRA SMALL
+========================================================= */
+
+@media (max-width: 420px) {
+
+    .markfy-header__inner {
+        padding-right: 5px;
+    }
+
+    .markfy-button--small {
+        padding: 0 12px;
+
+        font-size: 11px;
+    }
+
+    .markfy-hero__title {
+        font-size: 47px;
+    }
+
+    .markfy-section-heading h2,
+    .markfy-showcase__content h2,
+    .markfy-about__content h2,
+    .markfy-blue-section__content h2 {
+        font-size: 40px;
+    }
+
+    .markfy-final-cta__content h2 {
+        font-size: 45px;
+    }
+
+    .markfy-footer__links {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .markfy-footer__links>div:last-child {
+        grid-column: 1 / -1;
+    }
+
+}

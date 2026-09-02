@@ -1,3 +1,5 @@
+import LandingPage from "./pages/landing/LandingPage";
+
 import Login from "./components/auth/login";
 import PrivateRoute from "./components/auth/PrivateRoute";
 
@@ -37,18 +39,47 @@ function App() {
   }, []);
 
   const routesArray = [
+
+    /* =====================================================
+       PÁGINA PRINCIPAL / LANDING
+    ===================================================== */
+
     {
       path: "*",
+      element: <LandingPage />,
+    },
+
+    /* =====================================================
+       LOGIN
+    ===================================================== */
+
+    {
+      path: "/login",
       element: <Login />,
     },
+
+    /* =====================================================
+       INITIAL SETUP
+    ===================================================== */
+
     {
       path: "/initial-setup",
       element: <InitialSetup />,
     },
+
+    /* =====================================================
+       CONVITE
+    ===================================================== */
+
     {
       path: "/invite/:inviteId",
       element: <Invite />,
     },
+
+    /* =====================================================
+       CRIAÇÃO DE EMPRESA
+    ===================================================== */
+
     {
       path: "/newcompany/:sessionId",
       element: (
@@ -57,6 +88,7 @@ function App() {
         </PrivateRoute>
       ),
     },
+
     {
       path: "/newcompany/previewcompany/:sessionId",
       element: (
@@ -65,6 +97,11 @@ function App() {
         </PrivateRoute>
       ),
     },
+
+    /* =====================================================
+       ADMIN
+    ===================================================== */
+
     {
       path: "/central-adm",
       element: (
@@ -73,22 +110,35 @@ function App() {
         </PrivateRoute>
       ),
     },
+
+    /* =====================================================
+       USUÁRIO
+    ===================================================== */
+
     {
       path: "/central-user",
       element: <CentralUser />,
     },
+
     {
       path: "/central-user/:handle",
       element: <CentralUser />,
     },
+
     {
       path: "/central-user/:handle/catalog",
       element: <CompanyPage />,
     },
+
+    /* =====================================================
+       TESTES
+    ===================================================== */
+
     {
       path: "/test-sms",
       element: <TestSMS />,
-    }
+    },
+
   ];
 
   const routesElement = useRoutes(routesArray);

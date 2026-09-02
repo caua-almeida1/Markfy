@@ -1,4 +1,9 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, {
+    useContext,
+    useState,
+    useEffect,
+    useRef
+} from "react";
 import {
     getDatabase,
     ref,
@@ -24,6 +29,11 @@ import { useUserCompany } from "../../../contexts/companyContext/UserCompanyCont
 import Toast from "../../../components/toast/Toast";
 import ProductManagementSlider from "./components/ProductManagementModal"
 
+import {
+    motion,
+    AnimatePresence
+} from "framer-motion";
+
 import "./productsAdm.css";
 
 const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
@@ -38,7 +48,182 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     const [products, setProducts] = useState([]);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
 
-    const filteredProducts = products.filter((product) => product.status === activeTab);
+    /* =========================================================
+       PESQUISA + FILTROS
+    ========================================================= */
+
+    const [searchTerm, setSearchTerm] = useState("");
+
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isSortOpen, setIsSortOpen] = useState(false);
+
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [selectedSort, setSelectedSort] = useState("nameAsc");
+
+    const [tempCategory, setTempCategory] = useState("all");
+    const [tempSort, setTempSort] = useState("nameAsc");
+
+    const sortOptions = [
+        {
+            id: "nameAsc",
+            label: "Nome (A-Z)"
+        },
+        {
+            id: "nameDesc",
+            label: "Nome (Z-A)"
+        },
+        {
+            id: "priceAsc",
+            label: "Menor preço"
+        },
+        {
+            id: "priceDesc",
+            label: "Maior preço"
+        }
+    ];
+
+    /* =========================================================
+   CATEGORIAS DISPONÍVEIS
+========================================================= */
+
+    const productCategories = [
+        ...new Set(
+            products
+                .flatMap(product =>
+                    Array.isArray(product.categories)
+                        ? product.categories
+                        : []
+                )
+                .filter(Boolean)
+        )
+    ];
+
+
+    /* =========================================================
+       CONTADOR DE FILTROS
+    ========================================================= */
+
+    const activeFiltersCount =
+        selectedCategory !== "all"
+            ? 1
+            : 0;
+
+
+    /* =========================================================
+       PRODUTOS FILTRADOS
+    ========================================================= */
+
+    const filteredProducts = products
+        .filter((product) => {
+
+            /* =========================
+               ABA
+            ========================= */
+
+            const matchesTab =
+                product.status === activeTab;
+
+
+            /* =========================
+               PESQUISA
+            ========================= */
+
+            const normalizedSearch =
+                searchTerm
+                    .trim()
+                    .toLowerCase();
+
+            const matchesSearch =
+                !normalizedSearch ||
+                product.name
+                    ?.toLowerCase()
+                    .includes(normalizedSearch) ||
+                product.description
+                    ?.replace(/<[^>]*>/g, "")
+                    .toLowerCase()
+                    .includes(normalizedSearch) ||
+                String(product.id)
+                    .toLowerCase()
+                    .includes(normalizedSearch) ||
+                product.categories?.some(category =>
+                    String(category)
+                        .toLowerCase()
+                        .includes(normalizedSearch)
+                );
+
+
+            /* =========================
+               CATEGORIA
+            ========================= */
+
+            const matchesCategory =
+                selectedCategory === "all" ||
+                product.categories?.includes(
+                    selectedCategory
+                );
+
+
+            return (
+                matchesTab &&
+                matchesSearch &&
+                matchesCategory
+            );
+        })
+        .sort((a, b) => {
+
+            switch (selectedSort) {
+
+                case "nameAsc":
+                    return (
+                        a.name || ""
+                    ).localeCompare(
+                        b.name || ""
+                    );
+
+                case "nameDesc":
+                    return (
+                        b.name || ""
+                    ).localeCompare(
+                        a.name || ""
+                    );
+
+                case "priceAsc":
+                    return (
+                        parseFloat(
+                            String(a.value || "0")
+                                .replace(/[^\d,.-]/g, "")
+                                .replace(/\./g, "")
+                                .replace(",", ".")
+                        ) -
+                        parseFloat(
+                            String(b.value || "0")
+                                .replace(/[^\d,.-]/g, "")
+                                .replace(/\./g, "")
+                                .replace(",", ".")
+                        )
+                    );
+
+                case "priceDesc":
+                    return (
+                        parseFloat(
+                            String(b.value || "0")
+                                .replace(/[^\d,.-]/g, "")
+                                .replace(/\./g, "")
+                                .replace(",", ".")
+                        ) -
+                        parseFloat(
+                            String(a.value || "0")
+                                .replace(/[^\d,.-]/g, "")
+                                .replace(/\./g, "")
+                                .replace(",", ".")
+                        )
+                    );
+
+                default:
+                    return 0;
+            }
+
+        });
 
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
@@ -47,6 +232,12 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     const [toastType, setToastType] = useState("success");
     const [toastTitle, setToastTitle] = useState("");
     const [toastMessage, setToastMessage] = useState("");
+
+    const formatProductDescription = (description) => {
+        return {
+            __html: description || ""
+        };
+    };
 
     const openToast = (type, title, message) => {
 
@@ -119,7 +310,6 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
         if (step === 4) {
             const name = document.getElementById('input1').value;
-            const description = document.getElementById('input2').value;
             const duration = parseInt(document.getElementById('duration').value);
 
             setProductInfo({
@@ -194,23 +384,67 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
         }
 
         if (step === 7) {
-            // Obter informações detalhadas dos administradores selecionados
-            const relatedUsers = members
-                .filter(member => selectedAdmins.includes(member.id))
+
+            const auth = getAuth();
+            const currentUser = auth.currentUser;
+
+            let relatedUsers = members
+                .filter(member =>
+                    selectedAdmins.includes(member.id)
+                )
                 .map(member => ({
                     id: member.id,
                     name: member.name,
                     role: capitalizeFirst(member.role)
                 }));
 
-            // Atualizar o estado com os usuários relacionados
+            // =====================================================
+            // SE NENHUM USUÁRIO FOI SELECIONADO
+            // RELACIONA AUTOMATICAMENTE O USUÁRIO LOGADO
+            // =====================================================
+
+            if (
+                relatedUsers.length === 0 &&
+                currentUser
+            ) {
+
+                const loggedUser = members.find(
+                    member =>
+                        member.id === currentUser.uid
+                );
+
+                if (loggedUser) {
+
+                    relatedUsers = [
+                        {
+                            id: loggedUser.id,
+                            name: loggedUser.name,
+                            role: capitalizeFirst(loggedUser.role)
+                        }
+                    ];
+
+                } else {
+
+                    // Fallback caso o usuário ainda não esteja
+                    // carregado na lista de membros
+                    relatedUsers = [
+                        {
+                            id: currentUser.uid,
+                            name:
+                                currentUser.displayName ||
+                                currentUser.email ||
+                                "Usuário",
+                            role: "Administrador"
+                        }
+                    ];
+
+                }
+            }
+
             setProductInfo(prev => ({
                 ...prev,
-                relatedUsers: relatedUsers
+                relatedUsers
             }));
-
-            // Exibir no console
-            // console.log("Usuários relacionados:", relatedUsers);
         }
 
         if (step < 8) {  // Aumente o limite para 8 se tiver mais steps
@@ -1279,7 +1513,9 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             // 👤 USUÁRIOS RELACIONADOS
             // ===============================
 
-            const relatedUsers = members
+            const currentUser = auth.currentUser;
+
+            let relatedUsers = members
                 .filter(member =>
                     selectedAdmins.includes(member.id)
                 )
@@ -1288,6 +1524,21 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                     role: capitalizeFirst(member.role)
                 }));
 
+            // Nenhum usuário selecionado:
+            // relaciona automaticamente o usuário logado
+            if (
+                relatedUsers.length === 0 &&
+                currentUser
+            ) {
+
+                relatedUsers = [
+                    {
+                        id: currentUser.uid,
+                        role: "Administrador"
+                    }
+                ];
+
+            }
             // ===============================
             // 📝 PRODUTO
             // ===============================
@@ -1491,6 +1742,93 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     const [productName, setProductName] = useState('');
     const [productDescription, setProductDescription] = useState('');
+
+    const DESCRIPTION_MAX_LENGTH = 2000;
+
+    const [descriptionLength, setDescriptionLength] =
+        useState(0);
+
+    const descriptionEditorRef = useRef(null);
+
+    const execDescriptionCommand = (
+        command,
+        value = null
+    ) => {
+
+        const editor =
+            descriptionEditorRef.current;
+
+        if (!editor) return;
+
+        editor.focus();
+
+        document.execCommand(
+            command,
+            false,
+            value
+        );
+
+        const html =
+            editor.innerHTML;
+
+        const temp =
+            document.createElement("div");
+
+        temp.innerHTML = html;
+
+        const text =
+            temp.textContent ||
+            temp.innerText ||
+            "";
+
+        if (
+            text.length >
+            DESCRIPTION_MAX_LENGTH
+        ) {
+            return;
+        }
+
+        setDescriptionLength(
+            text.length
+        );
+
+        setProductDescription(
+            html
+        );
+    };
+
+    const handleDescriptionInput = (e) => {
+
+        const editor = e.currentTarget;
+
+        const html = editor.innerHTML;
+
+        const temp =
+            document.createElement("div");
+
+        temp.innerHTML = html;
+
+        const text =
+            temp.textContent ||
+            temp.innerText ||
+            "";
+
+        if (text.length > DESCRIPTION_MAX_LENGTH) {
+
+            editor.innerHTML =
+                productDescription;
+
+            return;
+        }
+
+        setDescriptionLength(
+            text.length
+        );
+
+        setProductDescription(
+            html
+        );
+    };
 
     const [productImages, setProductImages] = useState([]);
     const [hasImages, setHasImages] = useState(false);
@@ -1970,31 +2308,303 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     return (
         <div className="adm_products-page">
+
             <header className="adm_products-header">
-                <div className="header-content">
-                    <h1>Meus Produtos</h1>
-                    <div className="orders-header-tabs">
+
+                <div className="adm_products-header-main">
+
+                    {/* TÍTULO */}
+                    <div className="adm_products-header-title">
+
+                        <span className="adm_products-eyebrow">
+                            Gestão
+                        </span>
+
+                        <h1>
+                            Meus Produtos
+                        </h1>
+
+                        <p>
+                            Cadastre, organize e gerencie todos os
+                            produtos da sua empresa.
+                        </p>
+
+                    </div>
+
+
+                    {/* RESUMO */}
+                    <div className="adm_products-header-summary">
+
+                        <div className="adm_products-summary-item">
+
+                            <span>
+                                Total
+                            </span>
+
+                            <strong>
+                                {products.length}
+                            </strong>
+
+                        </div>
+
+
+                        <div className="adm_products-summary-divider" />
+
+
+                        <div className="adm_products-summary-item">
+
+                            <span>
+                                Ativos
+                            </span>
+
+                            <strong>
+                                {
+                                    products.filter(
+                                        product => product.status === "ativos"
+                                    ).length
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div className="adm_products-summary-divider" />
+
+
+                        <div className="adm_products-summary-item">
+
+                            <span>
+                                Arquivados
+                            </span>
+
+                            <strong>
+                                {
+                                    products.filter(
+                                        product => product.status === "arquivados"
+                                    ).length
+                                }
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                {/* STATUS */}
+                <div className="adm_products-status-section">
+
+                    <div className="adm_products-status-tabs">
+
                         <button
                             className={activeTab === "ativos" ? "active" : ""}
                             onClick={() => setActiveTab("ativos")}
                         >
-                            Ativos
+
+                            <Icon icon="mdi:check-circle-outline" />
+
+                            <span>
+                                Ativos
+                            </span>
+
+                            <strong>
+                                {
+                                    products.filter(
+                                        product => product.status === "ativos"
+                                    ).length
+                                }
+                            </strong>
+
                         </button>
+
 
                         <button
                             className={activeTab === "arquivados" ? "active" : ""}
                             onClick={() => setActiveTab("arquivados")}
                         >
-                            Arquivados
+
+                            <Icon icon="mdi:archive-outline" />
+
+                            <span>
+                                Arquivados
+                            </span>
+
+                            <strong>
+                                {
+                                    products.filter(
+                                        product => product.status === "arquivados"
+                                    ).length
+                                }
+                            </strong>
+
                         </button>
+
                     </div>
 
-                    {activeTab === "arquivados" && (
-                        <p className="adm_products-archived-info">
-                            Produtos arquivados são excluídos automaticamente após 30 dias.
-                        </p>
-                    )}
                 </div>
+
+
+                {/* AVISO DOS ARQUIVADOS */}
+                {activeTab === "arquivados" && (
+
+                    <div className="adm_products-archived-info">
+
+                        <Icon icon="mdi:information-outline" />
+
+                        <span>
+                            Produtos arquivados são excluídos
+                            automaticamente após 30 dias.
+                        </span>
+
+                    </div>
+
+                )}
+
+                {/* =================================================
+    TOOLBAR
+================================================= */}
+
+                <section className="adm_products-toolbar">
+
+                    <div className="adm_products-search">
+
+                        <Icon
+                            icon="lucide:search"
+                            className="adm_products-search-icon"
+                        />
+
+                        <input
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) =>
+                                setSearchTerm(e.target.value)
+                            }
+                            placeholder="Pesquisar produto, categoria ou ID..."
+                        />
+
+                        {searchTerm && (
+                            <button
+                                type="button"
+                                className="adm_products-search-clear"
+                                onClick={() =>
+                                    setSearchTerm("")
+                                }
+                            >
+                                <Icon icon="lucide:x" />
+                            </button>
+                        )}
+
+                    </div>
+
+
+                    <div className="adm_products-toolbar-actions">
+
+                        <button
+                            type="button"
+                            className={`adm_products-toolbar-button ${activeFiltersCount > 0
+                                ? "has-filter"
+                                : ""
+                                }`}
+                            onClick={() => {
+                                setTempCategory(selectedCategory);
+                                setIsFilterOpen(true);
+                            }}
+                        >
+                            <Icon icon="lucide:filter" />
+
+                            <span>
+                                Filtrar
+                            </span>
+
+                            {activeFiltersCount > 0 && (
+                                <b>
+                                    {activeFiltersCount}
+                                </b>
+                            )}
+                        </button>
+
+
+                        <button
+                            type="button"
+                            className="adm_products-toolbar-button"
+                            onClick={() => {
+                                setTempSort(selectedSort);
+                                setIsSortOpen(true);
+                            }}
+                        >
+                            <Icon icon="lucide:arrow-up-down" />
+
+                            <span>
+                                Ordenar
+                            </span>
+                        </button>
+
+                    </div>
+
+                </section>
+
+
+                {/* =================================================
+    RESULTADO DA PESQUISA
+================================================= */}
+
+                <div className="adm_products-list-header">
+
+                    <div>
+
+                        <span>
+                            {filteredProducts.length}
+                        </span>
+
+                        <p>
+                            {filteredProducts.length === 1
+                                ? "produto encontrado"
+                                : "produtos encontrados"}
+                        </p>
+
+                    </div>
+
+                    <span className="adm_products-current-sort">
+
+                        {sortOptions.find(
+                            option =>
+                                option.id === selectedSort
+                        )?.label}
+
+                    </span>
+
+                </div>
+
+
+                {/* =================================================
+    FILTER CHIPS
+================================================= */}
+
+                {activeFiltersCount > 0 && (
+                    <div className="adm_products-filter-chips">
+
+                        {selectedCategory !== "all" && (
+                            <button
+                                type="button"
+                                className="adm_products-filter-chip"
+                                onClick={() =>
+                                    setSelectedCategory("all")
+                                }
+                            >
+
+                                <span>
+                                    {selectedCategory}
+                                </span>
+
+                                <Icon icon="lucide:x" />
+
+                            </button>
+                        )}
+
+                    </div>
+                )}
+
             </header>
 
             <div className="adm_products-new-product-content-actions">
@@ -2036,9 +2646,11 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                 <h2 className="adm_products-card-name" title={product.name}>
                                     {product.name}
                                 </h2>
-                                <p className="adm_products-card-description" title={product.description}>
-                                    {product.description}
-                                </p>
+                                <div
+                                    className="adm_products-card-description"
+                                    title={product.description?.replace(/<[^>]*>/g, "")}
+                                    dangerouslySetInnerHTML={formatProductDescription(product.description)}
+                                />
                             </div>
                         </div>
 
@@ -2082,6 +2694,404 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 <p>Nenhum produto encontrado, <span onClick={() => setIsModalOpen(true)}>crie um novo produto!</span> </p>
             )}
             </div>
+
+            <AnimatePresence>
+
+                {isSortOpen && (
+
+                    <motion.div
+                        className="adm_products-modal-overlay"
+
+                        initial={{
+                            opacity: 0
+                        }}
+
+                        animate={{
+                            opacity: 1
+                        }}
+
+                        exit={{
+                            opacity: 0
+                        }}
+
+                        onClick={() =>
+                            setIsSortOpen(false)
+                        }
+                    >
+
+                        <motion.div
+                            className="adm_products-sort-modal"
+
+                            initial={{
+                                opacity: 0,
+                                scale: 0.94,
+                                y: 10
+                            }}
+
+                            animate={{
+                                opacity: 1,
+                                scale: 1,
+                                y: 0
+                            }}
+
+                            exit={{
+                                opacity: 0,
+                                scale: 0.94,
+                                y: 10
+                            }}
+
+                            transition={{
+                                duration: 0.2
+                            }}
+
+                            onClick={(e) =>
+                                e.stopPropagation()
+                            }
+                        >
+
+                            <div className="adm_products-modal-header">
+
+                                <div>
+
+                                    <span>
+                                        Preferência
+                                    </span>
+
+                                    <h2>
+                                        Ordenar produtos
+                                    </h2>
+
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setIsSortOpen(false)
+                                    }
+                                >
+                                    <Icon
+                                        icon="lucide:x"
+                                    />
+                                </button>
+
+                            </div>
+
+
+                            {/* OPÇÕES */}
+
+                            <div className="adm_products-sort-options">
+
+                                {sortOptions.map(
+                                    (option) => (
+
+                                        <button
+                                            key={option.id}
+
+                                            type="button"
+
+                                            className={
+                                                tempSort === option.id
+                                                    ? "active"
+                                                    : ""
+                                            }
+
+                                            onClick={() =>
+                                                setTempSort(
+                                                    option.id
+                                                )
+                                            }
+                                        >
+
+                                            <span>
+                                                {option.label}
+                                            </span>
+
+                                            {tempSort === option.id && (
+                                                <Icon
+                                                    icon="lucide:check"
+                                                />
+                                            )}
+
+                                        </button>
+
+                                    )
+                                )}
+
+                            </div>
+
+
+                            {/* FOOTER */}
+
+                            <div className="adm_products-modal-footer">
+
+                                <button
+                                    type="button"
+                                    className="adm_products-modal-secondary"
+                                    onClick={() =>
+                                        setTempSort("nameAsc")
+                                    }
+                                >
+                                    Padrão
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="adm_products-modal-primary"
+                                    onClick={() => {
+
+                                        setSelectedSort(
+                                            tempSort
+                                        );
+
+                                        setIsSortOpen(
+                                            false
+                                        );
+
+                                    }}
+                                >
+                                    Aplicar
+                                </button>
+
+                            </div>
+
+                        </motion.div>
+
+                    </motion.div>
+
+                )}
+
+            </AnimatePresence>
+
+            <AnimatePresence>
+
+                {isFilterOpen && (
+
+                    <motion.div
+                        className="adm_products-modal-overlay"
+
+                        initial={{
+                            opacity: 0
+                        }}
+
+                        animate={{
+                            opacity: 1
+                        }}
+
+                        exit={{
+                            opacity: 0
+                        }}
+
+                        onClick={() =>
+                            setIsFilterOpen(false)
+                        }
+                    >
+
+                        <motion.div
+                            className="adm_products-filter-modal"
+
+                            initial={{
+                                opacity: 0,
+                                scale: 0.94,
+                                y: 10
+                            }}
+
+                            animate={{
+                                opacity: 1,
+                                scale: 1,
+                                y: 0
+                            }}
+
+                            exit={{
+                                opacity: 0,
+                                scale: 0.94,
+                                y: 10
+                            }}
+
+                            transition={{
+                                duration: 0.2
+                            }}
+
+                            onClick={(e) =>
+                                e.stopPropagation()
+                            }
+                        >
+
+                            {/* HEADER */}
+
+                            <div className="adm_products-modal-header">
+
+                                <div>
+
+                                    <span>
+                                        Refinar resultados
+                                    </span>
+
+                                    <h2>
+                                        Filtrar produtos
+                                    </h2>
+
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setIsFilterOpen(false)
+                                    }
+                                >
+                                    <Icon
+                                        icon="lucide:x"
+                                    />
+                                </button>
+
+                            </div>
+
+
+                            {/* CONTENT */}
+
+                            <div className="adm_products-filter-modal-content">
+
+                                <section className="adm_products-filter-block">
+
+                                    <div className="adm_products-filter-block-header">
+
+                                        <h3>
+                                            Categoria
+                                        </h3>
+
+                                        <span>
+                                            Selecione uma categoria
+                                        </span>
+
+                                    </div>
+
+
+                                    <div className="adm_products-filter-selection-list">
+
+                                        <button
+                                            type="button"
+                                            className={
+                                                tempCategory === "all"
+                                                    ? "active"
+                                                    : ""
+                                            }
+                                            onClick={() =>
+                                                setTempCategory("all")
+                                            }
+                                        >
+
+                                            <span>
+                                                Todas as categorias
+                                            </span>
+
+                                            {tempCategory === "all" && (
+
+                                                <Icon
+                                                    icon="lucide:check"
+                                                />
+
+                                            )}
+
+                                        </button>
+
+
+                                        {productCategories.map(
+                                            (category) => (
+
+                                                <button
+                                                    key={category}
+                                                    type="button"
+
+                                                    className={
+                                                        tempCategory === category
+                                                            ? "active"
+                                                            : ""
+                                                    }
+
+                                                    onClick={() =>
+                                                        setTempCategory(
+                                                            category
+                                                        )
+                                                    }
+                                                >
+
+                                                    <span>
+                                                        {category}
+                                                    </span>
+
+                                                    {tempCategory === category && (
+
+                                                        <Icon
+                                                            icon="lucide:check"
+                                                        />
+
+                                                    )}
+
+                                                </button>
+
+                                            )
+                                        )}
+
+                                        {productCategories.length === 0 && (
+
+                                            <p className="adm_products-filter-empty">
+                                                Nenhuma categoria encontrada.
+                                            </p>
+
+                                        )}
+
+                                    </div>
+
+                                </section>
+
+                            </div>
+
+
+                            {/* FOOTER */}
+
+                            <div className="adm_products-modal-footer">
+
+                                <button
+                                    type="button"
+                                    className="adm_products-modal-secondary"
+                                    onClick={() => {
+
+                                        setTempCategory("all");
+
+                                        setSelectedCategory("all");
+
+                                    }}
+                                >
+                                    Limpar
+                                </button>
+
+
+                                <button
+                                    type="button"
+                                    className="adm_products-modal-primary"
+                                    onClick={() => {
+
+                                        setSelectedCategory(
+                                            tempCategory
+                                        );
+
+                                        setIsFilterOpen(
+                                            false
+                                        );
+
+                                    }}
+                                >
+                                    Aplicar filtros
+                                </button>
+
+                            </div>
+
+                        </motion.div>
+
+                    </motion.div>
+
+                )}
+
+            </AnimatePresence>
 
             {isManagementModalOpen && selectedProduct && (
                 <ProductManagementSlider
@@ -2379,16 +3389,134 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                     />
                                 </div>
 
-                                <div className="adm_products-modal-input-group">
-                                    <label htmlFor="input2">Descrição do Produto</label>
-                                    <input
-                                        type="text"
-                                        id="input2"
-                                        className="adm_products-modal-input"
-                                        placeholder="Digite a descrição do produto aqui..."
-                                        value={productDescription}
-                                        onChange={(e) => setProductDescription(e.target.value)}
-                                    />
+                                <div className="adm_products-description-group">
+
+                                    <label>
+                                        Descrição
+                                    </label>
+
+                                    <div className="adm_products-description-editor">
+
+                                        {/* =========================
+            TOOLBAR
+        ========================= */}
+
+                                        <div className="adm_products-description-toolbar">
+
+                                            {/* NEGRITO */}
+
+                                            <button
+                                                type="button"
+                                                title="Negrito"
+                                                onMouseDown={(e) => {
+
+                                                    e.preventDefault();
+
+                                                    execDescriptionCommand("bold");
+
+                                                }}
+                                            >
+                                                <strong>B</strong>
+                                            </button>
+
+
+                                            {/* ITÁLICO */}
+
+                                            <button
+                                                type="button"
+                                                title="Itálico"
+                                                onMouseDown={(e) => {
+
+                                                    e.preventDefault();
+
+                                                    execDescriptionCommand("italic");
+
+                                                }}
+                                            >
+                                                <em>I</em>
+                                            </button>
+
+
+                                            <div className="adm_products-description-toolbar-divider" />
+
+
+                                            {/* LISTA */}
+
+                                            <button
+                                                type="button"
+                                                title="Lista"
+                                                onMouseDown={(e) => {
+
+                                                    e.preventDefault();
+
+                                                    execDescriptionCommand(
+                                                        "insertUnorderedList"
+                                                    );
+
+                                                }}
+                                            >
+                                                <Icon icon="lucide:list" />
+                                            </button>
+
+
+                                            {/* LISTA NUMERADA */}
+
+                                            <button
+                                                type="button"
+                                                title="Lista numerada"
+                                                onMouseDown={(e) => {
+
+                                                    e.preventDefault();
+
+                                                    execDescriptionCommand(
+                                                        "insertOrderedList"
+                                                    );
+
+                                                }}
+                                            >
+                                                <Icon icon="lucide:list-ordered" />
+                                            </button>
+
+
+                                            <div className="adm_products-description-toolbar-divider" />
+
+
+                                            {/* PARÁGRAFO */}
+
+                                            <button
+                                                type="button"
+                                                title="Parágrafo"
+                                                onMouseDown={(e) => {
+
+                                                    e.preventDefault();
+
+                                                    execDescriptionCommand(
+                                                        "formatBlock",
+                                                        "p"
+                                                    );
+
+                                                }}
+                                            >
+                                                <Icon icon="lucide:pilcrow" />
+                                            </button>
+
+                                        </div>
+
+                                        <div
+                                            ref={descriptionEditorRef}
+                                            className="adm_products-description-editor-content"
+                                            contentEditable
+                                            suppressContentEditableWarning
+                                            data-placeholder="Digite a descrição do produto..."
+                                            onInput={handleDescriptionInput}
+                                        />
+
+                                        <div className="adm_products-description-counter">
+                                            {descriptionLength}/{DESCRIPTION_MAX_LENGTH}
+                                        </div>
+
+                                    </div>
+
                                 </div>
 
                                 <div className="adm_products-modal-input-group">

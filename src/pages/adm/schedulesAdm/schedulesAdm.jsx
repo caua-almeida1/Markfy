@@ -1,6 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@iconify/react";
 import { getDatabase, ref, get, set, update, onValue } from "firebase/database";
+import {
+    getStorage,
+    ref as storageRef,
+    getDownloadURL,
+    listAll
+} from "firebase/storage";
 
 import "./schedulesAdm.css";
 
@@ -76,6 +82,10 @@ const SchedulesAdm = () => {
 
     const [schedules, setSchedules] = useState([]);
     const [loadingSchedules, setLoadingSchedules] = useState(true);
+
+    const [userProfileImages, setUserProfileImages] = useState({});
+
+    const [productImages, setProductImages] = useState({});
 
     const [selectedDay, setSelectedDay] = useState(currentDate.getDate());
 
@@ -190,6 +200,109 @@ const SchedulesAdm = () => {
 
                     })
                     .filter(schedule => schedule.day === selectedDate);
+
+                // ==========================================
+                // BUSCAR FOTOS DOS PROFISSIONAIS
+                // ==========================================
+
+                // ==========================================
+                // BUSCAR FOTOS DOS PROFISSIONAIS NO STORAGE
+                // ==========================================
+
+                const productIds = [
+                    ...new Set(
+                        list
+                            .map(schedule => schedule.productId)
+                            .filter(Boolean)
+                    )
+                ];
+
+                const productImagesMap = {};
+                const storage = getStorage();
+
+                await Promise.all(
+                    productIds.map(async (productId) => {
+
+                        try {
+
+                            const imagesFolderRef = storageRef(
+                                storage,
+                                `companys/${company.handle}/products/${productId}/images`
+                            );
+
+                            // Lista tudo que existe dentro de /images
+                            const imagesResult = await listAll(
+                                imagesFolderRef
+                            );
+
+                            // Nenhuma imagem
+                            if (!imagesResult.items.length) {
+                                return;
+                            }
+
+                            // Pega a primeira imagem encontrada,
+                            // independente do nome do arquivo
+                            const firstImageRef =
+                                imagesResult.items[0];
+
+                            const imageUrl =
+                                await getDownloadURL(firstImageRef);
+
+                            productImagesMap[productId] =
+                                imageUrl;
+
+                        } catch (error) {
+
+                            console.log(
+                                `Não foi possível encontrar imagem do produto ${productId}:`,
+                                error
+                            );
+
+                        }
+
+                    })
+                );
+
+                setProductImages(productImagesMap);
+
+                const professionalIds = [
+                    ...new Set(
+                        list
+                            .map(schedule => schedule.professionalId)
+                            .filter(Boolean)
+                    )
+                ];
+
+                const profileImages = {};
+
+
+                await Promise.all(
+                    professionalIds.map(async (userId) => {
+
+                        try {
+
+                            const imageRef = storageRef(
+                                storage,
+                                `users/${userId}/profileImg`
+                            );
+
+                            const imageUrl = await getDownloadURL(imageRef);
+
+                            profileImages[userId] = imageUrl;
+
+                        } catch (error) {
+
+                            // Usuário sem foto = usa a inicial
+                            console.log(
+                                `Usuário ${userId} não possui foto de perfil.`
+                            );
+
+                        }
+
+                    })
+                );
+
+                setUserProfileImages(profileImages);
 
                 setSchedules(list);
 
@@ -474,394 +587,1828 @@ const SchedulesAdm = () => {
         isModalOpen
     ]);
     return (
-        <div className="schedules-container">
+        <div className="schedules-container schedules-desktop">
+
+            {/* =========================================================
+            HEADER — DESKTOP
+        ========================================================= */}
+
             <header className="schedules-header">
-                <h1>Agenda</h1>
+
+                <div className="schedules-header-main">
+
+                    <div className="schedules-header-title">
+
+                        <span className="schedules-eyebrow">
+                            Gestão
+                        </span>
+
+                        <h1>
+                            Agenda
+                        </h1>
+
+                        <p>
+                            Visualize, acompanhe e gerencie os
+                            agendamentos da sua empresa.
+                        </p>
+
+                    </div>
+
+                </div>
+
             </header>
-            <div className="schedules-content">
 
-                <div className="schedule-content-days-months">
 
-                    <div
-                        className="schedule-month-selector"
-                        ref={dropdownRef}
-                    >
+            {/* =========================================================
+            MAIN
+        ========================================================= */}
+
+            <main className="schedules-content">
+
+                {/* =====================================================
+                TOP CONTROL BAR
+            ===================================================== */}
+
+                <section className="schedules-topbar">
+
+                    <div className="schedules-topbar-left">
+
+                        {/* =================================================
+                        MÊS / ANO
+                    ================================================= */}
 
                         <div
-                            className="schedule-content-days-months-header"
-                            onClick={() => setShowMonths(prev => !prev)}
+                            className="schedule-month-selector"
+                            ref={dropdownRef}
                         >
-                            <h1>
-                                {months[selectedMonth]} {selectedYear}
-                            </h1>
 
-                            <Icon
-                                icon="iconamoon:arrow-down-2-duotone"
-                                className={`icon ${showMonths ? "open" : ""}`}
-                            />
-                        </div>
+                            <button
+                                type="button"
+                                className="schedule-month-selector-trigger"
+                                onClick={() =>
+                                    setShowMonths(
+                                        prev => !prev
+                                    )
+                                }
+                            >
 
-                        {showMonths && (
-                            <div className="schedule-month-dropdown">
+                                <div className="schedule-month-selector-icon">
 
-                                {availableYears.map((year) => {
+                                    <Icon
+                                        icon="akar-icons:calendar"
+                                        className="icon"
+                                    />
 
-                                    const isOpen = expandedYear === year;
+                                </div>
 
-                                    return (
+                                <div className="schedule-month-selector-text">
 
-                                        <div
-                                            key={year}
-                                            className="schedule-month-group"
-                                        >
+                                    <span>
+                                        Período
+                                    </span>
 
-                                            <button
-                                                className={`schedule-month-group-header ${selectedYear === year ? "active" : ""
-                                                    }`}
-                                                onClick={() =>
-                                                    setExpandedYear(isOpen ? null : year)
-                                                }
-                                            >
+                                    <strong>
+                                        {months[selectedMonth]} {selectedYear}
+                                    </strong>
 
-                                                <span>{year}</span>
+                                </div>
 
-                                                <Icon
-                                                    icon="iconamoon:arrow-down-2-duotone"
-                                                    className={`icon ${isOpen ? "open" : ""}`}
-                                                />
+                                <Icon
+                                    icon="iconamoon:arrow-down-2-duotone"
+                                    className={`icon ${showMonths ? "open" : ""
+                                        }`}
+                                />
 
-                                            </button>
+                            </button>
 
-                                            {isOpen && (
 
-                                                <div className="schedule-month-list">
+                            {showMonths && (
 
-                                                    {months.map((month, index) => (
+                                <div className="schedule-month-dropdown">
 
-                                                        <button
-                                                            key={`${month}-${year}`}
-                                                            className={`schedule-month-option ${selectedMonth === index &&
-                                                                selectedYear === year
-                                                                ? "active"
+                                    {availableYears.map(
+                                        year => {
+
+                                            const isOpen =
+                                                expandedYear === year;
+
+                                            return (
+
+                                                <div
+                                                    key={year}
+                                                    className="schedule-month-group"
+                                                >
+
+                                                    <button
+                                                        type="button"
+                                                        className={`schedule-month-group-header ${selectedYear === year
+                                                            ? "active"
+                                                            : ""
+                                                            }`}
+                                                        onClick={() =>
+                                                            setExpandedYear(
+                                                                isOpen
+                                                                    ? null
+                                                                    : year
+                                                            )
+                                                        }
+                                                    >
+
+                                                        <span>
+                                                            {year}
+                                                        </span>
+
+                                                        <Icon
+                                                            icon="iconamoon:arrow-down-2-duotone"
+                                                            className={`icon ${isOpen
+                                                                ? "open"
                                                                 : ""
                                                                 }`}
-                                                            onClick={() => {
+                                                        />
 
-                                                                setSelectedMonth(index);
-                                                                setSelectedYear(year);
+                                                    </button>
 
-                                                                setShowMonths(false);
 
-                                                            }}
-                                                        >
-                                                            {month}
-                                                        </button>
+                                                    {isOpen && (
 
-                                                    ))}
+                                                        <div className="schedule-month-list">
+
+                                                            {months.map(
+                                                                (
+                                                                    month,
+                                                                    index
+                                                                ) => (
+
+                                                                    <button
+                                                                        type="button"
+                                                                        key={`${month}-${year}`}
+                                                                        className={`schedule-month-option ${selectedMonth === index &&
+                                                                            selectedYear === year
+                                                                            ? "active"
+                                                                            : ""
+                                                                            }`}
+                                                                        onClick={() => {
+
+                                                                            setSelectedMonth(
+                                                                                index
+                                                                            );
+
+                                                                            setSelectedYear(
+                                                                                year
+                                                                            );
+
+                                                                            setShowMonths(
+                                                                                false
+                                                                            );
+
+                                                                        }}
+                                                                    >
+                                                                        {month}
+                                                                    </button>
+
+                                                                )
+                                                            )}
+
+                                                        </div>
+
+                                                    )}
 
                                                 </div>
 
-                                            )}
+                                            );
 
-                                        </div>
+                                        }
+                                    )}
 
-                                    );
+                                </div>
 
-                                })}
+                            )}
 
-                            </div>
-                        )}
+                        </div>
+
+
+                        {/* =================================================
+                        NAVEGAÇÃO DE SEMANA
+                    ================================================= */}
+
+
+
                     </div>
+
+
+                    {/* =================================================
+                    RESUMO
+                ================================================= */}
+
+                    <div className="schedules-topbar-summary">
+
+                        <div className="schedules-topbar-summary-item">
+
+                            <span>
+                                Agendamentos
+                            </span>
+
+                            <strong>
+                                {schedules.length}
+                            </strong>
+
+                        </div>
+
+
+                        <div className="schedules-topbar-summary-divider" />
+
+
+                        <div className="schedules-topbar-summary-item">
+
+                            <span>
+                                Em andamento
+                            </span>
+
+                            <strong>
+                                {
+                                    schedules.filter(
+                                        schedule =>
+                                            schedule.status === "pending"
+                                    ).length
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div className="schedules-topbar-summary-divider" />
+
+
+                        <div className="schedules-topbar-summary-item">
+
+                            <span>
+                                Concluídos
+                            </span>
+
+                            <strong>
+                                {
+                                    schedules.filter(
+                                        schedule =>
+                                            schedule.status === "completed"
+                                    ).length
+                                }
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                {/* =====================================================
+                DAY STRIP
+            ===================================================== */}
+
+                <section className="schedules-days-section">
+
+                    <div className="schedules-days-header">
+
+                        <div>
+
+                            <span className="schedules-section-eyebrow">
+                                Calendário
+                            </span>
+
+                            <h2>
+                                Dias do mês
+                            </h2>
+
+                        </div>
+
+
+                        <div className="schedules-selected-day-label">
+
+                            <span>
+                                Visualizando
+                            </span>
+
+                            <strong>
+                                {weekDays[
+                                    new Date(
+                                        selectedYear,
+                                        selectedMonth,
+                                        selectedDay
+                                    ).getDay()
+                                ]}{" "}
+                                {selectedDay} de{" "}
+                                {months[selectedMonth]}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
                     <div className="schedule-days-wrapper">
 
                         <button
+                            type="button"
                             className="schedule-days-arrow"
-                            onClick={() => scrollDays(-1)}
+                            onClick={() =>
+                                scrollDays(-1)
+                            }
+                            aria-label="Dias anteriores"
                         >
-                            <Icon icon="solar:alt-arrow-left-linear" />
+
+                            <Icon
+                                icon="solar:alt-arrow-left-linear"
+                            />
+
                         </button>
+
 
                         <div
                             className="schedule-days-scroll"
                             ref={daysRef}
                         >
 
-                            {monthDays.map(({ day, weekDay }) => (
+                            {monthDays.map(
+                                ({
+                                    day,
+                                    weekDay
+                                }) => {
 
-                                <button
-                                    onClick={() => {
+                                    const selected =
+                                        isSelectedDay(day);
 
-                                        setSelectedDay(day);
+                                    const today =
+                                        isToday(day);
 
-                                    }}
-                                    key={day}
-                                    className={`
-                                    schedule-day
-                                    ${isToday(day) ? "today" : ""}
-                                    ${isSelectedDay(day) ? "selected" : ""}
-                                    `}                                >
-                                    <span className="schedule-day-week">
-                                        {weekDay}
-                                    </span>
+                                    const hasEvents =
+                                        day === selectedDay &&
+                                        schedules.length > 0;
 
-                                    <span className="schedule-day-number">
-                                        {day}
-                                    </span>
+                                    return (
 
-                                </button>
+                                        <button
+                                            type="button"
+                                            key={day}
+                                            className={`
+                                            schedule-day
+                                            ${today ? "today" : ""}
+                                            ${selected ? "selected" : ""}
+                                            ${hasEvents ? "has-events" : ""}
+                                        `}
+                                            onClick={() =>
+                                                setSelectedDay(day)
+                                            }
+                                        >
 
-                            ))}
+                                            <span className="schedule-day-week">
+                                                {weekDay}
+                                            </span>
+
+                                            <span className="schedule-day-number">
+                                                {day}
+                                            </span>
+
+                                            {hasEvents && (
+
+                                                <span className="schedule-day-count">
+                                                    {schedules.length}
+                                                </span>
+
+                                            )}
+
+                                        </button>
+
+                                    );
+
+                                }
+                            )}
 
                         </div>
 
+
                         <button
+                            type="button"
                             className="schedule-days-arrow"
-                            onClick={() => scrollDays(1)}
+                            onClick={() =>
+                                scrollDays(1)
+                            }
+                            aria-label="Próximos dias"
                         >
-                            <Icon icon="solar:alt-arrow-right-linear" />
+
+                            <Icon
+                                icon="solar:alt-arrow-right-linear"
+                            />
+
                         </button>
 
                     </div>
-                </div>
 
-                <hr className="schedule-divider" />
-                <div
-                    className="schedule-timeline"
-                    ref={timelineRef}
-                >
+                </section>
 
-                    {hours.map((hour) => (
 
-                        <div
-                            key={hour}
-                            className="schedule-hour-row"
-                        >
+                {/* =====================================================
+                DAY OVERVIEW
+            ===================================================== */}
 
-                            <div className="schedule-hour-label">
+                <section className="schedules-day-overview">
 
-                                {hour}
+                    <div className="schedules-day-overview-main">
+
+                        <div className="schedules-day-overview-icon">
+
+                            <Icon
+                                icon="solar:calendar-mark-linear"
+                            />
+
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Agenda do dia
+                            </span>
+
+                            <strong>
+                                {weekDays[
+                                    new Date(
+                                        selectedYear,
+                                        selectedMonth,
+                                        selectedDay
+                                    ).getDay()
+                                ]},{" "}
+                                {selectedDay} de{" "}
+                                {months[selectedMonth]}
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+
+                    <div className="schedules-day-overview-stats">
+
+                        <div className="schedules-day-overview-stat">
+
+                            <span>
+                                Total
+                            </span>
+
+                            <strong>
+                                {schedules.length}
+                            </strong>
+
+                        </div>
+
+
+                        <div className="schedules-day-overview-divider" />
+
+
+                        <div className="schedules-day-overview-stat">
+
+                            <span>
+                                Em andamento
+                            </span>
+
+                            <strong>
+                                {
+                                    schedules.filter(
+                                        schedule =>
+                                            schedule.status === "pending"
+                                    ).length
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div className="schedules-day-overview-divider" />
+
+
+                        <div className="schedules-day-overview-stat">
+
+                            <span>
+                                Concluídos
+                            </span>
+
+                            <strong>
+                                {
+                                    schedules.filter(
+                                        schedule =>
+                                            schedule.status === "completed"
+                                    ).length
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        <div className="schedules-day-overview-divider" />
+
+
+                        <div className="schedules-day-overview-stat">
+
+                            <span>
+                                Cancelados
+                            </span>
+
+                            <strong>
+                                {
+                                    schedules.filter(
+                                        schedule =>
+                                            schedule.status === "cancelled" ||
+                                            schedule.status === "canceled"
+                                    ).length
+                                }
+                            </strong>
+
+                        </div>
+
+                    </div>
+
+                </section>
+
+
+                {/* =====================================================
+                AGENDA DESKTOP
+            ===================================================== */}
+
+                <section className="schedules-workspace">
+
+                    {/* =================================================
+                    TIMELINE
+                ================================================= */}
+
+                    <div className="schedules-calendar-panel">
+
+                        <div className="schedules-calendar-panel-header">
+
+                            <div>
+
+                                <span className="schedules-section-eyebrow">
+                                    Cronograma
+                                </span>
+
+                                <h2>
+                                    Agenda do dia
+                                </h2>
 
                             </div>
 
-                            <div className="schedule-hour-grid">
 
-                                <div className="schedule-hour-divider" />
+                            <div className="schedules-calendar-panel-actions">
 
-                                <div className="schedule-hour-body">
+                                <div className="schedules-status-legend">
 
-                                    {(schedulesByHour[hour.slice(0, 2)] || []).map((schedule) => (
+                                    <span className="schedules-legend-item pending">
+                                        <i />
+                                        Em andamento
+                                    </span>
 
-                                        <div
-                                            key={schedule.id}
-                                            className="schedule-event-slot"
-                                            onClick={() => openSchedule(schedule)}                                        >
-                                            <div className="schedule-event-content">
+                                    <span className="schedules-legend-item completed">
+                                        <i />
+                                        Concluído
+                                    </span>
+
+                                    <span className="schedules-legend-item cancelled">
+                                        <i />
+                                        Cancelado
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <div className="schedules-calendar-body">
+
+                            <div
+                                className="schedule-timeline"
+                                ref={timelineRef}
+                            >
+
+                                {loadingSchedules ? (
+
+                                    <div className="schedules-loading-state">
+
+                                        <div className="schedules-loading-icon">
+
+                                            <Icon
+                                                icon="line-md:loading-twotone-loop"
+                                            />
+
+                                        </div>
+
+                                        <strong>
+                                            Carregando agenda
+                                        </strong>
+
+                                        <span>
+                                            Buscando os agendamentos do dia.
+                                        </span>
+
+                                    </div>
+
+                                ) : (
+
+                                    hours.map(
+                                        hour => {
+
+                                            const hourKey =
+                                                hour.slice(
+                                                    0,
+                                                    2
+                                                );
+
+                                            const hourSchedules =
+                                                schedulesByHour[
+                                                hourKey
+                                                ] || [];
+
+                                            return (
+
                                                 <div
-                                                    className={`schedule-event-accent ${schedule.status
-                                                        ?.trim()
-                                                        ?.toLowerCase()}`}
-                                                />
+                                                    key={hour}
+                                                    className={`schedule-hour-row ${hourSchedules.length > 0
+                                                        ? "has-schedules"
+                                                        : ""
+                                                        }`}
+                                                >
 
-                                                <div className="schedule-event-info">
+                                                    {/* HORA */}
 
-                                                    <h1 className="schedule-event-title">
-                                                        {schedule.productName}
-                                                    </h1>
+                                                    <div className="schedule-hour-label">
 
-                                                    <p className="schedule-event-client">
-                                                        {schedule.userName}
-                                                    </p>
+                                                        <span>
+                                                            {hour}
+                                                        </span>
 
-                                                    <span className="schedule-event-time">
-                                                        {schedule.startHourText} - {schedule.endHourText}
+                                                    </div>
+
+
+                                                    {/* LINHA */}
+
+                                                    <div className="schedule-hour-grid">
+
+                                                        <div className="schedule-hour-divider" />
+
+
+                                                        <div className="schedule-hour-body">
+
+                                                            {/* MARCAÇÃO DE HORA ATUAL */}
+
+                                                            {selectedIsToday &&
+                                                                currentDate.getHours() ===
+                                                                Number(hourKey) && (
+
+                                                                    <div className="schedule-current-time-line">
+
+                                                                        <span>
+                                                                            Agora
+                                                                        </span>
+
+                                                                    </div>
+
+                                                                )}
+
+
+                                                            {/* EVENTOS */}
+
+                                                            {hourSchedules.length >
+                                                                0 ? (
+
+                                                                <div className="schedule-hour-events">
+
+                                                                    {hourSchedules.map(
+                                                                        schedule => {
+
+                                                                            const scheduleStatus =
+                                                                                statusMap[
+                                                                                schedule.status
+                                                                                ] ||
+                                                                                {
+                                                                                    label:
+                                                                                        schedule.status ||
+                                                                                        "Agendado",
+                                                                                    className:
+                                                                                        "default"
+                                                                                };
+
+                                                                            const isCurrent =
+                                                                                schedule.status ===
+                                                                                "pending";
+
+                                                                            return (
+
+                                                                                <article
+                                                                                    key={schedule.id}
+                                                                                    className={`
+                                                                                    schedule-event-slot
+                                                                                    schedule-event-card
+                                                                                    ${schedule.status
+                                                                                            ?.trim()
+                                                                                            ?.toLowerCase() || "default"}
+                                                                                    ${isCurrent
+                                                                                            ? "is-current"
+                                                                                            : ""
+                                                                                        }
+                                                                                `}
+                                                                                    onClick={() =>
+                                                                                        openSchedule(
+                                                                                            schedule
+                                                                                        )
+                                                                                    }
+                                                                                >
+
+                                                                                    <div className="schedule-event-accent" />
+
+
+                                                                                    <div className="schedule-event-content">
+
+                                                                                        {/* HORA */}
+
+                                                                                        <div className="schedule-event-time-column">
+
+                                                                                            <strong>
+                                                                                                {
+                                                                                                    schedule.startHourText
+                                                                                                }
+                                                                                            </strong>
+
+                                                                                            <span>
+                                                                                                {
+                                                                                                    schedule.endHourText
+                                                                                                }
+                                                                                            </span>
+
+                                                                                        </div>
+
+
+                                                                                        {/* SERVIÇO */}
+
+                                                                                        <div className="schedule-event-main">
+
+                                                                                            <div className="schedule-event-title-row">
+
+                                                                                                <h3 className="schedule-event-title">
+                                                                                                    {
+                                                                                                        schedule.productName ||
+                                                                                                        "Serviço"
+                                                                                                    }
+                                                                                                </h3>
+
+                                                                                                <span
+                                                                                                    className={`schedule-event-status-badge ${scheduleStatus.className}`}
+                                                                                                >
+
+                                                                                                    {
+                                                                                                        scheduleStatus.label
+                                                                                                    }
+
+                                                                                                </span>
+
+                                                                                            </div>
+
+
+                                                                                            <div className="schedule-event-meta">
+
+                                                                                                <span>
+
+                                                                                                    <Icon
+                                                                                                        icon="solar:user-linear"
+                                                                                                    />
+
+                                                                                                    {
+                                                                                                        schedule.userName ||
+                                                                                                        "Cliente"
+                                                                                                    }
+
+                                                                                                </span>
+
+
+                                                                                                <span>
+
+                                                                                                    <Icon
+                                                                                                        icon="solar:clock-circle-linear"
+                                                                                                    />
+
+                                                                                                    {
+                                                                                                        schedule.duration
+                                                                                                            ? `${schedule.duration} min`
+                                                                                                            : "Duração não informada"
+                                                                                                    }
+
+                                                                                                </span>
+
+                                                                                            </div>
+
+                                                                                        </div>
+
+
+                                                                                        {/* PROFISSIONAL */}
+
+                                                                                        <div className="schedule-event-professional">
+
+                                                                                            <div className="schedule-event-admin">
+
+                                                                                                {userProfileImages[
+                                                                                                    schedule.professionalId
+                                                                                                ] ? (
+
+                                                                                                    <img
+                                                                                                        src={
+                                                                                                            userProfileImages[
+                                                                                                            schedule.professionalId
+                                                                                                            ]
+                                                                                                        }
+                                                                                                        alt={
+                                                                                                            schedule.professionalName ||
+                                                                                                            "Profissional"
+                                                                                                        }
+                                                                                                    />
+
+                                                                                                ) : (
+
+                                                                                                    schedule.professionalName
+                                                                                                        ?.charAt(0)
+                                                                                                        ?.toUpperCase() ||
+                                                                                                    "?"
+
+                                                                                                )}
+
+                                                                                            </div>
+
+
+                                                                                            <div className="schedule-event-professional-info">
+
+                                                                                                <span>
+                                                                                                    Responsável
+                                                                                                </span>
+
+                                                                                                <strong>
+                                                                                                    {
+                                                                                                        schedule.professionalName ||
+                                                                                                        "Não informado"
+                                                                                                    }
+                                                                                                </strong>
+
+                                                                                            </div>
+
+                                                                                        </div>
+
+
+                                                                                        {/* ACTION */}
+
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            className="schedule-event-open"
+                                                                                            onClick={(event) => {
+
+                                                                                                event.stopPropagation();
+
+                                                                                                openSchedule(
+                                                                                                    schedule
+                                                                                                );
+
+                                                                                            }}
+                                                                                            title="Ver detalhes"
+                                                                                        >
+
+                                                                                            <Icon
+                                                                                                icon="lucide:arrow-up-right"
+                                                                                            />
+
+                                                                                        </button>
+
+                                                                                    </div>
+
+                                                                                </article>
+
+                                                                            );
+
+                                                                        }
+                                                                    )}
+
+                                                                </div>
+
+                                                            ) : (
+
+                                                                <div className="schedule-empty-hour">
+
+                                                                    <span>
+                                                                        Horário disponível
+                                                                    </span>
+
+                                                                </div>
+
+                                                            )}
+
+                                                        </div>
+
+                                                    </div>
+
+                                                </div>
+
+                                            );
+
+                                        }
+                                    )
+
+                                )}
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    {/* =================================================
+                    SIDEBAR DESKTOP
+                ================================================= */}
+
+                    <aside className="schedules-sidebar">
+
+                        {/* =================================================
+                        RESUMO
+                    ================================================= */}
+
+                        <section className="schedules-sidebar-card schedules-sidebar-summary">
+
+                            <div className="schedules-sidebar-card-header">
+
+                                <div>
+
+                                    <span>
+                                        Resumo
+                                    </span>
+
+                                    <h3>
+                                        Hoje na agenda
+                                    </h3>
+
+                                </div>
+
+                                <Icon
+                                    icon="solar:chart-2-linear"
+                                />
+
+                            </div>
+
+
+                            <div className="schedules-sidebar-summary-total">
+
+                                <strong>
+                                    {schedules.length}
+                                </strong>
+
+                                <span>
+                                    agendamentos
+                                </span>
+
+                            </div>
+
+
+                            <div className="schedules-sidebar-summary-list">
+
+                                <div className="schedules-sidebar-summary-row">
+
+                                    <span>
+
+                                        <i className="pending" />
+
+                                        Em andamento
+
+                                    </span>
+
+                                    <strong>
+                                        {
+                                            schedules.filter(
+                                                schedule =>
+                                                    schedule.status === "pending"
+                                            ).length
+                                        }
+                                    </strong>
+
+                                </div>
+
+
+                                <div className="schedules-sidebar-summary-row">
+
+                                    <span>
+
+                                        <i className="completed" />
+
+                                        Concluídos
+
+                                    </span>
+
+                                    <strong>
+                                        {
+                                            schedules.filter(
+                                                schedule =>
+                                                    schedule.status === "completed"
+                                            ).length
+                                        }
+                                    </strong>
+
+                                </div>
+
+
+                                <div className="schedules-sidebar-summary-row">
+
+                                    <span>
+
+                                        <i className="cancelled" />
+
+                                        Cancelados
+
+                                    </span>
+
+                                    <strong>
+                                        {
+                                            schedules.filter(
+                                                schedule =>
+                                                    schedule.status === "cancelled" ||
+                                                    schedule.status === "canceled"
+                                            ).length
+                                        }
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </section>
+
+
+                        {/* =================================================
+                        PRÓXIMO AGENDAMENTO
+                    ================================================= */}
+
+                        <section className="schedules-sidebar-card schedules-next-card">
+
+                            <div className="schedules-sidebar-card-header">
+
+                                <div>
+
+                                    <span>
+                                        Próximo
+                                    </span>
+
+                                    <h3>
+                                        Próximo atendimento
+                                    </h3>
+
+                                </div>
+
+                                <Icon
+                                    icon="solar:clock-circle-linear"
+                                />
+
+                            </div>
+
+
+                            {schedules.length > 0 ? (
+
+                                <>
+
+                                    {(() => {
+
+                                        const sortedSchedules =
+                                            [...schedules]
+                                                .sort(
+                                                    (
+                                                        a,
+                                                        b
+                                                    ) =>
+                                                        (
+                                                            a.startMinutes ||
+                                                            0
+                                                        ) -
+                                                        (
+                                                            b.startMinutes ||
+                                                            0
+                                                        )
+                                                );
+
+                                        const nextSchedule =
+                                            sortedSchedules.find(
+                                                schedule => {
+
+                                                    const scheduleHour =
+                                                        hourToMinutes(
+                                                            schedule.startHourText ||
+                                                            schedule.hour
+                                                        );
+
+                                                    return (
+                                                        scheduleHour >=
+                                                        currentHour * 60 &&
+                                                        schedule.status !==
+                                                        "completed" &&
+                                                        schedule.status !==
+                                                        "cancelled" &&
+                                                        schedule.status !==
+                                                        "canceled"
+                                                    );
+
+                                                }
+                                            ) ||
+                                            sortedSchedules[0];
+
+                                        return (
+
+                                            <div className="schedules-next-content">
+
+                                                <div className="schedules-next-time">
+
+                                                    <strong>
+                                                        {
+                                                            nextSchedule?.startHourText ||
+                                                            nextSchedule?.hour ||
+                                                            "--:--"
+                                                        }
+                                                    </strong>
+
+                                                    <span>
+                                                        {
+                                                            nextSchedule?.endHourText ||
+                                                            "--:--"
+                                                        }
                                                     </span>
 
                                                 </div>
 
-                                                <div className="schedule-event-side">
 
-                                                    <div
-                                                        className={`schedule-event-admin ${schedule.status
-                                                            ?.trim()
-                                                            ?.toLowerCase()}`}
-                                                    >
-                                                        {schedule.professionalName?.charAt(0)}
-                                                    </div>
+                                                <div className="schedules-next-service">
+
+                                                    <strong>
+                                                        {
+                                                            nextSchedule?.productName ||
+                                                            "Atendimento"
+                                                        }
+                                                    </strong>
+
+                                                    <span>
+                                                        {
+                                                            nextSchedule?.userName ||
+                                                            "Cliente"
+                                                        }
+                                                    </span>
+
+                                                    <small>
+                                                        {nextSchedule?.professionalName ||
+                                                            "Profissional não informado"}
+                                                    </small>
 
                                                 </div>
 
                                             </div>
 
-                                        </div>
+                                        );
 
-                                    ))}
+                                    })()}
+
+                                </>
+
+                            ) : (
+
+                                <div className="schedules-next-empty">
+
+                                    <div className="schedules-next-empty-icon">
+
+                                        <Icon
+                                            icon="solar:calendar-add-linear"
+                                        />
+
+                                    </div>
+
+                                    <strong>
+                                        Nenhum próximo atendimento
+                                    </strong>
+
+                                    <span>
+                                        Sua agenda está livre neste período.
+                                    </span>
 
                                 </div>
 
+                            )}
+
+                        </section>
+
+
+                        {/* =================================================
+                        DISTRIBUIÇÃO POR PROFISSIONAL
+                    ================================================= */}
+
+                        <section className="schedules-sidebar-card">
+
+                            <div className="schedules-sidebar-card-header">
+
+                                <div>
+
+                                    <span>
+                                        Equipe
+                                    </span>
+
+                                    <h3>
+                                        Profissionais do dia
+                                    </h3>
+
+                                </div>
+
+                                <Icon
+                                    icon="solar:users-group-rounded-linear"
+                                />
+
                             </div>
 
-                        </div>
 
-                    ))}
+                            <div className="schedules-professionals-list">
 
-                </div>
-            </div>
+                                {[
+                                    ...new Map(
+                                        schedules.map(
+                                            schedule => [
+                                                schedule.professionalId ||
+                                                schedule.professionalName,
+                                                schedule
+                                            ]
+                                        )
+                                    ).values()
+                                ].map(
+                                    (
+                                        schedule
+                                    ) => {
+
+                                        const professionalSchedules =
+                                            schedules.filter(
+                                                item =>
+                                                    (
+                                                        item.professionalId ||
+                                                        item.professionalName
+                                                    ) ===
+                                                    (
+                                                        schedule.professionalId ||
+                                                        schedule.professionalName
+                                                    )
+                                            );
+
+                                        return (
+
+                                            <button
+                                                type="button"
+                                                key={
+                                                    schedule.professionalId ||
+                                                    schedule.professionalName
+                                                }
+                                                className="schedules-professional-item"
+                                                onClick={() =>
+                                                    openSchedule(
+                                                        professionalSchedules[0]
+                                                    )
+                                                }
+                                            >
+
+                                                <div className="schedules-professional-avatar">
+
+                                                    {userProfileImages[
+                                                        schedule.professionalId
+                                                    ] ? (
+
+                                                        <img
+                                                            src={
+                                                                userProfileImages[
+                                                                schedule.professionalId
+                                                                ]
+                                                            }
+                                                            alt={
+                                                                schedule.professionalName ||
+                                                                "Profissional"
+                                                            }
+                                                        />
+
+                                                    ) : (
+
+                                                        schedule.professionalName
+                                                            ?.charAt(0)
+                                                            ?.toUpperCase() ||
+                                                        "?"
+
+                                                    )}
+
+                                                </div>
+
+
+                                                <div className="schedules-professional-info">
+
+                                                    <strong>
+                                                        {
+                                                            schedule.professionalName ||
+                                                            "Profissional"
+                                                        }
+                                                    </strong>
+
+                                                    <span>
+                                                        {professionalSchedules.length}{" "}
+                                                        {professionalSchedules.length ===
+                                                            1
+                                                            ? "agendamento"
+                                                            : "agendamentos"}
+                                                    </span>
+
+                                                </div>
+
+
+                                                <Icon
+                                                    icon="lucide:chevron-right"
+                                                />
+
+                                            </button>
+
+                                        );
+
+                                    }
+                                )}
+
+
+                                {schedules.length === 0 && (
+
+                                    <div className="schedules-professionals-empty">
+
+                                        <Icon
+                                            icon="solar:user-linear"
+                                        />
+
+                                        <span>
+                                            Nenhum profissional com agenda hoje.
+                                        </span>
+
+                                    </div>
+
+                                )}
+
+                            </div>
+
+                        </section>
+
+
+                        {/* =================================================
+                        INFORMAÇÃO DE HORÁRIO
+                    ================================================= */}
+
+                        <section className="schedules-sidebar-card schedules-sidebar-tip">
+
+                            <div className="schedules-sidebar-tip-icon">
+
+                                <Icon
+                                    icon="solar:lightbulb-minimalistic-linear"
+                                />
+
+                            </div>
+
+                            <div>
+
+                                <strong>
+                                    Dica
+                                </strong>
+
+                                <p>
+                                    Clique em qualquer atendimento para
+                                    visualizar todos os detalhes.
+                                </p>
+
+                            </div>
+
+                        </section>
+
+                    </aside>
+
+                </section>
+
+            </main>
+
+
+            {/* =========================================================
+            MODAL DE DETALHES DO AGENDAMENTO
+        ========================================================= */}
 
             {isModalOpen && (
 
                 <div
                     ref={backdropRef}
-                    className={`schedule-modal ${isClosingModal ? "closing" : "opening"}`}
+                    className={`schedule-modal ${isClosingModal
+                        ? "closing"
+                        : "opening"
+                        }`}
                     onClick={closeSchedule}
                 >
 
                     <div
                         ref={modalContentRef}
-                        className={`schedule-modal-content ${isClosingModal ? "closing" : "opening"}`}
-                        onClick={(e) => e.stopPropagation()}
+                        className={`schedule-modal-content ${isClosingModal
+                            ? "closing"
+                            : "opening"
+                            }`}
+                        onClick={(e) =>
+                            e.stopPropagation()
+                        }
                     >
-                        <div
-                            className="schedule-modal-handle"
 
-                        />
-                        <button
-                            className="schedule-modal-close"
-                            onClick={closeSchedule}
-                        >
-                            ✕
-                        </button>
+                        <div className="schedule-modal-handle" />
 
-                        <div className="schedule-modal-body">
 
-                            <div className="schedule-modal-header">
+                        {/* =================================================
+                        HEADER
+                    ================================================= */}
 
-                                <h2>
-                                    {selectedSchedule.productName}
-                                </h2>
+                        <div className="schedule-modal-header">
+
+                            <div className="schedule-modal-header-top">
+
+                                <div className="schedule-modal-service-image">
+
+                                    {productImages[
+                                        selectedSchedule?.productId
+                                    ] ? (
+
+                                        <img
+                                            src={
+                                                productImages[
+                                                selectedSchedule.productId
+                                                ]
+                                            }
+                                            alt={
+                                                selectedSchedule?.productName ||
+                                                "Produto"
+                                            }
+                                        />
+
+                                    ) : (
+
+                                        <div className="schedule-modal-service-image-placeholder">
+
+                                            <Icon
+                                                icon="solar:gallery-linear"
+                                            />
+
+                                        </div>
+
+                                    )}
+
+                                </div>
+
+
+                                <div className="schedule-modal-title-wrapper">
+
+                                    <span>
+                                        Agendamento
+                                    </span>
+
+                                    <h2>
+                                        {
+                                            selectedSchedule?.productName ||
+                                            "Atendimento"
+                                        }
+                                    </h2>
+
+                                    <p>
+                                        ID #{selectedSchedule?.id}
+                                    </p>
+
+                                </div>
 
                             </div>
 
-                            <div className="schedule-modal-info">
+
+                            <div
+                                className={`schedule-modal-status ${scheduleStatus.className
+                                    }`}
+                            >
+
+                                <span className="schedule-modal-status-dot" />
+
+                                {
+                                    scheduleStatus.label
+                                }
+
+                            </div>
+
+                        </div>
 
 
-                                <div className="schedule-info-item">
+                        {/* =================================================
+                        MODAL MAIN
+                    ================================================= */}
 
-                                    <Icon
-                                        icon="solar:calendar-date-linear"
-                                        className="schedule-info-icon"
-                                    />
+                        <div className="schedule-modal-main">
+
+                            {/* CLIENTE */}
+
+                            <div className="schedule-modal-client">
+
+                                <div className="schedule-modal-client-avatar">
+
+                                    {
+                                        selectedSchedule?.userName
+                                            ?.charAt(0)
+                                            ?.toUpperCase() ||
+                                        "U"
+                                    }
+
+                                </div>
+
+                                <div>
 
                                     <span>
-                                        {selectedSchedule.dayLabel}
+                                        Cliente
                                     </span>
 
-                                </div>
-
-                                <div className="schedule-info-item">
-
-                                    <Icon
-                                        icon="solar:clock-circle-linear"
-                                        className="schedule-info-icon"
-                                    />
-
-                                    <span>
-                                        {selectedSchedule.startHourText} - {selectedSchedule.endHourText}
-                                    </span>
-
-                                </div>
-
-                                <div className="schedule-info-item">
-
-                                    <Icon
-                                        icon="solar:user-linear"
-                                        className="schedule-info-icon"
-                                    />
-
-                                    <span>
-                                        {selectedSchedule.userName}
-                                    </span>
-
-                                </div>
-
-                                <div className="schedule-info-item">
-
-                                    <Icon
-                                        icon="material-symbols:crown-outline-rounded"
-                                        className="schedule-info-icon"
-                                    />
-
-                                    <span>
-                                        {selectedSchedule.professionalName}
-                                    </span>
-
-                                </div>
-
-                                <div className="schedule-info-item">
-
-                                    <Icon
-                                        icon="solar:verified-check-linear"
-                                        className="schedule-info-icon"
-                                    />
-
-                                    <span
-                                        className={`schedule-status ${scheduleStatus.className}`}
-                                    >
-                                        {scheduleStatus.label}
-                                    </span>
-
-                                </div>
-
-                                <div className="schedule-info-item">
-
-                                    <Icon
-                                        icon="solar:wallet-money-linear"
-                                        className="schedule-info-icon"
-                                    />
-
-                                    <span className="schedule-info-price">
-                                        {selectedSchedule.productPrice || 0}
-                                    </span>
-
-                                </div>
-
-                                <div
-                                    className={`schedule-countdown ${scheduleFinished
-                                        ? "finished"
-                                        : "running"
-                                        }`}
-                                >
-
-                                    <Icon
-                                        icon={
-                                            scheduleFinished
-                                                ? "solar:check-circle-linear"
-                                                : "solar:clock-circle-linear"
+                                    <strong>
+                                        {
+                                            selectedSchedule?.userName ||
+                                            "Cliente"
                                         }
-                                    />
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+
+                            {/* DATA / HORÁRIO */}
+
+                            <div className="schedule-modal-datetime">
+
+                                <div className="schedule-modal-detail">
+
+                                    <div className="schedule-modal-detail-icon">
+
+                                        <Icon
+                                            icon="solar:calendar-date-linear"
+                                        />
+
+                                    </div>
 
                                     <div>
 
-                                        <strong>
+                                        <span>
+                                            Data
+                                        </span>
 
-                                            {scheduleFinished
-                                                ? "Atendimento encerrado"
-                                                : "Tempo restante"}
+                                        <strong>
+                                            {
+                                                selectedSchedule?.dayLabel ||
+                                                selectedSchedule?.day ||
+                                                "—"
+                                            }
+                                        </strong>
+
+                                    </div>
+
+                                </div>
+
+
+                                <div className="schedule-modal-detail">
+
+                                    <div className="schedule-modal-detail-icon">
+
+                                        <Icon
+                                            icon="solar:clock-circle-linear"
+                                        />
+
+                                    </div>
+
+                                    <div>
+
+                                        <span>
+                                            Horário
+                                        </span>
+
+                                        <strong>
+                                            {
+                                                selectedSchedule?.startHourText ||
+                                                selectedSchedule?.hour ||
+                                                "—"
+                                            }
+
+                                            {" — "}
+
+                                            {
+                                                selectedSchedule?.endHourText ||
+                                                "—"
+                                            }
 
                                         </strong>
 
+                                    </div>
+
+                                </div>
+
+
+                                <div className="schedule-modal-detail">
+
+                                    <div className="schedule-modal-detail-icon">
+
+                                        <Icon
+                                            icon="solar:hourglass-linear"
+                                        />
+
+                                    </div>
+
+                                    <div>
+
                                         <span>
-
-                                            {scheduleFinished
-                                                ? "O horário deste agendamento já passou."
-                                                : remainingTime}
-
+                                            Duração
                                         </span>
+
+                                        <strong>
+                                            {
+                                                selectedSchedule?.duration
+                                                    ? `${selectedSchedule.duration} min`
+                                                    : "—"
+                                            }
+                                        </strong>
 
                                     </div>
 
                                 </div>
 
                             </div>
+
+
+                            {/* PROFISSIONAL */}
+
+                            <div className="schedule-modal-professional">
+
+                                <div className="schedule-modal-professional-avatar">
+
+                                    {userProfileImages[
+                                        selectedSchedule?.professionalId
+                                    ] ? (
+
+                                        <img
+                                            src={
+                                                userProfileImages[
+                                                selectedSchedule?.professionalId
+                                                ]
+                                            }
+                                            alt={
+                                                selectedSchedule
+                                                    ?.professionalName ||
+                                                "Profissional"
+                                            }
+                                        />
+
+                                    ) : (
+
+                                        selectedSchedule
+                                            ?.professionalName
+                                            ?.charAt(0)
+                                            ?.toUpperCase() ||
+                                        "?"
+
+                                    )}
+
+                                </div>
+
+
+                                <div className="schedule-modal-professional-info">
+
+                                    <span>
+                                        Responsável
+                                    </span>
+
+                                    <strong>
+                                        {
+                                            selectedSchedule?.professionalName ||
+                                            "Não informado"
+                                        }
+                                    </strong>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        {/* =================================================
+                        PRICE
+                    ================================================= */}
+
+                        <div className="schedule-modal-price">
+
+                            <div>
+
+                                <span>
+                                    Pedido
+                                </span>
+
+                                <strong>
+                                    {
+                                        selectedSchedule?.productName ||
+                                        "Atendimento"
+                                    }
+                                </strong>
+
+                            </div>
+
+                            <strong>
+                                {
+                                    selectedSchedule?.productPrice ||
+                                    selectedSchedule?.productValue ||
+                                    "R$ 0,00"
+                                }
+                            </strong>
+
+                        </div>
+
+
+                        {/* =================================================
+                        COUNTDOWN
+                    ================================================= */}
+
+                        <div
+                            className={`schedule-countdown ${scheduleFinished
+                                ? "finished"
+                                : "running"
+                                }`}
+                        >
+
+                            <div className="schedule-countdown-icon">
+
+                                <Icon
+                                    icon={
+                                        scheduleFinished
+                                            ? "solar:check-circle-linear"
+                                            : "solar:clock-circle-linear"
+                                    }
+                                />
+
+                            </div>
+
+
+                            <div className="schedule-countdown-content">
+
+                                <strong>
+
+                                    {scheduleFinished
+                                        ? "Agendamento encerrado"
+                                        : "Tempo restante"}
+
+                                </strong>
+
+                                <span>
+
+                                    {scheduleFinished
+                                        ? "O horário deste agendamento já passou."
+                                        : remainingTime}
+
+                                </span>
+
+                            </div>
+
+                        </div>
+
+
+                        {/* =================================================
+                        FOOTER
+                    ================================================= */}
+
+                        <div className="schedule-modal-footer">
+
+                            <button
+                                type="button"
+                                className="schedule-modal-secondary"
+                                onClick={closeSchedule}
+                            >
+                                Fechar
+                            </button>
+
+
+                            {!scheduleFinished && (
+
+                                <button
+                                    type="button"
+                                    className="schedule-modal-complete"
+                                    onClick={() => {
+                                        // lógica existente
+                                    }}
+                                >
+
+                                    <Icon
+                                        icon="solar:check-circle-linear"
+                                    />
+
+                                    Completar pedido
+
+                                </button>
+
+                            )}
 
                         </div>
 
@@ -870,6 +2417,7 @@ const SchedulesAdm = () => {
                 </div>
 
             )}
+
         </div>
     );
 };

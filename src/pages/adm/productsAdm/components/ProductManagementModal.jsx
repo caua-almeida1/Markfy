@@ -7,6 +7,94 @@ import { useUserCompany } from "../../../../contexts/companyContext/UserCompanyC
 import { AnimatePresence } from "framer-motion";
 
 const ProductManagementSlider = ({ product, onClose, onSave }) => {
+
+  const DESCRIPTION_MAX_LENGTH = 2000;
+
+  const getDescriptionTextLength = (html) => {
+    const temp = document.createElement("div");
+
+    temp.innerHTML = html || "";
+
+    return (
+      temp.textContent ||
+      temp.innerText ||
+      ""
+    ).length;
+  };
+
+  const descriptionEditorRef = useRef(null);
+  const [descriptionLength, setDescriptionLength] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const handleDescriptionInput = (e) => {
+
+    const editor = e.currentTarget;
+
+    const html = editor.innerHTML;
+
+    const text =
+      getDescriptionTextLength(html);
+
+    if (text > DESCRIPTION_MAX_LENGTH) {
+
+      // desfaz a última alteração
+      document.execCommand("undo");
+
+      return;
+    }
+
+    setDescriptionLength(text);
+
+    setEditedProduct(prev => ({
+      ...prev,
+      description: html
+    }));
+  };
+
+  const execDescriptionCommand = (
+    command,
+    value = null
+  ) => {
+
+    const editor =
+      descriptionEditorRef.current;
+
+    if (!editor) return;
+
+    editor.focus();
+
+    document.execCommand(
+      command,
+      false,
+      value
+    );
+
+    const html =
+      editor.innerHTML;
+
+    const temp =
+      document.createElement("div");
+
+    temp.innerHTML = html;
+
+    const text =
+      temp.textContent ||
+      temp.innerText ||
+      "";
+
+    if (text.length > DESCRIPTION_MAX_LENGTH) {
+      return;
+    }
+
+    setDescriptionLength(
+      text.length
+    );
+
+    setEditedProduct(prev => ({
+      ...prev,
+      description: html
+    }));
+  };
   const [isClosing, setIsClosing] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [editedProduct, setEditedProduct] = useState(() => {
@@ -130,30 +218,41 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
 
   const handleImageUpload = (event, index) => {
     const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const imageUrl = e.target.result;
 
-        // Atualiza o carouselItems
-        setCarouselItems(prev =>
-          prev.map((item, i) =>
-            i === index ? { ...item, image: imageUrl } : item
-          )
-        );
+    if (!file) return;
 
-        // Atualiza o editedProduct
-        setEditedProduct(prev => {
-          const newImages = [...prev.images];
-          newImages[index] = imageUrl;
-          return {
-            ...prev,
-            images: newImages.filter(img => img !== null)
-          };
-        });
-      };
-      reader.readAsDataURL(file);
-    }
+    const reader = new FileReader();
+
+    reader.onload = (e) => {
+      const imageUrl = e.target.result;
+
+      // Atualiza o carousel
+      setCarouselItems(prev =>
+        prev.map((item, i) =>
+          i === index
+            ? { ...item, image: imageUrl }
+            : item
+        )
+      );
+
+      // Atualiza o produto
+      setEditedProduct(prev => {
+        const currentImages = Array.isArray(prev.images)
+          ? prev.images
+          : [];
+
+        const newImages = [...currentImages];
+
+        newImages[index] = imageUrl;
+
+        return {
+          ...prev,
+          images: newImages.filter(Boolean)
+        };
+      });
+    };
+
+    reader.readAsDataURL(file);
   };
 
   useEffect(() => {
@@ -165,22 +264,22 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
     }
   }, [isAddingItem, newItemIndex]);
 
-
   useEffect(() => {
-    // Bloqueia o scroll quando o modal abre
-    document.body.style.overflow = 'hidden';
-    setEditedProduct({ ...product });
+
+    document.body.style.overflow = "hidden";
+
+    setEditedProduct({
+      ...product
+    });
+
     setShowDragHandle(isMobile);
 
-    // Libera o scroll quando o componente é desmontado
     return () => {
-      document.body.style.overflow = '';
-    };
-  }, [product]);
 
-  useEffect(() => {
-    setEditedProduct({ ...product });
-    setShowDragHandle(isMobile);
+      document.body.style.overflow = "";
+
+    };
+
   }, [product]);
 
   useEffect(() => {
@@ -207,6 +306,29 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
       setIsClosing(false);
     }, 300); // Tempo deve coincidir com a duração da animação
   };
+
+
+  useEffect(() => {
+
+    if (isLoading) return;
+
+    const editor = descriptionEditorRef.current;
+
+    if (!editor) return;
+
+    const description = product?.description || "";
+
+    editor.innerHTML = description;
+
+    setDescriptionLength(
+      Math.min(
+        getDescriptionTextLength(description),
+        DESCRIPTION_MAX_LENGTH
+      )
+    );
+
+  }, [product, isLoading]);
+
 
   const handleAdvanceChange = (type, field, value) => {
 
@@ -338,7 +460,6 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
   };
 
   // 
-  const [isLoading, setIsLoading] = useState(true);
   const [tabChanging, setTabChanging] = useState(false);
 
   const changeTab = (tab) => {
@@ -386,6 +507,7 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
       relatedUsers: prev.relatedUsers.filter(user => user.id !== userId)
     }));
   };
+
 
   const renderSkeleton = () => {
     switch (activeTab) {
@@ -563,13 +685,117 @@ const ProductManagementSlider = ({ product, onClose, onSave }) => {
                     </div>
 
                     <div className="adm_products-modal-input-group">
-                      <label htmlFor="input1">Descrição</label>
-                      <textarea
-                        name="description"
-                        value={editedProduct.description}
-                        onChange={handleInputChange}
-                        className="adm_products-modal-input"
-                      />
+
+                      <label>
+                        Descrição
+                      </label>
+
+                      <div className="pms-description-editor">
+
+                        <div className="pms-description-toolbar">
+
+                          <button
+                            type="button"
+                            title="Negrito"
+                            onMouseDown={(e) => {
+
+                              e.preventDefault();
+
+                              execDescriptionCommand(
+                                "bold"
+                              );
+
+                            }}
+                          >
+                            <strong>B</strong>
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Itálico"
+                            onMouseDown={(e) => {
+
+                              e.preventDefault();
+
+                              execDescriptionCommand(
+                                "italic"
+                              );
+
+                            }}
+                          >
+                            <em>I</em>
+                          </button>
+
+                          <span className="pms-description-toolbar-divider" />
+
+                          <button
+                            type="button"
+                            title="Lista"
+                            onMouseDown={(e) => {
+
+                              e.preventDefault();
+
+                              execDescriptionCommand(
+                                "insertUnorderedList"
+                              );
+
+                            }}
+                          >
+                            <Icon icon="lucide:list" />
+                          </button>
+
+                          <button
+                            type="button"
+                            title="Lista numerada"
+                            onMouseDown={(e) => {
+
+                              e.preventDefault();
+
+                              execDescriptionCommand(
+                                "insertOrderedList"
+                              );
+
+                            }}
+                          >
+                            <Icon icon="lucide:list-ordered" />
+                          </button>
+
+                          <span className="pms-description-toolbar-divider" />
+
+                          <button
+                            type="button"
+                            title="Parágrafo"
+                            onMouseDown={(e) => {
+
+                              e.preventDefault();
+
+                              execDescriptionCommand(
+                                "formatBlock",
+                                "p"
+                              );
+
+                            }}
+                          >
+                            <Icon icon="lucide:pilcrow" />
+                          </button>
+
+                        </div>
+
+                        <div
+                          ref={descriptionEditorRef}
+                          className="pms-description-editor-content"
+                          contentEditable
+                          suppressContentEditableWarning
+                          data-placeholder="Digite a descrição do produto..."
+                          onInput={handleDescriptionInput}
+                        />
+
+                        <div className="pms-description-counter">
+                          {descriptionLength}/{DESCRIPTION_MAX_LENGTH}
+                        </div>
+
+                      </div>
+
                     </div>
 
                     <div className="pms-form-group">

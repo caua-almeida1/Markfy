@@ -876,8 +876,162 @@
     }
 }
 
-/* ========== AGERNDAMENTO COMPLETO ========= */
+/* =========================================================
+   DESCRIÇÃO FORMATADA
+========================================================= */
 
+.product-details-description {
+    width: 100%;
+}
+
+.product-details-description-formatted {
+    width: 100%;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-sm);
+    line-height: var(--mkf-line-relaxed);
+
+    word-break: break-word;
+}
+
+
+/* =========================================================
+   PARÁGRAFOS
+========================================================= */
+
+.product-details-description-formatted p {
+    display: block;
+
+    margin: 0 0 12px;
+
+    color: inherit;
+
+    font-size: inherit;
+    line-height: inherit;
+}
+
+.product-details-description-formatted p:last-child {
+    margin-bottom: 0;
+}
+
+
+/* =========================================================
+   LISTA NÃO ORDENADA
+   • item
+========================================================= */
+
+.product-details-description-formatted ul {
+    display: block;
+
+    margin: 12px 0;
+
+    padding-left: 28px;
+
+    list-style-type: disc !important;
+    list-style-position: outside !important;
+}
+
+.product-details-description-formatted ul li {
+    display: list-item !important;
+
+    margin: 0 0 6px;
+
+    padding-left: 4px;
+
+    list-style-type: disc !important;
+    list-style-position: outside !important;
+}
+
+.product-details-description-formatted ul li::marker {
+    content: "• ";
+
+    font-size: 1em;
+}
+
+
+/* =========================================================
+   LISTA ORDENADA
+   1. item
+========================================================= */
+
+.product-details-description-formatted ol {
+    display: block;
+
+    margin: 12px 0;
+
+    padding-left: 28px;
+
+    list-style-type: decimal !important;
+    list-style-position: outside !important;
+}
+
+.product-details-description-formatted ol li {
+    display: list-item !important;
+
+    margin: 0 0 6px;
+
+    padding-left: 4px;
+
+    list-style-type: decimal !important;
+    list-style-position: outside !important;
+}
+
+.product-details-description-formatted ol li::marker {
+    font-weight: 500;
+}
+
+
+/* =========================================================
+   NEGRITO / ITÁLICO
+========================================================= */
+
+.product-details-description-formatted strong,
+.product-details-description-formatted b {
+    font-weight: var(--mkf-font-bold);
+}
+
+.product-details-description-formatted em,
+.product-details-description-formatted i {
+    font-style: italic;
+}
+
+
+/* =========================================================
+   LISTA ANINHADA
+========================================================= */
+
+.product-details-description-formatted ul ul {
+    margin-top: 6px;
+    margin-bottom: 6px;
+
+    list-style-type: circle !important;
+}
+
+.product-details-description-formatted ul ul li {
+    list-style-type: circle !important;
+}
+
+.product-details-description-formatted ul ul ul {
+    list-style-type: square !important;
+}
+
+.product-details-description-formatted ul ul ul li {
+    list-style-type: square !important;
+}
+
+
+/* =========================================================
+   ESPAÇAMENTO FINAL
+========================================================= */
+
+.product-details-description-formatted> :first-child {
+    margin-top: 0;
+}
+
+.product-details-description-formatted> :last-child {
+    margin-bottom: 0;
+}
 
 /* ======== MOBILE (BOTTOM SHEET STYLE) ======== */
 @media (max-width: 768px) {

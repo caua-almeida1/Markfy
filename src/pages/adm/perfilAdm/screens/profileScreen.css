@@ -184,6 +184,8 @@
     cursor: pointer;
 }
 
+
+
 @keyframes profileEmailModalIn {
 
     from {
@@ -196,4 +198,91 @@
         transform: translateY(0) scale(1);
     }
 
+}
+
+/* ==========================================
+   REQUISITOS DA SENHA
+   ========================================== */
+
+.profile-password-requirements {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin: 1rem 0;
+}
+
+.profile-password-requirements > span {
+    font-size: 11px;
+    font-weight: 500;
+    color: #a1a6b0;
+}
+
+.profile-password-requirements-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 14px;
+}
+
+.profile-password-requirements-list span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    font-size: 11px;
+    font-weight: 400;
+    color: #b5bac3;
+
+    transition: color 0.2s ease;
+}
+
+.profile-password-requirements-list span svg {
+    width: 13px;
+    height: 13px;
+    color: #c8ccd3;
+
+    transition: color 0.2s ease;
+}
+
+.profile-password-requirements-list span.valid {
+    color: #8a909b;
+}
+
+.profile-password-requirements-list span.valid svg {
+    color: #9aa1ac;
+}
+
+.profile-password-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 34px;
+    height: 34px;
+    margin-right: 6px;
+
+    padding: 0;
+    border: 0;
+    background: transparent;
+
+    color: #b2b6bf;
+
+    cursor: pointer;
+
+    transition:
+        color 0.2s ease,
+        opacity 0.2s ease;
+}
+
+.profile-password-toggle svg {
+    width: 17px;
+    height: 17px;
+}
+
+.profile-password-toggle:hover {
+    color: #737985;
+}
+
+.profile-password-toggle:focus-visible {
+    outline: none;
+    color: #737985;
 }
