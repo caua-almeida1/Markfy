@@ -237,12 +237,9 @@
     border-color: var(--mkf-ui-primary);
 
     box-shadow:
-        0 0 0 3px
-        color-mix(
-            in srgb,
+        0 0 0 3px color-mix(in srgb,
             var(--mkf-ui-primary) 10%,
-            transparent
-        );
+            transparent);
 }
 
 
@@ -250,7 +247,7 @@
    "ATÉ"
    ========================================================= */
 
-.business-interval > span {
+.business-interval>span {
     flex-shrink: 0;
 
     font-size: var(--mkf-font-xxs);
@@ -422,6 +419,150 @@
 }
 
 /* =========================================================
+   CONFIGURAÇÕES GERAIS
+   ========================================================= */
+
+.business-hours-settings {
+    padding: 1.2rem 0;
+
+    border-bottom: 1px solid var(--mkf-ui-border-light);
+}
+
+
+/* =========================================================
+   CONFIGURAÇÃO
+   ========================================================= */
+
+.business-hours-setting {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1.5rem;
+}
+
+
+/* =========================================================
+   INFORMAÇÕES
+   ========================================================= */
+
+.business-hours-setting-info {
+    display: flex;
+
+    align-items: center;
+
+    gap: .85rem;
+
+    min-width: 0;
+}
+
+
+/* =========================================================
+   ÍCONE
+   ========================================================= */
+
+.business-hours-setting-icon {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: center;
+
+    flex-shrink: 0;
+
+    border-radius: .6rem;
+
+    background: var(--mkf-ui-background);
+
+    color: var(--mkf-text-secondary);
+}
+
+.business-hours-setting-icon svg {
+    font-size: 1.05rem;
+}
+
+
+/* =========================================================
+   TEXTO
+   ========================================================= */
+
+.business-hours-setting-text {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: .15rem;
+
+    min-width: 0;
+}
+
+.business-hours-setting-text span {
+    font-size: var(--mkf-font-xs);
+
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-text-primary);
+}
+
+.business-hours-setting-text small {
+    font-size: var(--mkf-font-xxs);
+
+    color: var(--mkf-text-light);
+
+    line-height: 1.4;
+}
+
+
+/* =========================================================
+   SELECT
+   ========================================================= */
+
+.business-hours-setting select {
+    width: 150px;
+    height: 38px;
+
+    flex-shrink: 0;
+
+    padding: 0 .7rem;
+
+    border: 1px solid var(--mkf-ui-border-light);
+
+    border-radius: .65rem;
+
+    outline: none;
+
+    background: var(--mkf-ui-background);
+
+    color: var(--mkf-text-primary);
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: var(--mkf-font-xxs);
+
+    cursor: pointer;
+
+    transition:
+        border-color .2s ease,
+        box-shadow .2s ease;
+}
+
+.business-hours-setting select:hover {
+    border-color: var(--mkf-ui-gray-300);
+}
+
+.business-hours-setting select:focus {
+    border-color: var(--mkf-ui-primary);
+
+    box-shadow:
+        0 0 0 3px color-mix(in srgb,
+            var(--mkf-ui-primary) 10%,
+            transparent);
+}
+
+/* =========================================================
    RESPONSIVO
    ========================================================= */
 
@@ -450,6 +591,18 @@
         width: auto;
     }
 
+
+    .business-hours-setting {
+        align-items: flex-start;
+
+        flex-direction: column;
+
+        gap: 1rem;
+    }
+
+    .business-hours-setting select {
+        width: 100%;
+    }
 }
 
 @media (max-width: 420px) {

@@ -1,5 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import {
+    useParams,
+    useSearchParams
+} from "react-router-dom";
 import { Icon } from "@iconify/react";
 import { getDatabase, ref, onValue } from "firebase/database";
 
@@ -11,6 +14,9 @@ import "./Catalog.css";
 const Catalog = () => {
 
     const { handle } = useParams();
+    const [
+        searchParams
+    ] = useSearchParams();
 
     const [products, setProducts] = useState([]);
 
@@ -21,8 +27,11 @@ const Catalog = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
 
     const [searchTerm, setSearchTerm] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("all");
+    const [categoryLoading, setCategoryLoading] = useState(false);
 
     const [loadedImages, setLoadedImages] = useState({});
+
 
     // ==========================================
     // ORDENAÇÃO
@@ -124,6 +133,87 @@ const Catalog = () => {
 
     }, [handle]);
 
+    useEffect(() => {
+
+        const productId =
+            searchParams.get(
+                "product"
+            );
+
+
+        if (
+            !productId ||
+            !products.length
+        ) {
+
+            return;
+
+        }
+
+
+        const product =
+            products.find(
+                item =>
+                    String(item.id) ===
+                    String(productId)
+            );
+
+
+        if (product) {
+
+            setSelectedProduct(
+                product
+            );
+
+        }
+
+    }, [
+        products,
+        searchParams
+    ]);
+
+    // ==========================================
+    // TROCAR CATEGORIA
+    // ==========================================
+
+    const handleCategoryChange = (category) => {
+
+        if (category === selectedCategory) {
+            return;
+        }
+
+        setCategoryLoading(true);
+
+        // Remove o estado de carregamento das imagens
+        // para que os novos cards também possam exibir skeleton.
+        setLoadedImages({});
+
+        setSelectedCategory(category);
+
+    };
+
+    // ==========================================
+    // FINALIZAR LOADING DA CATEGORIA
+    // ==========================================
+
+    useEffect(() => {
+
+        if (!categoryLoading) {
+            return;
+        }
+
+        const timer = setTimeout(() => {
+
+            setCategoryLoading(false);
+
+        }, 450);
+
+        return () => clearTimeout(timer);
+
+    }, [
+        categoryLoading,
+        selectedCategory
+    ]);
 
     // ==========================================
     // IMAGEM
@@ -240,7 +330,50 @@ const Catalog = () => {
 
     };
 
+    // ==========================================
+    // CATEGORIAS
+    // ==========================================
 
+    const categories = useMemo(() => {
+
+        const categorySet = new Set();
+
+        products.forEach((product) => {
+
+            if (!Array.isArray(product.categories)) {
+                return;
+            }
+
+            product.categories.forEach((category) => {
+
+                if (
+                    typeof category === "string" &&
+                    category.trim()
+                ) {
+                    categorySet.add(
+                        category.trim()
+                    );
+                }
+
+            });
+
+        });
+
+        return [
+            "all",
+            ...Array.from(categorySet).sort(
+                (a, b) =>
+                    a.localeCompare(
+                        b,
+                        "pt-BR",
+                        {
+                            sensitivity: "base"
+                        }
+                    )
+            )
+        ];
+
+    }, [products]);
     // ==========================================
     // FILTRAR + ORDENAR
     // ==========================================
@@ -259,6 +392,29 @@ const Catalog = () => {
 
         const filtered = products.filter(
             (product) => {
+
+                // ==========================================
+                // FILTRO POR CATEGORIA
+                // ==========================================
+
+                if (
+                    selectedCategory !== "all" &&
+                    !(
+                        Array.isArray(product.categories) &&
+                        product.categories.some(
+                            (category) =>
+                                String(category).toLowerCase() ===
+                                selectedCategory.toLowerCase()
+                        )
+                    )
+                ) {
+                    return false;
+                }
+
+
+                // ==========================================
+                // FILTRO POR PESQUISA
+                // ==========================================
 
                 if (!search) {
                     return true;
@@ -414,6 +570,7 @@ const Catalog = () => {
     }, [
         products,
         searchTerm,
+        selectedCategory,
         sortOption
     ]);
 
@@ -585,8 +742,8 @@ const Catalog = () => {
                         <button
                             type="button"
                             className={`catalog-sort-button ${showSortMenu
-                                    ? "active"
-                                    : ""
+                                ? "active"
+                                : ""
                                 }`}
                             onClick={() =>
                                 setShowSortMenu(
@@ -1054,12 +1211,112 @@ const Catalog = () => {
 
 
             {/* =================================================
-                LISTA
-            ================================================= */}
+    CATEGORIAS
+================================================= */}
+
+            {
+                categories.length > 1 && (
+
+                    <div className="catalog-categories-wrapper">
+
+                        <div className="catalog-categories">
+
+                            {categories.map((category) => {
+
+                                const isActive =
+                                    selectedCategory === category;
+
+                                const label =
+                                    category === "all"
+                                        ? "Todos"
+                                        : category;
+
+                                return (
+
+                                    <button
+                                        key={category}
+                                        type="button"
+                                        className={
+                                            `catalog-category-button ${isActive
+                                                ? "active"
+                                                : ""
+                                            }`
+                                        }
+                                        onClick={() =>
+                                            handleCategoryChange(category)
+                                        }
+                                    >
+
+                                        {label}
+
+                                    </button>
+
+                                );
+
+                            })}
+
+                        </div>
+
+                    </div>
+
+                )
+            }
 
             <div className="catalog-list">
 
-                {filteredProducts.length > 0 ? (
+                {categoryLoading ? (
+
+                    Array.from({
+                        length: Math.max(
+                            Math.min(filteredProducts.length || 4, 6),
+                            4
+                        )
+                    }).map((_, index) => (
+
+                        <div
+                            key={`category-skeleton-${index}`}
+                            className="catalog-product catalog-product-skeleton"
+                        >
+
+                            <div className="catalog-product-image-wrapper">
+
+                                <div className="catalog-product-image-skeleton" />
+
+                            </div>
+
+
+                            <div className="catalog-product-info">
+
+                                <div className="catalog-product-main-info">
+
+                                    <div className="catalog-skeleton-category" />
+
+                                    <div className="catalog-skeleton-title" />
+
+                                    <div className="catalog-product-meta">
+
+                                        <div className="catalog-skeleton-meta" />
+
+                                    </div>
+
+                                </div>
+
+
+                                <div className="catalog-product-action">
+
+                                    <div className="catalog-skeleton-price" />
+
+                                    <div className="catalog-skeleton-button" />
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    ))
+
+                ) : filteredProducts.length > 0 ? (
 
                     filteredProducts.map(
                         (product) => (

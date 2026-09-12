@@ -1,225 +1,730 @@
-:root {
-    --mkf-ui-primary: #092af3;
-    --mkf-ui-primary-hover: #092af3b3;
-    --mkf-ui-secondary: #f5f5f5;
-    --mkf-ui-border: #eeeeee;
-    --mkf-text-primary: #333333;
-    --mkf-text-secondary: #555555;
-    --mkf-text-tertiary: #666666;
-    --mkf-text-light: #999999;
-    --mkf-ui-shadow: rgba(0, 0, 0, 0.1);
-    --mkf-ui-white: #ffffff;
-    --mkf-link-color: #4a6bdf;
+/* =========================================================
+   CREATE COMPANY
+   ========================================================= */
 
-    --modal-transition-duration: 300ms;
-}
-
-/* ======= CREATE COMPANY PAGE STYLES ======= */
 .create-company-wrapper {
-    position: relative;
     width: 100%;
-    height: 100vh;
-    overflow: hidden;
-}
+    min-height: 100dvh;
 
-.create-company-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    width: 100%;
-    padding: 1.5rem;
-}
-
-.create-company-box {
-    background-color: var(--mkf-ui-white);
-    border-radius: 16px;
-    box-shadow: 0 10px 30px var(--mkf-ui-shadow);
-    padding: 2rem;
-    width: 100%;
-    max-width: 600px;
-    text-align: left;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+
+    background: var(--mkf-ui-background);
+    color: var(--mkf-text-primary);
+
+    overflow-x: hidden;
 }
 
-.create-company-box h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.create-company-header {
+    width: 100%;
+    height: 72px;
+
+    padding: 0 40px;
+
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+
+    border-bottom: 1px solid var(--mkf-ui-border-light);
+}
+
+.create-company-header-back {
+    width: 38px;
+    height: 38px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 0;
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: var(--mkf-text-secondary);
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.create-company-header-back:hover {
+    background: var(--mkf-ui-background-secondary);
     color: var(--mkf-text-primary);
 }
 
-.create-company-box p {
-    font-size: 0.95rem;
-    color: var(--mkf-text-secondary);
+.create-company-header-back svg {
+    width: 19px;
+    height: 19px;
 }
+
+
+/* =========================================================
+   BRAND
+   ========================================================= */
+
+.create-company-header-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.create-company-header-brand span {
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-bold);
+
+    letter-spacing: 0.14em;
+}
+
+
+/* =========================================================
+   HEADER STEP
+   ========================================================= */
+
+.create-company-header-step {
+    justify-self: end;
+
+    min-width: 30px;
+    height: 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 50%;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+
+/* =========================================================
+   CONTENT
+   ========================================================= */
+
+.create-company-content {
+    width: 100%;
+    max-width: 680px;
+
+    margin: auto;
+
+    padding: 50px 24px 60px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* =========================================================
+   PROGRESS
+   ========================================================= */
+
+.create-company-progress {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+
+    margin-bottom: 54px;
+}
+
+.create-company-progress-item {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+}
+
+.create-company-progress-item span {
+    width: 28px;
+    height: 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 50%;
+
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-bold);
+}
+
+.create-company-progress-item p {
+    margin: 0;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.create-company-progress-item.active {
+    color: var(--mkf-ui-primary);
+}
+
+.create-company-progress-item.active span {
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-primary);
+
+    color: var(--mkf-ui-white);
+}
+
+.create-company-progress-line {
+    height: 1px;
+
+    flex: 1;
+
+    margin: 0 14px;
+
+    background: var(--mkf-ui-border);
+}
+
+
+/* =========================================================
+   STEP
+   ========================================================= */
+
+.create-company-step {
+    width: 100%;
+
+    animation: createCompanyFadeIn 0.3s ease both;
+}
+
+
+/* =========================================================
+   INTRO
+   ========================================================= */
+
+.create-company-intro {
+    margin-bottom: 34px;
+}
+
+.create-company-overline {
+    display: block;
+
+    margin-bottom: 10px;
+
+    color: var(--mkf-ui-primary);
+
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-bold);
+
+    letter-spacing: 0.12em;
+}
+
+.create-company-intro h1 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: clamp(var(--mkf-font-3xl),
+            5vw,
+            var(--mkf-font-4xl));
+
+    font-weight: var(--mkf-font-bold);
+
+    line-height: var(--mkf-line-tight);
+
+    letter-spacing: -0.035em;
+}
+
+.create-company-intro p {
+    max-width: 560px;
+
+    margin: 12px 0 0;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-md);
+    font-weight: var(--mkf-font-regular);
+
+    line-height: var(--mkf-line-normal);
+}
+
+
+/* =========================================================
+   FORM
+   ========================================================= */
 
 .create-company-form {
+    width: 100%;
+
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+
+    gap: 18px;
 }
 
-.create-company-input {
-    padding: 0.75rem 1rem;
-    border: 1px solid var(--mkf-ui-border);
-    border-radius: 8px;
-    font-size: 0.95rem;
-    color: var(--mkf-text-primary);
-    background-color: var(--mkf-ui-white);
-}
 
-.create-company-input:focus {
-    outline: none;
-    border-color: var(--mkf-ui-primary);
-    box-shadow: 0 0 0 2px rgba(9, 42, 243, 0.1);
-}
+/* =========================================================
+   FIELD
+   ========================================================= */
 
-.create-company-btn-wrapper-row {
+.create-company-field {
     width: 100%;
+
     display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
+    flex-direction: column;
 }
 
-.create-company-btn {
-    background-color: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+.create-company-field label {
+    margin-bottom: 7px;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.create-company-field input,
+.create-company-field textarea {
     width: 100%;
-    padding: 0.85rem 0;
-    font-size: 0.8rem;
-    font-weight: 500;
-    border-radius: 5rem;
-    transition: all .3s ease-in-out;
+
+    border: 1px solid var(--mkf-ui-border-dark);
+    border-radius: 9px;
+
+    outline: none;
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-text-primary);
+
+    font-family: inherit;
+
+    font-size: var(--mkf-font-sm);
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
-.create-company-btn:hover {
-    background-color: var(--mkf-ui-primary-hover);
+.create-company-field input {
+    height: 48px;
+
+    padding: 0 14px;
 }
 
-.create-company-btn-back {
-    background-color: var(--mkf-ui-border) !important;
-    color: var(--mkf-text-tertiary) !important;
+.create-company-field input::placeholder,
+.create-company-field textarea::placeholder {
+    color: var(--mkf-text-light);
 }
 
-.create-company-btn-back:hover {
-    background-color: var(--mkf-ui-primary);
+.create-company-field input:focus,
+.create-company-field textarea:focus {
+    border-color: var(--mkf-ui-primary);
+
+    box-shadow:
+        0 0 0 3px var(--mkf-ui-primary-light);
+}
+
+
+/* =========================================================
+   FIELD HELP
+   ========================================================= */
+
+.create-company-field small {
+    margin-top: 7px;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-2xs);
+
+    line-height: var(--mkf-line-normal);
+}
+
+
+/* =========================================================
+   HANDLE
+   ========================================================= */
+
+.create-company-handle {
+    width: 100%;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+
+    border: 1px solid var(--mkf-ui-border-dark);
+    border-radius: 9px;
+
+    background: var(--mkf-ui-white);
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.create-company-handle:focus-within {
+    border-color: var(--mkf-ui-primary);
+
+    box-shadow:
+        0 0 0 3px var(--mkf-ui-primary-light);
+}
+
+.create-company-handle>span {
+    padding-left: 14px;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-md);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-handle input {
+    height: 100%;
+
+    padding: 0 42px 0 5px;
+
+    border: 0 !important;
+
+    box-shadow: none !important;
+
+    background: transparent;
+}
+
+.create-company-loading {
+    width: 18px;
+    height: 18px;
+
+    margin-right: 13px;
+
+    flex-shrink: 0;
+
+    color: var(--mkf-ui-primary);
+}
+
+
+/* =========================================================
+   TWO COLUMNS
+   ========================================================= */
+
+.create-company-fields-row {
+    width: 100%;
+
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    gap: 14px;
+}
+
+
+/* =========================================================
+   ERRORS
+   ========================================================= */
+
+.create-company-field-error {
+    margin-top: 7px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+    color: var(--mkf-error);
+
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-medium);
+
+    line-height: 1.4;
+}
+
+.create-company-field-error svg {
+    width: 14px;
+    height: 14px;
+
+    flex-shrink: 0;
+}
+
+
+/* =========================================================
+   ACTIONS
+   ========================================================= */
+
+.create-company-actions {
+    width: 100%;
+
+    margin-top: 14px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+}
+
+.create-company-back {
+    height: 44px;
+
+    padding: 0 10px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    border: 0;
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: var(--mkf-text-secondary);
+
+    font-family: inherit;
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-medium);
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
+}
+
+.create-company-back:hover {
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-primary);
+}
+
+.create-company-back svg {
+    width: 17px;
+    height: 17px;
+}
+
+.create-company-primary {
+    min-width: 132px;
+    height: 44px;
+
+    padding: 0 17px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    border: 1px solid var(--mkf-ui-primary);
+    border-radius: 9px;
+
+    background: var(--mkf-ui-primary);
+
     color: var(--mkf-ui-white);
+
+    font-family: inherit;
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        opacity 0.2s ease,
+        transform 0.2s ease;
 }
 
-.handle-error-list {
-    margin-top: -1rem;
-    padding-left: 0.5rem;
-    color: red;
-    font-size: 0.8rem;
-    list-style: disc;
+.create-company-primary:hover:not(:disabled) {
+    background: var(--mkf-ui-primary-hover);
+
+    transform: translateY(-1px);
 }
 
-.handle-error-single {
-    color: red !important;
-    font-size: 0.8rem !important;
-    text-align: left !important;
-    font-weight: 500;
-    margin-top: -1rem;
+.create-company-primary:disabled {
+    opacity: 0.45;
+
+    cursor: not-allowed;
+}
+
+.create-company-primary svg {
+    width: 17px;
+    height: 17px;
 }
 
 
-.company-at-input-wrapper {
-    margin: 0;
+/* =========================================================
+   PROFILE / IDENTITY
+   ========================================================= */
+
+.create-company-profile {
+    width: 100%;
+
+    padding: 20px;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 14px;
+
+    background: var(--mkf-ui-white);
 }
 
-/* Responsividade */
-@media (max-width: 468px) {
-    .create-company-container {
-        overflow-y: auto !important;
-    }
+.create-company-profile-header {
+    display: flex;
+    align-items: center;
 
-    .create-company-box {
-        width: 100vw;
-        height: 100vh;
-        max-width: 100vw;
-        max-height: 100vh;
-        border-radius: 0;
-        box-shadow: none;
-        padding: 1rem;
-        justify-content: center;
-        margin-top: -4rem;
-        overflow-y: auto !important;
-        animation: fadeInTransitionResponsive 0.5s ease forwards;
-    }
+    gap: 12px;
 
-    .create-company-box h1 {
-        font-size: 1.3rem;
-        margin-top: -1rem;
-        margin-bottom: -1rem;
-    }
-
-    .create-company-box p {
-        font-size: 0.85rem;
-    }
-
-    .create-company-box input,
-    span {
-        font-size: 0.8rem;
-    }
-
-    .create-company-btn {
-        font-size: 0.85rem;
-    }
-
-    .create-company-btn-wrapper-row {
-        flex-direction:column-reverse;
-        gap: 0.5rem;
-    }
+    margin-bottom: 20px;
 }
 
-/* =========== RESPONSIVIDADE PARA TELAS AINDA MENORES ============= */
-@media (max-width: 380px) {
-    .create-company-box {
-        padding: 0.75rem;
-        gap: 1rem;
-        animation: fadeInTransitionResponsive 0.5s ease forwards;
-    }
+.create-company-profile-icon {
+    width: 42px;
+    height: 42px;
 
-    .create-company-box .setup-logo {
-        width: 50px;
-        height: auto;
-    }
+    flex: 0 0 42px;
 
-    .create-company-box h1 {
-        font-size: 1.1rem;
-    }
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
-    .create-company-box p {
-        font-size: 0.75rem;
-    }
+    border-radius: 10px;
 
-    .create-company-input,
-    .company-at-input {
-        padding: 0.55rem 0.75rem;
-        font-size: 0.85rem;
-    }
+    background: var(--mkf-ui-background-secondary);
 
-    .company-at-input-wrapper .company-at-input {
-        padding-left: 2.5rem !important;
-    }
-
-    .create-company-btn {
-        padding: 0.7rem 1.2rem;
-        font-size: 0.8rem;
-    }
-
-    .handle-error-list,
-    .handle-error-single {
-        font-size: 0.7rem;
-    }
+    color: var(--mkf-ui-primary);
 }
 
-@keyframes fadeInTransitionResponsive {
+.create-company-profile-icon svg {
+    width: 21px;
+    height: 21px;
+}
+
+.create-company-profile-header>div:last-child {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 3px;
+}
+
+.create-company-profile-header strong {
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-profile-header span {
+    color: var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-xs);
+    line-height: var(--mkf-line-normal);
+}
+
+
+/* =========================================================
+   DESCRIPTION
+   ========================================================= */
+
+.create-company-description {
+    width: 100%;
+
+    margin-top: 18px;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.create-company-description label {
+    margin-bottom: 7px;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.create-company-description textarea {
+    width: 100%;
+    min-height: 120px;
+
+    padding: 13px 14px;
+
+    resize: none;
+
+    border: 1px solid var(--mkf-ui-border-dark);
+    border-radius: 9px;
+
+    outline: none;
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-text-primary);
+
+    font-family: inherit;
+    font-size: var(--mkf-font-sm);
+    line-height: var(--mkf-line-normal);
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.create-company-description textarea::placeholder {
+    color: var(--mkf-text-light);
+}
+
+.create-company-description textarea:focus {
+    border-color: var(--mkf-ui-primary);
+
+    box-shadow:
+        0 0 0 3px var(--mkf-ui-primary-light);
+}
+
+.create-company-description-footer {
+    margin-top: 7px;
+
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 15px;
+}
+
+.create-company-description-footer span {
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-2xs);
+
+    line-height: var(--mkf-line-normal);
+}
+
+.create-company-description-footer small {
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-2xs);
+}
+
+
+/* =========================================================
+   ANIMATION
+   ========================================================= */
+
+@keyframes createCompanyFadeIn {
     from {
         opacity: 0;
-        transform: translateY(10px);
+        transform: translateY(7px);
     }
 
     to {
@@ -228,448 +733,2419 @@
     }
 }
 
-/* ============= SEÇÃO PARA SUBMETER IMAGENS E DESCRIÇÃO ================ */
-.create-company-box img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 8px;
-    margin-top: 0.5rem;
+
+/* =========================================================
+   FOCUS
+   ========================================================= */
+
+.create-company-header-back:focus-visible,
+.create-company-back:focus-visible,
+.create-company-primary:focus-visible,
+.create-company-field input:focus-visible,
+.create-company-field textarea:focus-visible,
+.create-company-description textarea:focus-visible {
+    outline: 2px solid var(--mkf-ui-primary);
+    outline-offset: 3px;
 }
 
-.create-company-form textarea {
-    resize: none;
-}
+/* =========================================================
+   LOGO
+   ========================================================= */
 
-.file-upload-wrapper {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.file-upload-label {
-    display: flex;
-    flex-direction: row-reverse;
-    align-items: center;
-    gap: 0.5rem;
-    justify-content: center;
+.create-company-logo-section {
     width: 100%;
-    padding: 0.7rem 1.5rem;
-    background-color: transparent;
-    border: 1px solid;
-    border-color: var(--mkf-ui-primary);
+
+    padding: 20px;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 14px;
+
+    background: var(--mkf-ui-white);
+}
+
+.create-company-section-heading {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    margin-bottom: 18px;
+}
+
+.create-company-section-icon {
+    width: 42px;
+    height: 42px;
+
+    flex: 0 0 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: var(--mkf-ui-primary-light);
+
     color: var(--mkf-ui-primary);
-    border-radius: 2rem;
-    cursor: pointer;
-    font-size: 0.8rem;
-    font-weight: 500;
-    text-align: center;
-    transition: all .3s ease;
 }
 
-.file-upload-label:hover {
-    background-color: var(--mkf-ui-primary-hover);
-    border: 1px solid white !important;
-    color: var(--mkf-ui-white);
+.create-company-section-icon svg {
+    width: 21px;
+    height: 21px;
 }
 
-.file-upload-label input[type="file"] {
-    display: none;
-}
-
-.create-company-modal-backdrop {
-    backdrop-filter: blur(5px);
-    transition: all;
-}
-
-.create-company-btn {
-    padding: 0.85rem 1rem;
-    border-radius: 2rem;
-    border: none;
-    background-color: var(--mkf-ui-primary);
-    color: white;
-    cursor: pointer;
-    transition: 0.3s ease;
-}
-
-.create-company-btn:hover {
-    background-color: var(--mkf-ui-primary-hover);
-}
-
-.create-company-logo-wrapper {
-    width: 100%;
+.create-company-section-heading>div:last-child {
     display: flex;
-    position: relative;
     flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
+
+    gap: 3px;
 }
 
-.create-company-logo-wrapper img {
+.create-company-section-heading strong {
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-section-heading span {
+    color: var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-xs);
+    line-height: var(--mkf-line-normal);
+}
+
+
+/* =========================================================
+   LOGO UPLOAD
+   ========================================================= */
+
+.create-company-logo-upload {
+    position: relative;
+
     width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 999px;
-}
+    height: 190px;
 
-.create-company-logo-wrapper .create-company-overlay {
-    position: absolute;
-    top: 12px;
-    width: 120px;
-    height: 120px;
-    background: rgba(0, 0, 0, 0.5);
-    border-radius: 999px;
+    padding: 0;
+
     display: flex;
     align-items: center;
     justify-content: center;
-    opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-}
 
-.create-company-logo-wrapper:hover .create-company-overlay {
-    opacity: 1;
-}
+    overflow: hidden;
 
-.image-logo-preview {
-    width: 120px !important;
-    height: auto !important;
-    object-fit: cover !important;
-    border-radius: 50% !important;
-    object-fit: cover;
-}
+    border: 1px dashed var(--mkf-ui-border-dark);
+    border-radius: 12px;
 
-.create-company-logo-wrapper label {
-    width: 100%;
-}
+    background: var(--mkf-ui-background-secondary);
 
-.create-company-form p {
-    text-align: center;
-}
-
-.create-company-logo-image-content {
     cursor: pointer;
-    border-radius: 50%;
-    width: 120px;
-    height: 120px;
-}
-
-.create-company-logo-wrapper img {
-    width: 120px;
-    height: 120px;
-    object-fit: cover;
-    border-radius: 50%;
-    margin-bottom: 1rem;
-    display: flex;
-    justify-content: center;
-    cursor: pointer;
-}
-
-/* ===== MODAL BACKDROP ===== */
-.create-company-logo-modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.0);
-    backdrop-filter: blur(0px);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 1rem;
-    opacity: 0;
 
     transition:
-        background var(--modal-transition-duration) ease,
-        backdrop-filter var(--modal-transition-duration) ease,
-        opacity var(--modal-transition-duration) ease;
+        border-color 0.2s ease,
+        background-color 0.2s ease;
 }
 
-.create-company-logo-modal-backdrop.show {
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
-    opacity: 1;
+.create-company-logo-upload:hover {
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-primary-lighter);
 }
 
-/* ===== MODAL BOX ===== */
-.create-company-logo-modal {
-    background-color: var(--mkf-ui-white);
-    color: #f8fafc;
+.create-company-logo-upload.has-image {
+    border-style: solid;
+
+    background: var(--mkf-ui-background-secondary);
+}
+
+.create-company-logo-upload>img {
     width: 100%;
-    max-width: 600px;
-    border-radius: 2rem;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
-    position: relative;
-    padding: 2rem;
-    box-sizing: border-box;
-    max-height: 90vh;
-    overflow-y: hidden;
+    height: 100%;
 
-    /* estado inicial (escondido) */
+    object-fit: contain;
+
+    padding: 20px;
+
+    display: block;
+}
+
+.create-company-logo-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+}
+
+.create-company-logo-empty-icon {
+    width: 48px;
+    height: 48px;
+
+    margin-bottom: 4px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 12px;
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-ui-primary);
+
+    box-shadow: 0 2px 8px var(--mkf-ui-shadow);
+}
+
+.create-company-logo-empty-icon svg {
+    width: 24px;
+    height: 24px;
+}
+
+.create-company-logo-empty strong {
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-logo-empty span {
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-2xs);
+}
+
+.create-company-logo-overlay {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    background: rgba(0, 0, 0, 0.48);
+
+    color: var(--mkf-ui-white);
+
     opacity: 0;
-    transform: translateY(-8px) scale(0.995);
-    transition: transform var(--modal-transition-duration) ease,
-        opacity var(--modal-transition-duration) ease;
+
+    transition: opacity 0.2s ease;
 }
 
-.create-company-logo-modal-backdrop.show .create-company-logo-modal {
+.create-company-logo-upload:hover .create-company-logo-overlay {
     opacity: 1;
-    transform: translateY(0) scale(1);
 }
 
-/* ===== CLOSE BUTTON ===== */
+.create-company-logo-overlay svg {
+    width: 18px;
+    height: 18px;
+}
+
+.create-company-logo-overlay span {
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-logo-remove {
+    margin-top: 10px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+    border: 0;
+
+    background: transparent;
+
+    color: var(--mkf-error);
+
+    font-family: inherit;
+
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-medium);
+
+    cursor: pointer;
+}
+
+.create-company-logo-remove svg {
+    width: 14px;
+    height: 14px;
+}
+
+
+/* =========================================================
+   LOCATION
+   ========================================================= */
+
+.create-company-location-detect {
+    width: 100%;
+
+    padding: 15px;
+
+    display: flex;
+    align-items: center;
+
+    gap: 13px;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 12px;
+
+    background: var(--mkf-ui-white);
+
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        background-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.create-company-location-detect:hover:not(:disabled) {
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-primary-lighter);
+
+    transform: translateY(-1px);
+}
+
+.create-company-location-detect:disabled {
+    opacity: 0.6;
+
+    cursor: wait;
+}
+
+.create-company-location-detect-icon {
+    width: 42px;
+    height: 42px;
+
+    flex: 0 0 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 10px;
+
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+}
+
+.create-company-location-detect-icon svg {
+    width: 21px;
+    height: 21px;
+}
+
+.create-company-location-detect-content {
+    min-width: 0;
+
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 3px;
+}
+
+.create-company-location-detect-content strong {
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-location-detect-content span {
+    color: var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-2xs);
+}
+
+.create-company-location-detect-arrow {
+    width: 18px;
+    height: 18px;
+
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+}
+
+.create-company-location-divider {
+    width: 100%;
+
+    margin: 24px 0;
+
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-2xs);
+}
+
+.create-company-location-divider::before,
+.create-company-location-divider::after {
+    content: '';
+
+    height: 1px;
+
+    flex: 1;
+
+    background: var(--mkf-ui-border);
+}
+
+.create-company-location-divider span {
+    white-space: nowrap;
+}
+
+.create-company-location-form {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 16px;
+}
+
+.create-company-location-row {
+    width: 100%;
+
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.4fr);
+
+    gap: 14px;
+}
+
+.create-company-input-icon-wrapper {
+    width: 100%;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+
+    border: 1px solid var(--mkf-ui-border-dark);
+    border-radius: 9px;
+
+    background: var(--mkf-ui-white);
+
+    transition:
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.create-company-input-icon-wrapper:focus-within {
+    border-color: var(--mkf-ui-primary);
+
+    box-shadow:
+        0 0 0 3px var(--mkf-ui-primary-light);
+}
+
+.create-company-input-icon-wrapper>svg {
+    width: 18px;
+    height: 18px;
+
+    margin-left: 13px;
+
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+}
+
+.create-company-input-icon-wrapper input {
+    height: 100%;
+
+    padding: 0 13px 0 9px;
+
+    border: 0 !important;
+
+    outline: none;
+
+    box-shadow: none !important;
+}
+
+
+/* =========================================================
+   LOGO MODAL
+   ========================================================= */
+
+.create-company-logo-modal {
+    position: fixed;
+    inset: 0;
+
+    z-index: 1000;
+
+    padding: 20px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.42);
+
+    backdrop-filter: blur(4px);
+
+    animation: createCompanyModalBackdrop 0.2s ease both;
+}
+
+.create-company-logo-modal-content {
+    position: relative;
+
+    width: 100%;
+    max-width: 460px;
+
+    max-height: calc(100dvh - 40px);
+
+    padding: 28px;
+
+    overflow-y: auto;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 18px;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0 20px 60px var(--mkf-ui-shadow-strong);
+
+    animation: createCompanyModalIn 0.25s ease both;
+}
+
 .create-company-logo-modal-close {
     position: absolute;
-    top: 1.5rem;
-    right: 1.5rem;
-    background: transparent;
-    border: none;
-    color: var(--mkf-text-light);
-    font-size: 1.2rem !important;
+
+    top: 18px;
+    right: 18px;
+
+    width: 34px;
+    height: 34px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 0;
+    border-radius: 8px;
+
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-secondary);
+
     cursor: pointer;
-    transition: color 0.2s ease;
+
+    transition:
+        background-color 0.2s ease,
+        color 0.2s ease;
 }
 
 .create-company-logo-modal-close:hover {
-    color: #0080ff;
+    background: var(--mkf-ui-background-tertiary);
+
+    color: var(--mkf-text-primary);
 }
 
-/* ===== MODAL CONTENT ===== */
-.create-company-logo-modal-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1.25rem;
+.create-company-logo-modal-close svg {
+    width: 19px;
+    height: 19px;
 }
 
-/* ===== CROPPER WRAPPER ===== */
-.create-company-logo-cropper-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 1rem;
-    max-height: 80vh;
-    overflow-y: auto;
+.create-company-logo-modal-header {
+    padding-right: 38px;
+
+    margin-bottom: 22px;
 }
 
-.create-company-logo-cropper-upload-wrapper {
-    text-align: center;
-    margin-top: 2rem;
+.create-company-logo-modal-header h2 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-2xl);
+    font-weight: var(--mkf-font-bold);
+
+    line-height: var(--mkf-line-tight);
+
+    letter-spacing: -0.025em;
 }
 
-.create-company-logo-cropper-upload-label {
-    font-size: 1rem;
-    font-weight: bold;
-    cursor: pointer;
+.create-company-logo-modal-header p {
+    margin: 8px 0 0;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-sm);
+
+    line-height: var(--mkf-line-normal);
 }
 
-.create-company-logo-cropper-upload-input {
-    margin-top: 0.5rem;
-}
-
-.create-company-logo-cropper-tip {
-    display: block;
-    margin-top: 0.25rem;
-    font-size: 0.8rem;
-    color: gray;
-}
-
-/* Erro */
-.create-company-logo-cropper-error {
-    color: red;
-    margin: 1rem 0;
-}
-
-/* Área do Crop */
-.create-company-logo-cropper-area {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    max-width: 100%;
+.create-company-logo-modal-preview {
     width: 100%;
+    height: 270px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 14px;
+
+    background:
+        linear-gradient(45deg,
+            var(--mkf-ui-background-secondary) 25%,
+            var(--mkf-ui-white) 25%,
+            var(--mkf-ui-white) 50%,
+            var(--mkf-ui-background-secondary) 50%,
+            var(--mkf-ui-background-secondary) 75%,
+            var(--mkf-ui-white) 75%);
+
+    background-size: 24px 24px;
 }
 
-/* Imagem (Controla o tamanho máximo visível da imagem) */
-.create-company-logo-cropper-image {
-    max-width: 100%;
-    max-height: 50vh;
-    height: auto;
+.create-company-logo-modal-preview img {
+    width: 100%;
+    height: 100%;
+
+    padding: 28px;
+
     object-fit: contain;
-    border-radius: 0.5rem;
+
+    display: block;
 }
 
-.create-company-logo-cropper-confirm-btn {
+.create-company-logo-modal-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 8px;
+
+    color: var(--mkf-text-light);
+}
+
+.create-company-logo-modal-empty svg {
+    width: 38px;
+    height: 38px;
+}
+
+.create-company-logo-modal-empty span {
+    font-size: var(--mkf-font-xs);
+}
+
+.create-company-logo-modal-actions {
+    margin-top: 20px;
+
+    display: flex;
+    justify-content: flex-end;
+
+    gap: 10px;
+}
+
+.create-company-logo-modal-secondary,
+.create-company-logo-modal-primary {
+    height: 44px;
+
+    padding: 0 16px;
+
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 1.5rem;
-    margin-top: 1rem;
-    background-color: var(--mkf-ui-primary);
-    color: white;
-    border: none;
-    width: 100%;
-    padding: 0.75rem 1.5rem;
-    font-size: 0.9rem;
-    border-radius: 999px;
+
+    gap: 7px;
+
+    border-radius: 9px;
+
+    font-family: inherit;
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+
     cursor: pointer;
-    transition: background-color 0.3s ease;
 }
 
-.create-company-logo-cropper-confirm-btn:hover {
-    background-color: var(--mkf-ui-primary-hover);
+.create-company-logo-modal-secondary {
+    border: 1px solid var(--mkf-ui-border-dark);
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-text-secondary);
 }
 
-.ReactCrop--circular-crop .ReactCrop__crop-selection:after {
-    border: 2px solid var(--mkf-ui-white) !important;
-}
+.create-company-logo-modal-primary {
+    border: 1px solid var(--mkf-ui-primary);
 
-.ReactCrop--no-animate .ReactCrop__crop-selection {
-    border: 2px dashed var(--mkf-ui-white) !important;
-}
+    background: var(--mkf-ui-primary);
 
-/* ============= MODAL DROP FILES TEST =============== */
-.create-company-logo-dropzone {
-    width: 100%;
-    max-width: 600px;
-    height: 200px;
-    background-color: var(--mkf-ui-border);
-    border-radius: 0.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    position: relative;
-    transition: all .3s ease-in-out;
-    padding: 2rem 6rem;
-}
-
-.create-company-logo-dropzone:hover {
-    background-color: var(--mkf-ui-primary);
     color: var(--mkf-ui-white);
 }
 
-.create-company-logo-dropzone:hover .create-company-logo-dropzone-text,
-.create-company-logo-dropzone:hover .create-company-logo-dropzone-subtext,
-.create-company-logo-dropzone:hover .browse-text {
-    color: var(--mkf-ui-white) !important;
+.create-company-logo-modal-primary:hover {
+    background: var(--mkf-ui-primary-hover);
 }
 
-.create-company-logo-dropzone-inner {
-    text-align: center;
-    pointer-events: none;
+.create-company-logo-modal-primary svg {
+    width: 17px;
+    height: 17px;
 }
 
-.create-company-logo-dropzone-icon {
-    margin-bottom: 0.5rem;
-    text-align: center;
+/* =========================================================
+   LOGO MODAL
+   ========================================================= */
+
+.create-company-logo-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+
     display: flex;
     align-items: center;
     justify-content: center;
+
+    padding: 24px;
+
+    background: rgba(0, 0, 0, 0.42);
+
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
-.create-company-logo-dropzone-icon .iconify {
-    color: white !important;
-    font-size: 4rem !important;
-    padding: 1rem;
-    background-color: var(--mkf-ui-white);
+
+.create-company-logo-modal-content {
+    position: relative;
+
+    width: min(100%, 520px);
+
+    background: var(--mkf-ui-white);
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 24px;
+
+    padding: 28px;
+
+    box-shadow:
+        0 24px 70px rgba(0, 0, 0, 0.16);
+
+    animation: logoModalIn 0.2s ease-out;
+}
+
+
+@keyframes logoModalIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+
+}
+
+
+/* =========================================================
+   HEADER
+   ========================================================= */
+
+.create-company-logo-modal-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    margin-bottom: 26px;
+}
+
+
+.create-company-logo-modal-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+}
+
+
+.create-company-logo-modal-title-icon {
+    width: 42px;
+    height: 42px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
     border-radius: 12px;
+
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+
+    font-size: 21px;
 }
 
-.create-company-logo-dropzone-text {
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #1e293b;
-    transition: all .3s ease-in-out;
+
+.create-company-logo-modal-header h2 {
+    margin: 4px 0 6px;
+
+    font-size: var(--mkf-font-xl);
+    font-weight: var(--mkf-font-bold);
+
+    line-height: var(--mkf-line-tight);
+
+    color: var(--mkf-text-primary);
 }
 
-.browse-text {
-    text-decoration: underline;
-    color: #007aff;
-    transition: all .3s ease-in-out;
 
+.create-company-logo-modal-header p {
+    max-width: 390px;
+
+    margin: 0;
+
+    font-size: var(--mkf-font-sm);
+
+    line-height: var(--mkf-line-normal);
+
+    color: var(--mkf-text-tertiary);
 }
 
-.create-company-logo-dropzone-subtext {
-    font-size: 0.7rem;
-    color: #64748b;
-    transition: all .3s ease-in-out;
+
+.create-company-logo-modal-close {
+    width: 36px;
+    height: 36px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: transparent;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: 20px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.18s ease,
+        color 0.18s ease;
 }
 
-.create-company-logo-dropzone-input {
-    position: absolute;
-    top: 0;
-    left: 0;
+
+.create-company-logo-modal-close:hover {
+    background: var(--mkf-ui-background-secondary);
+    color: var(--mkf-text-primary);
+}
+
+
+/* =========================================================
+   DROPZONE
+   ========================================================= */
+
+.create-company-logo-dropzone {
+    position: relative;
+
+    min-height: 260px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 30px;
+
+    border: 1.5px dashed var(--mkf-ui-border-dark);
+
+    border-radius: 18px;
+
+    background: var(--mkf-ui-gray-50);
+
+    text-align: center;
+
+    transition:
+        border-color 0.18s ease,
+        background 0.18s ease,
+        transform 0.18s ease;
+}
+
+
+.create-company-logo-dropzone.dragging {
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-primary-lighter);
+
+    transform: scale(1.01);
+}
+
+
+.create-company-logo-dropzone-icon {
+    width: 58px;
+    height: 58px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 16px;
+
+    border-radius: 16px;
+
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+
+    font-size: 27px;
+}
+
+
+.create-company-logo-dropzone strong {
+    margin-bottom: 5px;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-md);
+    font-weight: var(--mkf-font-semibold);
+}
+
+
+.create-company-logo-dropzone span {
+    margin-bottom: 18px;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-sm);
+}
+
+
+.create-company-logo-select {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    min-height: 42px;
+
+    padding: 0 16px;
+
+    border-radius: 10px;
+
+    background: var(--mkf-ui-primary);
+
+    color: var(--mkf-ui-white);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+
+    cursor: pointer;
+
+    transition:
+        background 0.18s ease,
+        transform 0.18s ease;
+}
+
+
+.create-company-logo-select:hover {
+    background: var(--mkf-ui-primary-hover);
+}
+
+
+.create-company-logo-select:active {
+    transform: scale(0.98);
+}
+
+
+.create-company-logo-dropzone small {
+    margin-top: 16px;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-xs);
+}
+
+
+/* =========================================================
+   INPUT
+   ========================================================= */
+
+.create-company-logo-file-input {
+    display: none;
+}
+
+
+/* =========================================================
+   LOGO JÁ SELECIONADA
+   ========================================================= */
+
+.create-company-logo-editor {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    padding: 8px 0 4px;
+}
+
+
+.create-company-logo-final-preview {
+    width: 190px;
+    height: 190px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 20px;
+
+    border-radius: 50%;
+
+    background:
+        repeating-conic-gradient(#f3f3f3 0% 25%,
+            #ffffff 0% 50%) 50% / 20px 20px;
+
+    overflow: hidden;
+}
+
+
+.create-company-logo-final-circle {
+    width: 170px;
+    height: 170px;
+
+    overflow: hidden;
+
+    border-radius: 50%;
+
+    background: var(--mkf-ui-white);
+
+    border: 1px solid var(--mkf-ui-border);
+
+    box-shadow:
+        0 8px 25px var(--mkf-ui-shadow);
+}
+
+
+.create-company-logo-final-circle img {
     width: 100%;
     height: 100%;
-    opacity: 0;
+
+    display: block;
+
+    object-fit: cover;
+}
+
+
+.create-company-logo-final-info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    max-width: 360px;
+
+    text-align: center;
+}
+
+
+.create-company-logo-final-info strong {
+    margin-bottom: 5px;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-md);
+    font-weight: var(--mkf-font-semibold);
+}
+
+
+.create-company-logo-final-info span {
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-xs);
+    line-height: var(--mkf-line-normal);
+}
+
+
+.create-company-logo-editor-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    margin-top: 22px;
+}
+
+
+.create-company-logo-change,
+.create-company-logo-remove-editor {
+    height: 40px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    padding: 0 13px;
+
+    border-radius: 9px;
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-medium);
+
     cursor: pointer;
 }
 
-/* ===== MOBILE RESPONSIVE ===== */
-@media screen and (max-width: 468px) {
-    .create-company-logo-modal-backdrop {
-        align-items: flex-end;
-        padding: 0;
-        overflow-y: hidden;
-        z-index: 999 !important;
-        position: fixed;
+
+.create-company-logo-change {
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+}
+
+
+.create-company-logo-remove-editor {
+    border: 1px solid var(--mkf-ui-border);
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-text-secondary);
+}
+
+
+.create-company-logo-remove-editor:hover {
+    background: var(--mkf-ui-background-secondary);
+}
+
+
+/* =========================================================
+   FOOTER
+   ========================================================= */
+
+.create-company-logo-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-top: 26px;
+    padding-top: 20px;
+
+    border-top: 1px solid var(--mkf-ui-border-light);
+}
+
+
+.create-company-logo-modal-footer>span {
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-xs);
+}
+
+
+.create-company-logo-modal-primary {
+    min-height: 42px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    padding: 0 16px;
+
+    border: 0;
+    border-radius: 10px;
+
+    background: var(--mkf-ui-primary);
+
+    color: var(--mkf-ui-white);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+
+    cursor: pointer;
+
+    white-space: nowrap;
+
+    transition: background 0.18s ease;
+}
+
+
+.create-company-logo-modal-primary:hover {
+    background: var(--mkf-ui-primary-hover);
+}
+
+/* =========================================================
+   CROP MODAL
+   ========================================================= */
+
+.create-company-crop-modal {
+    position: fixed;
+    inset: 0;
+
+    z-index: 1100;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 24px;
+
+    background: rgba(0, 0, 0, 0.5);
+
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+
+
+.create-company-crop-modal-content {
+    width: min(100%, 560px);
+
+    max-height: calc(100dvh - 48px);
+
+    overflow-y: auto;
+
+    padding: 28px;
+
+    border-radius: 24px;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0 28px 80px rgba(0, 0, 0, 0.2);
+}
+
+
+.create-company-crop-header {
+    margin-bottom: 22px;
+}
+
+
+.create-company-crop-header h2 {
+    margin: 5px 0 6px;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-xl);
+    font-weight: var(--mkf-font-bold);
+}
+
+
+.create-company-crop-header p {
+    margin: 0;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-sm);
+    line-height: var(--mkf-line-normal);
+}
+
+
+.create-company-crop-area {
+    width: 100%;
+
+    overflow: hidden;
+
+    border-radius: 16px;
+
+    background: var(--mkf-ui-gray-50);
+}
+
+
+.create-company-crop-footer {
+    display: flex;
+    justify-content: flex-end;
+
+    margin-top: 20px;
+}
+
+/* =========================================================
+   LOGO PREVIEW - ETAPA 02
+   ========================================================= */
+
+.create-company-logo-upload.has-image {
+    position: relative;
+
+    overflow: hidden;
+
+    border-style: solid;
+
+    background: var(--mkf-ui-background-secondary);
+}
+
+.create-company-logo-preview-circle {
+    width: 140px;
+    height: 140px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    border-radius: 50%;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0 8px 25px var(--mkf-ui-shadow);
+
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.create-company-logo-preview-circle img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    padding: 0;
+
+    object-fit: cover;
+}
+
+.create-company-logo-upload:hover .create-company-logo-preview-circle {
+    transform: scale(1.02);
+
+    box-shadow:
+        0 10px 30px var(--mkf-ui-shadow-medium);
+}
+
+
+/* =========================================================
+   OVERLAY - ETAPA 02
+   ========================================================= */
+
+.create-company-logo-overlay {
+    position: absolute;
+    inset: 0;
+
+    z-index: 2;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    background: rgba(0, 0, 0, 0.48);
+
+    color: var(--mkf-ui-white);
+
+    opacity: 0;
+
+    transition:
+        opacity 0.2s ease;
+}
+
+.create-company-logo-upload:hover .create-company-logo-overlay {
+    opacity: 1;
+}
+
+.create-company-logo-overlay svg {
+    width: 18px;
+    height: 18px;
+}
+
+.create-company-logo-overlay span {
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+/* =========================================================
+   LOGO DEFINIDA - MODAL
+   ========================================================= */
+
+.create-company-logo-final-preview {
+    position: relative;
+
+    width: 190px;
+    height: 190px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 20px;
+
+    border-radius: 50%;
+
+    background:
+        repeating-conic-gradient(#f3f3f3 0% 25%,
+            #ffffff 0% 50%) 50% / 20px 20px;
+
+    overflow: hidden;
+
+    cursor: pointer;
+
+    outline: none;
+}
+
+.create-company-logo-final-circle {
+    width: 170px;
+    height: 170px;
+
+    overflow: hidden;
+
+    border-radius: 50%;
+
+    background: var(--mkf-ui-white);
+
+    border: 1px solid var(--mkf-ui-border);
+
+    box-shadow:
+        0 8px 25px var(--mkf-ui-shadow);
+
+    transition:
+        transform 0.2s ease;
+}
+
+.create-company-logo-final-circle img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+}
+
+
+/* =========================================================
+   EDITAR IMAGEM
+   ========================================================= */
+
+.create-company-logo-final-overlay {
+    position: absolute;
+    inset: 0;
+
+    z-index: 2;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    flex-direction: column;
+
+    gap: 7px;
+
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.52);
+
+    color: var(--mkf-ui-white);
+
+    opacity: 0;
+
+    transition:
+        opacity 0.2s ease;
+}
+
+.create-company-logo-final-preview:hover .create-company-logo-final-overlay {
+    opacity: 1;
+}
+
+.create-company-logo-final-preview:hover .create-company-logo-final-circle {
+    transform: scale(1.02);
+}
+
+.create-company-logo-final-overlay svg {
+    width: 22px;
+    height: 22px;
+}
+
+.create-company-logo-final-overlay span {
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-logo-final-preview:focus-visible {
+    outline: 2px solid var(--mkf-ui-primary);
+
+    outline-offset: 4px;
+}
+
+/* =========================================================
+   IMAGE CROPPER
+   ========================================================= */
+
+.create-company-logo-cropper-container {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+}
+
+
+/* =========================================================
+   CROPPER AREA
+   ========================================================= */
+
+.create-company-logo-cropper-area {
+    width: 100%;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+
+/* =========================================================
+   REACT CROP
+   ========================================================= */
+
+.create-company-logo-cropper-area .ReactCrop {
+    max-width: 100%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    overflow: hidden;
+
+    border-radius: 16px;
+
+    background: var(--mkf-ui-gray-100);
+}
+
+.create-company-logo-cropper-image {
+    display: block;
+
+    max-width: 100%;
+    max-height: 430px;
+
+    object-fit: contain;
+}
+
+
+/* =========================================================
+   CROP SELECTION
+   ========================================================= */
+
+.create-company-logo-cropper-area .ReactCrop__crop-selection {
+    border: 2px solid var(--mkf-ui-white);
+
+    box-shadow:
+        0 0 0 9999px rgba(0, 0, 0, 0.42);
+
+    border-radius: 50%;
+}
+
+
+/* =========================================================
+   BOTÃO RECORTAR E SALVAR
+   ========================================================= */
+
+.create-company-logo-cropper-confirm-btn {
+    width: 100%;
+
+    min-height: 46px;
+
+    margin-top: 20px;
+
+    padding: 0 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 8px;
+
+    border: 1px solid var(--mkf-ui-primary);
+
+    border-radius: 10px;
+
+    background: var(--mkf-ui-primary);
+
+    color: var(--mkf-ui-white);
+
+    font-family: inherit;
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        transform 0.2s ease,
+        opacity 0.2s ease;
+}
+
+.create-company-logo-cropper-confirm-btn:hover:not(:disabled) {
+    background: var(--mkf-ui-primary-hover);
+
+    transform: translateY(-1px);
+}
+
+.create-company-logo-cropper-confirm-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.create-company-logo-cropper-confirm-btn:disabled {
+    opacity: 0.6;
+
+    cursor: wait;
+}
+
+.create-company-logo-cropper-confirm-btn .icon {
+    width: 18px;
+    height: 18px;
+}
+
+
+/* =========================================================
+   LOADING
+   ========================================================= */
+
+.create-company-logo-cropper-confirm-btn .animate-spin {
+    animation: createCompanyCropperSpin 0.9s linear infinite;
+}
+
+@keyframes createCompanyCropperSpin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+
+/* =========================================================
+   ERRO
+   ========================================================= */
+
+.create-company-logo-cropper-error {
+    width: 100%;
+
+    margin: 12px 0 0;
+
+    padding: 10px 12px;
+
+    border: 1px solid var(--mkf-error);
+
+    border-radius: 9px;
+
+    background: var(--mkf-error-light);
+
+    color: var(--mkf-error);
+
+    font-size: var(--mkf-font-xs);
+
+    line-height: var(--mkf-line-normal);
+
+    text-align: center;
+}
+
+/* =========================================================
+   SETTINGS TABS
+   ========================================================= */
+
+.create-company-settings-tabs {
+    width: 100%;
+
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+
+    gap: 6px;
+
+    margin-bottom: 28px;
+
+    padding: 4px;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 12px;
+
+    background: var(--mkf-ui-background-secondary);
+}
+
+.create-company-settings-tabs button {
+    height: 42px;
+
+    padding: 0 14px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 7px;
+
+    border: 0;
+    border-radius: 9px;
+
+    background: transparent;
+
+    color: var(--mkf-text-tertiary);
+
+    font-family: inherit;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.18s ease,
+        color 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.create-company-settings-tabs button svg {
+    width: 17px;
+    height: 17px;
+}
+
+.create-company-settings-tabs button:hover {
+    color: var(--mkf-text-primary);
+}
+
+.create-company-settings-tabs button.active {
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-ui-primary);
+
+    box-shadow:
+        0 1px 4px var(--mkf-ui-shadow);
+}
+
+
+/* =========================================================
+   SETTINGS CONTENT
+   ========================================================= */
+
+.create-company-settings-content {
+    width: 100%;
+
+    animation: createCompanyFadeIn 0.25s ease both;
+}
+
+.create-company-subintro {
+    margin-bottom: 26px;
+}
+
+.create-company-subintro .create-company-overline {
+    margin-bottom: 8px;
+}
+
+.create-company-subintro h2 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-2xl);
+    font-weight: var(--mkf-font-bold);
+
+    line-height: var(--mkf-line-tight);
+
+    letter-spacing: -0.025em;
+}
+
+.create-company-subintro p {
+    max-width: 540px;
+
+    margin: 9px 0 0;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-sm);
+
+    line-height: var(--mkf-line-normal);
+}
+
+
+/* =========================================================
+   CATEGORY
+   ========================================================= */
+
+.create-company-category-grid {
+    width: 100%;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 9px;
+}
+
+.create-company-category-card {
+    position: relative;
+
+    min-width: 0;
+    min-height: 84px;
+
+    padding: 11px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+
+    gap: 8px;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 12px;
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-text-primary);
+
+    font-family: inherit;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.18s ease,
+        background-color 0.18s ease,
+        transform 0.18s ease,
+        box-shadow 0.18s ease;
+}
+
+.create-company-category-card:hover {
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-primary-lighter);
+
+    transform: translateY(-1px);
+}
+
+.create-company-category-card:active {
+    transform: scale(0.98);
+}
+
+.create-company-category-card.selected {
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-primary-lighter);
+
+    box-shadow:
+        0 0 0 1px var(--mkf-ui-primary);
+}
+
+.create-company-category-icon {
+    width: 30px;
+    height: 30px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 8px;
+
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-tertiary);
+}
+
+.create-company-category-icon svg {
+    width: 17px;
+    height: 17px;
+}
+
+.create-company-category-card.selected .create-company-category-icon {
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+}
+
+.create-company-category-card>span {
+    width: 100%;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-medium);
+
+    line-height: 1.3;
+}
+
+.create-company-category-card.selected>span {
+    color: var(--mkf-ui-primary);
+
+    font-weight: var(--mkf-font-semibold);
+}
+
+.create-company-category-check {
+    position: absolute;
+
+    top: 8px;
+    right: 8px;
+
+    width: 18px;
+    height: 18px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    color: var(--mkf-ui-primary);
+}
+
+.create-company-category-check svg {
+    width: 18px;
+    height: 18px;
+}
+
+.create-company-category-counter {
+    width: 100%;
+    margin: 5px 0 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.create-company-category-counter span {
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.create-company-category-counter small {
+    color: var(--mkf-ui-primary);
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+    .create-company-category-counter {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .create-company-settings-tabs {
+        margin-bottom: 24px;
+    }
+
+    .create-company-settings-tabs button {
+        height: 40px;
+
+        padding: 0 10px;
+
+        font-size: 10px;
+    }
+
+    .create-company-settings-tabs button svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .create-company-subintro {
+        margin-bottom: 22px;
+    }
+
+    .create-company-subintro h2 {
+        font-size: 22px;
+    }
+
+    .create-company-subintro p {
+        font-size: 13px;
+    }
+
+    .create-company-category-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+        gap: 7px;
+    }
+
+    .create-company-category-card {
+        min-height: 76px;
+
+        padding: 9px;
+    }
+
+    .create-company-category-icon {
+        width: 28px;
+        height: 28px;
+    }
+
+    .create-company-category-icon svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .create-company-category-card>span {
+        font-size: 9px;
+    }
+
+}
+
+/* =========================================================
+   MODAL ANIMATION
+   ========================================================= */
+
+@keyframes createCompanyModalBackdrop {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes createCompanyModalIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+    .create-company-header {
+        height: 64px;
+
+        padding: 0 24px;
+    }
+
+    .create-company-content {
+        max-width: 620px;
+
+        padding-top: 38px;
+        padding-bottom: 48px;
+    }
+
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 600px) {
+    .create-company-crop-modal {
+        padding: 12px;
+    }
+
+    .create-company-crop-modal-content {
+        max-height: calc(100dvh - 24px);
+
+        padding: 22px 16px;
+
+        border-radius: 16px;
+    }
+
+    .create-company-logo-cropper-image {
+        max-height: 55dvh;
+    }
+
+    .create-company-logo-final-preview {
+        width: 160px;
+        height: 160px;
+    }
+
+    .create-company-logo-final-circle {
+        width: 144px;
+        height: 144px;
+    }
+
+    .create-company-logo-editor-actions {
+        width: 100%;
+
+        flex-direction: column;
+    }
+
+    .create-company-logo-change,
+    .create-company-logo-remove-editor {
+        width: 100%;
+    }
+
+    .create-company-logo-section {
+        padding: 16px;
+    }
+
+    .create-company-logo-upload {
+        height: 175px;
+    }
+
+    .create-company-location-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .create-company-location-number {
+        width: 100%;
     }
 
     .create-company-logo-modal {
+        padding: 12px;
+    }
+
+    .create-company-logo-modal-content {
+        max-height: calc(100dvh - 24px);
+
+        padding: 22px 16px;
+
+        border-radius: 15px;
+    }
+
+    .create-company-logo-modal-preview {
+        height: 230px;
+    }
+
+    .create-company-logo-modal-preview img {
+        padding: 20px;
+    }
+
+    .create-company-logo-modal-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .create-company-logo-modal-secondary,
+    .create-company-logo-modal-primary {
         width: 100%;
-        max-width: 100%;
-        height: 550px;
-        max-height: 90vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-around;
-        border-radius: 2rem 2rem 0 0;
-        padding: 2rem;
-        box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
-        transform: translateY(100%);
-        opacity: 0;
-        transition: transform var(--modal-transition-duration) ease,
-            opacity var(--modal-transition-duration) ease;
+
+        padding: 0 10px;
+
+        font-size: var(--mkf-font-xs);
     }
 
-    .create-company-logo-cropper-confirm-btn {
-        position: fixed;
-        bottom: 1rem;
-        left: 50%;
-        transform: translateX(-50%);
-        width: calc(100% - 2rem);
-        max-width: 400px;
-        z-index: 2000;
-        margin-top: 0;
-        border-radius: 999px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    .create-company-header {
+        height: 60px;
+
+        padding: 0 16px;
     }
 
-    .create-company-logo-modal-content {
-        padding-bottom: 4rem;
+    .create-company-header-brand span {
+        font-size: 10px;
     }
 
-    .create-company-logo-modal-backdrop.show .create-company-logo-modal {
-        transform: translateY(0);
-        opacity: 1;
+    .create-company-header-step {
+        width: 27px;
+        height: 27px;
+
+        min-width: 27px;
+
+        font-size: 9px;
     }
 
-    .create-company-logo-modal-content {
-        overflow-y: auto;
-        max-height: 75vh;
+
+    /* CONTENT */
+
+    .create-company-content {
+        max-width: none;
+
+        margin: 0;
+
+        padding: 28px 16px 32px;
     }
 
-    @keyframes slideUpCreateCompanyLogoEdit {
-        to {
-            transform: translateY(0);
-        }
+
+    /* PROGRESS */
+
+    .create-company-progress {
+        margin-bottom: 38px;
     }
 
-    .create-company-logo-dropzone {
-        padding: 2rem 3rem !important;
+    .create-company-progress-item {
+        gap: 0;
     }
 
-    .ReactCrop {
-        transform: scale(0.85);
+    .create-company-progress-item span {
+        width: 27px;
+        height: 27px;
+
+        font-size: 9px;
     }
+
+    .create-company-progress-item p {
+        display: none;
+    }
+
+    .create-company-progress-line {
+        margin: 0 8px;
+    }
+
+
+    /* INTRO */
+
+    .create-company-intro {
+        margin-bottom: 26px;
+    }
+
+    .create-company-overline {
+        margin-bottom: 9px;
+
+        font-size: 9px;
+    }
+
+    .create-company-intro h1 {
+        font-size: 28px;
+
+        letter-spacing: -0.025em;
+    }
+
+    .create-company-intro p {
+        margin-top: 9px;
+
+        font-size: var(--mkf-font-sm);
+
+        line-height: 1.55;
+    }
+
+
+    /* FORM */
+
+    .create-company-form {
+        gap: 16px;
+    }
+
+    .create-company-field label {
+        font-size: 11px;
+    }
+
+    .create-company-field input,
+    .create-company-handle {
+        height: 46px;
+    }
+
+    .create-company-field input {
+        padding: 0 13px;
+
+        font-size: var(--mkf-font-sm);
+    }
+
+    .create-company-handle input {
+        padding-left: 5px;
+    }
+
+    .create-company-field small {
+        font-size: 9px;
+    }
+
+
+    /* COLUMNS */
+
+    .create-company-fields-row {
+        grid-template-columns: 1fr;
+
+        gap: 16px;
+    }
+
+
+    /* ACTIONS */
+
+    .create-company-actions {
+        margin-top: 8px;
+    }
+
+    .create-company-back {
+        height: 44px;
+
+        padding: 0 7px;
+
+        font-size: var(--mkf-font-xs);
+    }
+
+    .create-company-primary {
+        min-width: 120px;
+        height: 44px;
+
+        padding: 0 14px;
+
+        font-size: var(--mkf-font-xs);
+    }
+
+
+    /* PROFILE */
+
+    .create-company-profile {
+        padding: 16px;
+
+        border-radius: 12px;
+    }
+
+    .create-company-profile-header {
+        gap: 10px;
+
+        margin-bottom: 17px;
+    }
+
+    .create-company-profile-icon {
+        width: 39px;
+        height: 39px;
+
+        flex-basis: 39px;
+    }
+
+    .create-company-profile-icon svg {
+        width: 19px;
+        height: 19px;
+    }
+
+    .create-company-profile-header strong {
+        font-size: var(--mkf-font-sm);
+    }
+
+    .create-company-profile-header span {
+        font-size: 11px;
+    }
+
+
+    /* DESCRIPTION */
+
+    .create-company-description {
+        margin-top: 16px;
+    }
+
+    .create-company-description label {
+        font-size: 11px;
+    }
+
+    .create-company-description textarea {
+        min-height: 110px;
+
+        padding: 12px;
+
+        font-size: var(--mkf-font-sm);
+    }
+
+    .create-company-description-footer {
+        gap: 10px;
+    }
+
+    .create-company-description-footer span,
+    .create-company-description-footer small {
+        font-size: 9px;
+    }
+
+}
+
+
+/* =========================================================
+   MOBILE PEQUENO
+   ========================================================= */
+
+@media (max-width: 380px) {
+
+    .create-company-logo-upload {
+        height: 155px;
+    }
+
+    .create-company-location-detect {
+        padding: 13px;
+    }
+
+    .create-company-location-detect-icon {
+        width: 38px;
+        height: 38px;
+
+        flex-basis: 38px;
+    }
+
+    .create-company-location-detect-content strong {
+        font-size: 13px;
+    }
+
+    .create-company-location-detect-content span {
+        font-size: 9px;
+    }
+
+    .create-company-logo-modal-preview {
+        height: 200px;
+    }
+
+
+    .create-company-content {
+        padding: 24px 13px 28px;
+    }
+
+    .create-company-progress {
+        margin-bottom: 32px;
+    }
+
+    .create-company-intro {
+        margin-bottom: 23px;
+    }
+
+    .create-company-intro h1 {
+        font-size: 25px;
+    }
+
+    .create-company-intro p {
+        font-size: 13px;
+    }
+
+    .create-company-field input,
+    .create-company-handle {
+        height: 44px;
+    }
+
+    .create-company-primary {
+        min-width: 110px;
+    }
+
+    .create-company-profile {
+        padding: 14px;
+    }
+
+}
+
+
+/* =========================================================
+   ALTURA MOBILE PEQUENA
+   ========================================================= */
+
+@media (max-height: 650px) and (max-width: 600px) {
+
+    .create-company-content {
+        padding-top: 20px;
+        padding-bottom: 24px;
+    }
+
+    .create-company-progress {
+        margin-bottom: 25px;
+    }
+
+    .create-company-intro {
+        margin-bottom: 20px;
+    }
+
+    .create-company-form {
+        gap: 13px;
+    }
+
+    .create-company-actions {
+        margin-top: 5px;
+    }
+
 }

@@ -991,6 +991,275 @@
         var(--mkf-text-tertiary);
 }
 
+/* =========================================================
+   CATEGORIAS
+========================================================= */
+
+.catalog-categories-wrapper {
+    width: 100%;
+    max-width: 1280px;
+
+    margin: 0 auto 24px;
+
+    overflow: hidden;
+}
+
+.catalog-categories {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    overflow-x: auto;
+    overflow-y: hidden;
+
+    padding: 2px 1px 6px;
+
+    scrollbar-width: none;
+
+    -webkit-overflow-scrolling: touch;
+}
+
+.catalog-categories::-webkit-scrollbar {
+    display: none;
+}
+
+
+/* =========================================================
+   BOTÃO DE CATEGORIA
+========================================================= */
+
+.catalog-category-button {
+    flex-shrink: 0;
+
+    height: 36px;
+
+    padding: 0 15px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid var(--mkf-ui-border);
+
+    border-radius: 999px;
+
+    background: var(--mkf-ui-white);
+
+    color: var(--mkf-text-tertiary);
+
+    font-family: inherit;
+
+    font-size: var(--mkf-font-2xs);
+
+    font-weight: var(--mkf-font-semibold);
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.15s ease;
+}
+
+.catalog-category-button:hover {
+    border-color:
+        var(--mkf-ui-primary-light);
+
+    background:
+        var(--mkf-ui-primary-lighter);
+
+    color:
+        var(--mkf-ui-primary);
+}
+
+.catalog-category-button:active {
+    transform: scale(0.96);
+}
+
+
+/* =========================================================
+   CATEGORIA ATIVA
+========================================================= */
+
+.catalog-category-button.active {
+    border-color:
+        var(--mkf-ui-primary);
+
+    background:
+        var(--mkf-ui-primary);
+
+    color:
+        var(--mkf-ui-white);
+}
+
+.catalog-category-button.active:hover {
+    border-color:
+        var(--mkf-ui-primary-hover);
+
+    background:
+        var(--mkf-ui-primary-hover);
+
+    color:
+        var(--mkf-ui-white);
+}
+
+/* =========================================================
+   SKELETON DO CARD
+========================================================= */
+
+.catalog-product-skeleton {
+    cursor: default;
+
+    pointer-events: none;
+
+    animation:
+        catalogSkeletonCardIn 0.3s ease;
+}
+
+.catalog-product-skeleton:hover {
+    transform: none;
+
+    border-color:
+        var(--mkf-ui-border);
+
+    box-shadow: none;
+}
+
+
+/* =========================================================
+   SKELETON — CONTEÚDO
+========================================================= */
+
+.catalog-skeleton-category,
+.catalog-skeleton-title,
+.catalog-skeleton-meta,
+.catalog-skeleton-price,
+.catalog-skeleton-button {
+    position: relative;
+
+    overflow: hidden;
+
+    background:
+        var(--mkf-ui-gray-100);
+
+    border-radius: 6px;
+}
+
+.catalog-skeleton-category::after,
+.catalog-skeleton-title::after,
+.catalog-skeleton-meta::after,
+.catalog-skeleton-price::after,
+.catalog-skeleton-button::after {
+    content: "";
+
+    position: absolute;
+
+    inset: 0;
+
+    background:
+        linear-gradient(90deg,
+            transparent 0%,
+            var(--mkf-ui-gray-50) 50%,
+            transparent 100%);
+
+    transform: translateX(-100%);
+
+    animation:
+        catalogSkeletonShimmer 1.15s infinite;
+}
+
+
+/* =========================================================
+   CATEGORIA
+========================================================= */
+
+.catalog-skeleton-category {
+    width: 58px;
+    height: 7px;
+
+    margin-bottom: 9px;
+}
+
+
+/* =========================================================
+   TÍTULO
+========================================================= */
+
+.catalog-skeleton-title {
+    width: min(180px, 75%);
+    height: 14px;
+}
+
+
+/* =========================================================
+   META
+========================================================= */
+
+.catalog-skeleton-meta {
+    width: 72px;
+    height: 9px;
+
+    margin-top: 10px;
+}
+
+
+/* =========================================================
+   PREÇO
+========================================================= */
+
+.catalog-skeleton-price {
+    width: 58px;
+    height: 13px;
+}
+
+
+/* =========================================================
+   BOTÃO
+========================================================= */
+
+.catalog-skeleton-button {
+    width: 82px;
+    height: 34px;
+
+    border-radius: 9px;
+}
+
+
+/* =========================================================
+   ANIMAÇÃO
+========================================================= */
+
+@keyframes catalogSkeletonShimmer {
+
+    100% {
+        transform: translateX(100%);
+    }
+
+}
+
+@keyframes catalogSkeletonCardIn {
+
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(5px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(0);
+    }
+
+}
 
 /* =========================================================
    ANIMAÇÃO DA PÁGINA

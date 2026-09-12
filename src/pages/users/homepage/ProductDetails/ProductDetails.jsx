@@ -1,4 +1,8 @@
 import React, { useEffect, useState } from "react";
+import {
+    useNavigate
+} from "react-router-dom";
+
 import { createPortal } from "react-dom";
 import InputMask from "react-input-mask";
 import { getDatabase, ref, onValue, get, update } from "firebase/database";
@@ -13,14 +17,25 @@ import {
     getDownloadURL,
 } from "firebase/storage";
 
+import {
+    getAuth,
+    RecaptchaVerifier,
+    signInWithPhoneNumber
+} from "firebase/auth";
+
 import OrderSummary from "../../../../components/order-summary";
+import CompanyInfoModal from "../../CompanyInfoModal/CompanyInfoModal";
 
 import "./product-details.css";
 
 import noprofessionalplaceholder from "../../../../img/product-details/not-professional.png";
 
+import MercadoPagoPayment from "../../../../components/mercado-pago-payment/MercadoPagoPayment";
+
 const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onClose, formatDuration }) => {
     const clientId = getClientId();
+
+    const navigate = useNavigate();
 
     const [productDetailsSelectedProfessionalId, setProductDetailsSelectedProfessionalId] = useState(null);
     const [relatedUsersWithInfo, setRelatedUsersWithInfo] = useState([]);
@@ -53,10 +68,36 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     const [whatsappMembers, setWhatsappMembers] = useState([]);
     const [loadingWhatsappMembers, setLoadingWhatsappMembers] = useState(false);
 
+    const [showCompanyInfo, setShowCompanyInfo] = useState(false);
+
     const [showToast, setShowToast] = useState(false);
     const [toastType, setToastType] = useState("success");
     const [toastTitle, setToastTitle] = useState("");
     const [toastMessage, setToastMessage] = useState("");
+    const [requiresPayment, setRequiresPayment] = useState(false);
+
+    const [showMercadoPagoPayment, setShowMercadoPagoPayment] = useState(false);
+    const [showPayment, setShowPayment] = useState(false);
+    const [paymentStatus, setPaymentStatus] = useState("idle");
+    const [showPaymentAuth, setShowPaymentAuth] = useState(false);
+
+    const [authPhone, setAuthPhone] = useState("");
+    const [authCode, setAuthCode] = useState("");
+    const [authConfirmation, setAuthConfirmation] = useState(null);
+    const [phoneVerified, setPhoneVerified] = useState(false);
+
+    const [authStep, setAuthStep] = useState("phone");
+    const [authLoading, setAuthLoading] = useState(false);
+    const [authError, setAuthError] = useState("");
+
+    const [showPostCheckout, setShowPostCheckout] = useState(false);
+    const [postCheckoutStatus, setPostCheckoutStatus] = useState("checking");
+    const [postCheckoutPayment, setPostCheckoutPayment] = useState(null);
+
+    const [loggedUserEmail, setLoggedUserEmail] = useState("");
+    const [loggedUserId, setLoggedUserId] = useState(null);
+    const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
+    const [emailConfirmed, setEmailConfirmed] = useState(false);
 
     const DEFAULT_BUSINESS_HOURS = {
         open: "07:00",
@@ -73,6 +114,67 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         "friday",
         "saturday"
     ];
+
+    const openCheckout = () => {
+
+        const agendamento =
+            buildAgendamento();
+
+        navigate(
+            "/checkout",
+            {
+                state: {
+                    checkoutData: {
+
+                        ...agendamento,
+
+                        companyHandle,
+
+                        companyName,
+
+                        companyLogo,
+
+                        productId:
+                            product.id,
+
+                        productName:
+                            product.name,
+
+                        productPrice:
+                            product.value,
+
+                        product,
+
+                        professionalId:
+                            productDetailsSelectedProfessionalId,
+
+                        professionalName:
+                            relatedUsersWithInfo.find(
+                                (u) =>
+                                    u.id ===
+                                    productDetailsSelectedProfessionalId
+                            )?.name ||
+                            "Profissional não identificado",
+
+                        day:
+                            selectedDay?.day,
+
+                        dayLabel:
+                            selectedDay?.label,
+
+                        hour:
+                            selectedSlot,
+
+                        userName:
+                            userName.trim(),
+
+                        clientId
+                    }
+                }
+            }
+        );
+
+    };
 
     const timeToMinutes = (time) => {
 
@@ -232,6 +334,56 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     }, [product?.relatedUsers]);
 
+    useEffect(() => {
+
+        const fetchPaymentSettings = async () => {
+
+            if (!companyHandle) {
+                setRequiresPayment(false);
+                return;
+            }
+
+            try {
+
+                const db = getDatabase();
+
+                const paymentSettingsRef = ref(
+                    db,
+                    `companys/${companyHandle}/paymentSettings`
+                );
+
+                const snapshot =
+                    await get(paymentSettingsRef);
+
+                if (!snapshot.exists()) {
+                    setRequiresPayment(false);
+                    return;
+                }
+
+                const paymentSettings =
+                    snapshot.val();
+
+                setRequiresPayment(
+                    paymentSettings.receiveBeforeBooking === true
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Erro ao carregar configurações de pagamento:",
+                    error
+                );
+
+                setRequiresPayment(false);
+
+            }
+
+        };
+
+        fetchPaymentSettings();
+
+    }, [companyHandle]);
+
     const groupedByMonth = availableTimes.reduce((acc, day) => {
         const [dd, mm, yyyy] = day.day.split("/");
         const dateObj = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
@@ -387,6 +539,64 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     useEffect(() => {
 
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        const mercadoPagoStatus =
+            params.get("status");
+
+        const paymentId =
+            params.get("payment_id");
+
+        const externalReference =
+            params.get("external_reference");
+
+        /*
+         * O Mercado Pago pode retornar
+         * parâmetros diferentes dependendo
+         * do fluxo.
+         *
+         * A existência do nosso pagamento
+         * no localStorage é o principal indicador.
+         */
+
+        const pendingPayment =
+            localStorage.getItem(
+                "markfy-pending-payment"
+            );
+
+        if (
+            pendingPayment &&
+            (
+                mercadoPagoStatus ||
+                paymentId ||
+                externalReference
+            )
+        ) {
+
+            checkPendingPayment();
+
+            /*
+             * Limpa os parâmetros do retorno
+             * sem recarregar a página.
+             */
+
+            const cleanUrl =
+                `${window.location.pathname}`;
+
+            window.history.replaceState(
+                {},
+                document.title,
+                cleanUrl
+            );
+        }
+
+    }, [companyHandle]);
+
+    useEffect(() => {
+
         const fetchAvailableTimes = async () => {
 
             if (!productDetailsSelectedProfessionalId) {
@@ -449,6 +659,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 const businessHours =
                     companyData.businessHours || {};
 
+                const appointmentInterval =
+                    Number(businessHours.interval) || 30;
 
                 // ==========================================
                 // DURAÇÃO DO SERVIÇO
@@ -817,7 +1029,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         for (
                             let minutes = openMinutes;
                             minutes <= lastStart;
-                            minutes += 30
+                            minutes += appointmentInterval
                         ) {
 
                             const slotStart =
@@ -1119,7 +1331,343 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         return () => { document.body.style.overflow = prev; };
     }, [product]);
 
+    useEffect(() => {
+        return () => {
+            if (window.recaptchaVerifier) {
+                try {
+                    window.recaptchaVerifier.clear();
+                } catch (error) {
+                    console.warn(
+                        "Erro ao limpar reCAPTCHA:",
+                        error
+                    );
+                }
+
+                window.recaptchaVerifier = null;
+            }
+        };
+    }, []);
+
     if (!product) return null;
+
+    const setupRecaptcha = () => {
+        const auth = getAuth();
+
+        const container =
+            document.getElementById("recaptcha-container");
+
+        if (!container) {
+            throw new Error(
+                "Container do reCAPTCHA não encontrado."
+            );
+        }
+
+        if (window.recaptchaVerifier) {
+            try {
+                window.recaptchaVerifier.clear();
+            } catch (error) {
+                console.warn(
+                    "Não foi possível limpar o reCAPTCHA anterior:",
+                    error
+                );
+            }
+
+            window.recaptchaVerifier = null;
+        }
+
+        const verifier =
+            new RecaptchaVerifier(
+                auth,
+                "recaptcha-container",
+                {
+                    size: "invisible",
+
+                    callback: () => {
+                        console.log(
+                            "✅ reCAPTCHA resolvido"
+                        );
+                    },
+
+                    "expired-callback": () => {
+                        console.log(
+                            "⚠️ reCAPTCHA expirado"
+                        );
+
+                        if (window.recaptchaVerifier) {
+                            try {
+                                window.recaptchaVerifier.clear();
+                            } catch (error) {
+                                console.warn(
+                                    "Erro ao limpar reCAPTCHA expirado:",
+                                    error
+                                );
+                            }
+
+                            window.recaptchaVerifier = null;
+                        }
+                    }
+                }
+            );
+
+        window.recaptchaVerifier = verifier;
+
+        return verifier;
+    };
+
+    const sendAuthCode = async () => {
+
+        if (!authPhone.trim()) {
+            setAuthError("Informe seu número de telefone.");
+            return;
+        }
+
+        setAuthLoading(true);
+        setAuthError("");
+
+        try {
+
+            const auth = getAuth();
+
+            const phoneNumber =
+                authPhone.startsWith("+")
+                    ? authPhone
+                    : `+55${authPhone.replace(/\D/g, "")}`;
+
+            const appVerifier = setupRecaptcha();
+
+
+            console.log("📞 Solicitando SMS para:", phoneNumber);
+
+            const confirmation =
+                await signInWithPhoneNumber(
+                    auth,
+                    phoneNumber,
+                    appVerifier
+                );
+
+            console.log("📱 Firebase aceitou a solicitação de SMS:", confirmation);
+
+            setAuthConfirmation(confirmation);
+            setAuthStep("code");
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao enviar SMS:",
+                error
+            );
+
+            setAuthError(
+                "Não foi possível enviar o código. Verifique o número e tente novamente."
+            );
+
+            if (window.recaptchaVerifier) {
+                try {
+                    window.recaptchaVerifier.clear();
+                } catch (error) {
+                    console.warn(
+                        "Erro ao limpar reCAPTCHA:",
+                        error
+                    );
+                }
+
+                window.recaptchaVerifier = null;
+            }
+
+        } finally {
+
+            setAuthLoading(false);
+
+        }
+    };
+
+    const verifyAuthCode = async () => {
+
+        if (!authCode.trim()) {
+            setAuthError("Informe o código recebido por SMS.");
+            return;
+        }
+
+        if (!authConfirmation) {
+            setAuthError("Solicite um novo código.");
+            return;
+        }
+
+        setAuthLoading(true);
+        setAuthError("");
+
+        try {
+
+            const result =
+                await authConfirmation.confirm(
+                    authCode.trim()
+                );
+
+            console.log(
+                "✅ Telefone verificado:",
+                result.user.uid
+            );
+
+            /*
+             * IMPORTANTE:
+             * Primeiro marcamos o telefone como verificado.
+             *
+             * NÃO abrimos o Mercado Pago aqui.
+             */
+
+            setPhoneVerified(true);
+            setAuthStep("authenticated");
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao verificar telefone:",
+                error
+            );
+
+            setAuthError(
+                "Não foi possível verificar o código. Tente novamente."
+            );
+
+        } finally {
+
+            setAuthLoading(false);
+
+        }
+    };
+
+    const checkLoggedUser = () => {
+
+        const auth = getAuth();
+        const currentUser = auth.currentUser;
+
+        if (currentUser?.email) {
+
+            setIsUserLoggedIn(true);
+            setLoggedUserEmail(currentUser.email);
+            setLoggedUserId(currentUser.uid);
+
+            return true;
+        }
+
+        setIsUserLoggedIn(false);
+        setLoggedUserEmail("");
+        setLoggedUserId(null);
+
+        return false;
+    };
+
+    const buildAgendamento = () => {
+        return {
+            productId: product.id,
+            productName: product.name,
+            productPrice: product.value,
+
+            professionalId:
+                productDetailsSelectedProfessionalId,
+
+            professionalName:
+                relatedUsersWithInfo.find(
+                    (u) =>
+                        u.id ===
+                        productDetailsSelectedProfessionalId
+                )?.name ||
+                "Profissional não identificado",
+
+            day: selectedDay.day,
+
+            dayLabel:
+                selectedDay.label,
+
+            hour: selectedSlot,
+
+            userName:
+                userName.trim(),
+
+            timestamp:
+                new Date().toISOString(),
+        };
+    };
+
+    const createPaymentData = () => {
+        return {
+            companyHandle,
+
+            productId:
+                product.id,
+
+            professionalId:
+                productDetailsSelectedProfessionalId,
+
+            professionalName:
+                relatedUsersWithInfo.find(
+                    (u) =>
+                        u.id ===
+                        productDetailsSelectedProfessionalId
+                )?.name ||
+                "Profissional não identificado",
+
+            day:
+                selectedDay.day,
+
+            dayLabel:
+                selectedDay.label,
+
+            hour:
+                selectedSlot,
+
+            userName:
+                userName.trim(),
+
+            clientId,
+
+            userId:
+                getAuth().currentUser?.uid || null
+        };
+    };
+
+    const createMercadoPagoCheckout = async () => {
+
+        setPaymentStatus("loading");
+        setAuthError("");
+
+        try {
+
+            const currentUser =
+                getAuth().currentUser;
+
+            if (!currentUser) {
+                throw new Error(
+                    "Usuário não autenticado."
+                );
+            }
+
+            /*
+             * O Payment Brick será aberto
+             * dentro do próprio Markfy.
+             */
+
+            setShowPaymentAuth(false);
+            setShowMercadoPagoPayment(true);
+            setPaymentStatus("idle");
+
+        } catch (error) {
+
+            console.error(
+                "❌ Erro ao abrir pagamento:",
+                error
+            );
+
+            setPaymentStatus("error");
+
+            setAuthError(
+                error.message ||
+                "Não foi possível abrir o pagamento."
+            );
+
+        }
+
+    };
 
     // ================ FUNÇÃO DE CONFIRMAR AGENDAMENTO ================
     const toShedule = async (agendamento) => {
@@ -1331,7 +1879,49 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         }
     };
 
+    const finalizeAgendamento = async (agendamento) => {
+        setIsConfirmed("loading");
+
+        console.log(
+            "📅 Agendamento iniciado:",
+            agendamento
+        );
+
+        const success =
+            await toShedule(agendamento);
+
+        if (!success) {
+            setIsConfirmed(false);
+            setShowConfirmationModal(false);
+            return;
+        }
+
+        saveLocalAgendamento({
+            ...agendamento,
+            status: "pending"
+        });
+
+        setLastAgendamento({
+            ...agendamento,
+            product,
+        });
+
+        setIsConfirmed("success");
+    };
+
     const handleProductBack = () => {
+
+        if (showMercadoPagoPayment) {
+            setShowMercadoPagoPayment(false);
+            setPaymentStatus("idle");
+            setAuthError("");
+            return;
+        }
+
+        if (showPaymentAuth) {
+            setShowPaymentAuth(false);
+            return;
+        }
 
         // Modal de confirmação aberto
         if (showConfirmationModal) {
@@ -1378,7 +1968,171 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         setVisible(false);
     };
 
+    const checkPendingPayment = async () => {
+        try {
+            const pendingPaymentRaw =
+                localStorage.getItem("markfy-pending-payment");
 
+            if (!pendingPaymentRaw) {
+                return;
+            }
+
+            const pendingPayment =
+                JSON.parse(pendingPaymentRaw);
+
+            if (
+                !pendingPayment?.paymentId ||
+                pendingPayment.companyHandle !== companyHandle
+            ) {
+                return;
+            }
+
+            setShowPostCheckout(true);
+            setPostCheckoutStatus("checking");
+
+            const db = getDatabase();
+
+            const paymentRef = ref(
+                db,
+                `companys/${companyHandle}/paymentOrders/${pendingPayment.paymentId}`
+            );
+
+            /*
+             * Primeiro verificamos imediatamente.
+             */
+
+            const snapshot = await get(paymentRef);
+
+            if (snapshot.exists()) {
+
+                const paymentData = snapshot.val();
+
+                setPostCheckoutPayment(paymentData);
+
+                if (
+                    paymentData.status === "paid" ||
+                    paymentData.scheduleCreated === true
+                ) {
+                    setPostCheckoutStatus("success");
+
+                    localStorage.removeItem(
+                        "markfy-pending-payment"
+                    );
+
+                    return;
+                }
+
+                if (
+                    paymentData.status === "rejected" ||
+                    paymentData.status === "cancelled"
+                ) {
+                    setPostCheckoutStatus("error");
+                    return;
+                }
+            }
+
+            /*
+             * O webhook pode ainda estar processando.
+             *
+             * Então observamos o paymentOrder
+             * em tempo real.
+             */
+
+            const unsubscribe =
+                onValue(
+                    paymentRef,
+                    (snapshot) => {
+
+                        if (!snapshot.exists()) {
+                            return;
+                        }
+
+                        const paymentData =
+                            snapshot.val();
+
+                        setPostCheckoutPayment(
+                            paymentData
+                        );
+
+                        /*
+                         * PAGAMENTO CONFIRMADO
+                         */
+
+                        if (
+                            paymentData.status === "paid" ||
+                            paymentData.scheduleCreated === true
+                        ) {
+
+                            setPostCheckoutStatus(
+                                "success"
+                            );
+
+                            localStorage.removeItem(
+                                "markfy-pending-payment"
+                            );
+
+                            unsubscribe();
+
+                            return;
+                        }
+
+                        /*
+                         * PAGAMENTO RECUSADO
+                         */
+
+                        if (
+                            paymentData.status === "rejected" ||
+                            paymentData.status === "cancelled"
+                        ) {
+
+                            setPostCheckoutStatus(
+                                "error"
+                            );
+
+                            unsubscribe();
+
+                            return;
+                        }
+
+                        /*
+                         * PAGAMENTO AINDA PENDENTE
+                         */
+
+                        setPostCheckoutStatus(
+                            "checking"
+                        );
+                    }
+                );
+
+            /*
+             * Segurança:
+             * não deixamos a tela esperando indefinidamente.
+             */
+
+            setTimeout(() => {
+                unsubscribe();
+
+                setPostCheckoutStatus((current) => {
+
+                    if (current === "checking") {
+                        return "timeout";
+                    }
+
+                    return current;
+                });
+
+            }, 60000);
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao verificar pagamento:",
+                error
+            );
+
+            setPostCheckoutStatus("error");
+        }
+    };
 
     return createPortal(
         <AnimatePresence
@@ -1393,6 +2147,15 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                 >
+
+
+                    <CompanyInfoModal
+                        isOpen={showCompanyInfo}
+                        companyName={companyName}
+                        companyHandle={companyHandle}
+                        companyLogo={companyLogo}
+                        onClose={() => setShowCompanyInfo(false)}
+                    />
 
                     <AnimatePresence>
                         {showWhatsappModal && (
@@ -1603,6 +2366,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         )}
                     </AnimatePresence>
 
+
                     <motion.div
                         key={product.id}
                         className="product-details-container"
@@ -1663,6 +2427,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             </div>
                         </div>
 
+
+
                         <div className={`product-details-body ${showProfessionals ? "fullscreen" : ""}`}>
                             <div className="product-details-content-scroll">
 
@@ -1708,7 +2474,12 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                 <h2 className="product-details-title">{product.name}</h2>
                                                 <div className="product-details-company-info">
-                                                    <div className="company-info-left">
+                                                    <button
+                                                        type="button"
+                                                        className="company-info-left"
+                                                        onClick={() => setShowCompanyInfo(true)}
+                                                        aria-label={`Ver informações sobre ${companyName}`}
+                                                    >
                                                         {companyLogo && (
                                                             <div className="product-details-company-logo">
                                                                 <img src={companyLogo} alt="Logo da Empresa" className="company-logo" />
@@ -1718,7 +2489,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             <h1>{companyName}</h1>
                                                             <p>@{companyHandle}</p>
                                                         </span>
-                                                    </div>
+                                                    </button>
 
                                                     <div className="product-details-company-actions">
                                                         {/* <button className="product-details-email-button">
@@ -1736,6 +2507,30 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                         </button>
                                                     </div>
                                                 </div>
+
+                                                {requiresPayment && (
+                                                    <div className="product-details-payment-notice">
+
+                                                        <div className="product-details-payment-notice-icon">
+                                                            <Icon icon="solar:card-outline" />
+                                                        </div>
+
+                                                        <div className="product-details-payment-notice-content">
+
+                                                            <strong>
+                                                                Pagamento antecipado necessário
+                                                            </strong>
+
+                                                            <span>
+                                                                Para confirmar este agendamento, o pagamento
+                                                                deverá ser realizado antecipadamente.
+                                                            </span>
+
+                                                        </div>
+
+                                                    </div>
+                                                )}
+
                                                 <h1>Descrição</h1>
 
                                                 {product.description && (
@@ -1792,240 +2587,406 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             }}
                                                         >
                                                             <Icon icon="humbleicons:arrow-left" />
-
                                                             <span>Voltar</span>
                                                         </button>
 
-                                                        <h1>Escolha um profissional</h1>
+                                                        <div className="product-details-professional-heading">
+                                                            <span className="product-details-step-eyebrow">
+                                                                Agendamento
+                                                            </span>
+
+                                                            <h1>Escolha um profissional</h1>
+
+                                                            <p>
+                                                                Selecione quem irá realizar seu atendimento.
+                                                            </p>
+                                                        </div>
 
                                                     </div>
 
-                                                    {Array.isArray(relatedUsersWithInfo) && relatedUsersWithInfo.length > 0 ? (
-                                                        <div className="product-details-professionals-list">
-                                                            {relatedUsersWithInfo.map((user, index) => {
-                                                                const id = user.id ?? index;
-                                                                const isSelected = productDetailsSelectedProfessionalId === id;
-                                                                const initial = (user.name && user.name.trim()[0]?.toUpperCase()) || "?";
 
-                                                                return (
-                                                                    <button
-                                                                        type="button"
-                                                                        key={id}
-                                                                        className={`professional-circle-card ${isSelected ? "selected" : ""}`}
-                                                                        onClick={() => {
+                                                    {Array.isArray(relatedUsersWithInfo) &&
+                                                        relatedUsersWithInfo.length > 0 ? (
 
-                                                                            // Clicou novamente no profissional já selecionado
-                                                                            if (
-                                                                                productDetailsSelectedProfessionalId === id
-                                                                            ) {
-                                                                                return;
-                                                                            }
+                                                        <div className="product-details-professional-selection">
 
-                                                                            // ==========================================
-                                                                            // TROCOU DE PROFISSIONAL
-                                                                            // ==========================================
+                                                            <div className="product-details-professionals-list">
 
-                                                                            setIsClosingTimes(true);
+                                                                {relatedUsersWithInfo.map((user, index) => {
 
-                                                                            // Limpa imediatamente a seleção anterior
-                                                                            setSelectedDay(null);
-                                                                            setSelectedSlot(null);
-                                                                            setAvailableTimes([]);
-                                                                            setCurrentMonthIndex(0);
+                                                                    const id = user.id ?? index;
 
-                                                                            // Seleciona o novo profissional
-                                                                            setProductDetailsSelectedProfessionalId(id);
+                                                                    const isSelected =
+                                                                        productDetailsSelectedProfessionalId === id;
 
-                                                                            // Pequeno tempo para a animação de saída
-                                                                            setTimeout(() => {
-                                                                                setIsClosingTimes(false);
-                                                                            }, 300);
+                                                                    const initial =
+                                                                        (user.name &&
+                                                                            user.name.trim()[0]?.toUpperCase()) ||
+                                                                        "?";
 
-                                                                        }}
+                                                                    return (
+                                                                        <button
+                                                                            type="button"
+                                                                            key={id}
+                                                                            className={`professional-selection-card ${isSelected ? "selected" : ""
+                                                                                }`}
+                                                                            onClick={() => {
 
-                                                                        aria-pressed={isSelected}
-                                                                        role="option"
-                                                                        aria-selected={isSelected}
-                                                                        title={user.name}
-                                                                    >
-                                                                        <div className="professional-circle-wrap">
+                                                                                if (
+                                                                                    productDetailsSelectedProfessionalId === id
+                                                                                ) {
+                                                                                    return;
+                                                                                }
 
-                                                                            {professionalPhotos[user.id] ? (
+                                                                                setIsClosingTimes(true);
 
-                                                                                <img
-                                                                                    src={professionalPhotos[user.id]}
-                                                                                    alt={user.name}
-                                                                                    className="professional-circle-img"
-                                                                                />
+                                                                                setSelectedDay(null);
+                                                                                setSelectedSlot(null);
+                                                                                setAvailableTimes([]);
+                                                                                setCurrentMonthIndex(0);
 
-                                                                            ) : (
+                                                                                setProductDetailsSelectedProfessionalId(id);
 
-                                                                                <div className="professional-circle-fallback">
-                                                                                    {initial}
-                                                                                </div>
+                                                                                setTimeout(() => {
+                                                                                    setIsClosingTimes(false);
+                                                                                }, 300);
+                                                                            }}
+                                                                            aria-pressed={isSelected}
+                                                                        >
 
-                                                                            )}
+                                                                            <div className="professional-selection-avatar">
 
-                                                                            <span
-                                                                                className={`professional-circle-check ${isSelected ? "selected" : ""
+                                                                                {professionalPhotos[user.id] ? (
+
+                                                                                    <img
+                                                                                        src={
+                                                                                            professionalPhotos[user.id]
+                                                                                        }
+                                                                                        alt=""
+                                                                                    />
+
+                                                                                ) : (
+
+                                                                                    <span>
+                                                                                        {initial}
+                                                                                    </span>
+
+                                                                                )}
+
+                                                                            </div>
+
+
+                                                                            <div className="professional-selection-info">
+
+                                                                                <strong>
+                                                                                    {user.name}
+                                                                                </strong>
+
+                                                                                <span>
+                                                                                    {isSelected
+                                                                                        ? "Profissional selecionado"
+                                                                                        : "Selecionar profissional"}
+                                                                                </span>
+
+                                                                            </div>
+
+
+                                                                            <div
+                                                                                className={`professional-selection-check ${isSelected ? "selected" : ""
                                                                                     }`}
                                                                             >
-                                                                                <Icon icon="material-symbols:check-circle" />
-                                                                            </span>
+                                                                                <Icon
+                                                                                    icon={
+                                                                                        isSelected
+                                                                                            ? "material-symbols:check-rounded"
+                                                                                            : "solar:alt-arrow-right-outline"
+                                                                                    }
+                                                                                />
+                                                                            </div>
 
-                                                                        </div>
+                                                                        </button>
+                                                                    );
+                                                                })}
 
-                                                                        <span className="professional-circle-name">{user.name}</span>
-                                                                    </button>
-                                                                );
-                                                            })}
+                                                            </div>
+
 
                                                             {!productDetailsSelectedProfessionalId && (
+
                                                                 <div className="no-professional-placeholder">
+
                                                                     <img
                                                                         src={noprofessionalplaceholder}
-                                                                        alt="Selecione um profissional"
+                                                                        alt=""
                                                                         className="no-professional-image"
                                                                     />
-                                                                    <h3>Nenhum profissional selecionado</h3>
-                                                                    <p>Escolha um profissional acima para visualizar os dias e horários disponíveis.</p>
+
+                                                                    <div>
+                                                                        <h3>Nenhum profissional selecionado</h3>
+
+                                                                        <p>
+                                                                            Escolha um profissional acima para
+                                                                            visualizar os dias e horários disponíveis.
+                                                                        </p>
+                                                                    </div>
+
                                                                 </div>
+
                                                             )}
 
-                                                            {productDetailsSelectedProfessionalId && !selectedDay && (
-                                                                <div className="product-details-available-days">
-                                                                    <h2 className="choose-day-title">Escolha um dia</h2>
 
-                                                                    {months.length > 0 && (
-                                                                        <div className="month-selector">
-                                                                            <div className="month-header">
-                                                                                <button
-                                                                                    disabled={currentMonthIndex === 0}
-                                                                                    onClick={() =>
-                                                                                        setCurrentMonthIndex((i) => i - 1)
-                                                                                    }
-                                                                                    className={`month-arrow ${currentMonthIndex === 0 ? "disabled" : ""
-                                                                                        }`}
-                                                                                    type="button"
-                                                                                    aria-label="Mês anterior"
-                                                                                >
-                                                                                    <Icon icon="humbleicons:arrow-left" />
-                                                                                </button>
+                                                            {productDetailsSelectedProfessionalId &&
+                                                                !selectedDay && (
 
-                                                                                <h3 className="month-title">{months[currentMonthIndex]}</h3>
+                                                                    <div className="product-details-available-days">
 
-                                                                                <button
-                                                                                    disabled={currentMonthIndex === months.length - 1}
-                                                                                    onClick={() => setCurrentMonthIndex((i) => i + 1)}
-                                                                                    className={`month-arrow ${currentMonthIndex === months.length - 1 ? "disabled" : ""}`}
-                                                                                >
-                                                                                    <Icon icon="humbleicons:arrow-right" />
-                                                                                </button>
+                                                                        <div className="choose-day-heading">
+
+                                                                            <div>
+                                                                                <span>
+                                                                                    Próxima etapa
+                                                                                </span>
+
+                                                                                <h2>
+                                                                                    Escolha um dia
+                                                                                </h2>
                                                                             </div>
 
-                                                                            {/* substitua o map dos dias por este código */}
-                                                                            <div className="days-scroll"
-                                                                                onWheel={(e) => {
-                                                                                    const el = e.currentTarget;
-                                                                                    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                                                                                        el.scrollLeft += e.deltaY;
-                                                                                        e.preventDefault();
-                                                                                    }
-                                                                                }}
-                                                                                onMouseDown={(e) => {
-                                                                                    const el = e.currentTarget;
-                                                                                    el.isDragging = true;
-                                                                                    el.startX = e.pageX + el.scrollLeft;
-                                                                                }}
-                                                                                onMouseMove={(e) => {
-                                                                                    const el = e.currentTarget;
-                                                                                    if (!el.isDragging) return;
-                                                                                    el.scrollLeft = el.startX - e.pageX;
-                                                                                }}
-                                                                                onMouseUp={(e) => {
-                                                                                    e.currentTarget.isDragging = false;
-                                                                                }}
-                                                                                onMouseLeave={(e) => {
-                                                                                    e.currentTarget.isDragging = false;
-                                                                                }}
-                                                                            >
-                                                                                {groupedByMonth[months[currentMonthIndex]].map((day) => {
-                                                                                    // day.day é "dd/mm/yyyy"
-                                                                                    const [dd, mm, yyyy] = day.day.split("/").map((v) => v.padStart(2, "0"));
-                                                                                    // usa construtor local (evita shift de timezone)
-                                                                                    const dateObj = new Date(Number(yyyy), Number(mm) - 1, Number(dd));
-
-                                                                                    const dayName = dateObj
-                                                                                        .toLocaleDateString("pt-BR", { weekday: "short" })
-                                                                                        .replace(".", "");
-                                                                                    const dayNumber = dateObj.toLocaleDateString("pt-BR", { day: "2-digit" });
-
-                                                                                    return (
-                                                                                        <button
-                                                                                            key={day.day}
-                                                                                            className="day-button"
-                                                                                            onClick={() => {
-                                                                                                // cria label a partir do mesmo dateObj (local)
-                                                                                                const label = dateObj.toLocaleDateString("pt-BR", {
-                                                                                                    weekday: "long",
-                                                                                                    day: "2-digit",
-                                                                                                    month: "2-digit",
-                                                                                                    year: "numeric",
-                                                                                                });
-                                                                                                setSelectedDay({
-                                                                                                    ...day,
-                                                                                                    label: label.charAt(0).toUpperCase() + label.slice(1),
-                                                                                                });
-                                                                                            }}
-                                                                                        >
-                                                                                            <span className="day-name">{dayName}</span>
-                                                                                            <span className="day-number">{dayNumber}</span>
-                                                                                        </button>
-                                                                                    );
-                                                                                })}
-                                                                            </div>
                                                                         </div>
-                                                                    )}
-                                                                </div>
-                                                            )}
+
+                                                                        {months.length > 0 && (
+
+                                                                            <div className="month-selector">
+
+                                                                                <div className="month-header">
+
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        disabled={currentMonthIndex === 0}
+                                                                                        onClick={() =>
+                                                                                            setCurrentMonthIndex(
+                                                                                                (i) => i - 1
+                                                                                            )
+                                                                                        }
+                                                                                        className={`month-arrow ${currentMonthIndex === 0
+                                                                                            ? "disabled"
+                                                                                            : ""
+                                                                                            }`}
+                                                                                        aria-label="Mês anterior"
+                                                                                    >
+                                                                                        <Icon icon="humbleicons:arrow-left" />
+                                                                                    </button>
+
+
+                                                                                    <h3 className="month-title">
+                                                                                        {months[currentMonthIndex]}
+                                                                                    </h3>
+
+
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        disabled={
+                                                                                            currentMonthIndex ===
+                                                                                            months.length - 1
+                                                                                        }
+                                                                                        onClick={() =>
+                                                                                            setCurrentMonthIndex(
+                                                                                                (i) => i + 1
+                                                                                            )
+                                                                                        }
+                                                                                        className={`month-arrow ${currentMonthIndex ===
+                                                                                            months.length - 1
+                                                                                            ? "disabled"
+                                                                                            : ""
+                                                                                            }`}
+                                                                                        aria-label="Próximo mês"
+                                                                                    >
+                                                                                        <Icon icon="humbleicons:arrow-right" />
+                                                                                    </button>
+
+                                                                                </div>
+
+
+                                                                                <div
+                                                                                    className="days-scroll"
+                                                                                    onWheel={(e) => {
+                                                                                        const el = e.currentTarget;
+
+                                                                                        if (
+                                                                                            Math.abs(e.deltaY) >
+                                                                                            Math.abs(e.deltaX)
+                                                                                        ) {
+                                                                                            el.scrollLeft += e.deltaY;
+                                                                                            e.preventDefault();
+                                                                                        }
+                                                                                    }}
+                                                                                >
+
+                                                                                    {groupedByMonth[
+                                                                                        months[currentMonthIndex]
+                                                                                    ].map((day) => {
+
+                                                                                        const [
+                                                                                            dd,
+                                                                                            mm,
+                                                                                            yyyy
+                                                                                        ] = day.day
+                                                                                            .split("/")
+                                                                                            .map((v) =>
+                                                                                                v.padStart(2, "0")
+                                                                                            );
+
+                                                                                        const dateObj =
+                                                                                            new Date(
+                                                                                                Number(yyyy),
+                                                                                                Number(mm) - 1,
+                                                                                                Number(dd)
+                                                                                            );
+
+                                                                                        const dayName =
+                                                                                            dateObj
+                                                                                                .toLocaleDateString(
+                                                                                                    "pt-BR",
+                                                                                                    {
+                                                                                                        weekday: "short"
+                                                                                                    }
+                                                                                                )
+                                                                                                .replace(".", "");
+
+                                                                                        const dayNumber =
+                                                                                            dateObj.toLocaleDateString(
+                                                                                                "pt-BR",
+                                                                                                {
+                                                                                                    day: "2-digit"
+                                                                                                }
+                                                                                            );
+
+                                                                                        return (
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                key={day.day}
+                                                                                                className="day-button"
+                                                                                                onClick={() => {
+
+                                                                                                    const label =
+                                                                                                        dateObj.toLocaleDateString(
+                                                                                                            "pt-BR",
+                                                                                                            {
+                                                                                                                weekday: "long",
+                                                                                                                day: "2-digit",
+                                                                                                                month: "2-digit",
+                                                                                                                year: "numeric"
+                                                                                                            }
+                                                                                                        );
+
+                                                                                                    setSelectedDay({
+                                                                                                        ...day,
+                                                                                                        label:
+                                                                                                            label
+                                                                                                                .charAt(0)
+                                                                                                                .toUpperCase() +
+                                                                                                            label.slice(1)
+                                                                                                    });
+                                                                                                }}
+                                                                                            >
+                                                                                                <span className="day-name">
+                                                                                                    {dayName}
+                                                                                                </span>
+
+                                                                                                <span className="day-number">
+                                                                                                    {dayNumber}
+                                                                                                </span>
+                                                                                            </button>
+                                                                                        );
+                                                                                    })}
+
+                                                                                </div>
+
+                                                                            </div>
+                                                                        )}
+
+                                                                    </div>
+                                                                )}
+
 
                                                             <div
-                                                                className={`product-details-available-times-wrapper ${selectedDay && !isClosingTimes ? "open" : isClosingTimes ? "closing" : ""
+                                                                className={`product-details-available-times-wrapper ${selectedDay && !isClosingTimes
+                                                                    ? "open"
+                                                                    : isClosingTimes
+                                                                        ? "closing"
+                                                                        : ""
                                                                     }`}
                                                             >
+
                                                                 {selectedDay && (
+
                                                                     <div className="product-details-available-times">
-                                                                        <h2>Horários disponíveis em {selectedDay.label}</h2>
+
+                                                                        <h2>
+                                                                            Horários disponíveis em{" "}
+                                                                            {selectedDay.label}
+                                                                        </h2>
+
                                                                         <div
                                                                             className="slots-scroll"
                                                                             onWheel={(e) => {
                                                                                 const el = e.currentTarget;
-                                                                                if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+
+                                                                                if (
+                                                                                    Math.abs(e.deltaY) >
+                                                                                    Math.abs(e.deltaX)
+                                                                                ) {
                                                                                     el.scrollLeft += e.deltaY;
                                                                                     e.preventDefault();
                                                                                 }
                                                                             }}
                                                                         >
+
                                                                             {selectedDay.slots.map((slot) => (
+
                                                                                 <button
+                                                                                    type="button"
                                                                                     key={slot}
-                                                                                    className={`slot-button ${selectedSlot === slot ? "selected" : ""}`}
-                                                                                    onClick={() => setSelectedSlot(slot)}
+                                                                                    className={`slot-button ${selectedSlot === slot
+                                                                                        ? "selected"
+                                                                                        : ""
+                                                                                        }`}
+                                                                                    onClick={() =>
+                                                                                        setSelectedSlot(slot)
+                                                                                    }
                                                                                 >
                                                                                     {slot}
                                                                                 </button>
+
                                                                             ))}
+
                                                                         </div>
 
-                                                                        <button className="back-to-days" onClick={() => setSelectedDay(null)}>
+                                                                        <button
+                                                                            type="button"
+                                                                            className="back-to-days"
+                                                                            onClick={() =>
+                                                                                setSelectedDay(null)
+                                                                            }
+                                                                        >
+                                                                            <Icon icon="humbleicons:arrow-left" />
                                                                             Voltar para dias
                                                                         </button>
+
                                                                     </div>
+
                                                                 )}
+
                                                             </div>
+
                                                         </div>
+
                                                     ) : (
-                                                        <p className="product-details-professional-empty">Informação não disponível.</p>
+
+                                                        <p className="product-details-professional-empty">
+                                                            Informação não disponível.
+                                                        </p>
+
                                                     )}
 
                                                 </div>
@@ -2096,231 +3057,1477 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         {showConfirmationModal && (
                             <motion.div
                                 className="confirmation-modal-overlay"
-                                onClick={(e) => e.stopPropagation()}
                                 initial={{ opacity: 0 }}
                                 animate={{ opacity: 1 }}
                                 exit={{ opacity: 0 }}
                                 transition={{ duration: 0.25, ease: "easeOut" }}
+                                onClick={() => {
+                                    if (
+                                        isConfirmed !== "loading" &&
+                                        paymentStatus !== "loading"
+                                    ) {
+                                        setShowConfirmationModal(false);
+                                    }
+                                }}
                             >
                                 <motion.div
                                     className="confirmation-modal"
+                                    role="dialog"
+                                    aria-modal="true"
+                                    aria-labelledby="confirmation-modal-title"
                                     onClick={(e) => e.stopPropagation()}
-                                    initial={{ scale: 0.8, opacity: 0 }}
-                                    animate={{ scale: 1, opacity: 1 }}
-                                    exit={{ scale: 0.8, opacity: 0 }}
-                                    transition={{ duration: 0.25, ease: "easeOut" }}
+                                    initial={{
+                                        opacity: 0,
+                                        y: 24,
+                                        scale: 0.96
+                                    }}
+                                    animate={{
+                                        opacity: 1,
+                                        y: 0,
+                                        scale: 1
+                                    }}
+                                    exit={{
+                                        opacity: 0,
+                                        y: 20,
+                                        scale: 0.97
+                                    }}
+                                    transition={{
+                                        duration: 0.28,
+                                        ease: [0.22, 1, 0.36, 1]
+                                    }}
                                 >
 
-                                    {/* ======================= ETAPA 1: Confirmar agendamento ======================= */}
-                                    {!isAskingPhone && isConfirmed === false && (
-                                        <>
-                                            <h2>Confirmar agendamento</h2>
-                                            <p>
-                                                Deseja confirmar o horário <strong>{selectedSlot}</strong> em{" "}
-                                                <strong>{selectedDay?.label}</strong> com{" "}
-                                                <strong>
-                                                    {
-                                                        relatedUsersWithInfo.find(
-                                                            (u) => u.id === productDetailsSelectedProfessionalId
-                                                        )?.name || "profissional não identificado"
-                                                    }
-                                                </strong>
-                                                ?
-                                            </p>
+                                    {/* =====================================================
+                    RECAPTCHA
+                ===================================================== */}
 
-                                            <div className="confirmation-modal-actions">
-                                                <button
-                                                    className="confirmation-btn cancel"
-                                                    onClick={() => setShowConfirmationModal(false)}
-                                                >
-                                                    Cancelar
-                                                </button>
-                                                <button
-                                                    className="confirmation-btn confirm"
-                                                    onClick={() => setIsAskingPhone(true)}
-                                                >
-                                                    Confirmar
-                                                </button>
+                                    <div
+                                        id="recaptcha-container"
+                                        style={{
+                                            position: "absolute",
+                                            width: 1,
+                                            height: 1,
+                                            overflow: "hidden",
+                                            opacity: 0,
+                                            pointerEvents: "none"
+                                        }}
+                                    />
+
+                                    {/* =====================================================
+                    HEADER
+                ===================================================== */}
+
+                                    {isConfirmed !== "loading" && (
+                                        <div className="confirmation-modal-header">
+
+                                            <div className="confirmation-modal-header-left">
+
+                                                <div className="confirmation-modal-header-icon">
+                                                    <Icon icon="solar:calendar-add-outline" />
+                                                </div>
+
+                                                <div>
+                                                    <span className="confirmation-modal-eyebrow">
+                                                        {showPaymentAuth
+                                                            ? "Pagamento seguro"
+                                                            : isAskingPhone
+                                                                ? "Quase lá"
+                                                                : "Novo agendamento"}
+                                                    </span>
+
+                                                    <h2 id="confirmation-modal-title">
+                                                        {showPaymentAuth
+                                                            ? "Confirme seus dados"
+                                                            : isAskingPhone
+                                                                ? "Quem fará o agendamento?"
+                                                                : "Confirme seu horário"}
+                                                    </h2>
+                                                </div>
+
                                             </div>
-                                        </>
+
+                                            <button
+                                                type="button"
+                                                className="confirmation-modal-close"
+                                                aria-label="Fechar"
+                                                onClick={() => {
+                                                    if (
+                                                        isConfirmed === "loading" ||
+                                                        paymentStatus === "loading"
+                                                    ) {
+                                                        return;
+                                                    }
+
+                                                    setShowConfirmationModal(false);
+                                                }}
+                                            >
+                                                <Icon icon="mdi:close" />
+                                            </button>
+
+                                        </div>
                                     )}
 
-                                    {/* ======================= ETAPA 2: Pedir nome ======================= */}
-                                    {isAskingPhone && !isConfirmed && (
-                                        <>
-                                            <h2>Informe seu nome</h2>
-                                            <p>Digite seu nome para confirmar o agendamento:</p>
+                                    {/* =====================================================
+                    ETAPA 1 — RESUMO DO AGENDAMENTO
+                ===================================================== */}
 
-                                            <input
-                                                type="text"
-                                                className="auth-input"
-                                                placeholder="Seu nome completo"
-                                                value={userName}
-                                                onChange={(e) => setUserName(e.target.value)}
-                                                maxLength={40}
-                                            />
+                                    {!isAskingPhone &&
+                                        !showPaymentAuth &&
+                                        isConfirmed === false && (
 
-                                            <div className="confirmation-modal-actions">
-                                                <button
-                                                    className="confirmation-btn cancel"
-                                                    onClick={() => setIsAskingPhone(false)}
-                                                >
-                                                    Voltar
-                                                </button>
-                                                <button
-                                                    className="confirmation-btn confirm"
-                                                    disabled={!userName.trim()}
-                                                    onClick={async () => {
+                                            <motion.div
+                                                key="confirmation-step"
+                                                className="confirmation-modal-step"
+                                                initial={{ opacity: 0, x: -12 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: 12 }}
+                                                transition={{ duration: 0.2 }}
+                                            >
 
-                                                        setIsConfirmed("loading");
+                                                {/* Serviço */}
 
-                                                        const agendamento = {
-                                                            productId: product.id,
-                                                            productName: product.name,
-                                                            productPrice: product.value,
+                                                <div className="confirmation-service-card">
 
-                                                            professionalId:
-                                                                productDetailsSelectedProfessionalId,
+                                                    <div className="confirmation-service-image">
 
-                                                            professionalName:
-                                                                relatedUsersWithInfo.find(
-                                                                    (u) =>
-                                                                        u.id ===
-                                                                        productDetailsSelectedProfessionalId
-                                                                )?.name ||
-                                                                "Profissional não identificado",
+                                                        {images[selectedImage] ? (
+                                                            <img
+                                                                src={images[selectedImage]}
+                                                                alt={product.name}
+                                                            />
+                                                        ) : (
+                                                            <div className="confirmation-service-image-fallback">
+                                                                <Icon icon="solar:scissors-outline" />
+                                                            </div>
+                                                        )}
 
-                                                            day: selectedDay.day,
+                                                    </div>
 
-                                                            dayLabel:
-                                                                selectedDay.label,
+                                                    <div className="confirmation-service-info">
 
-                                                            hour: selectedSlot,
+                                                        <span className="confirmation-service-label">
+                                                            Serviço
+                                                        </span>
 
-                                                            userName:
-                                                                userName.trim(),
+                                                        <h3>
+                                                            {product.name}
+                                                        </h3>
 
-                                                            timestamp:
-                                                                new Date().toISOString(),
-                                                        };
+                                                        <div className="confirmation-service-meta">
 
-                                                        console.log(
-                                                            "📅 Agendamento iniciado:",
-                                                            agendamento
-                                                        );
+                                                            {product.duration && (
+                                                                <span>
+                                                                    <Icon icon="solar:clock-circle-outline" />
+                                                                    {formatDuration
+                                                                        ? formatDuration(product.duration)
+                                                                        : `${product.duration} min`}
+                                                                </span>
+                                                            )}
 
-                                                        const success =
-                                                            await toShedule(agendamento);
+                                                            <span>
+                                                                <Icon icon="solar:tag-outline" />
+                                                                {product.value}
+                                                            </span>
 
-                                                        // ==========================================
-                                                        // ERRO
-                                                        // ==========================================
+                                                        </div>
 
-                                                        if (!success) {
+                                                    </div>
 
-                                                            setIsConfirmed(false);
+                                                </div>
 
-                                                            setShowConfirmationModal(false);
+                                                {/* Informações do agendamento */}
 
-                                                            return;
+                                                <div className="confirmation-booking-card">
+
+                                                    <div className="confirmation-booking-card-header">
+
+                                                        <div>
+                                                            <span className="confirmation-section-label">
+                                                                Seu horário
+                                                            </span>
+
+                                                            <strong>
+                                                                Confira os detalhes antes de continuar
+                                                            </strong>
+                                                        </div>
+
+                                                        <div className="confirmation-booking-status">
+                                                            <Icon icon="solar:check-circle-outline" />
+                                                            Disponível
+                                                        </div>
+
+                                                    </div>
+
+                                                    <div className="confirmation-booking-grid">
+
+                                                        <div className="confirmation-booking-item">
+
+                                                            <div className="confirmation-booking-item-icon">
+                                                                <Icon icon="solar:user-outline" />
+                                                            </div>
+
+                                                            <div>
+                                                                <span>Profissional</span>
+
+                                                                <strong>
+                                                                    {
+                                                                        relatedUsersWithInfo.find(
+                                                                            (u) =>
+                                                                                u.id ===
+                                                                                productDetailsSelectedProfessionalId
+                                                                        )?.name ||
+                                                                        "Profissional não identificado"
+                                                                    }
+                                                                </strong>
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div className="confirmation-booking-item">
+
+                                                            <div className="confirmation-booking-item-icon">
+                                                                <Icon icon="solar:calendar-outline" />
+                                                            </div>
+
+                                                            <div>
+                                                                <span>Data</span>
+
+                                                                <strong>
+                                                                    {selectedDay?.label || "—"}
+                                                                </strong>
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div className="confirmation-booking-item">
+
+                                                            <div className="confirmation-booking-item-icon">
+                                                                <Icon icon="solar:clock-circle-outline" />
+                                                            </div>
+
+                                                            <div>
+                                                                <span>Horário</span>
+
+                                                                <strong>
+                                                                    {selectedSlot || "—"}
+                                                                </strong>
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div className="confirmation-booking-item">
+
+                                                            <div className="confirmation-booking-item-icon">
+                                                                <Icon icon="solar:wallet-outline" />
+                                                            </div>
+
+                                                            <div>
+                                                                <span>Valor</span>
+
+                                                                <strong>
+                                                                    {product.value}
+                                                                </strong>
+                                                            </div>
+
+                                                        </div>
+
+                                                    </div>
+
+                                                </div>
+
+                                                {/* Aviso de pagamento */}
+
+                                                {requiresPayment && (
+                                                    <div className="confirmation-payment-notice">
+
+                                                        <div className="confirmation-payment-notice-icon">
+                                                            <Icon icon="solar:card-outline" />
+                                                        </div>
+
+                                                        <div>
+                                                            <strong>
+                                                                Pagamento antecipado
+                                                            </strong>
+
+                                                            <span>
+                                                                Após confirmar seus dados,
+                                                                você será direcionado para o
+                                                                pagamento seguro.
+                                                            </span>
+                                                        </div>
+
+                                                        <Icon
+                                                            icon="solar:shield-check-outline"
+                                                            className="confirmation-payment-notice-check"
+                                                        />
+
+                                                    </div>
+                                                )}
+
+                                                {/* Ações */}
+
+                                                <div className="confirmation-modal-actions">
+
+                                                    <button
+                                                        type="button"
+                                                        className="confirmation-modal-button confirmation-modal-button--secondary"
+                                                        onClick={() =>
+                                                            setShowConfirmationModal(false)
                                                         }
+                                                    >
+                                                        <Icon icon="solar:arrow-left-outline" />
+                                                        <span>Voltar</span>
+                                                    </button>
 
-                                                        saveLocalAgendamento({
-                                                            ...agendamento,
-                                                            status: "pending"
-                                                        });
+                                                    <button
+                                                        type="button"
+                                                        className="confirmation-modal-button confirmation-modal-button--primary"
+                                                        onClick={() => {
+                                                            checkLoggedUser();
 
-                                                        // ==========================================
-                                                        // SUCESSO
-                                                        // ==========================================
+                                                            setEmailConfirmed(false);
 
-                                                        setLastAgendamento({
-                                                            ...agendamento,
-                                                            product,
-                                                        });
+                                                            setIsAskingPhone(true);
+                                                        }}
+                                                    >
+                                                        <span>
+                                                            Continuar
+                                                        </span>
 
-                                                        setIsConfirmed("success");
+                                                        <Icon icon="solar:arrow-right-outline" />
+                                                    </button>
+
+                                                </div>
+
+                                            </motion.div>
+                                        )}
+
+                                    {/* =====================================================
+                    ETAPA 2 — NOME
+                ===================================================== */}
+
+                                    {/* =====================================================
+    ETAPA 2 — IDENTIFICAÇÃO
+===================================================== */}
+
+                                    {isAskingPhone &&
+                                        !showPaymentAuth &&
+                                        isConfirmed === false && (
+
+                                            <motion.div
+                                                key="identification-step"
+                                                className="confirmation-modal-step"
+                                                initial={{
+                                                    opacity: 0,
+                                                    x: 16
+                                                }}
+                                                animate={{
+                                                    opacity: 1,
+                                                    x: 0
+                                                }}
+                                                exit={{
+                                                    opacity: 0,
+                                                    x: -16
+                                                }}
+                                                transition={{
+                                                    duration: 0.22
+                                                }}
+                                            >
+
+                                                {/* =====================================================
+                USUÁRIO LOGADO
+            ===================================================== */}
+
+                                                {isUserLoggedIn ? (
+
+                                                    <>
+
+                                                        <div className="confirmation-step-intro">
+
+                                                            <div className="confirmation-step-icon">
+                                                                <Icon icon="solar:user-circle-outline" />
+                                                            </div>
+
+                                                            <div>
+
+                                                                <span className="confirmation-step-label">
+                                                                    Identificação
+                                                                </span>
+
+                                                                <h3>
+                                                                    Confirme seus dados
+                                                                </h3>
+
+                                                                <p>
+                                                                    Você já está conectado.
+                                                                    Confirme seu nome e e-mail para
+                                                                    identificar o agendamento.
+                                                                </p>
+
+                                                            </div>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        NOME
+                    ================================================= */}
+
+                                                        <div className="confirmation-form">
+
+                                                            <label
+                                                                htmlFor="confirmation-user-name"
+                                                                className="confirmation-form-label"
+                                                            >
+                                                                Seu nome
+                                                            </label>
+
+                                                            <div
+                                                                className={`confirmation-input-wrapper ${userName.trim()
+                                                                    ? "has-value"
+                                                                    : ""
+                                                                    }`}
+                                                            >
+
+                                                                <Icon
+                                                                    icon="solar:user-outline"
+                                                                    className="confirmation-input-icon"
+                                                                />
+
+                                                                <input
+                                                                    id="confirmation-user-name"
+                                                                    type="text"
+                                                                    autoComplete="name"
+                                                                    placeholder="Digite seu nome completo"
+                                                                    value={userName}
+                                                                    maxLength={40}
+                                                                    autoFocus
+                                                                    onChange={(e) =>
+                                                                        setUserName(
+                                                                            e.target.value
+                                                                        )
+                                                                    }
+                                                                />
+
+                                                                {userName.trim() && (
+                                                                    <Icon
+                                                                        icon="solar:check-circle-outline"
+                                                                        className="confirmation-input-success"
+                                                                    />
+                                                                )}
+
+                                                            </div>
+
+                                                            <span className="confirmation-form-hint">
+                                                                Usaremos esse nome para identificar
+                                                                seu agendamento.
+                                                            </span>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        E-MAIL DA CONTA
+                    ================================================= */}
+
+                                                        <div
+                                                            className="confirmation-logged-email"
+                                                            style={{
+                                                                marginTop: "16px",
+                                                                marginBottom: "0"
+                                                            }}
+                                                        >
+
+                                                            <div className="confirmation-logged-email-icon">
+
+                                                                <Icon icon="solar:letter-outline" />
+
+                                                            </div>
+
+                                                            <div className="confirmation-logged-email-content">
+
+                                                                <span>
+                                                                    Esse é o seu e-mail?
+                                                                </span>
+
+                                                                <strong>
+                                                                    {loggedUserEmail}
+                                                                </strong>
+
+                                                            </div>
+
+                                                            <div className="confirmation-logged-email-check">
+
+                                                                <Icon icon="solar:check-circle-bold" />
+
+                                                            </div>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        RESUMO DO HORÁRIO
+                    ================================================= */}
+
+                                                        <div className="confirmation-mini-summary">
+
+                                                            <div className="confirmation-mini-summary-icon">
+
+                                                                <Icon icon="solar:calendar-mark-outline" />
+
+                                                            </div>
+
+                                                            <div className="confirmation-mini-summary-content">
+
+                                                                <strong>
+                                                                    {selectedDay?.label}
+                                                                </strong>
+
+                                                                <span>
+                                                                    às {selectedSlot} • {
+                                                                        relatedUsersWithInfo.find(
+                                                                            (u) =>
+                                                                                u.id ===
+                                                                                productDetailsSelectedProfessionalId
+                                                                        )?.name ||
+                                                                        "Profissional"
+                                                                    }
+                                                                </span>
+
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setIsAskingPhone(false);
+                                                                }}
+                                                                aria-label="Editar horário"
+                                                            >
+                                                                <Icon icon="solar:pen-outline" />
+                                                            </button>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        AÇÕES
+                    ================================================= */}
+
+                                                        <div className="confirmation-modal-actions">
+
+                                                            <button
+                                                                type="button"
+                                                                className="confirmation-modal-button confirmation-modal-button--secondary"
+                                                                onClick={() =>
+                                                                    setIsAskingPhone(false)
+                                                                }
+                                                            >
+
+                                                                <Icon icon="solar:arrow-left-outline" />
+
+                                                                <span>
+                                                                    Voltar
+                                                                </span>
+
+                                                            </button>
+
+
+                                                            <button
+                                                                type="button"
+                                                                className="confirmation-modal-button confirmation-modal-button--primary"
+                                                                disabled={!userName.trim()}
+                                                                onClick={async () => {
+
+                                                                    const agendamento =
+                                                                        buildAgendamento();
+
+                                                                    setEmailConfirmed(true);
+
+                                                                    /*
+                                                                     * Usuário já está autenticado.
+                                                                     *
+                                                                     * Não precisa:
+                                                                     * - telefone
+                                                                     * - SMS
+                                                                     * - novo login
+                                                                     */
+
+                                                                    if (requiresPayment) {
+
+                                                                        openCheckout();
+
+                                                                        return;
+                                                                    }
+
+                                                                    await finalizeAgendamento(
+                                                                        agendamento
+                                                                    );
+
+                                                                }}
+                                                            >
+
+                                                                <span>
+                                                                    {requiresPayment
+                                                                        ? "Continuar para pagamento"
+                                                                        : "Confirmar agendamento"}
+                                                                </span>
+
+                                                                <Icon
+                                                                    icon={
+                                                                        requiresPayment
+                                                                            ? "solar:arrow-right-outline"
+                                                                            : "solar:check-outline"
+                                                                    }
+                                                                />
+
+                                                            </button>
+
+                                                        </div>
+
+                                                    </>
+
+                                                ) : (
+
+                                                    /* =====================================================
+                                                       USUÁRIO NÃO LOGADO
+                                                    ===================================================== */
+
+                                                    <>
+
+                                                        <div className="confirmation-step-intro">
+
+                                                            <div className="confirmation-step-icon">
+
+                                                                <Icon icon="solar:user-circle-outline" />
+
+                                                            </div>
+
+                                                            <div>
+
+                                                                <span className="confirmation-step-label">
+                                                                    Identificação
+                                                                </span>
+
+                                                                <h3>
+                                                                    Como podemos te chamar?
+                                                                </h3>
+
+                                                                <p>
+                                                                    Informe seu nome para identificarmos
+                                                                    seu agendamento.
+                                                                </p>
+
+                                                            </div>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        NOME
+                    ================================================= */}
+
+                                                        <div className="confirmation-form">
+
+                                                            <label
+                                                                htmlFor="confirmation-user-name"
+                                                                className="confirmation-form-label"
+                                                            >
+                                                                Seu nome
+                                                            </label>
+
+                                                            <div
+                                                                className={`confirmation-input-wrapper ${userName.trim()
+                                                                    ? "has-value"
+                                                                    : ""
+                                                                    }`}
+                                                            >
+
+                                                                <Icon
+                                                                    icon="solar:user-outline"
+                                                                    className="confirmation-input-icon"
+                                                                />
+
+                                                                <input
+                                                                    id="confirmation-user-name"
+                                                                    type="text"
+                                                                    autoComplete="name"
+                                                                    placeholder="Digite seu nome completo"
+                                                                    value={userName}
+                                                                    maxLength={40}
+                                                                    autoFocus
+                                                                    onChange={(e) =>
+                                                                        setUserName(
+                                                                            e.target.value
+                                                                        )
+                                                                    }
+                                                                    onKeyDown={(e) => {
+
+                                                                        if (
+                                                                            e.key === "Enter" &&
+                                                                            userName.trim()
+                                                                        ) {
+
+                                                                            const agendamento =
+                                                                                buildAgendamento();
+
+                                                                            if (requiresPayment) {
+
+                                                                                setPhoneVerified(false);
+
+                                                                                setShowPaymentAuth(true);
+
+                                                                                setAuthStep("phone");
+
+                                                                                setAuthCode("");
+
+                                                                                setAuthError("");
+
+                                                                                return;
+
+                                                                            }
+
+                                                                            finalizeAgendamento(
+                                                                                agendamento
+                                                                            );
+
+                                                                        }
+
+                                                                    }}
+                                                                />
+
+                                                                {userName.trim() && (
+
+                                                                    <Icon
+                                                                        icon="solar:check-circle-outline"
+                                                                        className="confirmation-input-success"
+                                                                    />
+
+                                                                )}
+
+                                                            </div>
+
+                                                            <span className="confirmation-form-hint">
+                                                                Usaremos esse nome apenas para identificar
+                                                                seu agendamento.
+                                                            </span>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        RESUMO DO HORÁRIO
+                    ================================================= */}
+
+                                                        <div className="confirmation-mini-summary">
+
+                                                            <div className="confirmation-mini-summary-icon">
+
+                                                                <Icon icon="solar:calendar-mark-outline" />
+
+                                                            </div>
+
+                                                            <div className="confirmation-mini-summary-content">
+
+                                                                <strong>
+                                                                    {selectedDay?.label}
+                                                                </strong>
+
+                                                                <span>
+                                                                    às {selectedSlot} • {
+                                                                        relatedUsersWithInfo.find(
+                                                                            (u) =>
+                                                                                u.id ===
+                                                                                productDetailsSelectedProfessionalId
+                                                                        )?.name ||
+                                                                        "Profissional"
+                                                                    }
+                                                                </span>
+
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setIsAskingPhone(false);
+                                                                }}
+                                                                aria-label="Editar horário"
+                                                            >
+
+                                                                <Icon icon="solar:pen-outline" />
+
+                                                            </button>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        AÇÕES
+                    ================================================= */}
+
+                                                        <div className="confirmation-modal-actions">
+
+                                                            <button
+                                                                type="button"
+                                                                className="confirmation-modal-button confirmation-modal-button--secondary"
+                                                                onClick={() =>
+                                                                    setIsAskingPhone(false)
+                                                                }
+                                                            >
+
+                                                                <Icon icon="solar:arrow-left-outline" />
+
+                                                                <span>
+                                                                    Voltar
+                                                                </span>
+
+                                                            </button>
+
+
+                                                            <button
+                                                                type="button"
+                                                                className="confirmation-modal-button confirmation-modal-button--primary"
+                                                                disabled={!userName.trim()}
+                                                                onClick={async () => {
+
+                                                                    const agendamento =
+                                                                        buildAgendamento();
+
+                                                                    if (requiresPayment) {
+
+                                                                        setPhoneVerified(false);
+
+                                                                        setShowPaymentAuth(true);
+
+                                                                        setAuthStep("phone");
+
+                                                                        setAuthCode("");
+
+                                                                        setAuthError("");
+
+                                                                        return;
+
+                                                                    }
+
+                                                                    await finalizeAgendamento(
+                                                                        agendamento
+                                                                    );
+
+                                                                }}
+                                                            >
+
+                                                                <span>
+                                                                    Confirmar agendamento
+                                                                </span>
+
+                                                                <Icon icon="solar:check-outline" />
+
+                                                            </button>
+
+                                                        </div>
+
+                                                    </>
+
+                                                )}
+
+                                            </motion.div>
+                                        )}
+                                    {/* =====================================================
+                    PAGAMENTO — AUTENTICAÇÃO
+                ===================================================== */}
+
+                                    {showPaymentAuth &&
+                                        isConfirmed === false && (
+
+                                            <motion.div
+                                                key="payment-auth"
+                                                className="confirmation-modal-step confirmation-payment-auth"
+                                                initial={{ opacity: 0, x: 18 }}
+                                                animate={{ opacity: 1, x: 0 }}
+                                                exit={{ opacity: 0, x: -18 }}
+                                                transition={{ duration: 0.22 }}
+                                            >
+
+                                                <button
+                                                    type="button"
+                                                    className="confirmation-inline-back"
+                                                    onClick={() => {
+
+                                                        setShowPaymentAuth(false);
+                                                        setAuthStep("phone");
+                                                        setAuthCode("");
+                                                        setAuthError("");
 
                                                     }}
                                                 >
-                                                    Confirmar Agendamento
+                                                    <Icon icon="solar:arrow-left-outline" />
+                                                    Voltar
                                                 </button>
+
+                                                {/* Segurança */}
+
+                                                <div className="confirmation-payment-hero">
+
+                                                    <div className="confirmation-payment-hero-icon">
+                                                        <Icon icon="solar:shield-check-outline" />
+                                                    </div>
+
+                                                    <div>
+
+                                                        <span>
+                                                            Pagamento protegido
+                                                        </span>
+
+                                                        <h3>
+                                                            Confirme seu telefone
+                                                        </h3>
+
+                                                        <p>
+                                                            Essa etapa ajuda a proteger seu
+                                                            agendamento e confirmar sua identidade.
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+
+                                                {/* Telefone */}
+
+                                                {authStep === "phone" && !phoneVerified && (
+                                                    <motion.div
+                                                        key="phone"
+                                                        className="confirmation-auth-content"
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                    >
+
+                                                        <div className="confirmation-form">
+
+                                                            <label
+                                                                htmlFor="confirmation-auth-phone"
+                                                                className="confirmation-form-label"
+                                                            >
+                                                                Número de telefone
+                                                            </label>
+
+                                                            <div className="confirmation-input-wrapper">
+
+                                                                <Icon
+                                                                    icon="solar:phone-outline"
+                                                                    className="confirmation-input-icon"
+                                                                />
+
+                                                                <InputMask
+                                                                    mask="(99) 99999-9999"
+                                                                    value={authPhone}
+                                                                    onChange={(e) =>
+                                                                        setAuthPhone(
+                                                                            e.target.value
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {(inputProps) => (
+                                                                        <input
+                                                                            {...inputProps}
+                                                                            id="confirmation-auth-phone"
+                                                                            type="tel"
+                                                                            autoComplete="tel"
+                                                                            placeholder="(00) 00000-0000"
+                                                                            autoFocus
+                                                                        />
+                                                                    )}
+                                                                </InputMask>
+
+                                                            </div>
+
+                                                            <span className="confirmation-form-hint">
+                                                                Enviaremos um código de verificação
+                                                                por SMS.
+                                                            </span>
+
+                                                        </div>
+
+                                                        {authError && (
+                                                            <motion.div
+                                                                className="confirmation-auth-error"
+                                                                initial={{
+                                                                    opacity: 0,
+                                                                    y: -5
+                                                                }}
+                                                                animate={{
+                                                                    opacity: 1,
+                                                                    y: 0
+                                                                }}
+                                                            >
+                                                                <Icon icon="solar:danger-triangle-outline" />
+
+                                                                <span>
+                                                                    {authError}
+                                                                </span>
+                                                            </motion.div>
+                                                        )}
+
+                                                        <button
+                                                            type="button"
+                                                            className="confirmation-modal-button confirmation-modal-button--primary confirmation-auth-button"
+                                                            disabled={
+                                                                authLoading ||
+                                                                !authPhone.trim()
+                                                            }
+                                                            onClick={sendAuthCode}
+                                                        >
+                                                            {authLoading ? (
+                                                                <>
+                                                                    <Icon
+                                                                        icon="svg-spinners:90-ring-with-bg"
+                                                                    />
+
+                                                                    <span>
+                                                                        Enviando código...
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span>
+                                                                        Enviar código
+                                                                    </span>
+
+                                                                    <Icon icon="solar:plain-2-outline" />
+                                                                </>
+                                                            )}
+                                                        </button>
+
+                                                    </motion.div>
+                                                )}
+
+                                                {/* Código */}
+
+                                                {authStep === "code" && !phoneVerified && (
+                                                    <motion.div
+                                                        key="code"
+                                                        className="confirmation-auth-content"
+                                                        initial={{
+                                                            opacity: 0,
+                                                            x: 12
+                                                        }}
+                                                        animate={{
+                                                            opacity: 1,
+                                                            x: 0
+                                                        }}
+                                                    >
+
+                                                        <div className="confirmation-code-header">
+
+                                                            <div className="confirmation-code-icon">
+                                                                <Icon icon="solar:chat-round-call-outline" />
+                                                            </div>
+
+                                                            <div>
+
+                                                                <span>
+                                                                    Código enviado
+                                                                </span>
+
+                                                                <strong>
+                                                                    {authPhone}
+                                                                </strong>
+
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div className="confirmation-form">
+
+                                                            <label
+                                                                htmlFor="confirmation-auth-code"
+                                                                className="confirmation-form-label"
+                                                            >
+                                                                Código de verificação
+                                                            </label>
+
+                                                            <input
+                                                                id="confirmation-auth-code"
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                autoComplete="one-time-code"
+                                                                maxLength={6}
+                                                                autoFocus
+                                                                className="confirmation-code-input"
+                                                                placeholder="000000"
+                                                                value={authCode}
+                                                                onChange={(e) =>
+                                                                    setAuthCode(
+                                                                        e.target.value
+                                                                            .replace(/\D/g, "")
+                                                                    )
+                                                                }
+                                                                onKeyDown={(e) => {
+
+                                                                    if (
+                                                                        e.key === "Enter" &&
+                                                                        authCode.length === 6 &&
+                                                                        !authLoading
+                                                                    ) {
+                                                                        verifyAuthCode();
+                                                                    }
+
+                                                                }}
+                                                            />
+
+                                                            <span className="confirmation-form-hint">
+                                                                Digite os 6 números recebidos por SMS.
+                                                            </span>
+
+                                                        </div>
+
+                                                        {authError && (
+                                                            <motion.div
+                                                                className="confirmation-auth-error"
+                                                                initial={{
+                                                                    opacity: 0,
+                                                                    y: -5
+                                                                }}
+                                                                animate={{
+                                                                    opacity: 1,
+                                                                    y: 0
+                                                                }}
+                                                            >
+                                                                <Icon icon="solar:danger-triangle-outline" />
+
+                                                                <span>
+                                                                    {authError}
+                                                                </span>
+                                                            </motion.div>
+                                                        )}
+
+                                                        <button
+                                                            type="button"
+                                                            className="confirmation-modal-button confirmation-modal-button--primary confirmation-auth-button"
+                                                            disabled={
+                                                                authLoading ||
+                                                                authCode.length !== 6
+                                                            }
+                                                            onClick={verifyAuthCode}
+                                                        >
+                                                            {authLoading ? (
+                                                                <>
+                                                                    <Icon
+                                                                        icon="svg-spinners:90-ring-with-bg"
+                                                                    />
+
+                                                                    <span>
+                                                                        Verificando...
+                                                                    </span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <span>
+                                                                        Confirmar telefone
+                                                                    </span>
+
+                                                                    <Icon icon="solar:check-outline" />
+                                                                </>
+                                                            )}
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            className="confirmation-change-phone"
+                                                            onClick={() => {
+
+                                                                setAuthStep("phone");
+                                                                setAuthCode("");
+                                                                setAuthError("");
+
+                                                            }}
+                                                        >
+                                                            <Icon icon="solar:pen-outline" />
+
+                                                            Alterar número
+                                                        </button>
+
+                                                    </motion.div>
+                                                )}
+
+                                                {/* =====================================================
+    TELEFONE VERIFICADO
+===================================================== */}
+
+                                                {phoneVerified && (
+                                                    <motion.div
+                                                        key="phone-verified"
+                                                        className="confirmation-auth-verified"
+                                                        initial={{
+                                                            opacity: 0,
+                                                            y: 8
+                                                        }}
+                                                        animate={{
+                                                            opacity: 1,
+                                                            y: 0
+                                                        }}
+                                                        transition={{
+                                                            duration: 0.3,
+                                                            ease: [0.22, 1, 0.36, 1]
+                                                        }}
+                                                    >
+
+                                                        <div className="confirmation-auth-verified-main">
+
+                                                            <div className="confirmation-auth-verified-icon">
+                                                                <Icon icon="solar:check-circle-bold" />
+                                                            </div>
+
+                                                            <div className="confirmation-auth-verified-info">
+
+                                                                <h3>
+                                                                    Telefone verificado
+                                                                </h3>
+
+                                                                <div className="confirmation-auth-verified-phone">
+
+                                                                    <span>
+                                                                        {authPhone}
+                                                                    </span>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        className="confirmation-auth-edit"
+                                                                        aria-label="Alterar número de telefone"
+                                                                        onClick={() => {
+                                                                            setPhoneVerified(false);
+                                                                            setAuthStep("phone");
+                                                                            setAuthError("");
+                                                                            setAuthCode("");
+                                                                            setAuthConfirmation(null);
+                                                                        }}
+                                                                    >
+                                                                        <Icon icon="solar:pen-2-outline" />
+                                                                    </button>
+
+                                                                </div>
+
+                                                            </div>
+
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            className="confirmation-modal-button confirmation-modal-button--primary confirmation-auth-button"
+                                                            onClick={async () => {
+                                                                await createMercadoPagoCheckout();
+                                                            }}
+                                                        >
+                                                            <span>
+                                                                Continuar para pagamento
+                                                            </span>
+
+                                                            <Icon icon="solar:arrow-right-outline" />
+                                                        </button>
+
+                                                    </motion.div>
+                                                )}
+
+                                            </motion.div>
+                                        )}
+
+                                    {/* =====================================================
+                    LOADING
+                ===================================================== */}
+
+                                    {isConfirmed === "loading" && (
+
+                                        <motion.div
+                                            key="loading"
+                                            className="confirmation-modal-state confirmation-modal-state--loading"
+                                            initial={{
+                                                opacity: 0,
+                                                scale: 0.96
+                                            }}
+                                            animate={{
+                                                opacity: 1,
+                                                scale: 1
+                                            }}
+                                            exit={{
+                                                opacity: 0,
+                                                scale: 0.96
+                                            }}
+                                        >
+
+                                            <div className="confirmation-loading-icon">
+
+                                                <Icon icon="svg-spinners:ring-resize" />
+
                                             </div>
-                                        </>
+
+                                            <span className="confirmation-state-eyebrow">
+                                                Só um momento
+                                            </span>
+
+                                            <h2>
+                                                Confirmando seu agendamento
+                                            </h2>
+
+                                            <p>
+                                                Estamos reservando seu horário.
+                                                Isso pode levar alguns segundos.
+                                            </p>
+
+                                            <div className="confirmation-loading-progress">
+                                                <span />
+                                            </div>
+
+                                        </motion.div>
+
                                     )}
 
-                                    {/* ======================= ETAPA 3: Loading ======================= */}
-                                    <AnimatePresence mode="wait">
-                                        {isConfirmed === "loading" && (
-                                            <motion.div
-                                                key="loading-screen"
-                                                className="loading-agendamento"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.5, ease: "easeOut" }}
-                                            >
-                                                <Icon icon="svg-spinners:clock" className="icon" />
-                                                <p>Realizando seu agendamento...</p>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+                                    {/* =====================================================
+                    SUCESSO
+                ===================================================== */}
 
+                                    {isConfirmed === "success" && (
 
-                                    {/* ======================= ETAPA 4: Sucesso ======================= */}
-                                    <AnimatePresence mode="wait">
-                                        {isConfirmed === "success" && (
-                                            <motion.div
-                                                key="success-screen"
-                                                className="agendamento-sucesso"
-                                                initial={{ opacity: 0, scale: 0.8 }}
-                                                animate={{ opacity: 1, scale: 1 }}
-                                                exit={{ opacity: 0, scale: 0.9 }}
-                                                transition={{
-                                                    delay: 0.4,
-                                                    duration: 0.6,
-                                                    ease: "easeOut",
-                                                }}
-                                            >
-                                                <Icon icon="mdi:check-circle" className="icon" />
-                                                <h2>Agendamento realizado com sucesso!</h2>
-                                                <p>
-                                                    Seu horário para <strong>{selectedDay.label}</strong> às{" "}
-                                                    <strong>{selectedSlot}</strong> foi confirmado.
-                                                </p>
+                                        <motion.div
+                                            key="success"
+                                            className="confirmation-modal-state confirmation-modal-state--success"
+                                            initial={{
+                                                opacity: 0,
+                                                scale: 0.94
+                                            }}
+                                            animate={{
+                                                opacity: 1,
+                                                scale: 1
+                                            }}
+                                            exit={{
+                                                opacity: 0,
+                                                scale: 0.94
+                                            }}
+                                            transition={{
+                                                duration: 0.35,
+                                                ease: [0.22, 1, 0.36, 1]
+                                            }}
+                                        >
 
-                                                <div className="confirmation-modal-actions">
-                                                    <button
-                                                        className="confirmation-btn cancel"
-                                                        onClick={() => {
-                                                            setShowConfirmationModal(false);
-                                                            setIsAskingPhone(false);
-                                                            setIsConfirmed(false);
-                                                            setUserName("");
-                                                            onClose?.();
-                                                        }}
-                                                    >
-                                                        Fechar
-                                                    </button>
+                                            <div className="confirmation-success-icon">
 
-                                                    <button
-                                                        className="confirmation-btn confirm"
-                                                        onClick={() => {
-                                                            setShowConfirmationModal(false);
-                                                            setShowOrderSummary(true);
-                                                        }}
-                                                    >
-                                                        Ver Agendamento
-                                                    </button>
+                                                <Icon icon="solar:check-circle-bold" />
+
+                                            </div>
+
+                                            <span className="confirmation-state-eyebrow">
+                                                Tudo certo!
+                                            </span>
+
+                                            <h2>
+                                                Agendamento confirmado
+                                            </h2>
+
+                                            <p>
+                                                Seu horário foi reservado com sucesso.
+                                                Esperamos você!
+                                            </p>
+
+                                            <div className="confirmation-success-card">
+
+                                                <div className="confirmation-success-service">
+
+                                                    <div className="confirmation-success-service-icon">
+                                                        <Icon icon="solar:scissors-outline" />
+                                                    </div>
+
+                                                    <div>
+
+                                                        <span>
+                                                            Serviço
+                                                        </span>
+
+                                                        <strong>
+                                                            {lastAgendamento?.productName ||
+                                                                product.name}
+                                                        </strong>
+
+                                                    </div>
+
                                                 </div>
-                                            </motion.div>
-                                        )}
-                                    </AnimatePresence>
+
+                                                <div className="confirmation-success-divider" />
+
+                                                <div className="confirmation-success-details">
+
+                                                    <div>
+
+                                                        <Icon icon="solar:calendar-outline" />
+
+                                                        <span>
+                                                            {lastAgendamento?.day ||
+                                                                selectedDay?.label}
+                                                        </span>
+
+                                                    </div>
+
+                                                    <div>
+
+                                                        <Icon icon="solar:clock-circle-outline" />
+
+                                                        <span>
+                                                            {lastAgendamento?.hour ||
+                                                                selectedSlot}
+                                                        </span>
+
+                                                    </div>
+
+                                                </div>
+
+                                            </div>
+
+                                            <div className="confirmation-modal-actions">
+
+                                                <button
+                                                    type="button"
+                                                    className="confirmation-modal-button confirmation-modal-button--secondary"
+                                                    onClick={() => {
+
+                                                        setShowConfirmationModal(false);
+                                                        setIsAskingPhone(false);
+                                                        setIsConfirmed(false);
+                                                        setShowPaymentAuth(false);
+                                                        setUserName("");
+
+                                                        setPhoneVerified(false);
+                                                        setAuthStep("phone");
+                                                        setAuthCode("");
+                                                        setAuthError("");
+
+                                                    }}
+                                                >
+                                                    Fechar
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    className="confirmation-modal-button confirmation-modal-button--primary"
+                                                    onClick={() => {
+
+                                                        setShowConfirmationModal(false);
+                                                        setShowOrderSummary(true);
+
+                                                    }}
+                                                >
+                                                    <span>
+                                                        Ver agendamento
+                                                    </span>
+
+                                                    <Icon icon="solar:arrow-right-outline" />
+                                                </button>
+
+                                            </div>
+
+                                        </motion.div>
+
+                                    )}
+
                                 </motion.div>
                             </motion.div>
-                        )
-                        }
-                    </AnimatePresence >
+                        )}
+                    </AnimatePresence>
 
                     <AnimatePresence>
                         {showOrderSummary && (

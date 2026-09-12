@@ -23,6 +23,11 @@ import { useEffect } from "react";
 import Dashboard from "./pages/adm/dashboardAdm/dashboard";
 import CentralAdm from "./pages/adm/centralAdm";
 import HomePage from "./pages/users/homepage";
+
+import Checkout from "./pages/users/checkout/Checkout";
+
+import PaymentResult from "./components/payment-result/PaymentResult";
+
 import CentralUser from "./pages/users/homepage/centralUser";
 import CompanyPage from "./pages/users/homepage/CompanyPage/CompanyPage";
 
@@ -56,6 +61,16 @@ function App() {
     {
       path: "/login",
       element: <Login />,
+    },
+
+    {
+      path: "/payment-result",
+      element: <PaymentResult />,
+    },
+
+    {
+      path: "/checkout",
+      element: <Checkout />,
     },
 
     /* =====================================================

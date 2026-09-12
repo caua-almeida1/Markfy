@@ -22,19 +22,17 @@ const MAX_INTERVALS = 3;
 
 const createInitialSchedule = () => {
 
-    const schedule = {};
+    const schedule = {
+        interval: 30
+    };
 
     DAYS.forEach((day) => {
 
         schedule[day.id] = {
             enabled: true,
-
             open: "08:00",
-
             close: "18:00",
-
             intervals: []
-
         };
 
     });
@@ -73,8 +71,10 @@ const BusinessHoursScreen = () => {
 
         if (!savedHours) return;
 
-        const data =
-            createInitialSchedule();
+        const data = createInitialSchedule();
+
+        data.interval =
+            savedHours.interval ?? 30;
 
         DAYS.forEach((day) => {
 
@@ -622,6 +622,49 @@ const BusinessHoursScreen = () => {
 
         <div className="company-screen business-hours-screen">
 
+
+            <div className="business-hours-settings">
+
+                <div className="business-hours-setting">
+
+                    <div className="business-hours-setting-info">
+
+                        <div className="business-hours-setting-icon">
+                            <Icon icon="solar:clock-circle-outline" />
+                        </div>
+
+                        <div className="business-hours-setting-text">
+
+                            <span>
+                                Intervalo entre horários
+                            </span>
+
+                            <small>
+                                Define de quanto em quanto tempo os horários serão disponibilizados.
+                            </small>
+
+                        </div>
+
+                    </div>
+
+                    <select
+                        value={schedule.interval}
+                        onChange={(e) =>
+                            setSchedule(prev => ({
+                                ...prev,
+                                interval: Number(e.target.value)
+                            }))
+                        }
+                    >
+                        <option value={10}>10 minutos</option>
+                        <option value={15}>15 minutos</option>
+                        <option value={30}>30 minutos</option>
+                        <option value={60}>60 minutos</option>
+                    </select>
+
+                </div>
+
+            </div>
             <div className="company-card business-hours-card">
 
                 {DAYS.map((day) => {

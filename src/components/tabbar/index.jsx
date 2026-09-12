@@ -1,17 +1,42 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 
-const TabBar = ({ activeTab, setActiveTab }) => {
+const TabBar = ({
+  activeTab,
+  setActiveTab
+}) => {
 
   const tabs = [
-    { id: "home", label: "Início", icon: "ri:home-line" },
-    { id: "reservas", label: "Reservas", icon: "mingcute:calendar-line" },
-    { id: "catalog", label: "Catálogo", icon: "gg:shopping-bag" },
-    { id: "carrinho", label: "Carrinho", icon: "humbleicons:cart" },
-    { id: "perfil", label: "Perfil", icon: "tabler:user" },
+    {
+      id: "home",
+      label: "Início",
+      icon: "ri:home-line"
+    },
+    {
+      id: "reservas",
+      label: "Reservas",
+      icon: "mingcute:calendar-line"
+    },
+    {
+      id: "catalog",
+      label: "Catálogo",
+      icon: "gg:shopping-bag"
+    },
+    {
+      id: "explorar",
+      label: "Explorar",
+      icon: "ic:outline-explore"
+    },
+    {
+      id: "perfil",
+      label: "Perfil",
+      icon: "tabler:user"
+    }
   ];
 
+
   return (
+
     <div
       id="tabbar"
       className="site"
@@ -20,41 +45,68 @@ const TabBar = ({ activeTab, setActiveTab }) => {
         bottom: 0,
         left: 0,
         right: 0,
-        zIndex: 99999,
+        zIndex: 100,
         display: "block"
       }}
     >
+
       <div className="container">
+
         <nav>
+
           <ul>
 
-            {tabs.map((tab) => (
-              <li
-                key={tab.id}
-                className={activeTab === tab.id ? "active" : ""}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <button
-                  type="button"
-                  className="nav-button"
-                  onClick={() => setActiveTab(tab.id)}
+            {tabs.map(
+              (tab) => (
+
+                <li
+                  key={tab.id}
+                  className={
+                    activeTab === tab.id
+                      ? "active"
+                      : ""
+                  }
                 >
-                  <span>{tab.label}</span>
 
-                  <Icon
-                    icon={tab.icon}
-                    className="icon"
-                  />
-                </button>
+                  <button
+                    type="button"
+                    className="nav-button"
+                    onClick={() =>
+                      setActiveTab(
+                        tab.id
+                      )
+                    }
+                  >
 
-              </li>
-            ))}
+                    <span>
+                      {tab.label}
+                    </span>
+
+
+                    <Icon
+                      icon={
+                        tab.icon
+                      }
+                      className="icon"
+                    />
+
+                  </button>
+
+                </li>
+
+              )
+            )}
 
           </ul>
+
         </nav>
+
       </div>
+
     </div>
+
   );
+
 };
 
 export default TabBar;

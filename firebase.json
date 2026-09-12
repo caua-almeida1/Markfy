@@ -15,7 +15,8 @@
   },
   "functions": [
     {
-      "codebase": "default",
+      "source": "functions-backend",
+      "codebase": "backend",
       "disallowLegacyRuntimeConfig": true,
       "ignore": [
         "node_modules",
@@ -23,25 +24,6 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint"
-      ],
-      "source": "functions"
-    },
-    {
-      "source": "firebase-functions",
-      "codebase": "functions",
-      "disallowLegacyRuntimeConfig": true,
-      "ignore": [
-        "node_modules",
-        ".git",
-        "firebase-debug.log",
-        "firebase-debug.*.log",
-        "*.local"
-      ],
-      "predeploy": [
-        "npm --prefix \"$RESOURCE_DIR\" run lint"
       ]
     }
   ]

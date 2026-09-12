@@ -1,970 +1,1015 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { get, ref, getDatabase, onValue, update } from "firebase/database";
+import { getDatabase, onValue, ref } from "firebase/database";
 
-import { Icon } from '@iconify/react';
-
-import { Navigate, Link } from 'react-router-dom';
-import { doSignInWithEmailAndPassword, doSignInWithGoogle } from '../../../firebase/auth';
-import { useAuth } from '../../../contexts/authContext';
+import { Icon } from "@iconify/react";
 
 import "../homepage/home.css";
-import TabBar from '../../../components/tabbar';
 import ProductDetails from "./ProductDetails/ProductDetails";
+
+import CompanyInfoModal
+    from "../../users/CompanyInfoModal/CompanyInfoModal";
 
 import Thumb1 from "../../../img/1.jpg";
 
 const HomePage = () => {
+
     const { handle } = useParams();
-    const [products, setProducts] = useState([]);
+
+    /* =========================================================
+       EMPRESA
+    ========================================================= */
+
     const [companyName, setCompanyName] = useState("");
     const [companyHandle, setCompanyHandle] = useState("");
     const [companyLogo, setCompanyLogo] = useState("");
 
-    const [showAllProducts, setShowAllProducts] = useState(false);
+
+    /* =========================================================
+       PRODUTOS
+    ========================================================= */
+
+    const [products, setProducts] = useState([]);
+
+    /* =========================================================
+       UI
+    ========================================================= */
+
+    const [selectedCategory, setSelectedCategory] = useState("Todos");
+    const [selectedProduct, setSelectedProduct] = useState(null);
+
+    const [showCompanyInfo, setShowCompanyInfo] =
+        useState(false);
 
     const [searchModal, setSearchModal] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
 
-    const [categories, setCategories] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [categoryKey, setCategoryKey] = useState(0);
+    const [showAllProducts, setShowAllProducts] = useState(false);
 
-    const orderedCategories = selectedCategory
-        ? [
-            ...categories.filter(cat => cat.label === selectedCategory),
-            ...categories.filter(cat => cat.label !== selectedCategory)
-        ]
-        : categories;
-
-    const [selectedProduct, setSelectedProduct] = useState(null);
     const [loadedImages, setLoadedImages] = useState({});
 
+    /* =========================================================
+       IMAGENS
+    ========================================================= */
+
     const handleImageLoad = (id) => {
-        setLoadedImages(prev => ({ ...prev, [id]: true }));
+        setLoadedImages((prev) => ({
+            ...prev,
+            [id]: true
+        }));
     };
 
-    useEffect(() => {
-        if (!handle) return;
-
-        const db = getDatabase();
-        const companyRef = ref(db, `companys/${handle}`);
-
-        const unsubscribe = onValue(companyRef, async (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
-
-            setCompanyName(data.name || "");
-            setCompanyLogo(data.logoPreview || "");
-            setCompanyHandle(data.handle || "");
-            const prodsArray = data.products
-                ? Object.entries(data.products)
-                    .filter(([id, prod]) =>
-                        prod?.status !== "arquivados"
-                    )
-                    .map(([id, prod]) => ({
-                        id,
-                        ...prod,
-                        orders: Number(prod.orders) || 0
-                    }))
-                    .sort((a, b) => b.orders - a.orders)
-                : [];
-            setProducts(prodsArray);
-        });
-
-        return () => unsubscribe();
-    }, [handle]);
-
-
-
-    useEffect(() => {
-        if (products.length > 0) {
-            const sorted = [...products].sort((a, b) => (b.orders || 0) - (a.orders || 0));
-            setProducts(sorted);
-        }
-    }, [products]);
-
-    useEffect(() => {
-        if (!handle) return;
-
-        const db = getDatabase();
-        const productsRef = ref(db, `companys/${handle}/products`);
-        const unsubscribe = onValue(productsRef, (snapshot) => {
-            const data = snapshot.val() || {};
-
-
-            const prods = Object.entries(data)
-                .filter(([id, prod]) =>
-                    prod?.status !== "arquivados"
-                )
-                .map(([id, prod]) => ({
-                    id,
-                    name: prod?.name || "(sem nome)",
-                    orders: Number(prod?.orders) || 0,
-                }));
-
-            prods.sort((a, b) => b.orders - a.orders);
-
-            // Log principal 
-            console.log("Produtos ordenados por orders (maior -> menor):");
-            prods.forEach((p, idx) => {
-                console.log(`${idx + 1}. ${p.name} — orders: ${p.orders}`);
-            });
-
-            if (prods.length === 0) {
-                console.log("Nenhum produto encontrado em companys/" + handle + "/products");
-            }
-        }, (err) => {
-            console.error("Erro ao ler products do Firebase:", err);
-        });
-
-        return () => unsubscribe();
-    }, [handle]);
-
+    /* =========================================================
+       DURAÇÃO
+    ========================================================= */
 
     const formatDuration = (minutes) => {
-        if (!minutes || isNaN(minutes)) return "";
-        const h = Math.floor(minutes / 60);
-        const m = minutes % 60;
 
-        if (h > 0 && m > 0) return `${h}h ${m}min`;
-        if (h > 0) return `${h}h`;
-        return `${m}min`;
-    };
-
-    const translateCategory = async (category) => {
-        try {
-            const res = await fetch("https://libretranslate.de/translate", {
-                method: "POST",
-                body: JSON.stringify({
-                    q: category,
-                    source: "pt",
-                    target: "en",
-                    format: "text"
-                }),
-                headers: { "Content-Type": "application/json" }
-            });
-
-            const data = await res.json();
-            return data.translatedText || category;
-        } catch (err) {
-            console.error("Erro na tradução:", err);
-            return category;
+        if (!minutes || Number.isNaN(Number(minutes))) {
+            return "";
         }
-    };
 
-    const fetchIconForCategory = async (category) => {
-        try {
-            const translated = await translateCategory(category);
+        const value = Number(minutes);
 
-            const response = await fetch(
-                `https://api.iconify.design/search?query=${encodeURIComponent(translated)}`
-            );
-            const data = await response.json();
+        const hours = Math.floor(value / 60);
+        const mins = value % 60;
 
-            if (data?.icons?.length > 0) {
-                return data.icons[0];
-            } else {
-                return "basil:other-1-outline";
-            }
-        } catch (err) {
-            console.error("Erro ao buscar ícone:", err);
-            return "basil:other-1-outline";
+        if (hours > 0 && mins > 0) {
+            return `${hours}h ${mins}min`;
         }
+
+        if (hours > 0) {
+            return `${hours}h`;
+        }
+
+        return `${mins}min`;
     };
+
+    /* =========================================================
+       FIREBASE
+    ========================================================= */
 
     useEffect(() => {
+
         if (!handle) return;
 
         const db = getDatabase();
-        const companyRef = ref(db, `companys/${handle}`);
 
-        const unsubscribe = onValue(companyRef, async (snapshot) => {
-            const data = snapshot.val();
-            if (!data) return;
+        const companyRef = ref(
+            db,
+            `companys/${handle}`
+        );
 
-            setCompanyName(data.name || "");
-            setCompanyLogo(data.logoPreview || "");
-            setCompanyHandle(data.handle || "");
+        const unsubscribe = onValue(
+            companyRef,
+            (snapshot) => {
 
-            // Monta e ordena produtos
-            const prodsArray = data.products
-                ? Object.entries(data.products)
-                    .filter(([id, prod]) =>
-                        prod?.status !== "arquivados"
+                const data = snapshot.val();
+
+                if (!data) {
+                    return;
+                }
+
+                setCompanyName(
+                    data.name || ""
+                );
+
+                setCompanyLogo(
+                    data.logoPreview || ""
+                );
+
+                setCompanyHandle(
+                    data.handle || handle
+                );
+
+                const productsData = data.products || {};
+
+                const productsArray = Object.entries(
+                    productsData
+                )
+                    .filter(
+                        ([, product]) =>
+                            product?.status !== "arquivados"
                     )
-                    .map(([id, prod]) => ({
-                        id,
-                        ...prod,
-                        orders: Number(prod.orders) || 0
-                    }))
-                    .sort((a, b) => b.orders - a.orders)
-                : [];
+                    .map(
+                        ([id, product]) => ({
+                            id,
+                            ...product,
+                            orders:
+                                Number(product?.orders) || 0
+                        })
+                    )
+                    .sort(
+                        (a, b) =>
+                            b.orders - a.orders
+                    );
 
-            setProducts(prodsArray);
-
-            const allCategories = prodsArray.flatMap(p => p.categories || []);
-            const uniqueCats = [...new Set(allCategories)];
-
-            const categoriesWithIcons = await Promise.all(
-                uniqueCats.map(async (cat) => ({
-                    label: cat,
-                    icon: await fetchIconForCategory(cat),
-                }))
-            );
-
-            setCategories(categoriesWithIcons);
-        });
+                setProducts(productsArray);
+            }
+        );
 
         return () => unsubscribe();
+
     }, [handle]);
 
-    const filteredProducts = products.filter(product =>
-        product.name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    /* =========================================================
+       CATEGORIAS
+    ========================================================= */
 
-    const categoryProducts = selectedCategory
-        ? products.filter(p =>
-            p.categories?.includes(selectedCategory)
-        )
-        : products;
+    const categories = useMemo(() => {
 
-    const [searchClosing, setSearchClosing] = useState(false);
+        const categorySet = new Set();
 
-    const closeSearch = () => {
-        setSearchClosing(true);
+        products.forEach((product) => {
 
-        setTimeout(() => {
-            setSearchModal(false);
-            setSearchClosing(false);
-        }, 200);
+            if (!Array.isArray(product.categories)) {
+                return;
+            }
+
+            product.categories.forEach((category) => {
+
+                if (
+                    category &&
+                    typeof category === "string"
+                ) {
+                    categorySet.add(category);
+                }
+
+            });
+
+        });
+
+        return [
+            "Todos",
+            ...Array.from(categorySet)
+        ];
+
+    }, [products]);
+
+    /* =========================================================
+       PRODUTOS FILTRADOS
+    ========================================================= */
+
+    const visibleProducts = useMemo(() => {
+
+        let result = [...products];
+
+        if (selectedCategory !== "Todos") {
+
+            result = result.filter(
+                (product) =>
+                    product.categories?.includes(
+                        selectedCategory
+                    )
+            );
+
+        }
+
+        return result;
+
+    }, [
+        products,
+        selectedCategory
+    ]);
+
+    /* =========================================================
+       PESQUISA
+    ========================================================= */
+
+    const searchResults = useMemo(() => {
+
+        const term =
+            searchTerm
+                .trim()
+                .toLowerCase();
+
+        if (!term) {
+            return products;
+        }
+
+        return products.filter(
+            (product) => {
+
+                const name =
+                    product.name
+                        ?.toLowerCase() || "";
+
+                const description =
+                    product.description
+                        ?.toLowerCase() || "";
+
+                const categories =
+                    product.categories
+                        ?.join(" ")
+                        ?.toLowerCase() || "";
+
+                return (
+                    name.includes(term) ||
+                    description.includes(term) ||
+                    categories.includes(term)
+                );
+
+            }
+        );
+
+    }, [
+        products,
+        searchTerm
+    ]);
+
+    /* =========================================================
+       PRODUTOS EM DESTAQUE
+    ========================================================= */
+
+    /* =========================================================
+       MAIS PROCURADOS
+    ========================================================= */
+
+    const featuredProducts = useMemo(() => {
+
+        return products
+            .filter((product) => Number(product.orders) > 0)
+            .sort(
+                (a, b) =>
+                    Number(b.orders || 0) -
+                    Number(a.orders || 0)
+            )
+            .slice(0, 3);
+
+    }, [products]);
+
+    /* =========================================================
+       PRODUTO CARD
+    ========================================================= */
+
+    const renderProductCard = (
+        product,
+        index
+    ) => {
+
+        const image =
+            product.images?.[0] ||
+            Thumb1;
+
+        const category =
+            product.categories?.[0] ||
+            "Serviço";
+
+        return (
+
+            <article
+                key={product.id}
+                className="home-product-card"
+                style={{
+                    "--product-index": index
+                }}
+                onClick={() =>
+                    setSelectedProduct(product)
+                }
+            >
+
+                {/* IMAGEM */}
+
+                <div className="home-product-card-image">
+
+                    {!loadedImages[product.id] && (
+                        <div className="home-product-skeleton" />
+                    )}
+
+                    <img
+                        src={image}
+                        alt={product.name}
+                        loading="lazy"
+                        onLoad={() =>
+                            handleImageLoad(
+                                product.id
+                            )
+                        }
+                        onError={(event) => {
+
+                            event.currentTarget.src =
+                                Thumb1;
+
+                            handleImageLoad(
+                                product.id
+                            );
+
+                        }}
+                        style={{
+                            opacity:
+                                loadedImages[
+                                    product.id
+                                ]
+                                    ? 1
+                                    : 0
+                        }}
+                    />
+
+                    <span className="home-product-category">
+                        {category}
+                    </span>
+
+                </div>
+
+                {/* CONTEÚDO */}
+
+                <div className="home-product-card-content">
+
+                    <div className="home-product-card-top">
+
+                        <h3>
+                            {product.name}
+                        </h3>
+
+                        {product.description && (
+                            <div
+                                className="product-description-content"
+                                dangerouslySetInnerHTML={{
+                                    __html: product.description
+                                }}
+                            />
+                        )}
+
+                    </div>
+
+                    <div className="home-product-card-bottom">
+
+                        <div className="home-product-meta">
+
+                            <strong>
+                                {product.value}
+                            </strong>
+
+                            {product.duration && (
+
+                                <span>
+                                    <Icon icon="solar:clock-circle-outline" />
+
+                                    {formatDuration(
+                                        product.duration
+                                    )}
+                                </span>
+
+                            )}
+
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={(event) => {
+
+                                event.stopPropagation();
+
+                                setSelectedProduct(
+                                    product
+                                );
+
+                            }}
+                        >
+                            Agendar
+
+                            <Icon icon="humbleicons:arrow-right" />
+
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </article>
+
+        );
+
     };
 
+    /* =========================================================
+       EMPRESA
+    ========================================================= */
+
+    const openCompanyInfo = () => {
+
+        setShowCompanyInfo(true);
+
+    };
+
+    const closeCompanyInfo = () => {
+
+        setShowCompanyInfo(false);
+
+    };
+    /* =========================================================
+       CATÁLOGO
+    ========================================================= */
+
+    const openCatalog = () => {
+
+        setShowAllProducts(true);
+
+        setSelectedCategory("Todos");
+
+    };
+
+    /* =========================================================
+       RENDER
+    ========================================================= */
+
     return (
+
         <div className="home-page">
+
+            {/* =================================================
+                HEADER
+            ================================================= */}
+
             <header className="home-header">
 
-                <div className="home-company-info">
-                    {companyLogo && (
+                <div className="home-company">
+
+                    {companyLogo ? (
+
                         <img
                             src={companyLogo}
                             alt={companyName}
                             className="home-company-logo"
                         />
+
+                    ) : (
+
+                        <div className="home-company-logo-fallback">
+
+                            <Icon icon="solar:shop-2-outline" />
+
+                        </div>
+
                     )}
 
-                    <h1 className="home-company-name">
-                        {companyName}
-                    </h1>
+                    <div>
+
+                        <span>
+                            Você está em
+                        </span>
+
+                        <strong>
+                            {companyName}
+                        </strong>
+
+                    </div>
+
                 </div>
 
                 <button
-                    className="home-search-button"
-                    onClick={() => setSearchModal(true)}
+                    type="button"
+                    className="home-header-search"
+                    onClick={() =>
+                        setSearchModal(true)
+                    }
+                    aria-label="Pesquisar produtos"
                 >
                     <Icon icon="mdi:magnify" />
                 </button>
 
             </header>
 
-            <div className="content-home-page">
 
-                {!showAllProducts ? (
+            {/* =================================================
+                CONTEÚDO
+            ================================================= */}
 
-                    <>
-                        {/* =========================
-                CATEGORIAS
-            ========================= */}
+            <main className="home-content">
 
-                        <div className="content-home-page-header home-category-content">
 
-                            <div className="content-home-page-category">
+                {/* =================================================
+                    HERO
+                ================================================= */}
 
-                                {orderedCategories.map((cat, index) => (
+                {!showAllProducts && (
 
-                                    <div
-                                        key={index}
-                                        className={`home-page-category-item ${selectedCategory === cat.label
-                                            ? "active"
-                                            : ""
-                                            }`}
+                    <section className="home-intro">
+
+                        <span className="home-intro-eyebrow">
+                            Serviços disponíveis
+                        </span>
+
+                        <h1>
+                            O que você precisa
+                            <br />
+                            <strong>agendar hoje?</strong>
+                        </h1>
+
+                        <p>
+                            Escolha um serviço, veja os
+                            detalhes e agende seu horário.
+                        </p>
+
+                    </section>
+
+                )}
+
+
+                {/* =================================================
+                    CATEGORIAS
+                ================================================= */}
+
+                {categories.length > 1 && (
+
+                    <section className="home-categories">
+
+                        <div className="home-section-heading">
+
+                            <div>
+                                <span>
+                                    Explore
+                                </span>
+
+                                <h2>
+                                    Categorias
+                                </h2>
+                            </div>
+
+                        </div>
+
+                        <div className="home-category-list">
+
+                            {categories.map(
+                                (category) => (
+
+                                    <button
+                                        type="button"
+                                        key={category}
+                                        className={
+                                            selectedCategory ===
+                                                category
+                                                ? "active"
+                                                : ""
+                                        }
                                         onClick={() => {
 
-                                            setSelectedCategory(prev =>
-                                                prev === cat.label
-                                                    ? null
-                                                    : cat.label
+                                            setSelectedCategory(
+                                                category
                                             );
 
-                                            setLoadedImages({});
-                                            setCategoryKey(prev => prev + 1);
+                                            setShowAllProducts(
+                                                false
+                                            );
 
                                         }}
                                     >
 
-                                        <p>
-                                            {cat.label}
-                                        </p>
+                                        {category}
 
-                                    </div>
+                                    </button>
 
-                                ))}
-
-                            </div>
-
-                        </div>
-
-
-                        {/* =========================
-                MAIS RELEVANTES
-            ========================= */}
-
-                        {/* =========================
-    PRODUTOS DA HOME
-========================= */}
-
-                        <div className="home-products-sections">
-
-                            {/* =====================================================
-        CATEGORIA / TODOS OS PRODUTOS
-    ====================================================== */}
-
-                            {selectedCategory && (
-
-                                <div className="content-home-page-header">
-
-                                    <div className="content-home-page-header-action all-products-section">
-
-                                        <h2>
-                                            {selectedCategory}
-                                        </h2>
-
-                                        <span
-                                            onClick={() => {
-                                                setShowAllProducts(true);
-                                                setSelectedCategory(null);
-                                            }}
-                                        >
-                                            Ver Tudo
-                                        </span>
-
-                                    </div>
-
-
-                                    <div className="content-home-page-all-products">
-
-                                        {categoryProducts.length > 0 ? (
-
-                                            categoryProducts.map((product) => (
-
-                                                <div
-                                                    key={`${product.id}-${categoryKey}`}
-                                                    className="home-page-product-item product-reveal-onload"
-                                                    onClick={() =>
-                                                        setSelectedProduct(product)
-                                                    }
-                                                >
-
-                                                    {/* IMAGEM */}
-
-                                                    <div className="product-image-container">
-
-                                                        <div className="image-wrapper">
-
-                                                            {!loadedImages[product.id] && (
-                                                                <div className="image-skeleton" />
-                                                            )}
-
-                                                            <img
-                                                                src={
-                                                                    product.images?.[0]
-                                                                        ? product.images[0]
-                                                                        : Thumb1
-                                                                }
-                                                                alt={product.name}
-                                                                className="product-image"
-                                                                onLoad={() =>
-                                                                    handleImageLoad(product.id)
-                                                                }
-                                                                onError={(e) => {
-
-                                                                    e.target.src = Thumb1;
-
-                                                                    handleImageLoad(product.id);
-
-                                                                }}
-                                                                style={{
-                                                                    opacity:
-                                                                        loadedImages[product.id]
-                                                                            ? 1
-                                                                            : 0
-                                                                }}
-                                                            />
-
-                                                        </div>
-
-                                                    </div>
-
-
-                                                    {/* INFORMAÇÕES */}
-
-                                                    <div className="product-details">
-
-                                                        <h3 className="product-name">
-                                                            {product.name}
-                                                        </h3>
-
-                                                        <h1 className="product-price">
-
-                                                            {product.value}
-
-                                                            <p>
-                                                                /
-                                                                {formatDuration(
-                                                                    product.duration
-                                                                )}
-                                                            </p>
-
-                                                        </h1>
-
-                                                        <button
-                                                            className="product-button"
-                                                        >
-                                                            Agendar
-                                                        </button>
-
-                                                    </div>
-
-                                                </div>
-
-                                            ))
-
-                                        ) : (
-
-                                            <p className="no-results">
-                                                Nenhum produto nesta categoria
-                                            </p>
-
-                                        )}
-
-                                    </div>
-
-                                </div>
-
-                            )}
-
-
-                            {/* =====================================================
-        MAIS RELEVANTES
-    ====================================================== */}
-
-                            <div className="content-home-page-header">
-
-                                <div className="content-home-page-header-action">
-
-                                    <h2>
-                                        Mais Relevantes
-                                    </h2>
-
-                                    <span
-                                        onClick={() => {
-                                            setShowAllProducts(true);
-                                            setSelectedCategory(null);
-                                        }}
-                                    >
-                                        Ver Mais
-                                    </span>
-
-                                </div>
-
-
-                                <div className="content-home-page-offers">
-
-                                    {products.length > 0 ? (
-
-                                        products
-                                            .slice(0, 3)
-                                            .map((product) => (
-
-                                                <div
-                                                    key={`${product.id}-${categoryKey}`}
-                                                    className="home-page-offer-item product-reveal-onload"
-                                                    onClick={() =>
-                                                        setSelectedProduct(product)
-                                                    }
-                                                >
-
-                                                    <div className="image-wrapper">
-
-                                                        {!loadedImages[product.id] && (
-                                                            <div className="image-skeleton" />
-                                                        )}
-
-                                                        <img
-                                                            src={
-                                                                product.images?.[0]
-                                                                    ? product.images[0]
-                                                                    : Thumb1
-                                                            }
-                                                            alt={product.name}
-                                                            onLoad={() =>
-                                                                handleImageLoad(product.id)
-                                                            }
-                                                            onError={(e) => {
-
-                                                                e.target.src = Thumb1;
-
-                                                                handleImageLoad(product.id);
-
-                                                            }}
-                                                            style={{
-                                                                opacity:
-                                                                    loadedImages[product.id]
-                                                                        ? 1
-                                                                        : 0
-                                                            }}
-                                                        />
-
-                                                    </div>
-
-
-                                                    <div className="home-page-offer-item-content">
-
-                                                        <button>
-                                                            {product.categories?.length > 0
-                                                                ? product.categories[0]
-                                                                : "Serviço"}
-                                                        </button>
-
-                                                        <p>
-                                                            {product.name}
-                                                        </p>
-
-                                                        <h1>
-                                                            {product.value}
-                                                        </h1>
-
-                                                    </div>
-
-                                                </div>
-
-                                            ))
-
-                                    ) : (
-
-                                        <p>
-                                            Nenhuma oferta disponível.
-                                        </p>
-
-                                    )}
-
-                                </div>
-
-                            </div>
-
-
-                            {/* =====================================================
-        TODOS OS PRODUTOS
-    ====================================================== */}
-
-                            {!selectedCategory && (
-
-                                <div className="content-home-page-header">
-
-                                    <div className="content-home-page-header-action all-products-section">
-
-                                        <h2>
-                                            Todos os Produtos
-                                        </h2>
-
-                                        <span
-                                            onClick={() => {
-                                                window.dispatchEvent(
-                                                    new CustomEvent("markfy:go-to-catalog")
-                                                );
-                                            }}
-                                        >
-                                            Ver Tudo
-                                        </span>
-
-                                    </div>
-
-
-                                    <div className="content-home-page-all-products">
-
-                                        {products.length > 0 ? (
-
-                                            products.map((product) => (
-
-                                                <div
-                                                    key={product.id}
-                                                    className="home-page-product-item product-reveal-onload"
-                                                    onClick={() =>
-                                                        setSelectedProduct(product)
-                                                    }
-                                                >
-
-                                                    {/* IMAGEM */}
-
-                                                    <div className="product-image-container">
-
-                                                        <div className="image-wrapper">
-
-                                                            {!loadedImages[product.id] && (
-                                                                <div className="image-skeleton" />
-                                                            )}
-
-                                                            <img
-                                                                src={
-                                                                    product.images?.[0]
-                                                                        ? product.images[0]
-                                                                        : Thumb1
-                                                                }
-                                                                alt={product.name}
-                                                                className="product-image"
-                                                                onLoad={() =>
-                                                                    handleImageLoad(product.id)
-                                                                }
-                                                                onError={(e) => {
-
-                                                                    e.target.src = Thumb1;
-
-                                                                    handleImageLoad(product.id);
-
-                                                                }}
-                                                                style={{
-                                                                    opacity:
-                                                                        loadedImages[product.id]
-                                                                            ? 1
-                                                                            : 0
-                                                                }}
-                                                            />
-
-                                                        </div>
-
-                                                    </div>
-
-
-                                                    {/* INFORMAÇÕES */}
-
-                                                    <div className="product-details">
-
-                                                        <h3 className="product-name">
-                                                            {product.name}
-                                                        </h3>
-
-                                                        <h1 className="product-price">
-
-                                                            {product.value}
-
-                                                            <p>
-                                                                /
-                                                                {formatDuration(
-                                                                    product.duration
-                                                                )}
-                                                            </p>
-
-                                                        </h1>
-
-                                                        <button
-                                                            className="product-button"
-                                                        >
-                                                            Agendar
-                                                        </button>
-
-                                                    </div>
-
-                                                </div>
-
-                                            ))
-
-                                        ) : (
-
-                                            <p className="no-results">
-                                                Nenhum produto encontrado.
-                                            </p>
-
-                                        )}
-
-                                    </div>
-
-                                </div>
-
+                                )
                             )}
 
                         </div>
 
-                    </>
+                    </section>
 
-                ) : (
+                )}
 
-                    /* ========================================
-                       TELA DE TODOS OS PRODUTOS
-                    ======================================== */
 
-                    <div className="all-products-view">
+                {/* =================================================
+                    CATÁLOGO
+                ================================================= */}
 
-                        <div className="all-products-view-header">
+                <section className="home-catalog">
 
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowAllProducts(false);
-                                    setSelectedCategory(null);
-                                }}
-                                className="all-products-back"
-                            >
-                                <Icon icon="humbleicons:arrow-left" />
+                    <div className="home-section-heading">
 
-                                <span>
-                                    Voltar
-                                </span>
-                            </button>
+                        <div>
 
-                            <div className="all-products-title-area">
+                            <span>
+                                {selectedCategory === "Todos"
+                                    ? "Catálogo"
+                                    : "Categoria"}
+                            </span>
 
-                                <div>
-                                    <h2>
-                                        Todos os Produtos
-                                    </h2>
-
-                                    <p>
-                                        {products.length}{" "}
-                                        {products.length === 1
-                                            ? "produto disponível"
-                                            : "produtos disponíveis"}
-                                    </p>
-                                </div>
-
-                            </div>
+                            <h2>
+                                {selectedCategory === "Todos"
+                                    ? "Nossos produtos"
+                                    : selectedCategory}
+                            </h2>
 
                         </div>
 
+                        {!showAllProducts &&
+                            products.length > 4 && (
 
-                        <div className="all-products-list">
+                                <button
+                                    type="button"
+                                    className="home-see-all"
+                                    onClick={
+                                        openCatalog
+                                    }
+                                >
+                                    Ver todos
 
-                            {products.length > 0 ? (
+                                    <Icon icon="humbleicons:arrow-right" />
 
-                                products.map((product) => (
-
-                                    <div
-                                        key={product.id}
-                                        className="all-product-card"
-                                        onClick={() =>
-                                            setSelectedProduct(product)
-                                        }
-                                    >
-
-                                        {/* IMAGEM */}
-
-                                        <div className="all-product-image-wrapper">
-
-                                            {!loadedImages[product.id] && (
-                                                <div className="all-product-image-skeleton" />
-                                            )}
-
-                                            <img
-                                                src={
-                                                    product.images?.[0]
-                                                        ? product.images[0]
-                                                        : Thumb1
-                                                }
-                                                alt={product.name}
-                                                className="all-product-image"
-                                                onLoad={() =>
-                                                    handleImageLoad(product.id)
-                                                }
-                                                onError={(e) => {
-
-                                                    e.target.src = Thumb1;
-
-                                                    handleImageLoad(product.id);
-
-                                                }}
-                                                style={{
-                                                    opacity:
-                                                        loadedImages[product.id]
-                                                            ? 1
-                                                            : 0
-                                                }}
-                                            />
-
-                                        </div>
-
-
-                                        {/* INFORMAÇÕES */}
-
-                                        <div className="all-product-info">
-
-                                            <div className="all-product-main-info">
-
-                                                <span className="all-product-category">
-
-                                                    {product.categories?.length > 0
-                                                        ? product.categories[0]
-                                                        : "Serviço"}
-
-                                                </span>
-
-                                                <h3>
-                                                    {product.name}
-                                                </h3>
-
-                                                <div className="all-product-meta">
-
-                                                    <span>
-                                                        <Icon icon="solar:clock-circle-outline" />
-
-                                                        {formatDuration(
-                                                            product.duration
-                                                        )}
-                                                    </span>
-
-                                                    {product.description && (
-
-                                                        <span className="all-product-description">
-                                                            {product.description}
-                                                        </span>
-
-                                                    )}
-
-                                                </div>
-
-                                            </div>
-
-
-                                            {/* PREÇO */}
-
-                                            <div className="all-product-action">
-
-                                                <div className="all-product-price">
-
-                                                    <strong>
-                                                        {product.value}
-                                                    </strong>
-
-                                                </div>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={(e) => {
-
-                                                        e.stopPropagation();
-
-                                                        setSelectedProduct(product);
-
-                                                    }}
-                                                    className="all-product-schedule"
-                                                >
-                                                    Agendar
-
-                                                    <Icon icon="humbleicons:arrow-right" />
-
-                                                </button>
-
-                                            </div>
-
-                                        </div>
-
-                                    </div>
-
-                                ))
-
-                            ) : (
-
-                                <div className="all-products-empty">
-
-                                    <Icon icon="solar:box-outline" />
-
-                                    <h3>
-                                        Nenhum produto encontrado
-                                    </h3>
-
-                                    <p>
-                                        Esta empresa ainda não possui produtos disponíveis.
-                                    </p>
-
-                                </div>
+                                </button>
 
                             )}
-
-                        </div>
 
                     </div>
 
-                )}
 
+                    {/* PRODUTOS */}
 
-                {/* =========================
-        PRODUCT DETAILS
-    ========================= */}
-
-                {selectedProduct && (
-
-                    <ProductDetails
-                        product={selectedProduct}
-                        companyLogo={companyLogo}
-                        companyName={companyName}
-                        companyHandle={companyHandle}
-                        onClose={() =>
-                            setSelectedProduct(null)
+                    <div
+                        className={
+                            showAllProducts
+                                ? "home-products-grid home-products-grid--all"
+                                : "home-products-grid"
                         }
-                        formatDuration={formatDuration}
-                    />
+                    >
+
+                        {(showAllProducts
+                            ? visibleProducts
+                            : visibleProducts.slice(0, 4)
+                        ).map(
+                            renderProductCard
+                        )}
+
+                    </div>
+
+
+                    {/* VAZIO */}
+
+                    {visibleProducts.length === 0 && (
+
+                        <div className="home-empty">
+
+                            <div>
+                                <Icon icon="solar:box-outline" />
+                            </div>
+
+                            <h3>
+                                Nenhum produto encontrado
+                            </h3>
+
+                            <p>
+                                Não existem produtos
+                                disponíveis nesta categoria.
+                            </p>
+
+                        </div>
+
+                    )}
+
+                </section>
+
+
+                {/* =================================================
+                    MAIS POPULARES
+                ================================================= */}
+
+                {!showAllProducts &&
+                    selectedCategory === "Todos" &&
+                    featuredProducts.length > 0 && (
+
+                        <section className="home-featured">
+
+                            <div className="home-section-heading">
+
+                                <div>
+
+                                    <span>
+                                        Destaques
+                                    </span>
+
+                                    <h2>
+                                        Mais procurados
+                                    </h2>
+
+                                </div>
+
+                            </div>
+
+                            <div className="home-featured-list">
+
+                                {featuredProducts
+                                    .slice(0, 3)
+                                    .map(
+                                        (product) => (
+
+                                            <button
+                                                type="button"
+                                                key={product.id}
+                                                className="home-featured-item"
+                                                onClick={() =>
+                                                    setSelectedProduct(
+                                                        product
+                                                    )
+                                                }
+                                            >
+
+                                                <div className="home-featured-image">
+
+                                                    <img
+                                                        src={
+                                                            product.images?.[0] ||
+                                                            Thumb1
+                                                        }
+                                                        alt={
+                                                            product.name
+                                                        }
+                                                    />
+
+                                                </div>
+
+                                                <div>
+
+                                                    <span>
+                                                        {product.categories?.[0] ||
+                                                            "Serviço"}
+                                                    </span>
+
+                                                    <strong>
+                                                        {product.name}
+                                                    </strong>
+
+                                                    <p>
+                                                        {product.value}
+                                                    </p>
+
+                                                </div>
+
+                                                <Icon
+                                                    icon="humbleicons:arrow-right"
+                                                />
+
+                                            </button>
+
+                                        )
+                                    )}
+
+                            </div>
+
+                        </section>
+
+                    )}
+
+
+                {/* =================================================
+                    EMPRESA
+                ================================================= */}
+
+                {!showAllProducts && (
+
+                    <section
+                        className="home-company-card"
+                        onClick={openCompanyInfo}
+                    >
+
+                        <div className="home-company-card-icon">
+
+                            <Icon icon="solar:shop-2-outline" />
+
+                        </div>
+
+                        <div>
+
+                            <span>
+                                Conheça a empresa
+                            </span>
+
+                            <h2>
+                                {companyName}
+                            </h2>
+
+                            <p>
+                                Veja informações,
+                                localização, fotos e
+                                comodidades.
+                            </p>
+
+                        </div>
+
+                        <Icon
+                            icon="humbleicons:arrow-right"
+                        />
+
+                    </section>
 
                 )}
 
-            </div>
+            </main>
+
+            {/* =================================================
+    COMPANY INFO MODAL
+================================================= */}
+
+            <CompanyInfoModal
+                isOpen={showCompanyInfo}
+
+                companyName={
+                    companyName ||
+                    "Empresa"
+                }
+
+                companyHandle={
+                    companyHandle ||
+                    handle ||
+                    ""
+                }
+
+                companyLogo={
+                    companyLogo ||
+                    ""
+                }
+
+                onClose={
+                    closeCompanyInfo
+                }
+            />
+
+            {/* =================================================
+                PRODUCT DETAILS
+            ================================================= */}
+
+            {selectedProduct && (
+
+                <ProductDetails
+                    product={selectedProduct}
+                    companyLogo={companyLogo}
+                    companyName={companyName}
+                    companyHandle={companyHandle}
+                    onClose={() =>
+                        setSelectedProduct(null)
+                    }
+                    formatDuration={
+                        formatDuration
+                    }
+                />
+
+            )}
+
+
+            {/* =================================================
+                PESQUISA
+            ================================================= */}
 
             {searchModal && (
-                <div className={`search-modal ${searchClosing ? "closing" : ""}`}>
 
-                    <div className="search-modal-content">
+                <div
+                    className="home-search-overlay"
+                    onMouseDown={(event) => {
 
-                        <div className="search-modal-header">
+                        if (
+                            event.target ===
+                            event.currentTarget
+                        ) {
+                            setSearchModal(false);
+                        }
 
-                            <input
-                                type="text"
-                                placeholder="Pesquisar produtos..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                autoFocus
-                            />
+                    }}
+                >
 
-                            <button onClick={closeSearch}>
+                    <div className="home-search-modal">
+
+                        <div className="home-search-modal-header">
+
+                            <div className="home-search-input">
+
+                                <Icon icon="mdi:magnify" />
+
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Pesquisar produto..."
+                                    value={searchTerm}
+                                    onChange={(event) =>
+                                        setSearchTerm(
+                                            event.target.value
+                                        )
+                                    }
+                                />
+
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() =>
+                                    setSearchModal(
+                                        false
+                                    )
+                                }
+                            >
                                 <Icon icon="mdi:close" />
                             </button>
 
                         </div>
 
-                        <div className="search-results">
 
-                            {filteredProducts.length > 0 ? (
-                                filteredProducts.map(product => (
-                                    <div
-                                        key={product.id}
-                                        className="search-result-item"
-                                        onClick={() => {
-                                            setSelectedProduct(product);
-                                            setSearchModal(false);
-                                        }}
-                                    >
-                                        <img
-                                            src={product.images ? product.images[0] : ""}
-                                            alt={product.name}
-                                        />
+                        <div className="home-search-results">
 
-                                        <div>
-                                            <h3>{product.name}</h3>
-                                            <p>{product.value}</p>
-                                        </div>
+                            {searchResults.length > 0 ? (
 
-                                    </div>
-                                ))
+                                searchResults.map(
+                                    (product) => (
+
+                                        <button
+                                            type="button"
+                                            key={product.id}
+                                            className="home-search-result"
+                                            onClick={() => {
+
+                                                setSelectedProduct(
+                                                    product
+                                                );
+
+                                                setSearchModal(
+                                                    false
+                                                );
+
+                                            }}
+                                        >
+
+                                            <img
+                                                src={
+                                                    product.images?.[0] ||
+                                                    Thumb1
+                                                }
+                                                alt={
+                                                    product.name
+                                                }
+                                            />
+
+                                            <div>
+
+                                                <strong>
+                                                    {product.name}
+                                                </strong>
+
+                                                <span>
+                                                    {product.value}
+                                                </span>
+
+                                            </div>
+
+                                            <Icon
+                                                icon="humbleicons:arrow-right"
+                                            />
+
+                                        </button>
+
+                                    )
+                                )
+
                             ) : (
-                                <p className="no-results">
-                                    Nenhum produto encontrado
-                                </p>
+
+                                <div className="home-search-empty">
+
+                                    <Icon icon="mdi:magnify" />
+
+                                    <p>
+                                        Nenhum produto
+                                        encontrado.
+                                    </p>
+
+                                </div>
+
                             )}
 
                         </div>
@@ -972,9 +1017,13 @@ const HomePage = () => {
                     </div>
 
                 </div>
+
             )}
+
         </div>
+
     );
+
 };
 
 export default HomePage;

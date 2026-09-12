@@ -193,6 +193,7 @@ const ImageCropper = ({ imageSrc, closeModal, updateAvatar }) => {
           </ReactCrop>
 
           <button
+            type="button"
             className="create-company-logo-cropper-confirm-btn"
             onClick={handleSave}
             disabled={loading}

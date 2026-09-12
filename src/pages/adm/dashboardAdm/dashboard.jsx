@@ -195,8 +195,10 @@ const Dashboard = ({
         message: ""
     });
 
-
-
+    const [
+        isPageMenuOpen,
+        setIsPageMenuOpen
+    ] = useState(false);
 
     /* =====================================================
        CONTEXT
@@ -1871,6 +1873,78 @@ const Dashboard = ({
        HELPERS
     ===================================================== */
 
+
+    /* =====================================================
+   PÁGINA DA EMPRESA
+===================================================== */
+
+    const getCompanyPageUrl = () => {
+
+        if (!company?.handle) {
+            return "";
+        }
+
+        return `${window.location.origin}/central-user/${company.handle}`;
+
+    };
+
+
+    const handleAccessCompanyPage = () => {
+
+        const url = getCompanyPageUrl();
+
+        if (!url) {
+            return;
+        }
+
+        setIsPageMenuOpen(false);
+
+        navigate(
+            `/central-user/${company.handle}`
+        );
+
+    };
+
+
+    const handleCopyCompanyPageLink = async () => {
+
+        const url = getCompanyPageUrl();
+
+        if (!url) {
+            return;
+        }
+
+        try {
+
+            await navigator.clipboard.writeText(
+                url
+            );
+
+            setIsPageMenuOpen(false);
+
+            showToast(
+                "success",
+                "Link copiado",
+                "O link da página da empresa foi copiado."
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao copiar link:",
+                error
+            );
+
+            showToast(
+                "error",
+                "Não foi possível copiar",
+                "Copie o link manualmente e tente novamente."
+            );
+
+        }
+
+    };
+
     const truncate = (
         text,
         max = 16
@@ -2161,30 +2235,148 @@ const Dashboard = ({
 
                     {/* VER PÁGINA */}
 
-                    <button
-                        className="dashboard-topbar-page-button"
-                        onClick={() => {
+                    <div className="dashboard-page-menu-wrapper">
 
-                            if (!company?.handle) {
-                                return;
-                            }
+                        <button
+                            className={`dashboard-topbar-page-button ${isPageMenuOpen
+                                ? "dashboard-topbar-page-button--open"
+                                : ""
+                                }`}
+                            type="button"
+                            onClick={() => {
 
-                            navigate(
-                                `/central-user/${company.handle}`
-                            );
+                                setIsUserMenuOpen(false);
 
-                        }}
-                    >
+                                setIsPageMenuOpen(
+                                    prev => !prev
+                                );
 
-                        <span>
-                            Ver página
-                        </span>
+                            }}
+                        >
 
-                        <Icon
-                            icon="lucide:arrow-up-right"
-                        />
+                            <span>
+                                Ver página
+                            </span>
 
-                    </button>
+                            <Icon
+                                icon="lucide:chevron-down"
+                                className="dashboard-topbar-page-chevron"
+                            />
+
+                        </button>
+
+
+                        <AnimatePresence>
+
+                            {isPageMenuOpen && (
+
+                                <motion.div
+                                    className="dashboard-page-menu"
+
+                                    initial={{
+                                        opacity: 0,
+                                        y: -8,
+                                        scale: .97
+                                    }}
+
+                                    animate={{
+                                        opacity: 1,
+                                        y: 0,
+                                        scale: 1
+                                    }}
+
+                                    exit={{
+                                        opacity: 0,
+                                        y: -8,
+                                        scale: .97
+                                    }}
+
+                                    transition={{
+                                        duration: .18,
+                                        ease: [0.22, 1, 0.36, 1]
+                                    }}
+                                >
+
+                                    {/* ACESSAR PÁGINA */}
+
+                                    <button
+                                        type="button"
+                                        className="dashboard-page-menu-item"
+                                        onClick={
+                                            handleAccessCompanyPage
+                                        }
+                                    >
+
+                                        <div className="dashboard-page-menu-icon">
+
+                                            <Icon
+                                                icon="lucide:external-link"
+                                            />
+
+                                        </div>
+
+                                        <div className="dashboard-page-menu-content">
+
+                                            <strong>
+                                                Acessar página
+                                            </strong>
+
+                                            <span>
+                                                Veja como seus clientes visualizam
+                                            </span>
+
+                                        </div>
+
+                                        <Icon
+                                            icon="lucide:chevron-right"
+                                            className="dashboard-page-menu-arrow"
+                                        />
+
+                                    </button>
+
+
+                                    <div className="dashboard-page-menu-divider" />
+
+
+                                    {/* COPIAR LINK */}
+
+                                    <button
+                                        type="button"
+                                        className="dashboard-page-menu-item"
+                                        onClick={
+                                            handleCopyCompanyPageLink
+                                        }
+                                    >
+
+                                        <div className="dashboard-page-menu-icon">
+
+                                            <Icon
+                                                icon="lucide:copy"
+                                            />
+
+                                        </div>
+
+                                        <div className="dashboard-page-menu-content">
+
+                                            <strong>
+                                                Copiar link
+                                            </strong>
+
+                                            <span>
+                                                Compartilhe a página da empresa
+                                            </span>
+
+                                        </div>
+
+                                    </button>
+
+                                </motion.div>
+
+                            )}
+
+                        </AnimatePresence>
+
+                    </div>
 
 
                     {/* DIVIDER */}
@@ -2202,11 +2394,15 @@ const Dashboard = ({
                                 : ""
                                 }`}
                             type="button"
-                            onClick={() =>
+                            onClick={() => {
+
+                                setIsPageMenuOpen(false);
+
                                 setIsUserMenuOpen(
                                     prev => !prev
-                                )
-                            }
+                                );
+
+                            }}
                         >
 
                             {/* FOTO */}

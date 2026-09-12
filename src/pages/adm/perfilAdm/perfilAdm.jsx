@@ -25,6 +25,7 @@ import SupportScreen from "./screens/SupportScreen";
 import CompanyScreen from "./screens/settings/CompanyScreen";
 import BrandingScreen from "./screens/settings/BrandingScreen";
 import LocationScreen from "./screens/settings/LocationScreen";
+import AmenitiesScreen from "./screens/settings/AmenitiesScreen";
 import SocialMediaScreen from "./screens/settings/SocialMediaScreen";
 import BusinessHoursScreen from "./screens/settings/BusinessHoursScreen";
 import IntegrationsScreen from "./screens/settings/IntegrationsScreen";
@@ -255,6 +256,13 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
 
             case "settings-location":
                 return <LocationScreen />;
+
+            case "settings-amenities":
+                return (
+                    <AmenitiesScreen
+                        user={userData}
+                    />
+                );
 
             case "settings-social":
                 return <SocialMediaScreen />;

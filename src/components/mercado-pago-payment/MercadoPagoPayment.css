@@ -1,0 +1,48 @@
+.mercado-pago-payment {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.mercado-pago-payment-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+}
+
+.mercado-pago-payment-header button {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+}
+
+.mercado-pago-payment-header h2 {
+    margin: 0;
+}
+
+.mercado-pago-payment-header p {
+    margin: 0.25rem 0 0;
+}
+
+.mercado-pago-payment-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.mercado-pago-payment-amount {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.mercado-pago-payment-amount strong {
+    font-size: 1.25rem;
+}
+
+.mercado-pago-payment-brick {
+    width: 100%;
+}

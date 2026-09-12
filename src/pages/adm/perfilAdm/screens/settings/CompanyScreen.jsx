@@ -3,7 +3,41 @@ import { useUserCompany } from "../../../../../contexts/companyContext/UserCompa
 import { Icon } from "@iconify/react"
 import Toast from "../../../../../components/toast/Toast";
 
-import { getDatabase, ref, update, get} from "firebase/database";
+import { getDatabase, ref, update, get } from "firebase/database";
+
+
+const COMPANY_CATEGORIES = [
+    { id: 'barbearia', name: 'Barbearia', icon: 'solar:scissors-outline' },
+    { id: 'salao-beleza', name: 'Salão de beleza', icon: 'solar:mirror-outline' },
+    { id: 'cabeleireiro', name: 'Cabeleireiro', icon: 'solar:scissors-outline' },
+    { id: 'manicure-pedicure', name: 'Manicure e pedicure', icon: 'solar:hand-stars-outline' },
+    { id: 'sobrancelhas', name: 'Design de sobrancelhas', icon: 'solar:eye-outline' },
+    { id: 'cilios', name: 'Extensão de cílios', icon: 'solar:eye-scan-outline' },
+    { id: 'maquiagem', name: 'Maquiagem', icon: 'solar:palette-outline' },
+    { id: 'tatuagem', name: 'Estúdio de tatuagem', icon: 'solar:pen-new-square-outline' },
+    { id: 'fotografia', name: 'Estúdio de fotografia', icon: 'solar:camera-outline' },
+    { id: 'estetica', name: 'Clínica de estética', icon: 'solar:heart-pulse-outline' },
+    { id: 'massoterapia', name: 'Massoterapia', icon: 'solar:hand-heart-outline' },
+    { id: 'spa', name: 'Spa e bem-estar', icon: 'solar:leaf-outline' },
+    { id: 'odontologia', name: 'Clínica odontológica', icon: 'solar:medical-kit-outline' },
+    { id: 'medicina', name: 'Consultório médico', icon: 'solar:stethoscope-outline' },
+    { id: 'fisioterapia', name: 'Fisioterapia', icon: 'solar:health-outline' },
+    { id: 'nutricao', name: 'Nutrição', icon: 'solar:chef-hat-outline' },
+    { id: 'psicologia', name: 'Psicologia', icon: 'solar:brain-outline' },
+    { id: 'personal-trainer', name: 'Personal trainer', icon: 'solar:running-outline' },
+    { id: 'academia', name: 'Academia', icon: 'solar:dumbbell-outline' },
+    { id: 'pilates', name: 'Pilates', icon: 'solar:body-outline' },
+    { id: 'yoga', name: 'Yoga', icon: 'solar:meditation-outline' },
+    { id: 'pet-shop', name: 'Pet shop', icon: 'solar:cat-outline' },
+    { id: 'banho-tosa', name: 'Banho e tosa', icon: 'solar:scissors-square-outline' },
+    { id: 'eventos', name: 'Fotografia e eventos', icon: 'solar:gallery-outline' },
+    { id: 'design', name: 'Agência de design', icon: 'solar:pen-2-outline' },
+    { id: 'marketing', name: 'Marketing e publicidade', icon: 'solar:graph-up-outline' },
+    { id: 'tecnologia', name: 'Tecnologia e desenvolvimento', icon: 'solar:code-outline' },
+    { id: 'consultoria', name: 'Consultoria', icon: 'solar:case-outline' },
+    { id: 'educacao', name: 'Educação e cursos', icon: 'solar:book-2-outline' },
+    { id: 'automotivo', name: 'Serviços automotivos', icon: 'solar:wheel-outline' }
+];
 
 const CompanyScreen = () => {
 
@@ -14,13 +48,15 @@ const CompanyScreen = () => {
 
     const { company } = useUserCompany();
     const MAX_DESCRIPTION = 300;
+    const [showCategoriesModal, setShowCategoriesModal] = useState(false);
 
     const [form, setForm] = useState({
         name: "",
         handle: "",
         document: "",
         email: "",
-        description: ""
+        description: "",
+        categories: []
     });
 
     useEffect(() => {
@@ -32,7 +68,12 @@ const CompanyScreen = () => {
             handle: company.handle || "",
             document: company.document || "",
             email: company.email || "",
-            description: company.description || ""
+            description: company.description || "",
+            categories: Array.isArray(company.categories)
+                ? company.categories
+                : company.category
+                    ? [company.category]
+                    : []
         };
 
         setForm(data);
@@ -75,7 +116,8 @@ const CompanyScreen = () => {
         handle: "",
         document: "",
         email: "",
-        description: ""
+        description: "",
+        categories: []
     });
 
     const isValidCpfOrCnpj = (value) => {
@@ -153,6 +195,41 @@ const CompanyScreen = () => {
 
     const canSave = hasChanges;
 
+    const handleCategoryToggle = (categoryId) => {
+
+        setForm(prev => {
+
+            const categories = Array.isArray(prev.categories)
+                ? prev.categories
+                : [];
+
+            if (categories.includes(categoryId)) {
+
+                return {
+                    ...prev,
+                    categories: categories.filter(
+                        id => id !== categoryId
+                    )
+                };
+
+            }
+
+            if (categories.length >= 3) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                categories: [
+                    ...categories,
+                    categoryId
+                ]
+            };
+
+        });
+
+    };
+
     const handleSave = async () => {
 
         if (!form.name.trim()) {
@@ -211,7 +288,9 @@ const CompanyScreen = () => {
             const newDocument =
                 form.document.replace(/\D/g, "");
 
-
+            const currentDocument =
+                String(company.document || "")
+                    .replace(/\D/g, "");
             /*
              * ==========================================
              * BUSCAR TODAS AS EMPRESAS
@@ -227,7 +306,6 @@ const CompanyScreen = () => {
                 companiesSnapshot.exists()
                     ? companiesSnapshot.val()
                     : {};
-
 
             /*
              * ==========================================
@@ -362,6 +440,11 @@ const CompanyScreen = () => {
 
                     description:
                         form.description.trim(),
+
+                    categories:
+                        Array.isArray(form.categories)
+                            ? form.categories
+                            : [],
                 },
             );
 
@@ -513,7 +596,83 @@ const CompanyScreen = () => {
 
                     </div>
                 </div>
+                {/* ================= CATEGORIAS ================= */}
 
+                <div className="company-categories">
+
+                    <div className="company-categories-header">
+
+                        <div className="company-categories-title">
+
+                            <div className="company-categories-icon">
+                                <Icon icon="solar:widget-5-outline" />
+                            </div>
+
+                            <div className="company-categories-info">
+
+                                <strong>
+                                    Categorias
+                                </strong>
+
+                                <span>
+                                    Até 3 categorias
+                                </span>
+
+                            </div>
+
+                        </div>
+
+                        <button
+                            type="button"
+                            className="company-categories-edit"
+                            onClick={() => setShowCategoriesModal(true)}
+                        >
+                            <Icon icon="solar:pen-outline" />
+                            Alterar
+                        </button>
+
+                    </div>
+
+
+                    <div className="company-categories-list">
+
+                        {form.categories?.length > 0 ? (
+
+                            form.categories.map(categoryId => {
+
+                                const category =
+                                    COMPANY_CATEGORIES.find(
+                                        item => item.id === categoryId
+                                    );
+
+                                if (!category) return null;
+
+                                return (
+                                    <div
+                                        key={category.id}
+                                        className="company-category-tag"
+                                    >
+                                        <Icon icon={category.icon} />
+
+                                        <span>
+                                            {category.name}
+                                        </span>
+                                    </div>
+                                );
+
+                            })
+
+                        ) : (
+
+                            <span className="company-category-empty">
+                                Nenhuma categoria selecionada
+                            </span>
+
+                        )}
+
+                    </div>
+
+                </div>
             </div>
 
             <button
@@ -524,6 +683,128 @@ const CompanyScreen = () => {
                 Salvar alterações
             </button>
 
+            {/* ================= MODAL CATEGORIAS ================= */}
+
+            {showCategoriesModal && (
+
+                <div className="company-category-modal">
+
+                    <div
+                        className="company-category-modal-backdrop"
+                        onClick={() => setShowCategoriesModal(false)}
+                    />
+
+                    <div className="company-category-modal-content">
+
+                        <div className="company-category-modal-header">
+
+                            <div className="company-category-modal-header-content">
+
+                                <small>
+                                    CATEGORIAS
+                                </small>
+
+                                <h2>
+                                    Categorias da empresa
+                                </h2>
+
+                                <p>
+                                    Selecione até 3 categorias.
+                                </p>
+
+                            </div>
+
+                            <button
+                                type="button"
+                                className="company-category-modal-close"
+                                onClick={() => setShowCategoriesModal(false)}
+                            >
+                                <Icon icon="solar:close-circle-outline" />
+                            </button>
+
+                        </div>
+
+
+                        <div className="company-category-modal-counter">
+
+                            <strong>
+                                {form.categories?.length || 0}/3 selecionadas
+                            </strong>
+
+                            <span>
+                                Escolha as que melhor representam seu negócio.
+                            </span>
+
+                        </div>
+
+
+                        <div className="company-category-modal-grid">
+
+                            {COMPANY_CATEGORIES.map(category => {
+
+                                const isSelected =
+                                    form.categories?.includes(category.id);
+
+                                return (
+
+                                    <button
+                                        key={category.id}
+                                        type="button"
+                                        className={`company-category-option ${isSelected ? "selected" : ""
+                                            }`}
+                                        onClick={() =>
+                                            handleCategoryToggle(category.id)
+                                        }
+                                    >
+
+                                        <div className="company-category-option-icon">
+
+                                            <Icon icon={category.icon} />
+
+                                        </div>
+
+                                        <span>
+                                            {category.name}
+                                        </span>
+
+                                        {isSelected && (
+
+                                            <div className="company-category-option-check">
+
+                                                <Icon
+                                                    icon="solar:check-circle-bold"
+                                                />
+
+                                            </div>
+
+                                        )}
+
+                                    </button>
+
+                                );
+
+                            })}
+
+                        </div>
+
+
+                        <div className="company-category-modal-footer">
+
+                            <button
+                                type="button"
+                                className="company-category-modal-confirm"
+                                onClick={() => setShowCategoriesModal(false)}
+                            >
+                                Concluir
+                            </button>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            )}
             <Toast
 
                 show={showToast}

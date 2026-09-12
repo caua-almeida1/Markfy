@@ -40,6 +40,11 @@ const ProfileScreen = () => {
     const [name, setName] = useState("");
     const [initialName, setInitialName] = useState("");
 
+    const [description, setDescription] = useState("");
+    const [initialDescription, setInitialDescription] = useState("");
+
+    const DESCRIPTION_MAX_LENGTH = 160;
+
     const [photoPreview, setPhotoPreview] = useState("");
     const [photoFile, setPhotoFile] = useState(null);
 
@@ -135,8 +140,15 @@ const ProfileScreen = () => {
                         currentUser.displayName ||
                         "";
 
+                    const currentDescription =
+                        userData.description ||
+                        "";
+
                     setName(currentName);
                     setInitialName(currentName);
+
+                    setDescription(currentDescription);
+                    setInitialDescription(currentDescription);
 
 
                     /*
@@ -161,7 +173,8 @@ const ProfileScreen = () => {
                         setPhotoPreview(photoUrl);
 
                     } catch (photoError) {
-
+                        setDescription("");
+                        setInitialDescription("");
                         if (
                             photoError.code ===
                             "storage/object-not-found"
@@ -427,9 +440,9 @@ const ProfileScreen = () => {
 
     const hasChanges =
         name !== initialName ||
+        description !== initialDescription ||
         !!photoFile ||
         hasPasswordChanges;
-
     /*
 * ==========================================
 * ALTERAR SENHA
@@ -587,6 +600,8 @@ const ProfileScreen = () => {
             const cleanName =
                 name.trim();
 
+            const cleanDescription =
+                description.trim();
             let photoUrl =
                 user.photoURL || "";
 
@@ -707,9 +722,16 @@ const ProfileScreen = () => {
                 ),
                 {
                     name: cleanName,
+                    description: cleanDescription,
                 },
             );
 
+
+            setName(cleanName);
+            setInitialName(cleanName);
+
+            setDescription(cleanDescription);
+            setInitialDescription(cleanDescription);
 
             /*
              * ==========================================
@@ -952,7 +974,43 @@ const ProfileScreen = () => {
                 )}
 
             </div>
+            {/* ================= DESCRIÇÃO ================= */}
 
+            <div className="company-card profile-description-card">
+
+                <div className="company-input-group textarea">
+
+                    <Icon
+                        icon="solar:document-text-outline"
+                        className="company-input-icon"
+                    />
+
+                    <div className="profile-description-content">
+
+                        <textarea
+                            className="company-textarea profile-description-input"
+                            placeholder="Descrição"
+                            value={description}
+                            maxLength={DESCRIPTION_MAX_LENGTH}
+                            onChange={(event) =>
+                                setDescription(event.target.value)
+                            }
+                        />
+
+                        <span
+                            className={`company-counter ${description.length >= DESCRIPTION_MAX_LENGTH
+                                    ? "limit"
+                                    : ""
+                                }`}
+                        >
+                            {description.length}/{DESCRIPTION_MAX_LENGTH}
+                        </span>
+
+                    </div>
+
+                </div>
+
+            </div>
             {/* ================= SENHA ================= */}
 
             <div className="company-card profile-password-card">

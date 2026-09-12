@@ -1121,6 +1121,1004 @@ select.payment-config-input {
     color: var(--mkf-error);
 }
 
+/* =========================================================
+   CARTÕES
+========================================================= */
+
+.payment-screen {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 6rem;
+}
+
+
+/* =========================================================
+   INFO
+========================================================= */
+
+.payment-info {
+    display: flex;
+    align-items: flex-start;
+
+    gap: .85rem;
+
+    padding: 1rem 1.15rem;
+
+    border-radius: 1.25rem;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+}
+
+.payment-info-icon {
+    width: 40px;
+    height: 40px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: .75rem;
+
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+
+    font-size: 1.2rem;
+}
+
+.payment-info-content {
+    display: flex;
+    flex-direction: column;
+
+    gap: .15rem;
+
+    min-width: 0;
+}
+
+.payment-info-content h3 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.payment-info-content p {
+    margin: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-regular);
+
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   SECTION
+========================================================= */
+
+.payment-section {
+    display: flex;
+    flex-direction: column;
+
+    gap: .55rem;
+
+    transition:
+        opacity .25s ease,
+        filter .25s ease;
+}
+
+.payment-section-disabled {
+    opacity: .5;
+}
+
+.payment-section-title {
+    margin: 0;
+
+    padding: 0 .25rem;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+
+/* =========================================================
+   CARD
+========================================================= */
+
+.payment-methods-card {
+    display: flex;
+    flex-direction: column;
+
+    width: 100%;
+
+    padding: 0 1.5rem;
+
+    border-radius: 1.25rem;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0px 0px 40px -19px rgba(66, 68, 90, .6);
+
+    overflow: hidden;
+}
+
+
+/* =========================================================
+   ACEITAR CARTÕES
+========================================================= */
+
+.payment-config-toggle {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    width: 100%;
+
+    min-height: 70px;
+
+    border-bottom: 1px solid var(--mkf-ui-border-light);
+}
+
+.payment-config-toggle:last-child {
+    border-bottom: none;
+}
+
+.payment-config-toggle-left {
+    display: flex;
+
+    align-items: center;
+
+    gap: .85rem;
+
+    min-width: 0;
+
+    flex: 1;
+}
+
+.payment-config-toggle-left>div:last-child {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: .12rem;
+}
+
+.payment-config-toggle h3 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.payment-config-toggle p {
+    margin: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-regular);
+
+    line-height: 1.4;
+}
+
+
+/* =========================================================
+   ÍCONE DOS MÉTODOS
+========================================================= */
+
+.payment-method-icon {
+    width: 40px;
+    height: 40px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: .75rem;
+
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-secondary);
+
+    font-size: 1.15rem;
+}
+
+.payment-config-toggle .payment-method-icon {
+    background: var(--mkf-ui-background-secondary);
+}
+
+
+/* =========================================================
+   TOGGLE
+========================================================= */
+
+.toggle-switch {
+    position: relative;
+
+    width: 42px;
+    height: 24px;
+
+    flex-shrink: 0;
+
+    padding: 0;
+
+    border: none;
+
+    border-radius: 999px;
+
+    background: var(--mkf-ui-gray-300);
+
+    cursor: pointer;
+
+    transition:
+        background-color .2s ease,
+        opacity .2s ease;
+}
+
+.toggle-switch:disabled {
+    cursor: not-allowed;
+
+    opacity: .55;
+}
+
+.toggle-circle {
+    position: absolute;
+
+    top: 3px;
+    left: 3px;
+
+    width: 18px;
+    height: 18px;
+
+    border-radius: 50%;
+
+    background: #fff;
+
+    box-shadow:
+        0 1px 3px rgba(0, 0, 0, .15);
+
+    transition:
+        transform .2s ease;
+}
+
+.toggle-switch.active {
+    background: var(--mkf-ui-primary);
+}
+
+.toggle-switch.active .toggle-circle {
+    transform: translateX(18px);
+}
+
+.toggle-switch:focus-visible {
+    outline: none;
+
+    box-shadow:
+        0 0 0 3px color-mix(in srgb,
+            var(--mkf-ui-primary) 12%,
+            transparent);
+}
+
+
+/* =========================================================
+   MÉTODO / CARTÃO DE RECEBIMENTO
+========================================================= */
+
+.payment-method {
+    position: relative;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    width: 100%;
+
+    min-height: 70px;
+
+    padding: .85rem 0;
+
+    border: none;
+    border-bottom: 1px solid var(--mkf-ui-border-light);
+
+    background: transparent;
+
+    color: var(--mkf-text-primary);
+
+    font-family: "Poppins", sans-serif;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        opacity .2s ease,
+        background-color .2s ease;
+}
+
+.payment-method:last-child {
+    border-bottom: none;
+}
+
+.payment-method:hover:not(:disabled) {
+    background: var(--mkf-ui-background-secondary);
+}
+
+.payment-method:disabled {
+    cursor: not-allowed;
+
+    opacity: .5;
+}
+
+.payment-method-left {
+    display: flex;
+
+    align-items: center;
+
+    gap: .85rem;
+
+    min-width: 0;
+
+    flex: 1;
+}
+
+.payment-method-left>div:last-child {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: .12rem;
+}
+
+.payment-method h3 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.payment-method p {
+    margin: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-regular);
+
+    line-height: 1.4;
+}
+
+.payment-method-arrow {
+    flex-shrink: 0;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: 1.15rem;
+
+    transition:
+        transform .2s ease,
+        color .2s ease;
+}
+
+.payment-method:hover:not(:disabled) .payment-method-arrow {
+    transform: translateX(3px);
+
+    color: var(--mkf-ui-primary);
+}
+
+
+/* =========================================================
+   FORMULÁRIO DO CARTÃO
+========================================================= */
+
+.payment-card-form {
+    display: flex;
+    flex-direction: column;
+
+    gap: 1rem;
+
+    padding: 1.25rem 0;
+}
+
+.payment-card-form-header {
+    display: flex;
+
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 1rem;
+
+    padding-bottom: .25rem;
+}
+
+.payment-card-form-header>div {
+    min-width: 0;
+}
+
+.payment-card-form-header h3 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.payment-card-form-header p {
+    margin: .25rem 0 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-3xs);
+
+    line-height: 1.45;
+}
+
+.payment-card-close {
+    width: 32px;
+    height: 32px;
+
+    flex-shrink: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 0;
+
+    border: none;
+    border-radius: .6rem;
+
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-tertiary);
+
+    cursor: pointer;
+
+    transition: .2s;
+}
+
+.payment-card-close:hover {
+    background: var(--mkf-ui-background-tertiary);
+
+    color: var(--mkf-text-primary);
+}
+
+.payment-card-close svg {
+    font-size: 1.1rem;
+}
+
+
+/* =========================================================
+   CAMPOS
+========================================================= */
+
+.payment-field {
+    display: flex;
+    flex-direction: column;
+
+    gap: .35rem;
+
+    min-width: 0;
+}
+
+.payment-field label {
+    color: var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.payment-input-wrapper {
+    display: flex;
+
+    align-items: center;
+
+    gap: .65rem;
+
+    width: 100%;
+
+    min-height: 46px;
+
+    padding: 0 .85rem;
+
+    border: 1px solid var(--mkf-ui-border-light);
+
+    border-radius: .8rem;
+
+    background: var(--mkf-ui-background-secondary);
+
+    transition:
+        border-color .2s ease,
+        background-color .2s ease,
+        box-shadow .2s ease;
+}
+
+.payment-input-wrapper:focus-within {
+    border-color: var(--mkf-ui-primary);
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0 0 0 3px color-mix(in srgb,
+            var(--mkf-ui-primary) 8%,
+            transparent);
+}
+
+.payment-input-wrapper>svg {
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: 1.1rem;
+}
+
+.payment-input-wrapper input {
+    width: 100%;
+
+    min-width: 0;
+
+    padding: .7rem 0;
+
+    border: none;
+    outline: none;
+
+    background: transparent;
+
+    color: var(--mkf-text-primary);
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-regular);
+}
+
+.payment-input-wrapper input::placeholder {
+    color: var(--mkf-text-light);
+}
+
+
+/* =========================================================
+   CAMPOS LADO A LADO
+========================================================= */
+
+.payment-fields-row {
+    display: grid;
+
+    grid-template-columns:
+        minmax(0, 1fr) minmax(0, 1fr);
+
+    gap: .75rem;
+}
+
+
+/* =========================================================
+   SEGURANÇA
+========================================================= */
+
+.payment-card-security {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: .55rem;
+
+    padding: .75rem .85rem;
+
+    border-radius: .8rem;
+
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+}
+
+.payment-card-security>svg {
+    flex-shrink: 0;
+
+    margin-top: 1px;
+
+    font-size: 1rem;
+}
+
+.payment-card-security p {
+    margin: 0;
+
+    font-size: 9px;
+
+    line-height: 1.5;
+
+    color: var(--mkf-text-secondary);
+}
+
+
+/* =========================================================
+   AÇÕES
+========================================================= */
+
+.payment-actions {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: flex-end;
+
+    gap: .6rem;
+
+    width: 100%;
+}
+
+.payment-cancel,
+.payment-primary,
+.payment-secondary,
+.payment-danger {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    gap: .4rem;
+
+    min-height: 42px;
+
+    padding: .65rem 1rem;
+
+    border: none;
+
+    border-radius: .8rem;
+
+    font-family: "Poppins", sans-serif;
+
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-medium);
+
+    cursor: pointer;
+
+    transition: .2s;
+}
+
+.payment-cancel {
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-secondary);
+}
+
+.payment-cancel:hover {
+    background: var(--mkf-ui-background-tertiary);
+}
+
+.payment-primary {
+    background: var(--mkf-ui-primary);
+
+    color: #fff;
+}
+
+.payment-primary:hover:not(:disabled) {
+    background: var(--mkf-ui-primary-hover);
+}
+
+.payment-primary:disabled,
+.payment-cancel:disabled,
+.payment-secondary:disabled,
+.payment-danger:disabled {
+    opacity: .55;
+
+    cursor: not-allowed;
+}
+
+.payment-primary svg,
+.payment-secondary svg,
+.payment-danger svg {
+    font-size: 1rem;
+}
+
+
+/* =========================================================
+   CARTÃO CADASTRADO
+========================================================= */
+
+.payment-card-configured {
+    display: flex;
+    flex-direction: column;
+
+    gap: 1rem;
+
+    padding: 1.25rem 0;
+}
+
+.payment-card-visual {
+    position: relative;
+
+    width: 100%;
+
+    min-height: 175px;
+
+    padding: 1.25rem;
+
+    border-radius: 1.15rem;
+
+    background:
+        linear-gradient(135deg,
+            var(--mkf-ui-primary),
+            var(--mkf-ui-primary-hover));
+
+    color: #fff;
+
+    overflow: hidden;
+}
+
+.payment-card-visual::after {
+    content: "";
+
+    position: absolute;
+
+    width: 180px;
+    height: 180px;
+
+    right: -70px;
+    bottom: -90px;
+
+    border-radius: 50%;
+
+    background: rgba(255, 255, 255, .08);
+}
+
+.payment-card-visual-top {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+}
+
+.payment-card-visual-top span {
+    font-size: 8px;
+    font-weight: 500;
+
+    letter-spacing: .08em;
+
+    opacity: .75;
+}
+
+.payment-card-visual-top svg {
+    font-size: 1.5rem;
+}
+
+.payment-card-number {
+    position: relative;
+    z-index: 1;
+
+    margin-top: 2rem;
+
+    font-size: 1.15rem;
+
+    font-weight: 500;
+
+    letter-spacing: .13em;
+}
+
+.payment-card-bottom {
+    position: relative;
+    z-index: 1;
+
+    display: flex;
+
+    gap: 2rem;
+
+    margin-top: 1rem;
+}
+
+.payment-card-bottom div {
+    display: flex;
+    flex-direction: column;
+
+    gap: .1rem;
+}
+
+.payment-card-bottom small {
+    font-size: 7px;
+
+    letter-spacing: .06em;
+
+    opacity: .65;
+}
+
+.payment-card-bottom strong {
+    font-size: 10px;
+
+    font-weight: 500;
+}
+
+.payment-card-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: .55rem;
+}
+
+.payment-secondary {
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-secondary);
+}
+
+.payment-secondary:hover:not(:disabled) {
+    background: var(--mkf-ui-background-tertiary);
+}
+
+.payment-danger {
+    background: rgba(220, 38, 38, .07);
+
+    color: #dc2626;
+}
+
+.payment-danger:hover:not(:disabled) {
+    background: rgba(220, 38, 38, .12);
+}
+
+
+/* =========================================================
+   ESTADO VAZIO
+========================================================= */
+
+.payment-card-empty {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    text-align: center;
+
+    gap: .65rem;
+
+    padding: 1.5rem .5rem;
+}
+
+.payment-card-empty-icon {
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: .9rem;
+
+    background: var(--mkf-ui-primary-light);
+
+    color: var(--mkf-ui-primary);
+
+    font-size: 1.35rem;
+}
+
+.payment-card-empty-content {
+    display: flex;
+    flex-direction: column;
+
+    gap: .2rem;
+}
+
+.payment-card-empty-content h3 {
+    margin: 0;
+
+    color: var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.payment-card-empty-content p {
+    max-width: 330px;
+
+    margin: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-3xs);
+
+    line-height: 1.5;
+}
+
+
+/* =========================================================
+   MERCADO PAGO
+========================================================= */
+
+.payment-card-mercado-pago {
+    width: 100%;
+
+    padding: .25rem 0;
+}
+
+/*
+ * Container do formulário oficial do Mercado Pago.
+ *
+ * O Mercado Pago continua responsável pelos campos
+ * sensíveis. Aqui cuidamos apenas do espaçamento
+ * externo para integrar o formulário ao Markfy.
+ */
+
+.payment-card-mercado-pago .mp-checkout-container,
+.payment-card-mercado-pago .mp-card-form {
+    width: 100%;
+}
+
+
+/* ================= MERCADO PAGO LOADING ================= */
+
+.payment-card-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: .5rem;
+
+    min-height: 180px;
+
+    color: var(--mkf-text-light);
+
+    font-size: var(--mkf-font-3xs);
+}
+
+.payment-card-loading svg {
+    font-size: 1rem;
+
+    color: var(--mkf-ui-primary);
+}
+
+
+/* ================= MERCADO PAGO BRICK ================= */
+
+.payment-card-mercado-pago {
+    width: 100%;
+
+    padding: .25rem 0;
+}
+
+/*
+ * O Brick é responsável pelos campos sensíveis.
+ * Mantemos apenas o espaçamento externo para ele
+ * ficar integrado visualmente ao card do Markfy.
+ */
+
+.payment-card-mercado-pago > div {
+    width: 100%;
+}
+
+
+/* Evita que o formulário ultrapasse o card */
+
+.payment-card-mercado-pago iframe {
+    max-width: 100%;
+}
 /* ================= RESPONSIVE ================= */
 
 @media (max-width: 480px) {
@@ -1179,4 +2177,63 @@ select.payment-config-input {
         font-size: var(--mkf-font-xxs);
 
     }
+
+
+    .payment-info {
+        padding: .9rem 1rem;
+    }
+
+    .payment-methods-card {
+        padding: 0 1.25rem;
+    }
+
+    .payment-config-toggle,
+    .payment-method {
+        min-height: 66px;
+    }
+
+    .payment-method-icon {
+        width: 38px;
+        height: 38px;
+    }
+
+    .payment-fields-row {
+        grid-template-columns:
+            1fr 1fr;
+
+        gap: .6rem;
+    }
+
+    .payment-card-form {
+        padding: 1rem 0;
+    }
+
+    .payment-card-visual {
+        min-height: 160px;
+
+        padding: 1rem;
+    }
+
+    .payment-card-number {
+        margin-top: 1.7rem;
+
+        font-size: 1rem;
+    }
+
+    .payment-card-actions {
+        flex-direction: column;
+    }
+
+    .payment-card-actions button {
+        width: 100%;
+    }
+
+    .payment-actions {
+        flex-wrap: wrap;
+    }
+
+    .payment-actions button {
+        flex: 1;
+    }
+
 }

@@ -286,3 +286,103 @@
     outline: none;
     color: #737985;
 }
+
+/* ================= DESCRIÇÃO ================= */
+
+.profile-description-card {
+    padding: 0 1.5rem;
+}
+
+.profile-description-content {
+    position: relative;
+
+    flex: 1;
+    min-width: 0;
+}
+
+.profile-description-input {
+    width: 100%;
+
+    min-height: 110px;
+    max-height: 110px;
+
+    padding: 1rem 0 1.65rem;
+
+    border: none;
+    border-bottom: none;
+
+    resize: none;
+
+    overflow-y: auto;
+
+    font-family: "Poppins", sans-serif;
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+
+    line-height: 1.5;
+
+    color: var(--mkf-text-primary);
+
+    outline: none;
+
+    background: transparent;
+}
+
+.profile-description-input::placeholder {
+    color: var(--mkf-text-light);
+}
+
+.profile-description-input:focus {
+    border-bottom-color: transparent;
+}
+
+
+/* ================= CONTADOR ================= */
+
+.profile-description-content .company-counter {
+    position: absolute;
+
+    right: 0;
+    bottom: .65rem;
+
+    margin: 0;
+
+    font-size: var(--mkf-font-3xs);
+
+    color: var(--mkf-text-light);
+
+    pointer-events: none;
+
+    transition: color .2s ease;
+}
+
+.profile-description-content .company-counter.limit {
+    color: var(--mkf-error);
+}
+
+
+/* ================= ÍCONE ================= */
+
+.company-input-group.textarea {
+    align-items: flex-start;
+}
+
+.company-input-group.textarea .company-input-icon {
+    margin-top: 1rem;
+}
+
+
+/* ================= MOBILE ================= */
+
+@media (max-width: 480px) {
+
+    .profile-description-card {
+        padding: 0 1.25rem;
+    }
+
+    .profile-description-input {
+        min-height: 105px;
+        max-height: 105px;
+    }
+
+}

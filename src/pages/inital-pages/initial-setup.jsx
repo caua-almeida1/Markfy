@@ -2,10 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import './initial-setup.css';
 
-import Logo from '../../img/logo-markfy.svg'; // Adjust the path as necessary
+import Logo from '../../img/logo-markfy.svg';
 
 import { getDatabase, ref, get } from 'firebase/database';
-
 import { Icon } from '@iconify/react';
 
 import { signOut } from 'firebase/auth';
@@ -18,17 +17,20 @@ const InitialSetup = () => {
   const navigate = useNavigate();
 
   const { name: initialName, email, id } = location.state || {};
+
   const [name, setName] = useState(
     initialName ? initialName.split(' ')[0] : ''
   );
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   const [selectedRole, setSelectedRole] = useState(null);
+  const [showBusinessForm, setShowBusinessForm] = useState(false);
 
   useEffect(() => {
     if (!initialName && id) {
       setLoading(true);
+
       const db = getDatabase();
       const userRef = ref(db, `users/${id}/name`);
 
@@ -37,14 +39,15 @@ const InitialSetup = () => {
           if (snapshot.exists()) {
             const fullName = snapshot.val();
             const firstName = fullName?.split(' ')[0] || fullName;
+
             setName(firstName);
           } else {
-            setError('Usuário não encontrado no Realtime Database.');
+            setError('Não foi possível encontrar seus dados.');
           }
         })
         .catch((err) => {
           console.error('Erro ao buscar nome do Firebase:', err);
-          setError('Erro ao buscar nome do usuário.');
+          setError('Não foi possível carregar seus dados.');
         })
         .finally(() => {
           setLoading(false);
@@ -58,155 +61,261 @@ const InitialSetup = () => {
     }
   }, [initialName, id, navigate]);
 
-  const [showUserConfirmModal, setShowUserConfirmModal] = useState(false);
-  const [isClosing, setIsClosing] = useState(false);
-
-  const closeModal = () => {
-    setIsClosing(true);
-
-    setTimeout(() => {
-      setShowUserConfirmModal(false);
-      setIsClosing(false);
-    }, 200);
-  };
-
   const handleSelectRole = (role) => {
-    if (selectedRole === role) {
-      setSelectedRole(null); // desmarca se já estiver selecionado
-    } else {
-      setSelectedRole(role); // seleciona novo
-    }
+    setSelectedRole(role);
+    setError('');
   };
 
   const handleContinue = () => {
-    if (selectedRole) {
-      setShowUserConfirmModal(true);
-    }
-  };
+    if (!selectedRole || loading) return;
 
-
-  const proceedNext = () => {
     if (selectedRole === 'admin') {
-      setShowBusinessForm(true); // Mostra o formulário sem mudar a rota
+      setShowBusinessForm(true);
+      return;
+    }
+
+    // Fluxo do cliente
+    console.log('Cliente comum selecionado');
+  };
+
+  const handleBack = () => {
+    if (showBusinessForm) {
+      setShowBusinessForm(false);
+      return;
+    }
+
+    if (window.history.length > 2) {
+      navigate(-1);
     } else {
-      // Se for cliente, você pode redirecionar ou mostrar algo diferente
-      console.log('Cliente comum selecionado');
+      navigate('/');
     }
   };
 
-  const confirmUserRole = () => {
-    setShowUserConfirmModal(false);
-    proceedNext();
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      navigate('/');
+    } catch (err) {
+      console.error('Erro ao sair:', err);
+    }
   };
 
-  const cancelUserRole = () => {
-    setShowUserConfirmModal(false);
-  };
+  if (showBusinessForm) {
+    return (
+      <main className="initial-setup-wrapper">
+        <header className="initial-setup-header">
+          <img
+            src={Logo}
+            alt="Markfy"
+            className="initial-setup-logo"
+          />
 
-  const [showBusinessForm, setShowBusinessForm] = useState(false);
+          <button
+            type="button"
+            className="initial-setup-exit"
+            onClick={handleSignOut}
+          >
+            <span>Sair</span>
+            <Icon icon="solar:logout-2-linear" />
+          </button>
+        </header>
+
+        <div className="initial-setup-business">
+          <button
+            type="button"
+            className="initial-setup-business-back"
+            onClick={handleBack}
+          >
+            <Icon icon="solar:arrow-left-linear" />
+            Voltar
+          </button>
+
+          <BusinessForm userId={id} />
+        </div>
+      </main>
+    );
+  }
 
   return (
-    <div className="initial-setup-wrapper">
-      <div className="initial-setup-container">
-        {!showBusinessForm ? (
+    <main className="initial-setup-wrapper">
 
-          <div className="initial-setup-box">
-            <img src={Logo} className='setup-logo' />
-            <h1>
-              Olá {name}, seja bem-vindo à Markfy!
-            </h1>
-            <p>Antes de começar, como você deseja utilizar a Markfy?</p>
+      {/* HEADER */}
+      <header className="initial-setup-header">
 
-            <div className="setup-options">
-              <div
-                className={`setup-card ${selectedRole === 'user' ? 'selected' : ''}`}
-                onClick={() => handleSelectRole('user')}
-              >
-                <div className='setup-card-content-left'>
-                  <Icon
-                    icon="mi:user"
-                    className={`setup-icon ${selectedRole === 'user' ? 'selected-icon' : ''}`}
-                  />
-                  <span className="setup-label">Sou Cliente</span>
-                </div>
-                <Icon
-                  icon="material-symbols:check"
-                  className={`setup-check-icon ${selectedRole === 'user' ? 'selected-check' : ''}`}
-                />
-              </div>
+        <img
+          src={Logo}
+          alt="Markfy"
+          className="initial-setup-logo"
+        />
 
-              <div
-                className={`setup-card ${selectedRole === 'admin' ? 'selected' : ''}`}
-                onClick={() => handleSelectRole('admin')}
-              >
-                <div className='setup-card-content-left'>
-                  <Icon
-                    icon="icon-park-outline:shop"
-                    className={`setup-icon ${selectedRole === 'admin' ? 'selected-icon' : ''}`}
-                  />
-                  <span className="setup-label">Tenho um Negócio</span>
-                </div>
-                <Icon
-                  icon="material-symbols:check"
-                  className={`setup-check-icon ${selectedRole === 'admin' ? 'selected-check' : ''}`}
-                />
-              </div>
-            </div>
+        <div className="initial-setup-header-right">
 
-            <button
-              className="setup-button setup-button-continue"
-              disabled={loading || !selectedRole}
-              onClick={handleContinue}
-            >
-              Continuar
-            </button>
+          {email && (
+            <span className="initial-setup-email">
+              {email}
+            </span>
+          )}
 
-            <button
-              className="setup-button setup-button-return"
-              onClick={() => {
-                if (window.history.length > 2) {
-                  navigate(-1);
-                } else {
-                  navigate('/');
-                }
-              }}>
-              Voltar
-            </button>
-          </div>
-        ) : (
-          <BusinessForm userId={id} />
-        )}
-      </div>
-      {showUserConfirmModal && (
-        <div className={`setup-confirmation-modal-overlay ${isClosing ? 'closing' : ''}`}>
-          <div className={`setup-confirmation-modal-box ${isClosing ? 'closing' : ''}`}>
-            <Icon icon="ix:question" className='icon' />
-            <h2>Confirmar escolha</h2>
-            <p>
-              Você tem certeza que deseja vincular sua conta como um{' '}
-              <strong>{selectedRole === 'user' ? 'Usuário Comum' : 'Administrador de Negócio'}</strong>?
-            </p>
-            <div className="setup-confirmation-modal-actions">
-              <button
-                className="setup-confirmation-modal-button cancel"
-                onClick={closeModal}
-              >
-                Cancelar
-              </button>
+          <button
+            type="button"
+            className="initial-setup-exit"
+            onClick={handleSignOut}
+            aria-label="Sair da conta"
+          >
+            <span>Sair</span>
+            <Icon icon="solar:logout-2-linear" />
+          </button>
 
-              <button
-                className="setup-confirmation-modal-button initial-setup-confirmation-confirm"
-                onClick={confirmUserRole}
-              >
-                Confirmar
-              </button>
-            </div>
-          </div>
         </div>
-      )}
-    </div >
-  );
 
+      </header>
+
+
+      {/* CONTENT */}
+      <section className="initial-setup-content">
+
+        {/* PROGRESS */}
+        <div className="initial-setup-progress">
+
+          <div className="initial-setup-progress-item active">
+            <span>01</span>
+            <p>Perfil</p>
+          </div>
+
+          <div className="initial-setup-progress-line" />
+
+          <div className="initial-setup-progress-item">
+            <span>02</span>
+            <p>Negócio</p>
+          </div>
+
+          <div className="initial-setup-progress-line" />
+
+          <div className="initial-setup-progress-item">
+            <span>03</span>
+            <p>Finalização</p>
+          </div>
+
+        </div>
+
+
+        {/* INTRO */}
+        <div className="initial-setup-intro">
+
+          <span className="initial-setup-overline">
+            CONFIGURAÇÃO INICIAL
+          </span>
+
+          <h1>
+            Olá, {name || 'seja bem-vindo'}.
+          </h1>
+
+          <p>
+            Como você pretende utilizar a Markfy?
+          </p>
+
+        </div>
+
+
+        {/* ROLE SELECTOR */}
+        <div className="initial-setup-roles">
+
+          <button
+            type="button"
+            className={`initial-setup-role ${selectedRole === 'user' ? 'selected' : ''
+              }`}
+            onClick={() => handleSelectRole('user')}
+          >
+
+            <div className="initial-setup-role-icon">
+              <Icon icon="mi:user" />
+            </div>
+
+            <div className="initial-setup-role-text">
+              <strong>Sou cliente</strong>
+
+              <span>
+                Quero encontrar e utilizar negócios.
+              </span>
+            </div>
+
+            <div className="initial-setup-role-indicator">
+              {selectedRole === 'user' && (
+                <Icon icon="material-symbols:check" />
+              )}
+            </div>
+
+          </button>
+
+
+          <button
+            type="button"
+            className={`initial-setup-role ${selectedRole === 'admin' ? 'selected' : ''
+              }`}
+            onClick={() => handleSelectRole('admin')}
+          >
+
+            <div className="initial-setup-role-icon">
+              <Icon icon="icon-park-outline:shop" />
+            </div>
+
+            <div className="initial-setup-role-text">
+              <strong>Tenho um negócio</strong>
+
+              <span>
+                Quero cadastrar e administrar meu negócio.
+              </span>
+            </div>
+
+            <div className="initial-setup-role-indicator">
+              {selectedRole === 'admin' && (
+                <Icon icon="material-symbols:check" />
+              )}
+            </div>
+
+          </button>
+
+        </div>
+
+
+        {/* ERROR */}
+        {error && (
+          <div className="initial-setup-error">
+            <Icon icon="solar:danger-triangle-linear" />
+            <span>{error}</span>
+          </div>
+        )}
+
+
+        {/* FOOTER */}
+        <div className="initial-setup-footer">
+
+          <button
+            type="button"
+            className="initial-setup-back"
+            onClick={handleBack}
+          >
+            <Icon icon="solar:arrow-left-linear" />
+            Voltar
+          </button>
+
+          <button
+            type="button"
+            className="initial-setup-continue"
+            disabled={!selectedRole || loading}
+            onClick={handleContinue}
+          >
+            <span>Continuar</span>
+
+            <Icon icon="solar:arrow-right-linear" />
+          </button>
+
+        </div>
+
+      </section>
+
+    </main>
+  );
 };
 
 export default InitialSetup;

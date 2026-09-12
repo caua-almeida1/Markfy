@@ -98,6 +98,35 @@ const SettingsScreen = ({ openScreen }) => {
 
                 <div
                     className="adm-perfil-row"
+                    onClick={() => openScreen("settings-amenities")}
+                >
+
+                    <div className="adm-perfil-row-left">
+
+                        <Icon
+                            icon="solar:sofa-3-outline"
+                            className="adm-perfil-row-icon"
+                        />
+
+                        <div className="adm-perfil-details">
+
+                            <p className="adm-perfil-name">
+                                Comodidades
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <Icon
+                        icon="iconamoon:arrow-right-2"
+                        className="adm-perfil-arrow"
+                    />
+
+                </div>
+
+                <div
+                    className="adm-perfil-row"
                     onClick={() => openScreen("settings-social")}
                 >
 
