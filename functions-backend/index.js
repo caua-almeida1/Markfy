@@ -35,7 +35,482 @@ const MERCADO_PAGO_REDIRECT_URI =
 const MARKFY_FRONTEND_URL =
     "https://markfy.vercel.app";
 
+/* =====================================================
+   MERCADO PAGO — CONFIGURAÇÃO DO MARKFY
+===================================================== */
 
+const mercadoPagoMarkfyAccessToken =
+    defineSecret("MERCADOPAGO_MARKFY_ACCESS_TOKEN");
+
+/* =====================================================
+MERCADO PAGO — SALVAR CARTÃO DO CLIENTE
+===================================================== */
+
+exports.saveMercadoPagoCard = onRequest(
+    {
+        secrets: [
+            mercadoPagoMarkfyAccessToken
+        ]
+    },
+
+    async (req, res) => {
+
+        try {
+
+            /* =========================================
+               CORS
+            ========================================= */
+
+            res.set(
+                "Access-Control-Allow-Origin",
+                "*"
+            );
+
+            res.set(
+                "Access-Control-Allow-Headers",
+                "Authorization, Content-Type"
+            );
+
+            if (req.method === "OPTIONS") {
+                return res.status(204).send("");
+            }
+
+            if (req.method !== "POST") {
+
+                return res.status(405).json({
+                    success: false,
+                    message: "Método não permitido."
+                });
+
+            }
+
+
+            /* =========================================
+               FIREBASE AUTH
+            ========================================= */
+
+            const authorization =
+                req.headers.authorization || "";
+
+            if (
+                !authorization.startsWith("Bearer ")
+            ) {
+
+                return res.status(401).json({
+                    success: false,
+                    message:
+                        "Usuário não autenticado."
+                });
+
+            }
+
+            const idToken =
+                authorization.replace(
+                    "Bearer ",
+                    ""
+                );
+
+            const decodedToken =
+                await admin
+                    .auth()
+                    .verifyIdToken(idToken);
+
+            const uid =
+                decodedToken.uid;
+
+
+            /* =========================================
+               DADOS DO CLIENTE
+            ========================================= */
+
+            const {
+                token,
+                email,
+                firstName,
+                lastName
+            } = req.body || {};
+
+
+            if (!token) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "Token do cartão não informado."
+                });
+
+            }
+
+
+            const customerEmail =
+                email ||
+                decodedToken.email;
+
+
+            if (!customerEmail) {
+
+                return res.status(400).json({
+                    success: false,
+                    message:
+                        "E-mail do cliente não informado."
+                });
+
+            }
+
+
+            /* =========================================
+               ACCESS TOKEN DO MARKFY
+            ========================================= */
+
+            const accessToken =
+                mercadoPagoMarkfyAccessToken.value();
+
+
+            if (!accessToken) {
+
+                throw new Error(
+                    "MERCADOPAGO_MARKFY_ACCESS_TOKEN não configurado."
+                );
+
+            }
+
+
+            /* =========================================
+               CUSTOMER EXISTENTE
+            ========================================= */
+
+            const customerRef =
+                db.ref(
+                    `paymentCustomers/${uid}`
+                );
+
+            const customerSnapshot =
+                await customerRef.once("value");
+
+            let customerData =
+                customerSnapshot.val();
+
+
+            let customerId =
+                customerData?.mercadoPagoCustomerId ||
+                null;
+
+
+            /* =========================================
+               CRIAR CUSTOMER
+            ========================================= */
+
+            if (!customerId) {
+
+                const customerResponse =
+                    await fetch(
+                        "https://api.mercadopago.com/v1/customers",
+                        {
+
+                            method: "POST",
+
+                            headers: {
+
+                                "Content-Type":
+                                    "application/json",
+
+                                "Authorization":
+                                    `Bearer ${accessToken}`
+
+                            },
+
+                            body:
+                                JSON.stringify({
+
+                                    email:
+                                        customerEmail,
+
+                                    first_name:
+                                        firstName ||
+                                        "Cliente",
+
+                                    last_name:
+                                        lastName ||
+                                        "Markfy"
+
+                                })
+
+                        }
+                    );
+
+
+                const customerResponseText =
+                    await customerResponse.text();
+
+
+                let customerResult;
+
+                try {
+
+                    customerResult =
+                        JSON.parse(
+                            customerResponseText
+                        );
+
+                } catch {
+
+                    customerResult = {
+                        raw:
+                            customerResponseText
+                    };
+
+                }
+
+
+                console.log(
+                    "👤 Mercado Pago Customer:",
+                    {
+                        status:
+                            customerResponse.status,
+
+                        response:
+                            customerResult
+                    }
+                );
+
+
+                if (!customerResponse.ok) {
+
+                    return res.status(
+                        customerResponse.status
+                    ).json({
+
+                        success: false,
+
+                        message:
+                            customerResult?.message ||
+                            "Não foi possível criar o cliente Mercado Pago.",
+
+                        details:
+                            customerResult
+
+                    });
+
+                }
+
+
+                customerId =
+                    customerResult.id;
+
+
+                customerData = {
+
+                    mercadoPagoCustomerId:
+                        customerId,
+
+                    email:
+                        customerEmail,
+
+                    createdAt:
+                        Date.now(),
+
+                    updatedAt:
+                        Date.now()
+
+                };
+
+
+                await customerRef.set(
+                    customerData
+                );
+
+            }
+
+
+            /* =========================================
+               SALVAR CARTÃO
+            ========================================= */
+
+            const cardResponse =
+                await fetch(
+                    `https://api.mercadopago.com/v1/customers/${customerId}/cards`,
+                    {
+
+                        method: "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                            "Authorization":
+                                `Bearer ${accessToken}`,
+
+                            "X-Idempotency-Key":
+                                crypto.randomUUID()
+
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                token
+
+                            })
+
+                    }
+                );
+
+
+            const cardResponseText =
+                await cardResponse.text();
+
+
+            let cardData;
+
+            try {
+
+                cardData =
+                    JSON.parse(
+                        cardResponseText
+                    );
+
+            } catch {
+
+                cardData = {
+                    raw:
+                        cardResponseText
+                };
+
+            }
+
+
+            console.log(
+                "💳 Mercado Pago Card:",
+                {
+                    status:
+                        cardResponse.status,
+
+                    response:
+                        cardData
+                }
+            );
+
+
+            if (!cardResponse.ok) {
+
+                return res.status(
+                    cardResponse.status
+                ).json({
+
+                    success: false,
+
+                    message:
+                        cardData?.message ||
+                        "Não foi possível salvar o cartão.",
+
+                    details:
+                        cardData
+
+                });
+
+            }
+
+
+            /* =========================================
+               SALVAR SOMENTE REFERÊNCIA SEGURA
+               NO FIREBASE
+            ========================================= */
+
+            const savedCardRef =
+                db.ref(
+                    `paymentCards/${uid}/${cardData.id}`
+                );
+
+
+            await savedCardRef.set({
+
+                cardId:
+                    cardData.id,
+
+                customerId,
+
+                paymentMethodId:
+                    cardData.payment_method?.id ||
+                    null,
+
+                firstSixDigits:
+                    cardData.first_six_digits ||
+                    null,
+
+                lastFourDigits:
+                    cardData.last_four_digits ||
+                    null,
+
+                expirationMonth:
+                    cardData.expiration_month ||
+                    null,
+
+                expirationYear:
+                    cardData.expiration_year ||
+                    null,
+
+                savedAt:
+                    Date.now()
+
+            });
+
+
+            /* =========================================
+               SUCESSO
+            ========================================= */
+
+            return res.status(200).json({
+
+                success: true,
+
+                customerId,
+
+                card: {
+
+                    id:
+                        cardData.id,
+
+                    paymentMethodId:
+                        cardData.payment_method?.id ||
+                        null,
+
+                    lastFourDigits:
+                        cardData.last_four_digits ||
+                        null,
+
+                    expirationMonth:
+                        cardData.expiration_month ||
+                        null,
+
+                    expirationYear:
+                        cardData.expiration_year ||
+                        null
+
+                }
+
+            });
+
+        } catch (error) {
+
+            console.error(
+                "❌ Erro saveMercadoPagoCard:",
+                error
+            );
+
+            return res.status(500).json({
+
+                success: false,
+
+                message:
+                    "Não foi possível salvar o cartão."
+
+            });
+
+        }
+
+    }
+);
 /* =====================================================
    FUNÇÕES AUXILIARES
 ===================================================== */
@@ -1505,8 +1980,7 @@ exports.createMercadoPagoPayment = onRequest(
                     console.error(
                         "❌ Não foi possível renovar o token:",
                         refreshError
-                    );
-
+                    )
 
                     await paymentRef.update({
 
