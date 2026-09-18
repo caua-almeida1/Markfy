@@ -233,33 +233,15 @@ async function refreshMercadoPagoAccessToken(
         );
 
 
+    /*
+     * O corpo só pode ser lido uma vez: lemos como texto e
+     * convertemos depois, para não quebrar se vier algo
+     * que não seja JSON.
+     */
     const responseText =
         await response.text();
 
-    const data =
-        await response.json();
-
-    console.log(
-        "========================================"
-    );
-
-    console.log(
-        "🔄 RESPOSTA DO REFRESH MERCADO PAGO"
-    );
-
-    console.log(
-        "HTTP:",
-        response.status
-    );
-
-    console.log(
-        "Resposta:",
-        data
-    );
-
-    console.log(
-        "========================================"
-    );
+    let data;
 
     try {
 
@@ -970,6 +952,17 @@ exports.mercadoPagoOAuthCallback = onRequest(
 ===================================================== */
 
 exports.createMercadoPagoPayment = onRequest(
+    {
+        /*
+         * Sem declarar os secrets aqui a função não consegue
+         * lê-los, e a renovação do token falha com
+         * "MERCADOPAGO_CLIENT_ID não configurado".
+         */
+        secrets: [
+            mercadoPagoClientId,
+            mercadoPagoClientSecret
+        ]
+    },
     async (req, res) => {
 
         try {
@@ -1483,8 +1476,14 @@ exports.createMercadoPagoPayment = onRequest(
                                     "Authorization":
                                         `Bearer ${refreshedConnection.accessToken}`,
 
+                                    /*
+                                     * Chave nova: com a mesma chave o
+                                     * Mercado Pago pode devolver a
+                                     * resposta já registrada da
+                                     * tentativa que falhou.
+                                     */
                                     "X-Idempotency-Key":
-                                        paymentId
+                                        `${paymentId}-retry`
 
                                 },
 
@@ -1543,6 +1542,118 @@ exports.createMercadoPagoPayment = onRequest(
             }
 
             /* =========================================
+               MERCADO PAGO RECUSOU A REQUISIÇÃO
+            =========================================
+
+               Sem esta checagem a função devolvia
+               success:true com um id "undefined" e o
+               erro real sumia.
+            ========================================= */
+
+            if (
+                !mercadoPagoResponse.ok ||
+                !mercadoPagoData?.id
+            ) {
+
+                const causeDescription =
+                    Array.isArray(mercadoPagoData?.cause)
+                        ? mercadoPagoData.cause
+                            .map((cause) =>
+                                cause?.description
+                            )
+                            .filter(Boolean)
+                            .join("; ")
+                        : null;
+
+                const mercadoPagoMessage =
+                    causeDescription ||
+                    mercadoPagoData?.message ||
+                    mercadoPagoData?.error ||
+                    "Erro desconhecido do Mercado Pago.";
+
+                console.error(
+                    "❌ Mercado Pago recusou o pagamento:",
+                    mercadoPagoResponse.status,
+                    mercadoPagoMessage
+                );
+
+                await paymentRef.update({
+
+                    status:
+                        "error",
+
+                    error:
+                        mercadoPagoMessage,
+
+                    mercadoPagoHttpStatus:
+                        mercadoPagoResponse.status,
+
+                    updatedAt:
+                        Date.now()
+
+                });
+
+                const isCredentialError =
+                    mercadoPagoResponse.status === 401 ||
+                    /credential/i.test(mercadoPagoMessage);
+
+                return res.status(
+                    isCredentialError ? 502 : 400
+                ).json({
+
+                    success: false,
+
+                    code:
+                        isCredentialError
+                            ? "MERCADO_PAGO_AUTH_ERROR"
+                            : "MERCADO_PAGO_REJECTED",
+
+                    message:
+                        isCredentialError
+                            ? "A conta Mercado Pago desta empresa precisa ser conectada novamente."
+                            : "O Mercado Pago não aceitou o pagamento. Confira os dados e tente de novo.",
+
+                    details:
+                        mercadoPagoMessage
+
+                });
+            }
+
+
+            /* =========================================
+               PIX — DADOS PARA O CLIENTE PAGAR
+            ========================================= */
+
+            const transactionData =
+                mercadoPagoData
+                    ?.point_of_interaction
+                    ?.transaction_data || null;
+
+            const pix =
+                transactionData
+                    ? {
+
+                        qrCode:
+                            transactionData.qr_code ||
+                            null,
+
+                        qrCodeBase64:
+                            transactionData.qr_code_base64 ||
+                            null,
+
+                        ticketUrl:
+                            transactionData.ticket_url ||
+                            null,
+
+                        expiresAt:
+                            mercadoPagoData.date_of_expiration ||
+                            null
+
+                    }
+                    : null;
+
+
+            /* =========================================
                SALVAR DADOS DO MERCADO PAGO
             ========================================= */
 
@@ -1593,7 +1704,9 @@ exports.createMercadoPagoPayment = onRequest(
                 paymentMethodId:
                     mercadoPagoData.payment_method_id ||
 
-                    paymentMethodId
+                    paymentMethodId,
+
+                pix
 
             });
 
@@ -1667,18 +1780,45 @@ exports.getMercadoPagoPublicKey = onRequest(
             const uid =
                 decodedToken.uid;
 
-            const userCompany =
-                await findUserCompany(uid);
+            /*
+             * No checkout quem chama é o CLIENTE, que não é
+             * membro da empresa: ele informa de qual empresa
+             * vai comprar. A public key é pública por
+             * definição (vai para o navegador), então liberar
+             * a leitura não expõe nada sensível.
+             *
+             * Sem o parâmetro, mantém o comportamento antigo:
+             * a empresa do próprio usuário (painel admin).
+             */
+            let companyHandle =
+                typeof req.query?.companyHandle === "string"
+                    ? req.query.companyHandle.trim()
+                    : "";
 
-            if (!userCompany) {
-                return res.status(403).json({
-                    success: false,
-                    message: "Usuário não pertence a nenhuma empresa."
-                });
+            if (!companyHandle) {
+
+                const userCompany =
+                    await findUserCompany(uid);
+
+                if (!userCompany) {
+                    return res.status(403).json({
+                        success: false,
+                        message: "Usuário não pertence a nenhuma empresa."
+                    });
+                }
+
+                companyHandle =
+                    userCompany.handle;
             }
 
-            const companyHandle =
-                userCompany.handle;
+            // O handle vira caminho no banco: só aceita um
+            // segmento simples, sem "/" nem caracteres especiais.
+            if (!/^[A-Za-z0-9_-]{1,100}$/.test(companyHandle)) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Empresa inválida."
+                });
+            }
 
             const connectionSnapshot =
                 await db
