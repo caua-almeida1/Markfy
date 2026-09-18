@@ -1,164 +1,182 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
+
+import AgendaScene from "./AgendaScene";
+import { PlatformDeck, BookingFlow, StepsRail } from "./scenes";
+import { useInView, useScrollProgress } from "./hooks";
 
 import "./landingPage.css";
 
+/* =========================================================
+   Bloco que se revela ao entrar na viewport.
+
+   Reservado para as seções calmas — as três cenas presas
+   têm animação própria comandada pelo scroll.
+========================================================= */
+
+const Reveal = ({ as: Tag = "div", delay = 0, className = "", children, ...rest }) => {
+    const [ref, inView] = useInView();
+
+    return (
+        <Tag
+            ref={ref}
+            className={`mk-reveal ${inView ? "is-in" : ""} ${className}`.trim()}
+            style={{ "--delay": `${delay}ms` }}
+            {...rest}
+        >
+            {children}
+        </Tag>
+    );
+};
+
+const SEGMENTS = [
+    "Barbearias",
+    "Clínicas",
+    "Salões",
+    "Estúdios de tatuagem",
+    "Nail designers",
+    "Fisioterapeutas",
+    "Pet shops",
+    "Consultórios"
+];
+
 const LandingPage = () => {
-    const [scrollProgress, setScrollProgress] = useState(0);
+    const navigate = useNavigate();
+
+    const { progress, scrolled } = useScrollProgress();
+
+    const [menuOpen, setMenuOpen] = useState(false);
 
     useEffect(() => {
+        // O CSS de outras telas é global no CRA e trava
+        // html/body em height:100%. A landing rola livre,
+        // então marcamos os dois e devolvemos ao sair.
         document.body.classList.add("landing-active");
+        document.documentElement.classList.add("landing-root");
 
         return () => {
             document.body.classList.remove("landing-active");
+            document.documentElement.classList.remove("landing-root");
         };
     }, []);
 
-    const handleSmoothScroll = (event, targetId) => {
+    // Trava o scroll do fundo enquanto o menu mobile está aberto.
+    useEffect(() => {
+        document.body.classList.toggle("mk-locked", menuOpen);
+
+        return () => document.body.classList.remove("mk-locked");
+    }, [menuOpen]);
+
+    const goToSection = (event, id) => {
         event.preventDefault();
 
-        const target = document.getElementById(targetId);
+        setMenuOpen(false);
+
+        const target = document.getElementById(id);
 
         if (!target) return;
 
-        const header = document.querySelector(".markfy-header");
-
-        const headerHeight = header
-            ? header.getBoundingClientRect().height + 25
-            : 100;
-
-        const targetPosition =
-            target.getBoundingClientRect().top +
-            window.scrollY -
-            headerHeight;
+        const offset = target.getBoundingClientRect().top + window.scrollY - 88;
 
         window.scrollTo({
-            top: targetPosition,
+            top: offset,
             behavior: "smooth"
         });
     };
 
-    useEffect(() => {
-        const handleScroll = () => {
-            const scrollTop = window.scrollY;
-
-            const documentHeight =
-                document.documentElement.scrollHeight -
-                window.innerHeight;
-
-            if (documentHeight <= 0) {
-                setScrollProgress(0);
-                return;
-            }
-
-            const progress = Math.min(
-                scrollTop / documentHeight,
-                1
-            );
-
-            setScrollProgress(progress);
-
-            const header =
-                document.querySelector(".markfy-header");
-
-            if (header) {
-                if (scrollTop > 40) {
-                    header.classList.add("is-scrolled");
-                } else {
-                    header.classList.remove("is-scrolled");
-                }
-            }
-        };
-
-        handleScroll();
-
-        window.addEventListener(
-            "scroll",
-            handleScroll,
-            { passive: true }
-        );
-
-        return () => {
-            window.removeEventListener(
-                "scroll",
-                handleScroll
-            );
-        };
-    }, []);
+    const startSignup = () => navigate("/login");
 
     return (
-        <main className="markfy-landing">
+        <main className="mk-landing">
 
-            {/* =====================================================
-                SCROLL PROGRESS
-            ====================================================== */}
+            <a className="mk-skip" href="#hero">
+                Ir para o conteúdo
+            </a>
 
             <div
-                className="markfy-scroll-progress"
-                style={{
-                    transform: `scaleX(${scrollProgress})`
-                }}
+                className="mk-progress"
+                style={{ transform: `scaleX(${progress})` }}
+                aria-hidden="true"
             />
 
 
             {/* =====================================================
-                HEADER
+                CABEÇALHO
             ====================================================== */}
 
-            <header className="markfy-header">
+            <header className={`mk-header ${scrolled ? "is-scrolled" : ""}`}>
 
-                <div className="markfy-header__inner">
+                <div className="mk-header__bar">
 
                     <a
+                        className="mk-brand"
                         href="#hero"
-                        className="markfy-logo"
+                        onClick={(event) => goToSection(event, "hero")}
                     >
-                        <img
-                            src="/markfy/logo.svg"
-                            alt="Markfy"
-                            className="markfy-logo__mark"
-                        />
-
-                        <span className="markfy-logo__name">
-                            Markfy
-                        </span>
+                        <img src="/markfy/logo.svg" alt="" aria-hidden="true" />
+                        <span>Markfy</span>
                     </a>
 
-
-                    <nav className="markfy-nav">
-
-                        <a href="#plataforma">
+                    <nav className="mk-nav" aria-label="Seções da página">
+                        <a href="#plataforma" onClick={(e) => goToSection(e, "plataforma")}>
                             Plataforma
                         </a>
-
-                        <a href="#recursos">
-                            Recursos
+                        <a href="#recursos" onClick={(e) => goToSection(e, "recursos")}>
+                            Como funciona
                         </a>
-
-                        <a href="#experiencia">
-                            Experiência
+                        <a href="#comecar" onClick={(e) => goToSection(e, "comecar")}>
+                            Como começar
                         </a>
-
-                        <a href="#sobre">
-                            Sobre nós
+                        <a href="#sobre" onClick={(e) => goToSection(e, "sobre")}>
+                            Sobre
                         </a>
-
                     </nav>
 
-
-                    <div className="markfy-header__actions">
-
-                        <button className="markfy-header__login">
+                    <div className="mk-header__actions">
+                        <button
+                            type="button"
+                            className="mk-btn mk-btn--quiet"
+                            onClick={startSignup}
+                        >
                             Entrar
                         </button>
 
-                        <button className="markfy-button markfy-button--small">
+                        <button
+                            type="button"
+                            className="mk-btn mk-btn--solid"
+                            onClick={startSignup}
+                        >
                             Criar minha empresa
-                            <Icon icon="akar-icons:chevron-right-small" className="icon" />
                         </button>
-
                     </div>
 
+                    <button
+                        type="button"
+                        className="mk-burger"
+                        aria-expanded={menuOpen}
+                        aria-controls="mk-mobile-menu"
+                        aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+                        onClick={() => setMenuOpen((open) => !open)}
+                    >
+                        <Icon icon={menuOpen ? "solar:close-circle-linear" : "solar:hamburger-menu-linear"} />
+                    </button>
+
+                </div>
+
+                <div
+                    id="mk-mobile-menu"
+                    className={`mk-mobile ${menuOpen ? "is-open" : ""}`}
+                    hidden={!menuOpen}
+                >
+                    <a href="#plataforma" onClick={(e) => goToSection(e, "plataforma")}>Plataforma</a>
+                    <a href="#recursos" onClick={(e) => goToSection(e, "recursos")}>Como funciona</a>
+                    <a href="#comecar" onClick={(e) => goToSection(e, "comecar")}>Como começar</a>
+                    <a href="#sobre" onClick={(e) => goToSection(e, "sobre")}>Sobre</a>
+
+                    <button type="button" className="mk-btn mk-btn--solid" onClick={startSignup}>
+                        Criar minha empresa
+                    </button>
                 </div>
 
             </header>
@@ -168,308 +186,161 @@ const LandingPage = () => {
                 HERO
             ====================================================== */}
 
-            <section
-                id="hero"
-                className="markfy-hero"
-            >
+            <section id="hero" className="mk-hero">
 
-                <div className="markfy-hero__background">
-                    <div className="markfy-hero__glow" />
-                    <div className="markfy-hero__grid" />
+                <div className="mk-hero__depth" aria-hidden="true">
+                    <span className="mk-hero__beam" />
+                    <span className="mk-hero__floor" />
                 </div>
 
+                <div className="mk-shell mk-hero__shell">
 
-                <div className="markfy-container">
+                    <div className="mk-hero__copy">
 
-                    <div className="markfy-hero__content">
-
-                        <div className="markfy-eyebrow">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            Agendamento do seu jeito
-
-                        </div>
-
-
-                        <h1 className="markfy-hero__title">
-
-                            Seu negócio.
-                            <br />
-
-                            <span>
-                                Seu jeito.
-                            </span>
-
-                        </h1>
-
-
-                        <p className="markfy-hero__description">
-
-                            A Markfy é uma plataforma de agendamento
-                            personalizável para empresas de todos os
-                            tipos. Crie sua experiência, organize sua
-                            equipe e deixe seus clientes agendarem
-                            de forma simples.
-
+                        <p className="mk-hero__kicker">
+                            <span className="mk-dot" />
+                            Agendamento para quem atende
                         </p>
 
+                        <h1 className="mk-hero__title">
+                            A agenda que trabalha
+                            <br />
+                            enquanto você atende.
+                        </h1>
 
-                        <div className="markfy-hero__actions">
+                        <p className="mk-hero__lede">
+                            Seus clientes escolhem serviço, profissional e horário
+                            sozinhos, a qualquer hora, direto no link da sua empresa.
+                            Você só aparece para atender.
+                        </p>
 
-                            <button className="markfy-button markfy-button--primary">
-
+                        <div className="mk-hero__actions">
+                            <button
+                                type="button"
+                                className="mk-btn mk-btn--solid mk-btn--lg"
+                                onClick={startSignup}
+                            >
                                 Criar minha empresa
-
-                                <Icon icon="solar:arrow-up-right-linear" />
-
+                                <Icon icon="solar:arrow-right-linear" />
                             </button>
-
 
                             <a
                                 href="#plataforma"
-                                className="markfy-button markfy-button--ghost"
+                                className="mk-btn mk-btn--outline mk-btn--lg"
+                                onClick={(e) => goToSection(e, "plataforma")}
                             >
-
-                                Conhecer a Markfy
-
-                                <Icon icon="solar:arrow-down-linear" />
-
+                                Ver como funciona
                             </a>
-
                         </div>
 
-
-                        <div className="markfy-hero__trust">
-
-                            <div className="markfy-hero__avatars">
-
-                                <div className="markfy-avatar">
-                                    <img
-                                        src="/markfy/landing/clients/client-01.jpg"
-                                        alt="Cliente Markfy"
-                                    />
-                                </div>
-
-                                <div className="markfy-avatar">
-                                    <img
-                                        src="/markfy/landing/clients/client-02.jpg"
-                                        alt="Cliente Markfy"
-                                    />
-                                </div>
-
-                                <div className="markfy-avatar">
-                                    <img
-                                        src="/markfy/landing/clients/client-03.jpg"
-                                        alt="Cliente Markfy"
-                                    />
-                                </div>
-
-                                <div className="markfy-avatar markfy-avatar--more">
-                                    <span>+</span>
-                                </div>
-
-                            </div>
-
-                            <p>
-                                Barbearias, clínicas, salões,
-                                estúdios e muito mais.
-                            </p>
-
-                        </div>
-
-                    </div>
-
-
-                    {/* =================================================
-                        MOCKUP PRINCIPAL
-                    ================================================== */}
-
-                    <div className="markfy-hero__visual">
-
-                        <div className="markfy-main-mockup">
-
-                            <img
-                                src="/markfy/landing/mockups/hero-user.webp"
-                                alt="Dashboard da plataforma Markfy"
-                                className="markfy-main-mockup__image"
-                            />
-
-                        </div>
-
-
-                        {/* FLOATING CARD */}
-
-                        <div className="markfy-floating-card markfy-floating-card--top">
-
-                            <div className="markfy-floating-card__icon">
-
-                                <Icon icon="solar:calendar-add-linear" />
-
-                            </div>
-
+                        <dl className="mk-hero__facts">
                             <div>
-
-                                <strong>
-                                    Novo agendamento
-                                </strong>
-
-                                <span>
-                                    Hoje às 14:30
-                                </span>
-
+                                <dt>Sem mensalidade para começar</dt>
+                                <dd>Configure e publique sua página hoje</dd>
                             </div>
-
-                        </div>
-
-
-                        <div className="markfy-floating-card markfy-floating-card--bottom">
-
-                            <div className="markfy-floating-card__check">
-
-                                <Icon icon="solar:check-circle-bold" />
-
-                            </div>
-
                             <div>
+                                <dt>Feito para o celular</dt>
+                                <dd>É de onde a maioria dos clientes agenda</dd>
+                            </div>
+                        </dl>
 
-                                <strong>
-                                    Agendamento confirmado
-                                </strong>
+                    </div>
 
-                                <span>
-                                    Cliente notificado
+                    <div className="mk-hero__visual">
+                        <AgendaScene />
+                    </div>
+
+                </div>
+
+                <p className="mk-hero__hint" aria-hidden="true">
+                    <Icon icon="solar:mouse-linear" />
+                    Role para ver funcionando
+                </p>
+
+            </section>
+
+
+            {/* =====================================================
+                SEGMENTOS
+            ====================================================== */}
+
+            <section className="mk-marquee" aria-label="Tipos de negócio atendidos">
+                <div className="mk-marquee__track">
+                    {[0, 1].map((copy) => (
+                        <div className="mk-marquee__group" key={copy} aria-hidden={copy === 1}>
+                            {SEGMENTS.map((item) => (
+                                <span key={item}>
+                                    {item}
+                                    <i aria-hidden="true" />
                                 </span>
-
-                            </div>
-
+                            ))}
                         </div>
-
-                    </div>
-
+                    ))}
                 </div>
-
-
-                {/* SCROLL */}
-
-                <a
-                    href="#plataforma"
-                    className="markfy-scroll-indicator"
-                >
-
-                    <span>
-                        Conheça a plataforma
-                    </span>
-
-                    <Icon icon="solar:arrow-down-linear" />
-
-                </a>
-
             </section>
 
 
             {/* =====================================================
-                COMPATIBILIDADE
+                CENAS PRESAS — comandadas pelo scroll
             ====================================================== */}
 
-            <section className="markfy-social-proof">
+            <PlatformDeck />
 
-                <div className="markfy-container">
+            <BookingFlow />
 
-                    <p className="markfy-social-proof__title">
-
-                        Uma plataforma que se adapta ao seu negócio
-
-                    </p>
-
-
-                    <div className="markfy-social-proof__logos">
-
-                        <span>
-                            BARBEARIAS
-                        </span>
-
-                        <span>
-                            CLÍNICAS
-                        </span>
-
-                        <span>
-                            SALÕES
-                        </span>
-
-                        <span>
-                            ESTÚDIOS
-                        </span>
-
-                        <span>
-                            MUITO MAIS
-                        </span>
-
-                    </div>
-
+            <div className="mk-flow__after">
+                <div className="mk-shell">
+                    <button
+                        type="button"
+                        className="mk-btn mk-btn--light mk-btn--lg"
+                        onClick={startSignup}
+                    >
+                        Garantir meu endereço
+                        <Icon icon="solar:arrow-right-linear" />
+                    </button>
                 </div>
+            </div>
 
-            </section>
+            <StepsRail />
 
 
             {/* =====================================================
-                PLATFORM
+                SOBRE
             ====================================================== */}
 
-            <section
-                id="plataforma"
-                className="markfy-intro"
-            >
+            <section id="sobre" className="mk-section mk-about">
 
-                <div className="markfy-container">
+                <div className="mk-shell mk-about__shell">
 
-                    <div className="markfy-section-heading">
-
-                        <div className="markfy-eyebrow">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            A plataforma
-
-                        </div>
-
-
+                    <Reveal>
                         <h2>
-
-                            Um sistema que
+                            Agendar não deveria
                             <br />
-
-                            <span>
-                                acompanha você.
-                            </span>
-
+                            depender de alguém atender.
                         </h2>
+                    </Reveal>
 
-
+                    <Reveal delay={100} className="mk-about__text">
                         <p>
-
-                            A Markfy foi criada para ser simples
-                            desde o primeiro acesso. Você configura
-                            sua empresa, personaliza sua experiência
-                            e começa a receber agendamentos sem
-                            complicação.
-
+                            A Markfy nasceu de um problema comum: o cliente manda
+                            mensagem às 22h, ninguém responde, e o horário some.
+                            Do outro lado, quem atende perde o dia respondendo
+                            "tem vaga amanhã?".
                         </p>
 
-                    </div>
+                        <p>
+                            A plataforma resolve os dois lados com a mesma coisa —
+                            uma agenda pública e sempre atualizada. Barbearia,
+                            clínica, salão, estúdio ou consultório: se o seu
+                            trabalho é medido em horários, ela se ajusta ao seu.
+                        </p>
 
-
-                    {/* MOCKUP */}
-
-                    <div className="markfy-large-mockup">
-
-                        <img
-                            src="/markfy/landing/mockups/dashboard-empresa.webp"
-                            alt="Dashboard da empresa Markfy"
-                            className="markfy-large-mockup__image"
-                        />
-
-                    </div>
+                        <p>
+                            Funciona no celular e no computador, com a mesma
+                            interface familiar das plataformas que seus clientes
+                            já usam todo dia.
+                        </p>
+                    </Reveal>
 
                 </div>
 
@@ -477,919 +348,90 @@ const LandingPage = () => {
 
 
             {/* =====================================================
-                RESOURCES
+                CTA FINAL
             ====================================================== */}
 
-            <section
-                id="recursos"
-                className="markfy-features"
-            >
-
-                <div className="markfy-container">
-
-                    <div className="markfy-section-heading markfy-section-heading--center">
-
-                        <div className="markfy-eyebrow">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            Recursos
-
-                        </div>
-
-
-                        <h2>
-
-                            Tudo para deixar seu
-                            <br />
-
-                            <span>
-                                atendimento mais simples.
-                            </span>
-
-                        </h2>
-
-                    </div>
-
-
-                    <div className="markfy-features__grid">
-
-
-                        {/* =================================================
-                            FEATURE 01
-                        ================================================== */}
-
-                        <article className="markfy-feature-card">
-
-                            <div className="markfy-feature-card__number">
-                                01
-                            </div>
-
-
-                            <div className="markfy-feature-card__icon">
-
-                                <Icon icon="solar:palette-linear" />
-
-                            </div>
-
-
-                            <h3>
-                                Personalização
-                            </h3>
-
-
-                            <p>
-
-                                Crie uma experiência que tenha
-                                a identidade do seu negócio.
-                                A Markfy se adapta à sua empresa,
-                                não o contrário.
-
-                            </p>
-
-
-                            <div className="markfy-feature-card__visual">
-
-                                <div className="markfy-mini-placeholder">
-
-                                    <Icon icon="solar:palette-linear" />
-
-                                </div>
-
-                            </div>
-
-                        </article>
-
-
-                        {/* =================================================
-                            FEATURE 02
-                        ================================================== */}
-
-                        <article className="markfy-feature-card">
-
-                            <div className="markfy-feature-card__number">
-                                02
-                            </div>
-
-
-                            <div className="markfy-feature-card__icon">
-
-                                <Icon icon="solar:users-group-rounded-linear" />
-
-                            </div>
-
-
-                            <h3>
-                                Sua equipe
-                            </h3>
-
-
-                            <p>
-
-                                Adicione pessoas da sua empresa
-                                para ajudar na administração.
-                                Defina diferentes níveis de acesso,
-                                como Master e Administrador.
-
-                            </p>
-
-
-                            <div className="markfy-feature-card__visual">
-
-                                <div className="markfy-mini-placeholder">
-
-                                    <Icon icon="solar:users-group-rounded-linear" />
-
-                                </div>
-
-                            </div>
-
-                        </article>
-
-
-                        {/* =================================================
-                            FEATURE 03
-                        ================================================== */}
-
-                        <article className="markfy-feature-card">
-
-                            <div className="markfy-feature-card__number">
-                                03
-                            </div>
-
-
-                            <div className="markfy-feature-card__icon">
-
-                                <Icon icon="solar:calendar-add-linear" />
-
-                            </div>
-
-
-                            <h3>
-                                Agendamentos
-                            </h3>
-
-
-                            <p>
-
-                                Cadastre serviços, produtos, categorias,
-                                duração, profissionais relacionados,
-                                horários e muito mais.
-
-                            </p>
-
-
-                            <div className="markfy-feature-card__visual">
-
-                                <div className="markfy-mini-placeholder">
-
-                                    <Icon icon="solar:calendar-add-linear" />
-
-                                </div>
-
-                            </div>
-
-                        </article>
-
-
-                        {/* =================================================
-                            FEATURE 04
-                        ================================================== */}
-
-                        <article className="markfy-feature-card">
-
-                            <div className="markfy-feature-card__number">
-                                04
-                            </div>
-
-
-                            <div className="markfy-feature-card__icon">
-
-                                <Icon icon="solar:card-linear" />
-
-                            </div>
-
-
-                            <h3>
-                                Pagamento antecipado
-                            </h3>
-
-
-                            <p>
-
-                                Ofereça aos seus clientes a possibilidade
-                                de realizar o pagamento antes do
-                                atendimento, tornando o processo
-                                ainda mais prático.
-
-                            </p>
-
-
-                            <div className="markfy-feature-card__visual">
-
-                                <div className="markfy-mini-placeholder">
-
-                                    <Icon icon="solar:card-linear" />
-
-                                </div>
-
-                            </div>
-
-                        </article>
-
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* =====================================================
-                EXPERIENCE
-            ====================================================== */}
-
-            <section
-                id="experiencia"
-                className="markfy-showcase"
-            >
-
-                <div className="markfy-container">
-
-                    <div className="markfy-showcase__content">
-
-                        <div className="markfy-eyebrow">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            Experiência simples
-
-                        </div>
-
-
-                        <h2>
-
-                            Seu cliente já sabe
-                            <br />
-
-                            <span>
-                                como usar.
-                            </span>
-
-                        </h2>
-
+            <section className="mk-final">
+
+                <div className="mk-shell">
+                    <Reveal className="mk-final__box">
+                        <h2>Sua próxima semana pode chegar cheia.</h2>
 
                         <p>
-
-                            A Markfy foi pensada para ser intuitiva.
-                            A interface utiliza padrões visuais
-                            familiares às plataformas que as pessoas
-                            já usam no dia a dia.
-
+                            Crie a empresa, publique o link e deixe a agenda
+                            trabalhar por você.
                         </p>
 
-
-                        <ul className="markfy-check-list">
-
-                            <li>
-
-                                <Icon icon="solar:check-circle-bold" />
-
-                                Interface intuitiva
-
-                            </li>
-
-
-                            <li>
-
-                                <Icon icon="solar:check-circle-bold" />
-
-                                Navegação simples
-
-                            </li>
-
-
-                            <li>
-
-                                <Icon icon="solar:check-circle-bold" />
-
-                                Experiência rápida
-
-                            </li>
-
-
-                            <li>
-
-                                <Icon icon="solar:check-circle-bold" />
-
-                                Design responsivo
-
-                            </li>
-
-
-                            <li>
-
-                                <Icon icon="solar:check-circle-bold" />
-
-                                Perfeito para celular e computador
-
-                            </li>
-
-                        </ul>
-
-
-                        <button className="markfy-button markfy-button--primary">
-
-                            Ver experiência
-
-                            <Icon icon="solar:arrow-up-right-linear" />
-
-                        </button>
-
-                    </div>
-
-
-                    <div className="markfy-showcase__visual">
-
-                        <div className="markfy-showcase-mockup">
-
-                            <div className="markfy-mockup-placeholder">
-
-                                <Icon icon="solar:smartphone-2-linear" />
-
-                                <span>
-                                    Experiência do cliente
-                                </span>
-
-                                <small>
-                                    Adicione aqui um mockup
-                                    mobile da plataforma
-                                </small>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* =====================================================
-                BLUE FEATURE SECTION
-            ====================================================== */}
-
-            <section className="markfy-blue-section">
-
-                <div className="markfy-blue-section__background">
-
-                    <div className="markfy-blue-section__grid" />
-
-                </div>
-
-
-                <div className="markfy-container">
-
-                    <div className="markfy-blue-section__content">
-
-                        <div className="markfy-eyebrow markfy-eyebrow--light">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            Sua empresa em um link
-
-                        </div>
-
-
-                        <h2>
-
-                            Seu negócio pode
-                            <br />
-
-                            estar a um link
-                            <br />
-
-                            de distância.
-
-                        </h2>
-
-
-                        <p>
-
-                            Depois de configurar sua empresa,
-                            seus clientes podem acessar sua página
-                            diretamente através de um endereço
-                            personalizado.
-
-                        </p>
-
-
-                        <div className="markfy-link-example">
-
-                            <span>
-                                markfy.vercel.app/central-user/
-                            </span>
-
-                            <strong>
-                                suaempresa
-                            </strong>
-
-                            <Icon icon="solar:copy-linear" />
-
-                        </div>
-
-
-                        <button className="markfy-button markfy-button--white">
-
-                            Criar minha empresa
-
-                            <Icon icon="solar:arrow-up-right-linear" className="icon" />
-
-                        </button>
-
-                    </div>
-
-
-                    <div className="markfy-blue-section__visual">
-
-                        <div className="markfy-blue-mockup">
-
-                            <div className="markfy-mockup-placeholder">
-
-                                <Icon icon="solar:link-linear" />
-
-                                <span>
-                                    Página pública da empresa
-                                </span>
-
-                                <small>
-                                    Adicione aqui um mockup
-                                    da página de agendamento
-                                </small>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* =====================================================
-                BUSINESS SETUP
-            ====================================================== */}
-
-            <section className="markfy-results">
-
-                <div className="markfy-container">
-
-                    <div className="markfy-section-heading">
-
-                        <div className="markfy-eyebrow">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            Configure do seu jeito
-
-                        </div>
-
-
-                        <h2>
-
-                            Do primeiro clique
-                            <br />
-
-                            ao agendamento.
-
-                        </h2>
-
-
-                    </div>
-
-
-                    <div className="markfy-results__grid">
-
-
-                        <div className="markfy-result">
-
-                            <strong>
-                                01
-                            </strong>
-
-                            <span>
-                                Crie sua empresa
-                            </span>
-
-                        </div>
-
-
-                        <div className="markfy-result">
-
-                            <strong>
-                                02
-                            </strong>
-
-                            <span>
-                                Personalize sua página
-                            </span>
-
-                        </div>
-
-
-                        <div className="markfy-result">
-
-                            <strong>
-                                03
-                            </strong>
-
-                            <span>
-                                Cadastre serviços e equipe
-                            </span>
-
-                        </div>
-
-
-                        <div className="markfy-result">
-
-                            <strong>
-                                04
-                            </strong>
-
-                            <span>
-                                Comece a receber agendamentos
-                            </span>
-
-                        </div>
-
-                    </div>
-
-
-                    {/* =================================================
-                        TESTIMONIAL
-                    ================================================== */}
-
-                    <div className="markfy-testimonial">
-
-                        <div className="markfy-testimonial__quote">
-
-                            <Icon icon="solar:quote-up-square-linear" />
-
-                        </div>
-
-
-                        <blockquote>
-
-                            "A Markfy foi criada para tornar o
-                            agendamento simples para quem administra
-                            e ainda mais simples para quem agenda."
-
-                        </blockquote>
-
-
-                        <div className="markfy-testimonial__author">
-
-                            <div className="markfy-testimonial__avatar">
-                                M
-                            </div>
-
-
-                            <div>
-
-                                <strong>
-                                    Markfy
-                                </strong>
-
-                                <span>
-                                    Plataforma de agendamento
-                                </span>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* =====================================================
-                ABOUT
-            ====================================================== */}
-
-            <section
-                id="sobre"
-                className="markfy-about"
-            >
-
-                <div className="markfy-container">
-
-                    <div className="markfy-about__visual">
-
-                        <div className="markfy-about__image">
-
-                            <div className="markfy-mockup-placeholder">
-
-                                <Icon icon="solar:calendar-search-linear" />
-
-                                <span>
-                                    A experiência Markfy
-                                </span>
-
-                                <small>
-                                    Adicione uma composição
-                                    visual da plataforma
-                                </small>
-
-                            </div>
-
-                        </div>
-
-                    </div>
-
-
-                    <div className="markfy-about__content">
-
-                        <div className="markfy-eyebrow">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            Sobre a Markfy
-
-                        </div>
-
-
-                        <h2>
-
-                            Agendamento não precisa
-                            <br />
-
-                            ser
-                            <span>
-                                complicado.
-                            </span>
-
-                        </h2>
-
-
-                        <p>
-
-                            A Markfy nasceu com uma ideia simples:
-                            criar uma plataforma de agendamento
-                            que qualquer empresa consiga entender,
-                            configurar e usar.
-
-                        </p>
-
-
-                        <p>
-
-                            Seja uma barbearia, uma clínica,
-                            um salão, um estúdio ou qualquer
-                            outro negócio que trabalhe com horários,
-                            a plataforma se adapta à sua realidade.
-
-                        </p>
-
-
-                        <p>
-
-                            Tudo isso com uma interface intuitiva,
-                            responsiva e pensada para funcionar
-                            perfeitamente no celular e no computador.
-
-                        </p>
-
-
-                        <button className="markfy-text-button">
-
-                            Conheça a Markfy
-
-                            <Icon icon="solar:arrow-right-up-linear" />
-
-                        </button>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* =====================================================
-                FINAL CTA
-            ====================================================== */}
-
-            <section className="markfy-final-cta">
-
-                <div className="markfy-final-cta__background">
-
-                    <div className="markfy-final-cta__glow" />
-
-                    <div className="markfy-final-cta__grid" />
-
-                </div>
-
-
-                <div className="markfy-container">
-
-                    <div className="markfy-final-cta__content">
-
-                        <div className="markfy-eyebrow markfy-eyebrow--light">
-
-                            <span className="markfy-eyebrow__dot" />
-
-                            Comece agora
-
-                        </div>
-
-
-                        <h2>
-
-                            Seu negócio está
-                            <br />
-
-                            pronto para
-                            <span>
-                                agendar.
-                            </span>
-
-                        </h2>
-
-
-                        <p>
-
-                            Crie sua empresa na Markfy,
-                            personalize sua experiência e
-                            comece a receber agendamentos
-                            de uma forma simples.
-
-                        </p>
-
-
-                        <div className="markfy-final-cta__actions">
-
-                            <button className="markfy-button markfy-button--white">
-
+                        <div className="mk-final__actions">
+                            <button
+                                type="button"
+                                className="mk-btn mk-btn--solid mk-btn--lg"
+                                onClick={startSignup}
+                            >
                                 Criar minha empresa
-
-                                <Icon icon="solar:arrow-up-right-linear" />
-
+                                <Icon icon="solar:arrow-right-linear" />
                             </button>
-
-
-                            <button className="markfy-button markfy-button--outline-white">
-
-                                Conhecer a plataforma
-
-                                <Icon icon="solar:play-circle-linear" />
-
-                            </button>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </section>
-
-
-            {/* =====================================================
-                FOOTER
-            ====================================================== */}
-
-            <footer className="markfy-footer">
-
-                <div className="markfy-container">
-
-                    <div className="markfy-footer__top">
-
-                        <div className="markfy-footer__brand">
 
                             <a
-                                href="#hero"
-                                className="markfy-logo"
+                                href="#plataforma"
+                                className="mk-btn mk-btn--outline mk-btn--lg"
+                                onClick={(e) => goToSection(e, "plataforma")}
                             >
-
-                                <span className="markfy-logo__mark">
-                                    M
-                                </span>
-
-                                <span className="markfy-logo__name">
-                                    markfy
-                                </span>
-
+                                Rever a plataforma
                             </a>
-
-
-                            <p>
-
-                                Agendamento simples,
-                                personalizável e do
-                                seu jeito.
-
-                            </p>
-
                         </div>
+                    </Reveal>
+                </div>
+
+            </section>
 
 
-                        <div className="markfy-footer__links">
+            {/* =====================================================
+                RODAPÉ
+            ====================================================== */}
 
-                            <div>
+            <footer className="mk-footer">
 
-                                <strong>
-                                    Plataforma
-                                </strong>
+                <div className="mk-shell mk-footer__grid">
 
-                                <a href="#plataforma">
-                                    A plataforma
-                                </a>
+                    <div className="mk-footer__brand">
+                        <a
+                            className="mk-brand"
+                            href="#hero"
+                            onClick={(e) => goToSection(e, "hero")}
+                        >
+                            <img src="/markfy/logo.svg" alt="" aria-hidden="true" />
+                            <span>Markfy</span>
+                        </a>
 
-                                <a href="#recursos">
-                                    Recursos
-                                </a>
-
-                                <a href="#experiencia">
-                                    Experiência
-                                </a>
-
-                            </div>
-
-
-                            <div>
-
-                                <strong>
-                                    Empresa
-                                </strong>
-
-                                <a href="#sobre">
-                                    Sobre nós
-                                </a>
-
-                                <a href="#">
-                                    Contato
-                                </a>
-
-                                <a href="#">
-                                    Suporte
-                                </a>
-
-                            </div>
-
-
-                            <div>
-
-                                <strong>
-                                    Acesso
-                                </strong>
-
-                                <a href="#">
-                                    Entrar
-                                </a>
-
-                                <a href="#">
-                                    Criar empresa
-                                </a>
-
-                                <a href="#">
-                                    Central do usuário
-                                </a>
-
-                            </div>
-
-                        </div>
-
+                        <p>Agendamento simples, personalizável e do seu jeito.</p>
                     </div>
 
+                    <nav aria-label="Plataforma">
+                        <h3>Plataforma</h3>
+                        <a href="#plataforma" onClick={(e) => goToSection(e, "plataforma")}>Recursos</a>
+                        <a href="#recursos" onClick={(e) => goToSection(e, "recursos")}>Como funciona</a>
+                        <a href="#comecar" onClick={(e) => goToSection(e, "comecar")}>Como começar</a>
+                    </nav>
 
-                    <div className="markfy-footer__bottom">
+                    <nav aria-label="Acesso">
+                        <h3>Acesso</h3>
+                        <button type="button" onClick={startSignup}>Entrar</button>
+                        <button type="button" onClick={startSignup}>Criar empresa</button>
+                        <a href="/central-user">Central do usuário</a>
+                    </nav>
 
-                        <span>
-                            © 2026 Markfy. Todos os direitos reservados.
-                        </span>
+                    <nav aria-label="Legal">
+                        <h3>Legal</h3>
+                        <a href="/privacidade">Privacidade</a>
+                        <a href="/termos">Termos de uso</a>
+                    </nav>
 
+                </div>
 
-                        <div>
-
-                            <a href="#">
-                                Privacidade
-                            </a>
-
-                            <a href="#">
-                                Termos
-                            </a>
-
-                        </div>
-
-                    </div>
-
+                <div className="mk-shell mk-footer__base">
+                    <span>© 2026 Markfy</span>
+                    <span>Feito no Brasil</span>
                 </div>
 
             </footer>
