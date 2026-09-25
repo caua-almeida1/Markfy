@@ -6,6 +6,8 @@ import AgendaScene from "./AgendaScene";
 import { PlatformDeck, BookingFlow, StepsRail } from "./scenes";
 import { useInView, useScrollProgress } from "./hooks";
 
+import { useConsent } from "../../contexts/consentContext/ConsentContext";
+
 import "./landingPage.css";
 
 /* =========================================================
@@ -43,6 +45,8 @@ const SEGMENTS = [
 
 const LandingPage = () => {
     const navigate = useNavigate();
+
+    const { openPreferences: openConsentPreferences } = useConsent();
 
     const { progress, scrolled } = useScrollProgress();
 
@@ -425,6 +429,12 @@ const LandingPage = () => {
                         <h3>Legal</h3>
                         <a href="/privacidade">Privacidade</a>
                         <a href="/termos">Termos de uso</a>
+                        {/* LGPD, Art. 8º, §5º: a escolha de cookies
+                            tem que continuar acessível depois de
+                            feita. */}
+                        <button type="button" onClick={openConsentPreferences}>
+                            Preferências de cookies
+                        </button>
                     </nav>
 
                 </div>

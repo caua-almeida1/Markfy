@@ -1,0 +1,152 @@
+/* =========================================================
+   ESPERANDO APROVAÇÃO
+   ========================================================= */
+
+.join-waiting {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+
+    width: 100%;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 0;
+
+    box-sizing: border-box;
+    text-align: center;
+}
+
+.join-waiting-icon {
+    display: grid;
+    place-items: center;
+
+    width: 74px;
+    height: 74px;
+
+    border-radius: 50%;
+    background: var(--mkf-ui-primary-soft, #eef1ff);
+    color: var(--mkf-ui-primary, #092af3);
+
+    font-size: 36px;
+}
+
+.join-waiting-icon.is-rejected {
+    background: #fdecea;
+    color: #c0392b;
+}
+
+.join-waiting h1 {
+    margin: 0;
+
+    font-size: clamp(1.4rem, 3.2vw, 1.8rem);
+    font-weight: 600;
+    letter-spacing: -.03em;
+    color: var(--mkf-text-primary);
+}
+
+.join-waiting p {
+    max-width: 44ch;
+    margin: 0;
+
+    font-size: .95rem;
+    line-height: 1.55;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.join-waiting p strong {
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+
+/* ---------- Status ---------- */
+
+.join-waiting-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+
+    padding: 9px 16px;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-surface-hover, #f1f3f9);
+
+    font-size: .88rem;
+    font-weight: 500;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.join-waiting-status svg {
+    font-size: 17px;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+
+/* ---------- Resumo do pedido ---------- */
+
+.join-waiting-card {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+
+    width: 100%;
+    padding: 16px;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 16px;
+    background: var(--mkf-ui-surface, #fff);
+
+    text-align: left;
+}
+
+.join-waiting-card-label {
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.join-waiting-card strong {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.join-waiting-card-contact {
+    font-size: .88rem;
+    color: var(--mkf-text-secondary, #5c6278);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* ---------- Ações ---------- */
+
+.join-waiting-button {
+    min-height: 46px;
+    padding: 0 22px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 100px;
+    background: none;
+    color: var(--mkf-text-secondary, #5c6278);
+
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.join-waiting-button.is-primary {
+    border-color: transparent;
+    background: var(--mkf-ui-primary, #092af3);
+    color: #fff;
+}
+
+.join-waiting-button:disabled {
+    opacity: .55;
+    cursor: default;
+}

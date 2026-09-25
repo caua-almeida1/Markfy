@@ -1,0 +1,359 @@
+/*
+============================================================
+PAINEL DE CONSUMO DO REALTIME DATABASE
+============================================================
+
+Tela de desenvolvimento. Não aparece em produção.
+============================================================
+*/
+
+.rtdb-root {
+    color-scheme: light;
+
+    --surface-0: #f4f4f2;
+    --surface-1: #fcfcfb;
+    --surface-2: #eeeeeb;
+
+    --border: #dcdcd6;
+    --border-strong: #c4c4bc;
+
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #7a7974;
+
+    --series-1: #2a78d6;
+
+    --status-good: #008300;
+    --status-warning: #eda100;
+    --status-critical: #e34948;
+
+    min-height: 100vh;
+    padding: 24px 16px 64px;
+    background: var(--surface-0);
+    color: var(--text-primary);
+
+    font-family: ui-sans-serif, system-ui, -apple-system,
+        "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .rtdb-root {
+        color-scheme: dark;
+
+        --surface-0: #121211;
+        --surface-1: #1a1a19;
+        --surface-2: #232322;
+
+        --border: #34342f;
+        --border-strong: #4a4a43;
+
+        --text-primary: #ffffff;
+        --text-secondary: #c3c2b7;
+        --text-muted: #94938a;
+
+        --series-1: #3987e5;
+
+        --status-good: #008300;
+        --status-warning: #c98500;
+        --status-critical: #e66767;
+    }
+}
+
+:root[data-theme="dark"] .rtdb-root {
+    color-scheme: dark;
+
+    --surface-0: #121211;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+
+    --border: #34342f;
+    --border-strong: #4a4a43;
+
+    --text-primary: #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted: #94938a;
+
+    --series-1: #3987e5;
+
+    --status-good: #008300;
+    --status-warning: #c98500;
+    --status-critical: #e66767;
+}
+
+.rtdb-shell {
+    max-width: 1040px;
+    margin: 0 auto;
+}
+
+/* ===================== CABEÇALHO ===================== */
+
+.rtdb-header {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.rtdb-title {
+    margin: 0 0 4px;
+    font-size: 20px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+}
+
+.rtdb-subtitle {
+    margin: 0;
+    max-width: 62ch;
+    color: var(--text-secondary);
+}
+
+.rtdb-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.rtdb-button {
+    padding: 7px 14px;
+    border: 1px solid var(--border-strong);
+    border-radius: 8px;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font: inherit;
+    font-weight: 550;
+    cursor: pointer;
+}
+
+.rtdb-button:hover {
+    background: var(--surface-2);
+}
+
+.rtdb-button[aria-pressed="true"] {
+    border-color: var(--series-1);
+    color: var(--series-1);
+}
+
+/* ===================== AVISOS ===================== */
+
+.rtdb-notice {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    margin-bottom: 20px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--status-warning);
+    border-radius: 8px;
+    background: var(--surface-1);
+    color: var(--text-secondary);
+}
+
+.rtdb-notice strong {
+    color: var(--text-primary);
+}
+
+.rtdb-notice-critical {
+    border-left-color: var(--status-critical);
+}
+
+/* ===================== TILES ===================== */
+
+.rtdb-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.rtdb-tile {
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-1);
+}
+
+.rtdb-tile-label {
+    margin: 0 0 6px;
+    font-size: 12px;
+    font-weight: 550;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.rtdb-tile-value {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+}
+
+.rtdb-tile-hint {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* ===================== SEÇÕES ===================== */
+
+.rtdb-section {
+    margin-bottom: 28px;
+}
+
+.rtdb-section-head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.rtdb-section-title {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 650;
+}
+
+.rtdb-section-note {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+/* ===================== BARRAS ===================== */
+
+.rtdb-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-1);
+}
+
+.rtdb-bar-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 7px 8px;
+    border-radius: 6px;
+}
+
+.rtdb-bar-row:hover {
+    background: var(--surface-2);
+}
+
+.rtdb-bar-main {
+    min-width: 0;
+}
+
+.rtdb-bar-label {
+    display: block;
+    margin-bottom: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    color: var(--text-primary);
+}
+
+.rtdb-bar-track {
+    height: 8px;
+    border-radius: 4px;
+    background: var(--surface-2);
+    overflow: hidden;
+}
+
+.rtdb-bar-fill {
+    height: 100%;
+    min-width: 2px;
+    border-radius: 0 4px 4px 0;
+    background: var(--series-1);
+}
+
+.rtdb-bar-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.rtdb-bar-sub {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 400;
+    text-align: right;
+    color: var(--text-muted);
+}
+
+/* ===================== TABELA ===================== */
+
+.rtdb-table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-1);
+}
+
+.rtdb-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.rtdb-table th,
+.rtdb-table td {
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.rtdb-table th {
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.rtdb-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.rtdb-table td.rtdb-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.rtdb-mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+}
+
+.rtdb-empty {
+    padding: 28px 16px;
+    border: 1px dashed var(--border-strong);
+    border-radius: 10px;
+    background: var(--surface-1);
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.rtdb-tag {
+    display: inline-block;
+    padding: 1px 7px;
+    margin-right: 4px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface-2);
+    font-size: 11px;
+    color: var(--text-secondary);
+}

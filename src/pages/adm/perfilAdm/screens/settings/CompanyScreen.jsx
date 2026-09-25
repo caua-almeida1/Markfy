@@ -5,6 +5,12 @@ import Toast from "../../../../../components/toast/Toast";
 
 import { getDatabase, ref, update, get } from "firebase/database";
 
+import {
+    updateCompanyIndex,
+    getDocumentOwner,
+    setDocumentOwner
+} from "../../../../../firebase/companiesIndex";
+
 
 const COMPANY_CATEGORIES = [
     { id: 'barbearia', name: 'Barbearia', icon: 'solar:scissors-outline' },
@@ -293,89 +299,61 @@ const CompanyScreen = () => {
                     .replace(/\D/g, "");
             /*
              * ==========================================
-             * BUSCAR TODAS AS EMPRESAS
-             * ==========================================
-             */
-
-            const companiesSnapshot =
-                await get(
-                    ref(db, "companys"),
-                );
-
-            const companies =
-                companiesSnapshot.exists()
-                    ? companiesSnapshot.val()
-                    : {};
-
-            /*
-             * ==========================================
              * VERIFICAR CONFLITOS
+             * ==========================================
+             *
+             * Consultas pontuais nos índices.
+             *
+             * Ler o nó "companys" inteiro aqui baixava
+             * produtos, agendamentos e pedidos de todas
+             * as empresas só para comparar dois campos.
              * ==========================================
              */
 
             let handleAlreadyExists = false;
             let documentAlreadyExists = false;
 
-            for (
-                const [handle, companyData]
-                of Object.entries(companies)
+
+            /*
+             * ==============================
+             * HANDLE
+             * ==============================
+             */
+
+            if (newHandle !== currentHandle) {
+
+                const handleSnapshot =
+                    await get(
+                        ref(db, `companiesIndex/${newHandle}`),
+                    );
+
+                handleAlreadyExists =
+                    handleSnapshot.exists();
+
+            }
+
+
+            /*
+             * ==============================
+             * DOCUMENTO
+             * ==============================
+             */
+
+            if (
+                !handleAlreadyExists &&
+                newDocument &&
+                newDocument !== currentDocument
             ) {
 
-                /*
-                 * Ignora a própria empresa.
-                 */
+                const documentOwner =
+                    await getDocumentOwner(newDocument);
 
-                const existingHandle =
-                    String(handle)
+                documentAlreadyExists =
+                    Boolean(documentOwner) &&
+                    String(documentOwner)
                         .trim()
                         .replace(/^@+/, "")
-                        .toLowerCase();
-
-                if (
-                    existingHandle === currentHandle
-                ) {
-                    continue;
-                }
-
-
-                /*
-                 * ==============================
-                 * HANDLE
-                 * ==============================
-                 */
-
-                if (
-                    existingHandle === newHandle
-                ) {
-
-                    handleAlreadyExists = true;
-
-                    break;
-
-                }
-
-
-                /*
-                 * ==============================
-                 * DOCUMENTO
-                 * ==============================
-                 */
-
-                const existingDocument =
-                    String(
-                        companyData?.document || "",
-                    ).replace(/\D/g, "");
-
-                if (
-                    existingDocument &&
-                    existingDocument === newDocument
-                ) {
-
-                    documentAlreadyExists = true;
-
-                    break;
-
-                }
+                        .toLowerCase() !== currentHandle;
 
             }
 
@@ -446,6 +424,53 @@ const CompanyScreen = () => {
                             ? form.categories
                             : [],
                 },
+            );
+
+
+            /*
+             * ==========================================
+             * ÍNDICES
+             * ==========================================
+             *
+             * O índice público não recebe document, email
+             * nem phone.
+             * ==========================================
+             */
+
+            const categories =
+                Array.isArray(form.categories)
+                    ? form.categories
+                    : [];
+
+            await updateCompanyIndex(
+                company.handle,
+                {
+
+                    handle:
+                        newHandle,
+
+                    name:
+                        form.name.trim(),
+
+                    description:
+                        form.description.trim(),
+
+                    category:
+                        categories[0] || null,
+
+                    categories:
+                        categories.length
+                            ? categories
+                            : null,
+
+                },
+            );
+
+
+            await setDocumentOwner(
+                newDocument,
+                company.handle,
+                currentDocument,
             );
 
 

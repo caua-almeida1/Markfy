@@ -11,6 +11,7 @@ import { signOut } from 'firebase/auth';
 import { auth } from '../../firebase/firebase';
 
 import BusinessForm from './initial-steps-components/BusinessForm';
+import ClientExplore from './initial-steps-components/ClientExplore';
 
 const InitialSetup = () => {
   const location = useLocation();
@@ -26,6 +27,10 @@ const InitialSetup = () => {
   const [error, setError] = useState('');
   const [selectedRole, setSelectedRole] = useState(null);
   const [showBusinessForm, setShowBusinessForm] = useState(false);
+
+  /* "Sou cliente" não tem passo a passo: abre direto a
+     exploração, que é tudo o que essa pessoa precisa. */
+  const [showClientExplore, setShowClientExplore] = useState(false);
 
   useEffect(() => {
     if (!initialName && id) {
@@ -74,13 +79,17 @@ const InitialSetup = () => {
       return;
     }
 
-    // Fluxo do cliente
-    console.log('Cliente comum selecionado');
+    setShowClientExplore(true);
   };
 
   const handleBack = () => {
     if (showBusinessForm) {
       setShowBusinessForm(false);
+      return;
+    }
+
+    if (showClientExplore) {
+      setShowClientExplore(false);
       return;
     }
 
@@ -99,6 +108,42 @@ const InitialSetup = () => {
       console.error('Erro ao sair:', err);
     }
   };
+
+  if (showClientExplore) {
+    return (
+      <main className="initial-setup-wrapper">
+        <header className="initial-setup-header">
+          <img
+            src={Logo}
+            alt="Markfy"
+            className="initial-setup-logo"
+          />
+
+          <button
+            type="button"
+            className="initial-setup-exit"
+            onClick={handleSignOut}
+          >
+            <span>Sair</span>
+            <Icon icon="solar:logout-2-linear" />
+          </button>
+        </header>
+
+        <div className="initial-setup-business">
+          <button
+            type="button"
+            className="initial-setup-business-back"
+            onClick={handleBack}
+          >
+            <Icon icon="solar:arrow-left-linear" />
+            Voltar
+          </button>
+
+          <ClientExplore />
+        </div>
+      </main>
+    );
+  }
 
   if (showBusinessForm) {
     return (

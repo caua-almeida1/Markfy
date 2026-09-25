@@ -26,10 +26,6 @@ import {
     remove,
 } from "firebase/database";
 
-import {
-    motion,
-    AnimatePresence
-} from "framer-motion";
 
 import emailjs from "@emailjs/browser";
 
@@ -51,6 +47,23 @@ import {
     useUserCompany
 } from "../../../contexts/companyContext/UserCompanyContext";
 
+import { useCompanyLogo } from "../../../firebase/companyLogo";
+import Modal from "../../../components/modal/Modal";
+
+import {
+    getSubscriptionSummary,
+    isSubscriptionUsable,
+    watchCompanySubscriptions
+} from "../../../utils/subscriptionRuntime";
+
+import {
+    approveJoinRequest,
+    rejectJoinRequest,
+    REQUEST_STATUS,
+    watchCompanyJoinRequests
+} from "../../../utils/joinRequests";
+import useLastValue from "../../../hooks/useLastValue";
+
 
 const Dashboard = ({
     activeTab,
@@ -60,10 +73,7 @@ const Dashboard = ({
     /* =====================================================
        STATES
     ===================================================== */
-    const [
-        companyLogo,
-        setCompanyLogo
-    ] = useState(null);
+
 
     const [
         currentUserMember,
@@ -105,6 +115,11 @@ const Dashboard = ({
         setSelectedMember
     ] = useState(null);
 
+    /* O modal de detalhes só sai do DOM depois da animação,
+       quando o state já é null: sem guardar o último membro
+       o painel sairia vazio. */
+    const memberDetails = useLastValue(selectedMember);
+
     const [
         memberRole,
         setMemberRole
@@ -119,6 +134,27 @@ const Dashboard = ({
         isAdminModalVisible,
         setIsAdminModalVisible
     ] = useState(false);
+
+    /* =====================================================
+       PEDIDOS DE ENTRADA
+    ===================================================== */
+
+    const [joinRequests, setJoinRequests] = useState([]);
+
+    /* Assinaturas ativas — a receita que entra sozinha todo
+       ciclo, e que some no meio dos agendamentos avulsos se
+       não tiver lugar próprio. */
+    const [subscriptions, setSubscriptions] = useState([]);
+
+    /* Pedido aberto para revisão; null = lista. */
+    const [reviewingRequest, setReviewingRequest] = useState(null);
+
+    const [reviewRole, setReviewRole] = useState("professional");
+    const [reviewName, setReviewName] = useState("");
+    const [reviewSaving, setReviewSaving] = useState(false);
+
+    /* Depois de aprovar: o que mostrar ao administrador. */
+    const [approvedMember, setApprovedMember] = useState(null);
 
     const [
         adminRegisterMode,
@@ -210,6 +246,107 @@ const Dashboard = ({
         members,
         company
     } = useUserCompany();
+
+    /* A logo vem do Storage, via hook compartilhado
+       (companys/{handle}/logo.png). */
+    const companyLogo = useCompanyLogo(company?.handle);
+
+
+    /* =====================================================
+       PEDIDOS — AÇÕES
+    ===================================================== */
+
+    const abrirRevisao = (request) => {
+
+        setReviewingRequest(request);
+        setReviewName(request.name || "");
+        setReviewRole("professional");
+
+    };
+
+
+    const confirmarEntrada = async () => {
+
+        if (!reviewingRequest || !company?.handle) {
+            return;
+        }
+
+        setReviewSaving(true);
+
+        try {
+
+            await approveJoinRequest({
+                handle: company.handle,
+                request: reviewingRequest,
+                role: reviewRole,
+                displayName: reviewName
+            });
+
+            setApprovedMember({
+                name: reviewName || reviewingRequest.name || "Novo membro",
+                role: reviewRole,
+                handle: company.handle
+            });
+
+            setReviewingRequest(null);
+
+            showToast(
+                "success",
+                "Pessoa adicionada",
+                `${reviewName || "O membro"} já faz parte da equipe.`
+            );
+
+        } catch (error) {
+
+            console.error("Erro ao aprovar pedido:", error);
+
+            showToast(
+                "error",
+                "Não deu para adicionar",
+                "Tente de novo em instantes."
+            );
+
+        } finally {
+
+            setReviewSaving(false);
+
+        }
+
+    };
+
+
+    const recusarEntrada = async (request) => {
+
+        if (!company?.handle) return;
+
+        try {
+
+            await rejectJoinRequest({
+                handle: company.handle,
+                request
+            });
+
+            setReviewingRequest(null);
+
+            showToast(
+                "success",
+                "Pedido recusado",
+                "A pessoa foi avisada."
+            );
+
+        } catch (error) {
+
+            console.error("Erro ao recusar pedido:", error);
+
+            showToast(
+                "error",
+                "Não deu para recusar",
+                "Tente de novo em instantes."
+            );
+
+        }
+
+    };
 
 
     const handleLogout = async () => {
@@ -304,66 +441,73 @@ const Dashboard = ({
     };
 
     /* =====================================================
-   CARREGAR LOGO DA EMPRESA
-===================================================== */
+       ASSINATURAS — ESCUTA
+    ===================================================== */
 
     useEffect(() => {
 
         if (!company?.handle) {
-
-            setCompanyLogo(null);
-
-            return;
-
+            setSubscriptions([]);
+            return undefined;
         }
 
-        const storage = getStorage();
+        const unsubscribe = watchCompanySubscriptions(
+            company.handle,
+            setSubscriptions
+        );
 
-        const loadCompanyLogo = async () => {
-
-            try {
-
-                const logoRef = storageRef(
-                    storage,
-                    `companys/${company.handle}/logo.png`
-                );
-
-                const logoUrl = await getDownloadURL(
-                    logoRef
-                );
-
-                setCompanyLogo(
-                    logoUrl
-                );
-
-            } catch (error) {
-
-                /*
-                 * Caso a empresa ainda não tenha
-                 * uma logo cadastrada.
-                 */
-
-                if (
-                    error.code !==
-                    "storage/object-not-found"
-                ) {
-
-                    console.error(
-                        "Erro ao carregar logo da empresa:",
-                        error
-                    );
-
-                }
-
-                setCompanyLogo(null);
-
-            }
-
-        };
-
-        loadCompanyLogo();
+        return () => unsubscribe();
 
     }, [company?.handle]);
+
+
+    const activeSubscriptions =
+        subscriptions.filter(isSubscriptionUsable);
+
+    /* Quanto entra a cada ciclo, somando os planos ativos. */
+    const recurringRevenue =
+        activeSubscriptions.reduce(
+            (soma, item) => soma + Number(item.price || 0),
+            0
+        );
+
+
+    /* =====================================================
+       PEDIDOS DE ENTRADA — ESCUTA
+    ===================================================== */
+
+    useEffect(() => {
+
+        if (!company?.handle) {
+            setJoinRequests([]);
+            return undefined;
+        }
+
+        const unsubscribe = watchCompanyJoinRequests(
+            company.handle,
+            setJoinRequests
+        );
+
+        return () => unsubscribe();
+
+    }, [company?.handle]);
+
+
+    /*
+     * Os que ainda esperam resposta.
+     *
+     * Aprovar apaga o pedido — o vínculo passa a viver em
+     * members/, e guardar o pedido seria um segundo registro
+     * da mesma coisa. Só o recusado fica, para a pessoa ver
+     * o motivo da porta fechada, e ele não é tarefa de
+     * ninguém.
+     */
+    const pendingRequests =
+        joinRequests.filter(
+            request =>
+                request.status === REQUEST_STATUS.PENDING
+        );
+
 
     /* =====================================================
    MEMBRO LOGADO
@@ -2266,35 +2410,10 @@ const Dashboard = ({
                         </button>
 
 
-                        <AnimatePresence>
+                        {isPageMenuOpen && (
 
-                            {isPageMenuOpen && (
-
-                                <motion.div
-                                    className="dashboard-page-menu"
-
-                                    initial={{
-                                        opacity: 0,
-                                        y: -8,
-                                        scale: .97
-                                    }}
-
-                                    animate={{
-                                        opacity: 1,
-                                        y: 0,
-                                        scale: 1
-                                    }}
-
-                                    exit={{
-                                        opacity: 0,
-                                        y: -8,
-                                        scale: .97
-                                    }}
-
-                                    transition={{
-                                        duration: .18,
-                                        ease: [0.22, 1, 0.36, 1]
-                                    }}
+                                <div
+                                    className="dashboard-page-menu mkf-pop-enter"
                                 >
 
                                     {/* ACESSAR PÁGINA */}
@@ -2370,11 +2489,10 @@ const Dashboard = ({
 
                                     </button>
 
-                                </motion.div>
+                                </div>
 
                             )}
 
-                        </AnimatePresence>
 
                     </div>
 
@@ -2480,35 +2598,10 @@ const Dashboard = ({
         USER DROPDOWN
     ================================================= */}
 
-                        <AnimatePresence>
+                        {isUserMenuOpen && (
 
-                            {isUserMenuOpen && (
-
-                                <motion.div
-                                    className="dashboard-user-menu"
-
-                                    initial={{
-                                        opacity: 0,
-                                        y: -8,
-                                        scale: 0.97
-                                    }}
-
-                                    animate={{
-                                        opacity: 1,
-                                        y: 0,
-                                        scale: 1
-                                    }}
-
-                                    exit={{
-                                        opacity: 0,
-                                        y: -8,
-                                        scale: 0.97
-                                    }}
-
-                                    transition={{
-                                        duration: 0.18,
-                                        ease: [0.22, 1, 0.36, 1]
-                                    }}
+                                <div
+                                    className="dashboard-user-menu mkf-pop-enter"
                                 >
 
                                     {/* VER PERFIL */}
@@ -2602,11 +2695,10 @@ const Dashboard = ({
 
                                     </button>
 
-                                </motion.div>
+                                </div>
 
                             )}
 
-                        </AnimatePresence>
 
                     </div>
 
@@ -2853,6 +2945,120 @@ const Dashboard = ({
 
 
                 </section>
+
+
+                {/* =================================================
+                    ASSINATURAS ATIVAS
+
+                    Separado dos agendamentos de propósito: é a
+                    parte da receita que não depende de alguém
+                    marcar nada este mês. Misturada com os
+                    pedidos avulsos, ela simplesmente não
+                    aparece.
+                ================================================= */}
+
+                {activeSubscriptions.length > 0 && (
+
+                    <section className="dashboard-subscriptions">
+
+                        <div className="dashboard-subscriptions-head">
+
+                            <div>
+                                <span>Mensalidades</span>
+
+                                <h2>
+                                    {activeSubscriptions.length}
+                                    {" "}
+                                    {activeSubscriptions.length === 1
+                                        ? "assinatura ativa"
+                                        : "assinaturas ativas"}
+                                </h2>
+                            </div>
+
+                            <div className="dashboard-subscriptions-revenue">
+                                <span>Receita por ciclo</span>
+
+                                <strong>
+                                    {recurringRevenue.toLocaleString("pt-BR", {
+                                        style: "currency",
+                                        currency: "BRL"
+                                    })}
+                                </strong>
+                            </div>
+
+                        </div>
+
+                        <div className="dashboard-subscriptions-list">
+
+                            {activeSubscriptions.slice(0, 5).map((assinatura) => {
+
+                                const resumo =
+                                    getSubscriptionSummary(
+                                        assinatura,
+                                        orders || []
+                                    );
+
+                                return (
+                                    <div
+                                        key={assinatura.id}
+                                        className="dashboard-subscription-row"
+                                    >
+
+                                        <div className="dashboard-subscription-avatar">
+                                            <Icon icon="lucide:user-round" />
+                                        </div>
+
+                                        <div className="dashboard-subscription-who">
+                                            <strong>
+                                                {assinatura.userName || "Sem nome"}
+                                            </strong>
+
+                                            <span>
+                                                {assinatura.productName ||
+                                                    "Mensalidade"}
+                                            </span>
+                                        </div>
+
+                                        <div className="dashboard-subscription-meta">
+                                            <span>Próxima cobrança</span>
+
+                                            <strong>
+                                                {resumo.proximaCobranca
+                                                    .toLocaleDateString("pt-BR")}
+                                            </strong>
+                                        </div>
+
+                                        <span
+                                            className={`dashboard-subscription-badge ${assinatura.status === "past_due"
+                                                ? "is-late"
+                                                : "is-active"
+                                                }`}
+                                        >
+                                            {assinatura.status === "past_due"
+                                                ? "Em atraso"
+                                                : "Ativa"}
+                                        </span>
+
+                                    </div>
+                                );
+
+                            })}
+
+                        </div>
+
+                        <button
+                            type="button"
+                            className="dashboard-subscriptions-link"
+                            onClick={() => setActiveTab("pedidos")}
+                        >
+                            Ver todas em Pedidos → Assinaturas
+
+                            <Icon icon="lucide:arrow-right" />
+                        </button>
+
+                    </section>
+
+                )}
 
 
                 {/* =================================================
@@ -3367,9 +3573,7 @@ const Dashboard = ({
                 ORDER MODAL
             ===================================================== */}
 
-            <AnimatePresence>
-
-                {selectedOrder && (
+            {selectedOrder && (
 
                     <OrderDetailsModal
 
@@ -3395,68 +3599,17 @@ const Dashboard = ({
 
                 )}
 
-            </AnimatePresence>
 
             {/* =====================================================
     MEMBERS MANAGEMENT MODAL
 ===================================================== */}
 
-            <AnimatePresence>
-
-                {isMembersModalOpen && (
-
-                    <motion.div
-                        className="dashboard-members-modal-overlay"
-
-                        initial={{
-                            opacity: 0
-                        }}
-
-                        animate={{
-                            opacity: 1
-                        }}
-
-                        exit={{
-                            opacity: 0
-                        }}
-
-                        transition={{
-                            duration: 0.2
-                        }}
-
-                        onClick={closeMembersModal}
-                    >
-
-                        <motion.div
-                            className="dashboard-members-modal"
-
-                            initial={{
-                                opacity: 0,
-                                y: 20,
-                                scale: 0.96
-                            }}
-
-                            animate={{
-                                opacity: 1,
-                                y: 0,
-                                scale: 1
-                            }}
-
-                            exit={{
-                                opacity: 0,
-                                y: 12,
-                                scale: 0.97
-                            }}
-
-                            transition={{
-                                duration: 0.24,
-                                ease: [0.22, 1, 0.36, 1]
-                            }}
-
-                            onClick={(event) =>
-                                event.stopPropagation()
-                            }
-                        >
+            <Modal
+                open={isMembersModalOpen}
+                onClose={closeMembersModal}
+                overlayClassName="dashboard-members-modal-overlay"
+                className="dashboard-members-modal"
+            >
 
                             {/* HEADER */}
 
@@ -3652,70 +3805,17 @@ const Dashboard = ({
 
                             </div>
 
-                        </motion.div>
+                        </Modal>
 
-                    </motion.div>
+            <Modal
+                open={!!selectedMember}
+                onClose={closeMemberDetails}
+                overlayClassName="dashboard-member-details-overlay"
+                className="dashboard-member-details-modal"
+            >
 
-                )}
-
-            </AnimatePresence>
-
-            <AnimatePresence>
-
-                {selectedMember && (
-
-                    <motion.div
-                        className="dashboard-member-details-overlay"
-
-                        initial={{
-                            opacity: 0
-                        }}
-
-                        animate={{
-                            opacity: 1
-                        }}
-
-                        exit={{
-                            opacity: 0
-                        }}
-
-                        transition={{
-                            duration: 0.2
-                        }}
-
-                        onClick={closeMemberDetails}
-                    >
-
-                        <motion.div
-                            className="dashboard-member-details-modal"
-
-                            initial={{
-                                opacity: 0,
-                                y: 20,
-                                scale: 0.95
-                            }}
-
-                            animate={{
-                                opacity: 1,
-                                y: 0,
-                                scale: 1
-                            }}
-
-                            exit={{
-                                opacity: 0,
-                                y: 12,
-                                scale: 0.97
-                            }}
-
-                            transition={{
-                                duration: 0.24,
-                                ease: [0.22, 1, 0.36, 1]
-                            }}
-
-                            onClick={(event) =>
-                                event.stopPropagation()
-                            }
-                        >
+                {memberDetails && (
+                    <>
 
                             {/* HEADER */}
 
@@ -3759,17 +3859,17 @@ const Dashboard = ({
                                 <div className="dashboard-member-details-avatar">
 
                                     {memberPhotos[
-                                        selectedMember.uid
+                                        memberDetails.uid
                                     ] ? (
 
                                         <img
                                             src={
                                                 memberPhotos[
-                                                selectedMember.uid
+                                                memberDetails.uid
                                                 ]
                                             }
                                             alt={
-                                                selectedMember.name ||
+                                                memberDetails.name ||
                                                 "Usuário"
                                             }
                                         />
@@ -3778,7 +3878,7 @@ const Dashboard = ({
 
                                         <span>
                                             {getMemberInitial(
-                                                selectedMember
+                                                memberDetails
                                             )}
                                         </span>
 
@@ -3790,14 +3890,14 @@ const Dashboard = ({
                                 <div>
 
                                     <h2>
-                                        {selectedMember.name || "Usuário"}
+                                        {memberDetails.name || "Usuário"}
                                     </h2>
 
                                     <span>
 
-                                        {selectedMember.role === "master"
+                                        {memberDetails.role === "master"
                                             ? "Administrador principal"
-                                            : selectedMember.role === "administrator"
+                                            : memberDetails.role === "administrator"
                                                 ? "Administrador"
                                                 : "Profissional"}
 
@@ -3834,7 +3934,7 @@ const Dashboard = ({
                                         </span>
 
                                         <strong>
-                                            {selectedMember.name || "Não informado"}
+                                            {memberDetails.name || "Não informado"}
                                         </strong>
 
                                     </div>
@@ -3847,10 +3947,10 @@ const Dashboard = ({
                                         </span>
 
                                         <strong
-                                            title={selectedMember.uid}
+                                            title={memberDetails.uid}
                                         >
                                             {truncate(
-                                                selectedMember.uid,
+                                                memberDetails.uid,
                                                 20
                                             )}
                                         </strong>
@@ -3895,7 +3995,7 @@ const Dashboard = ({
                                         }
                                         disabled={
                                             currentUserMember?.role !== "master" ||
-                                            selectedMember.uid ===
+                                            memberDetails.uid ===
                                             getAuth().currentUser?.uid
                                         }
                                     >
@@ -3915,7 +4015,7 @@ const Dashboard = ({
                                     </select>
 
 
-                                    {selectedMember.uid ===
+                                    {memberDetails.uid ===
                                         getAuth().currentUser?.uid && (
 
                                             <span className="dashboard-member-role-warning">
@@ -4003,9 +4103,9 @@ const Dashboard = ({
                                     disabled={
                                         savingMemberRole ||
                                         currentUserMember?.role !== "master" ||
-                                        selectedMember.uid ===
+                                        memberDetails.uid ===
                                         getAuth().currentUser?.uid ||
-                                        memberRole === selectedMember.role
+                                        memberRole === memberDetails.role
                                     }
                                 >
 
@@ -4038,76 +4138,22 @@ const Dashboard = ({
 
                             </div>
 
-                        </motion.div>
-
-                    </motion.div>
-
+                    </>
                 )}
 
-            </AnimatePresence>
+                        </Modal>
 
             {/* =====================================================
     CONFIRMAÇÃO — REMOVER MEMBRO
 ===================================================== */}
 
-            <AnimatePresence>
-
-                {isRemoveMemberModalOpen && (
-
-                    <motion.div
-                        className="dashboard-remove-member-overlay"
-
-                        initial={{
-                            opacity: 0
-                        }}
-
-                        animate={{
-                            opacity: 1
-                        }}
-
-                        exit={{
-                            opacity: 0
-                        }}
-
-                        transition={{
-                            duration: 0.18
-                        }}
-
-                        onClick={() =>
-                            setIsRemoveMemberModalOpen(false)
-                        }
-                    >
-
-                        <motion.div
-                            className="dashboard-remove-member-modal"
-
-                            initial={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 12
-                            }}
-
-                            animate={{
-                                opacity: 1,
-                                scale: 1,
-                                y: 0
-                            }}
-
-                            exit={{
-                                opacity: 0,
-                                scale: 0.96,
-                                y: 8
-                            }}
-
-                            transition={{
-                                duration: 0.22,
-                                ease: [0.22, 1, 0.36, 1]
-                            }}
-
-                            onClick={(event) =>
-                                event.stopPropagation()
-                            }
-                        >
+            <Modal
+                open={isRemoveMemberModalOpen}
+                onClose={() =>
+                            setIsRemoveMemberModalOpen(false)}
+                overlayClassName="dashboard-remove-member-overlay"
+                className="dashboard-remove-member-modal"
+            >
 
                             {/* ÍCONE */}
 
@@ -4201,13 +4247,7 @@ const Dashboard = ({
 
                             </div>
 
-                        </motion.div>
-
-                    </motion.div>
-
-                )}
-
-            </AnimatePresence>
+                        </Modal>
             {/* =====================================================
                 ADMIN MODAL
             ===================================================== */}
@@ -4323,6 +4363,12 @@ const Dashboard = ({
                                 }
                             >
                                 Pedidos
+
+                                {pendingRequests.length > 0 && (
+                                    <span className="dashboard-admin-requests__badge">
+                                        {pendingRequests.length}
+                                    </span>
+                                )}
                             </button>
 
                         </div>
@@ -4446,22 +4492,254 @@ const Dashboard = ({
 
                             ) : (
 
-                                <div className="dashboard-admin-requests">
+                                <>
 
-                                    <Icon
-                                        icon="lucide:inbox"
-                                    />
+                                    {/* ---------------------------------
+                                        DEPOIS DE APROVAR
+                                    --------------------------------- */}
 
-                                    <strong>
-                                        Nenhum pedido
-                                    </strong>
+                                    {approvedMember ? (
 
-                                    <span>
-                                        Solicitações de entrada
-                                        aparecerão aqui.
-                                    </span>
+                                        <div className="dashboard-admin-approved">
 
-                                </div>
+                                            <div className="dashboard-admin-approved__icon">
+                                                <Icon icon="solar:check-circle-bold" />
+                                            </div>
+
+                                            <strong>
+                                                {approvedMember.name} entrou na equipe
+                                            </strong>
+
+                                            <span>
+                                                Já aparece como{" "}
+                                                {approvedMember.role === "administrator"
+                                                    ? "administrador"
+                                                    : "profissional"}
+                                                {" "}e pode acessar o painel.
+                                            </span>
+
+                                            {/* O link é para o administrador
+                                                mandar a quem entrou — a pessoa
+                                                é redirecionada sozinha, mas
+                                                pode ter fechado a aba. */}
+                                            <div className="dashboard-admin-approved__link">
+
+                                                <code>
+                                                    {`${window.location.origin}/central-adm`}
+                                                </code>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+
+                                                        navigator.clipboard
+                                                            ?.writeText(
+                                                                `${window.location.origin}/central-adm`
+                                                            )
+                                                            .then(() =>
+                                                                showToast(
+                                                                    "success",
+                                                                    "Link copiado",
+                                                                    "É só enviar para a pessoa."
+                                                                )
+                                                            )
+                                                            .catch(() => { });
+
+                                                    }}
+                                                >
+                                                    <Icon icon="solar:copy-outline" />
+                                                    Copiar
+                                                </button>
+
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                className="dashboard-admin-approved__done"
+                                                onClick={() => setApprovedMember(null)}
+                                            >
+                                                Voltar aos pedidos
+                                            </button>
+
+                                        </div>
+
+                                    ) : reviewingRequest ? (
+
+                                        /* ---------------------------------
+                                           CONFIGURAR ANTES DE ENTRAR
+                                        --------------------------------- */
+
+                                        <div className="dashboard-admin-review">
+
+                                            <button
+                                                type="button"
+                                                className="dashboard-admin-review__back"
+                                                onClick={() => setReviewingRequest(null)}
+                                            >
+                                                <Icon icon="solar:arrow-left-outline" />
+                                                Voltar
+                                            </button>
+
+                                            <div className="dashboard-admin-review__who">
+
+                                                <div className="dashboard-admin-review__avatar">
+                                                    <Icon icon="solar:user-bold" />
+                                                </div>
+
+                                                <div>
+                                                    <strong>
+                                                        {reviewingRequest.name || "Sem nome"}
+                                                    </strong>
+
+                                                    <span>
+                                                        {reviewingRequest.email ||
+                                                            reviewingRequest.phone ||
+                                                            "Sem contato"}
+                                                    </span>
+                                                </div>
+
+                                            </div>
+
+                                            <div className="dashboard-admin-form__group">
+
+                                                <label>
+                                                    Nome na equipe
+                                                </label>
+
+                                                <input
+                                                    type="text"
+                                                    value={reviewName}
+                                                    maxLength={40}
+                                                    placeholder="Como aparece na agenda"
+                                                    onChange={(e) =>
+                                                        setReviewName(e.target.value)
+                                                    }
+                                                />
+
+                                            </div>
+
+                                            <div className="dashboard-admin-form__group">
+
+                                                <label>
+                                                    Cargo
+                                                </label>
+
+                                                <select
+                                                    value={reviewRole}
+                                                    onChange={(e) =>
+                                                        setReviewRole(e.target.value)
+                                                    }
+                                                >
+                                                    <option value="professional">
+                                                        Profissional
+                                                    </option>
+
+                                                    <option value="administrator">
+                                                        Administrador
+                                                    </option>
+                                                </select>
+
+                                            </div>
+
+                                            <div className="dashboard-admin-review__actions">
+
+                                                <button
+                                                    type="button"
+                                                    className="dashboard-admin-review__reject"
+                                                    disabled={reviewSaving}
+                                                    onClick={() =>
+                                                        recusarEntrada(reviewingRequest)
+                                                    }
+                                                >
+                                                    Recusar
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    className="dashboard-admin-form__submit"
+                                                    disabled={
+                                                        reviewSaving ||
+                                                        !reviewName.trim()
+                                                    }
+                                                    onClick={confirmarEntrada}
+                                                >
+                                                    <Icon
+                                                        icon="solar:user-plus-bold"
+                                                        className="icon"
+                                                    />
+
+                                                    {reviewSaving
+                                                        ? "Adicionando..."
+                                                        : "Adicionar pessoa"}
+                                                </button>
+
+                                            </div>
+
+                                        </div>
+
+                                    ) : pendingRequests.length === 0 ? (
+
+                                        <div className="dashboard-admin-requests">
+
+                                            <Icon icon="lucide:inbox" />
+
+                                            <strong>
+                                                Nenhum pedido
+                                            </strong>
+
+                                            <span>
+                                                Solicitações de entrada
+                                                aparecerão aqui.
+                                            </span>
+
+                                        </div>
+
+                                    ) : (
+
+                                        /* ---------------------------------
+                                           LISTA
+                                        --------------------------------- */
+
+                                        <div className="dashboard-admin-request-list">
+
+                                            {pendingRequests.map((request) => (
+
+                                                <button
+                                                    key={request.uid}
+                                                    type="button"
+                                                    className="dashboard-admin-request"
+                                                    onClick={() => abrirRevisao(request)}
+                                                >
+
+                                                    <div className="dashboard-admin-request__avatar">
+                                                        <Icon icon="solar:user-bold" />
+                                                    </div>
+
+                                                    <div className="dashboard-admin-request__text">
+
+                                                        <strong>
+                                                            {request.name || "Sem nome"}
+                                                        </strong>
+
+                                                        <span>
+                                                            {request.email ||
+                                                                request.phone ||
+                                                                "Sem contato"}
+                                                        </span>
+
+                                                    </div>
+
+                                                    <Icon icon="solar:alt-arrow-right-outline" />
+
+                                                </button>
+
+                                            ))}
+
+                                        </div>
+
+                                    )}
+
+                                </>
 
                             )}
 
@@ -4477,64 +4755,13 @@ const Dashboard = ({
     LOGOUT CONFIRMATION MODAL
 ===================================================== */}
 
-            <AnimatePresence>
-
-                {isLogoutModalOpen && (
-
-                    <motion.div
-                        className="dashboard-logout-overlay"
-
-                        initial={{
-                            opacity: 0
-                        }}
-
-                        animate={{
-                            opacity: 1
-                        }}
-
-                        exit={{
-                            opacity: 0
-                        }}
-
-                        transition={{
-                            duration: 0.2
-                        }}
-
-                        onClick={() =>
-                            setIsLogoutModalOpen(false)
-                        }
-                    >
-
-                        <motion.div
-                            className="dashboard-logout-modal"
-
-                            initial={{
-                                opacity: 0,
-                                y: 18,
-                                scale: 0.94
-                            }}
-
-                            animate={{
-                                opacity: 1,
-                                y: 0,
-                                scale: 1
-                            }}
-
-                            exit={{
-                                opacity: 0,
-                                y: 10,
-                                scale: 0.96
-                            }}
-
-                            transition={{
-                                duration: 0.24,
-                                ease: [0.22, 1, 0.36, 1]
-                            }}
-
-                            onClick={e =>
-                                e.stopPropagation()
-                            }
-                        >
+            <Modal
+                open={isLogoutModalOpen}
+                onClose={() =>
+                            setIsLogoutModalOpen(false)}
+                overlayClassName="dashboard-logout-overlay"
+                className="dashboard-logout-modal"
+            >
 
                             {/* ÍCONE */}
 
@@ -4594,13 +4821,7 @@ const Dashboard = ({
 
                             </div>
 
-                        </motion.div>
-
-                    </motion.div>
-
-                )}
-
-            </AnimatePresence>
+                        </Modal>
 
 
             {/* =====================================================

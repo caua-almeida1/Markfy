@@ -1,16 +1,7 @@
-:root {
-    --mkf-ui-primary: #092af3;
-    --mkf-ui-primary-hover: #092af3b3;
-    --mkf-ui-secondary: #f5f5f5;
-    --mkf-ui-border: #eeeeee;
-    --mkf-text-primary: #333333;
-    --mkf-text-secondary: #555555;
-    --mkf-text-tertiary: #666666;
-    --mkf-text-light: #999999;
-    --mkf-ui-shadow: rgba(0, 0, 0, 0.1);
-    --mkf-ui-white: #ffffff;
-    --mkf-link-color: #4a6bdf;
-}
+/* Os tokens de cor agora vivem só em src/index.css.
+   Este arquivo redeclarava os mesmos nomes com valores
+   diferentes e vencia por ordem de import, o que
+   impedia o tema escuro de funcionar. */
 
 .preview-company-wrapper {
     display: flex;
@@ -123,7 +114,7 @@
 
 .preview-btn-confirm {
     background: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .preview-btn-confirm:hover {
@@ -320,12 +311,12 @@
     position: relative;
     z-index: 2;
     font-size: 40px;
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .preview-company-success-btn {
     background-color: var(--mkf-ui-primary)!important;
-    color: var(--mkf-ui-white)!important;
+    color: var(--mkf-on-primary)!important;
     width: 100%;
     padding: 0.8rem 0;
     border-radius: 3rem;
@@ -379,7 +370,7 @@
 
 .company-link-copy-btn {
     background: var(--mkf-ui-primary);
-    color: #fff;
+    color: var(--mkf-on-primary);
     border: none;
     border-radius: 8px;
     padding: 0.65rem 1rem;

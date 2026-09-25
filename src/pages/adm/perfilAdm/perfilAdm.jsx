@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
-import { AnimatePresence, motion } from "framer-motion";
 
 import { getDatabase, ref, get } from "firebase/database";
 import {
@@ -10,6 +9,10 @@ import {
 } from "firebase/storage";
 import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+
+import { useConsent } from "../../../contexts/consentContext/ConsentContext";
+import { useTheme } from "../../../theme/ThemeContext";
+
 import "./perfilAdm.css";
 
 // ====== IMPORT DE CONFIGS ======
@@ -36,9 +39,12 @@ import CardConfigScreen from "./screens/settings/payment/CardConfigScreen";
 import CardCreditScreen from "./screens/settings/payment/CardCreditScreen";
 
 const PerfilAdm = ({ initialScreen = "home" }) => {
+    const { openPreferences: openConsentPreferences } = useConsent();
+
+    const { isDark, toggleTheme } = useTheme();
+
     const [userData, setUserData] = useState(null);
 
-    const [darkMode, setDarkMode] = useState(false);
 
     const navigate = useNavigate();
 
@@ -146,24 +152,12 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
         }
     };
 
-    useEffect(() => {
-        const saved = localStorage.getItem("darkMode");
-        if (saved === "true") setDarkMode(true);
-    }, []);
-
-    useEffect(() => {
-        const root = document.documentElement;
-        if (darkMode) {
-            root.classList.add("dark-mode");
-        } else {
-            root.classList.remove("dark-mode");
-        }
-        localStorage.setItem("darkMode", darkMode);
-    }, [darkMode]);
-
-    const toggleDarkMode = () => {
-        setDarkMode((prev) => !prev);
-    };
+    /*
+     * O tema é do ThemeProvider: ele aplica no <html>,
+     * grava no dispositivo e, para quem tem conta, em
+     * users/{uid}/preferences/theme. Esta tela só lê e
+     * alterna — nada de efeito local mexendo em classe.
+     */
 
     const [direction, setDirection] = useState(1);
     const openScreen = (name) => {
@@ -175,25 +169,6 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
         if (screenStack.length === 1) return;
         setDirection(-1);
         setScreenStack(prev => prev.slice(0, -1));
-    };
-
-    const variants = {
-
-        initial: (direction) => ({
-            x: direction > 0 ? 70 : -70,
-            opacity: 0
-        }),
-
-        animate: {
-            x: 0,
-            opacity: 1
-        },
-
-        exit: (direction) => ({
-            x: direction > 0 ? -70 : 70,
-            opacity: 0
-        })
-
     };
 
     const renderScreen = () => {
@@ -452,8 +427,11 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
                                     </div>
 
                                     <div
-                                        className={`toggle-switch ${darkMode ? "active" : ""}`}
-                                        onClick={toggleDarkMode}
+                                        className={`toggle-switch ${isDark ? "active" : ""}`}
+                                        onClick={toggleTheme}
+                                        role="switch"
+                                        aria-checked={isDark}
+                                        aria-label="Tema escuro"
                                     >
                                         <div className="toggle-circle" />
                                     </div>
@@ -522,6 +500,37 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
 
                                 </div>
 
+                                {/* LGPD, Art. 8º, §5º — a revogação
+                                    tem que estar sempre à mão. */}
+                                <div
+                                    className="adm-perfil-row"
+                                    onClick={openConsentPreferences}
+                                >
+
+                                    <div className="adm-perfil-row-left">
+
+                                        <Icon
+                                            icon="mdi:cookie-outline"
+                                            className="adm-perfil-row-icon"
+                                        />
+
+                                        <div className="adm-perfil-details">
+
+                                            <p className="adm-perfil-name">
+                                                Cookies e consentimento
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+                                    <Icon
+                                        icon="iconamoon:arrow-right-2"
+                                        className="adm-perfil-arrow"
+                                    />
+
+                                </div>
+
                                 <div
                                     className="adm-perfil-row"
                                     onClick={() => openScreen("support")}
@@ -574,28 +583,16 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
 
                 </div>
 
-                <AnimatePresence
-                    mode="wait"
-                    custom={direction}
+                {/* Pilha de telas por CSS: o `key` remonta e a
+                    animação de entrada reinicia. Sem saída, a tela
+                    nova nunca fica esperando a anterior sumir. */}
+                <div
+                    key={screen}
+                    className="perfil-content mkf-view-enter"
+                    data-direction={direction > 0 ? "right" : "left"}
                 >
-
-                    <motion.div
-                        key={screen}
-                        custom={direction}
-                        variants={variants}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        transition={{
-                            duration: .28,
-                            ease: [0.22, 1, 0.36, 1]
-                        }}
-                        className="perfil-content"
-                    >
-                        {renderScreen()}
-                    </motion.div>
-
-                </AnimatePresence>
+                    {renderScreen()}
+                </div>
 
             </div>
         </main >

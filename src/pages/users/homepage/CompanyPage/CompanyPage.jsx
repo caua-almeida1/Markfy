@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getDatabase, ref, get } from "firebase/database";
-import { AnimatePresence, motion } from "framer-motion";
 import TabBar from "../../../../components/tabbar";
 import { useAuth } from "../../../../contexts/authContext"; // 🟢 importa o contexto de auth
+
+import { useCompanyLogo } from "../../../../firebase/companyLogo";
+import { useCompanyTheme } from "../../../../theme/useCompanyTheme";
+
+import Modal from "../../../../components/modal/Modal";
 
 import "./company-page.css";
 
@@ -13,6 +17,17 @@ export default function CompanyPage() {
   const { currentUser, userLoggedIn } = useAuth(); // 🟢 dados do usuário autenticado
 
   const [company, setCompany] = useState(null);
+
+  /* Esta rota também é pública e identificada pelo handle,
+     então usa a paleta da empresa. */
+  useCompanyTheme(handle);
+
+  /* A logo vem do Storage; company.logoPreview só serve de
+     dica para empresas ainda não migradas. */
+  const companyLogo = useCompanyLogo(
+    handle,
+    company?.logoPreview
+  );
   const [loading, setLoading] = useState(true);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showManageModal, setShowManageModal] = useState(false);
@@ -73,9 +88,9 @@ export default function CompanyPage() {
 
         <div className="company-page-container">
           <div className="company-page-header">
-            {company.logoPreview && (
+            {companyLogo && (
               <img
-                src={company.logoPreview}
+                src={companyLogo}
                 alt={company.name}
                 className="company-page-logo"
               />
@@ -121,24 +136,13 @@ export default function CompanyPage() {
         </div>
 
         {/* ======= MODAL DE COMPARTILHAR ======= */}
-        <AnimatePresence>
-          {showShareModal && (
-            <motion.div
-              className="share-modal-overlay"
-              onClick={() => setShowShareModal(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <motion.div
-                className="share-modal-content"
-                onClick={(e) => e.stopPropagation()}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
+        <Modal
+          open={showShareModal}
+          onClose={() => setShowShareModal(false)}
+          overlayClassName="share-modal-overlay"
+          className="share-modal-content"
+          label="Compartilhar empresa"
+        >
                 <h3>Compartilhar Empresa</h3>
                 <p>Copie o link abaixo para compartilhar:</p>
 
@@ -163,30 +167,16 @@ export default function CompanyPage() {
                 >
                   Fechar
                 </button>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </Modal>
 
         {/* ======= MODAL DE CONFIRMAÇÃO DE GERENCIAMENTO ======= */}
-        <AnimatePresence>
-          {showManageModal && (
-            <motion.div
-              className="share-modal-overlay"
-              onClick={() => setShowManageModal(false)}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <motion.div
-                className="share-modal-content"
-                onClick={(e) => e.stopPropagation()}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 0.8, opacity: 0 }}
-                transition={{ duration: 0.3 }}
-              >
+        <Modal
+          open={showManageModal}
+          onClose={() => setShowManageModal(false)}
+          overlayClassName="share-modal-overlay"
+          className="share-modal-content"
+          label="Gerenciar empresa"
+        >
                 <h3>Gerenciar Empresa</h3>
                 <p>Deseja ir para a tela de gerenciamento da sua empresa?</p>
 
@@ -204,10 +194,7 @@ export default function CompanyPage() {
                     Cancelar
                   </button>
                 </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </Modal>
       </div>
     </div>
   );

@@ -5,6 +5,11 @@ import { getDatabase, ref, update } from "firebase/database";
 import { useUserCompany } from "../../../../../contexts/companyContext/UserCompanyContext";
 import Toast from "../../../../../components/toast/Toast";
 
+import {
+    updateCompanyIndex,
+    sanitizeLocation
+} from "../../../../../firebase/companiesIndex";
+
 const emptyLocation = {
     street: "",
     number: "",
@@ -265,6 +270,18 @@ const LocationScreen = () => {
                 ref(db, `companys/${company.handle}`),
                 {
                     location
+                }
+            );
+
+            /*
+             * Mantém o índice público em sincronia.
+             */
+
+            await updateCompanyIndex(
+                company.handle,
+                {
+                    location:
+                        sanitizeLocation(location)
                 }
             );
 

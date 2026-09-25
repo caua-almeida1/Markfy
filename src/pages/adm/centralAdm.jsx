@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import TabBarAdm from "../../components/tabbarADM/";
 import Dashboard from "./dashboardAdm/dashboard";
 import Orders from "./ordersAdm/orders";
@@ -100,22 +99,47 @@ const CentralAdm = () => {
         return activeIndex > prevIndex ? "right" : "left";
     };
 
-    const variants = {
-        initial: (direction) => ({
-            x: direction === "right" ? "100%" : "-100%",
-            opacity: 0,
-        }),
-        animate: { x: 0, opacity: 1 },
-        exit: (direction) => ({
-            x: direction === "right" ? "-100%" : "100%",
-            opacity: 0,
-        }),
-    };
-
     if (loading) {
         return (
             <div className="central-adm-loading">
-                <p>Carregando dados da empresa...</p>
+
+                {/* A espera aqui não é instantânea: o contexto
+                    precisa achar a empresa da pessoa, ler o
+                    cargo e só então liberar o painel. Uma linha
+                    de texto parada nesse tempo parece travada —
+                    o pulso da logo é o que diz que algo está
+                    acontecendo. */}
+
+                <div className="central-adm-loading__mark">
+
+                    <span className="central-adm-loading__pulse" />
+                    <span className="central-adm-loading__pulse central-adm-loading__pulse--delayed" />
+
+                    <img
+                        src={markfyLogo}
+                        alt=""
+                        aria-hidden="true"
+                    />
+
+                </div>
+
+                <div className="central-adm-loading__text">
+
+                    <strong>Buscando sua empresa</strong>
+
+                    <p>Só um instante, estamos preparando seu painel.</p>
+
+                </div>
+
+                <div
+                    className="central-adm-loading__bar"
+                    role="status"
+                    aria-live="polite"
+                    aria-label="Carregando dados da empresa"
+                >
+                    <span />
+                </div>
+
             </div>
         );
     }
@@ -483,19 +507,17 @@ const CentralAdm = () => {
     return (
         <div className="central-adm">
             <div className="content">
-                <AnimatePresence mode="wait" custom={getDirection()}>
-                    <motion.div
-                        key={activeTab}
-                        custom={getDirection()}
-                        initial="initial"
-                        animate="animate"
-                        exit="exit"
-                        variants={variants}
-                        transition={{ duration: 0.3 }}
-                    >
-                        {renderContent()}
-                    </motion.div>
-                </AnimatePresence>
+                {/* Troca de aba por CSS: o `key` remonta o bloco e
+                    a animação de entrada reinicia sozinha. Sem
+                    animação de saída, nada fica preso esperando
+                    ela terminar. */}
+                <div
+                    key={activeTab}
+                    className="mkf-view-enter"
+                    data-direction={getDirection()}
+                >
+                    {renderContent()}
+                </div>
             </div>
 
             <TabBarAdm activeTab={activeTab} setActiveTab={handleTabChange} />

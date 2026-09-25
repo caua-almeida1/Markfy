@@ -301,7 +301,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
 }
 
@@ -453,7 +453,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
 }
 
@@ -567,7 +567,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
 }
 
@@ -988,7 +988,7 @@ select.payment-config-input {
     width: 18px;
     height: 18px;
 
-    background-color: white;
+    background-color: var(--mkf-ui-white);
 
     border-radius: 50%;
 
@@ -1393,7 +1393,7 @@ select.payment-config-input {
 
     border-radius: 50%;
 
-    background: #fff;
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 1px 3px rgba(0, 0, 0, .15);
@@ -1814,7 +1814,7 @@ select.payment-config-input {
 .payment-primary {
     background: var(--mkf-ui-primary);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .payment-primary:hover:not(:disabled) {
@@ -1866,7 +1866,7 @@ select.payment-config-input {
             var(--mkf-ui-primary),
             var(--mkf-ui-primary-hover));
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     overflow: hidden;
 }

@@ -1,8 +1,9 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 import MercadoPagoPayment from "../../../components/mercado-pago-payment/MercadoPagoPayment";
+import { releaseScrollLock } from "../../../components/modal/Modal";
 
 import "./Checkout.css";
 
@@ -18,6 +19,60 @@ const Checkout = () => {
 
     const [showPayment, setShowPayment] =
         useState(false);
+
+
+    /*
+     * Chegamos aqui vindo de um modal, que trava o scroll do
+     * body enquanto está aberto. A navegação desmonta o modal
+     * fora do ciclo normal de fechamento, e a trava podia
+     * sobrar — a página abria sem rolagem e só voltava ao
+     * normal recarregando. Soltar na entrada é barato e não
+     * depende de nada ter dado certo antes.
+     */
+    useEffect(() => {
+
+        releaseScrollLock();
+
+    }, []);
+
+
+    /*
+     * Pix em aberto: volta direto para a cobrança.
+     *
+     * Recarregar a página zerava `showPayment` e devolvia a
+     * pessoa para "escolha como pagar" — com um Pix já
+     * emitido e esperando. Pagar de novo criaria uma segunda
+     * cobrança do mesmo horário.
+     */
+    useEffect(() => {
+
+        try {
+
+            const bruto =
+                localStorage.getItem("markfy-pending-pix");
+
+            if (!bruto) return;
+
+            const salvo = JSON.parse(bruto);
+
+            if (
+                salvo?.pix?.qrCode &&
+                salvo.companyHandle === checkoutData?.companyHandle &&
+                salvo.productId === checkoutData?.productId
+            ) {
+                setShowPayment(true);
+            }
+
+        } catch {
+
+            /* Sem localStorage utilizável: segue o fluxo normal. */
+
+        }
+
+    }, [
+        checkoutData?.companyHandle,
+        checkoutData?.productId
+    ]);
 
 
     const product =
@@ -146,6 +201,18 @@ const Checkout = () => {
 
                         <span>
                             Pagamento seguro
+                        </span>
+
+                    </div>
+
+
+                    <div className="checkout-header-processor">
+
+                        <Icon icon="solar:shield-check-bold" />
+
+                        <span>
+                            Pagamento processado por
+                            <strong>Mercado Pago</strong>
                         </span>
 
                     </div>
@@ -395,6 +462,22 @@ const Checkout = () => {
                                     checkoutData.clientId
                                 }
 
+                                payerEmail={
+                                    checkoutData.payerEmail
+                                }
+
+                                payerPhone={
+                                    checkoutData.payerPhone
+                                }
+
+                                notes={
+                                    checkoutData.notes
+                                }
+
+                                subscriptionPlan={
+                                    checkoutData.subscriptionPlan
+                                }
+
                                 onBack={() =>
                                     setShowPayment(false)
                                 }
@@ -471,14 +554,13 @@ const Checkout = () => {
                 </div>
 
 
-                <div className="checkout-header-security">
+                <div className="checkout-header-processor">
 
-                    <Icon
-                        icon="solar:shield-check-outline"
-                    />
+                    <Icon icon="solar:shield-check-bold" />
 
                     <span>
-                        Pagamento seguro
+                        Pagamento processado por
+                        <strong>Mercado Pago</strong>
                     </span>
 
                 </div>

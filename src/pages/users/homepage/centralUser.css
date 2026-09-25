@@ -1,0 +1,65 @@
+/* =========================================================
+   CENTRAL DO USUÁRIO — CASCA DAS ABAS
+
+   Este arquivo estava VAZIO (0 bytes), e era a causa da
+   piscada ao trocar de aba.
+
+   O QUE ACONTECIA
+   ---------------
+
+   A troca de aba usa AnimatePresence com
+   `x: "100%"` / `x: "-100%"`. Sem nada segurando o
+   transbordo, a aba que entra (ou sai) empurrava o
+   documento para fora do viewport:
+
+       em repouso        ->  scrollWidth 420  (overflow 0)
+       durante a troca   ->  scrollWidth 840  (overflow 420)
+
+   Ou seja, o documento DOBRAVA de largura por 300ms. No
+   Windows, onde a barra de rolagem ocupa espaço de verdade,
+   isso faz a barra horizontal aparecer e sumir dentro da
+   animação — dois reflows do layout inteiro, que é o que
+   se vê como "piscada".
+
+   A SOLUÇÃO
+   ---------
+
+   `overflow-x: clip` no container das abas.
+
+   `clip` e não `hidden` de propósito: `hidden` transforma o
+   elemento em container de rolagem, o que quebraria
+   `position: sticky` dos filhos e o ancoramento de scroll.
+   `clip` só corta, sem criar scroller.
+========================================================= */
+
+.central-user {
+    position: relative;
+
+    width: 100%;
+    min-height: 100dvh;
+
+    /* Fallback para navegadores sem overflow: clip. */
+    overflow-x: hidden;
+    overflow-x: clip;
+
+    background: var(--mkf-ui-background);
+}
+
+.central-user > .content {
+    position: relative;
+
+    width: 100%;
+
+    overflow-x: hidden;
+    overflow-x: clip;
+}
+
+/*
+ * O filho direto é o motion.div que o framer transforma.
+ * Ele precisa ocupar a largura toda para a animação sair
+ * do ponto certo, e não pode criar contexto de empilhamento
+ * concorrente com os modais em portal.
+ */
+.central-user > .content > * {
+    width: 100%;
+}

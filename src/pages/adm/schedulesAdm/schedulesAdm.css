@@ -143,8 +143,7 @@
     border-radius:
         12px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedules-header-date-icon {
@@ -238,8 +237,7 @@
     border-radius:
         10px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -368,8 +366,7 @@
     border-radius:
         12px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-primary);
@@ -516,8 +513,7 @@
     border-radius:
         13px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 20px 50px rgba(0, 0, 0, .12);
@@ -701,8 +697,7 @@
     border-radius:
         12px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedules-period-nav-button {
@@ -729,8 +724,7 @@
     border-radius:
         8px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -819,8 +813,7 @@
     border-radius:
         12px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedules-topbar-summary-item {
@@ -892,8 +885,7 @@
     border-radius:
         16px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     margin-bottom:
         18px;
@@ -1051,8 +1043,7 @@
     border-radius:
         9px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -1197,8 +1188,7 @@
     background:
         var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     box-shadow:
         0 7px 18px rgba(9, 42, 243, .16);
@@ -1206,8 +1196,7 @@
 
 .schedule-day.selected .schedule-day-week,
 .schedule-day.selected .schedule-day-number {
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .schedule-day-count {
@@ -1236,8 +1225,7 @@
     border-radius:
         999px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-ui-primary);
@@ -1275,8 +1263,7 @@
     border-radius:
         14px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedules-day-overview-main {
@@ -1438,8 +1425,7 @@
     border-radius:
         16px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedules-calendar-panel-header {
@@ -1724,8 +1710,7 @@
     background:
         var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-size:
         8px;
@@ -1774,8 +1759,7 @@
     border-radius:
         11px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 3px 12px rgba(0, 0, 0, .025);
@@ -2413,8 +2397,7 @@
     border-radius:
         14px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedules-sidebar-card-header {
@@ -3091,8 +3074,7 @@
     border-radius:
         9px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-ui-primary);
@@ -3223,8 +3205,7 @@
     border-radius:
         18px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 30px 100px rgba(0, 0, 0, .2);
@@ -3688,8 +3669,7 @@
     border-radius:
         10px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedule-modal-detail-icon {
@@ -3995,8 +3975,7 @@
     border-radius:
         11px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .schedule-countdown.running {
@@ -4173,8 +4152,7 @@
     border:
         1px solid var(--mkf-ui-border);
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -4198,8 +4176,7 @@
     background:
         var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .schedule-modal-complete:hover {

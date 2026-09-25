@@ -31,7 +31,7 @@
 
     overflow: hidden;
 
-    background: #fff;
+    background: var(--mkf-ui-white);
     border-radius: 1.25rem;
 
     box-shadow:
@@ -389,7 +389,7 @@
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     font-size: .6rem;
     font-weight: 500;
@@ -607,7 +607,7 @@
 
     border-radius: .55rem;
 
-    background: #fff;
+    background: var(--mkf-ui-white);
 
     color: #777d87;
 }
@@ -672,7 +672,7 @@
     backdrop-filter: blur(7px);
     -webkit-backdrop-filter: blur(7px);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     opacity: 0;
 
@@ -716,7 +716,7 @@
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 
@@ -781,7 +781,7 @@
 
     background: rgba(255, 255, 255, .09);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     cursor: pointer;
 
@@ -882,7 +882,7 @@
 
     background: rgba(255, 255, 255, .08);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     cursor: pointer;
 
@@ -1066,7 +1066,7 @@
 
     overflow: hidden;
 
-    background: #fff;
+    background: var(--mkf-ui-white);
 
     border-radius: 1.25rem;
 
@@ -1487,7 +1487,7 @@
 
     border-radius: .8rem;
 
-    background: #fff;
+    background: var(--mkf-ui-white);
 
     color: inherit;
 
@@ -1685,12 +1685,71 @@
    BOTÃO VER CATÁLOGO
 ========================================================= */
 
+/* ---------- Ações da empresa ---------- */
+
+.company-info-actions {
+    display: flex;
+    flex-direction: column;
+
+    gap: .5rem;
+
+    margin-top: .75rem;
+}
+
+/* Ação principal: leva para a página da empresa. */
+.company-info-visit-button {
+    width: 100%;
+
+    min-height: 44px;
+
+    padding: 0 .9rem;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: .5rem;
+
+    border: 0;
+    border-radius: .7rem;
+
+    background: var(--mkf-ui-primary);
+
+    color: var(--mkf-on-primary);
+
+    font-family: inherit;
+
+    font-size: .72rem;
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background .2s ease,
+        transform .15s ease;
+}
+
+.company-info-visit-button:hover {
+    background: var(--mkf-ui-primary-hover);
+}
+
+.company-info-visit-button:active {
+    transform: scale(.98);
+}
+
+.company-info-visit-button svg {
+    flex-shrink: 0;
+
+    width: 17px;
+    height: 17px;
+}
+
 .company-info-catalog-button {
     width: 100%;
 
     min-height: 42px;
 
-    margin-top: .75rem;
+    margin-top: 0;
 
     padding: 0 .8rem;
 
@@ -1949,6 +2008,124 @@
     to {
         transform: translateY(0);
         opacity: 1;
+    }
+
+}
+
+
+/* =========================================================
+   ABERTURA
+
+   O componente Modal já anima, mas com um gesto discreto
+   (10px e 3% de escala) pensado para caixas pequenas. Esta
+   é uma folha alta, quase cheia: no mesmo gesto ela parecia
+   simplesmente aparecer.
+
+   Aqui o movimento é maior — sobe mais e cresce mais — e o
+   fundo escurece junto, para a peça ler como algo que se
+   abre e não como um corte seco.
+   ========================================================= */
+
+.mkf-modal-panel.company-info-modal[data-state="entering"] {
+    animation: companyInfoScaleUp .34s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.mkf-modal-panel.company-info-modal[data-state="leaving"] {
+    animation: companyInfoScaleDown .22s ease-in both;
+}
+
+@keyframes companyInfoScaleUp {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 26px, 0) scale(0.92);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+@keyframes companyInfoScaleDown {
+    from {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate3d(0, 14px, 0) scale(0.96);
+    }
+}
+
+
+/*
+ * No celular a folha sobe de baixo, como o resto do app.
+ *
+ * O ponto de corte é 680px para bater com o do componente
+ * Modal — é ele que troca o alinhamento do overlay para a
+ * base nessa largura. Usar 600px aqui, como o resto deste
+ * arquivo, deixaria uma faixa de 80px em que o painel subiria
+ * de baixo mas ficaria centralizado na tela.
+ */
+@media (max-width: 680px) {
+
+    .mkf-modal-panel.company-info-modal[data-state="entering"] {
+        animation-name: companyInfoSlideUp;
+        animation-duration: .3s;
+    }
+
+    .mkf-modal-panel.company-info-modal[data-state="leaving"] {
+        animation-name: companyInfoSlideDown;
+    }
+
+    @keyframes companyInfoSlideUp {
+        from {
+            opacity: .4;
+            transform: translate3d(0, 100%, 0);
+        }
+
+        to {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+    }
+
+    @keyframes companyInfoSlideDown {
+        from {
+            opacity: 1;
+            transform: translate3d(0, 0, 0);
+        }
+
+        to {
+            opacity: 0;
+            transform: translate3d(0, 100%, 0);
+        }
+    }
+
+}
+
+
+/*
+ * Quem pediu menos movimento recebe só o aparecer.
+ *
+ * Esta regra precisa vir DEPOIS das de cima: a do modal
+ * comum não alcança um seletor mais específico como
+ * `.mkf-modal-panel.company-info-modal`, então sem repetir
+ * aqui o ajuste de acessibilidade se perderia justamente
+ * neste modal.
+ */
+@media (prefers-reduced-motion: reduce) {
+
+    .mkf-modal-panel.company-info-modal[data-state="entering"],
+    .mkf-modal-panel.company-info-modal[data-state="leaving"] {
+        animation-duration: .01ms;
+        animation-name: companyInfoFade;
+    }
+
+    @keyframes companyInfoFade {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
 }

@@ -14,6 +14,12 @@ import {
 } from "firebase/auth";
 
 import {
+    getDatabase,
+    onValue,
+    ref
+} from "firebase/database";
+
+import {
     Icon
 } from "@iconify/react";
 
@@ -70,10 +76,27 @@ const MercadoPagoPayment = ({
     hour,
     userName,
     clientId,
+
+    /* Pagador já identificado antes do checkout. É o que
+       permite emitir o Pix sem abrir formulário nenhum. */
+    payerEmail,
+    payerPhone,
+
+    /* Recado do cliente, digitado no agendamento. Viaja junto
+       porque é o backend quem cria o agendamento depois que o
+       pagamento é aprovado. */
+    notes,
+
+    /* Plano de mensalidade, quando o produto é assinatura.
+       Muda o endpoint, os meios de pagamento e o texto. */
+    subscriptionPlan,
+
     onSuccess,
     onError,
     onBack
 }) => {
+
+
 
     const [publicKey, setPublicKey] =
         useState(null);
@@ -93,6 +116,168 @@ const MercadoPagoPayment = ({
 
     const [copied, setCopied] =
         useState(false);
+
+    /* Aceite explícito da cobrança automática. */
+    const [autoDebitAccepted, setAutoDebitAccepted] =
+        useState(false);
+
+    /* Virou "pago" enquanto a pessoa olhava o QR. */
+    const [pixPaid, setPixPaid] = useState(false);
+
+
+    /* =====================================================
+       PIX PENDENTE
+
+       O QR fica na tela esperando a pessoa abrir o banco e
+       pagar — o que acontece FORA do app. Sem observar o
+       pagamento, a tela ficava parada para sempre, mesmo
+       depois de o dinheiro cair.
+
+       E recarregar perdia tudo: o código voltava ao "escolha
+       como pagar" com uma cobrança já emitida em aberto.
+       Guardar o Pix aqui é o que faz o mesmo QR voltar.
+    ===================================================== */
+
+    const PIX_STORAGE_KEY = "markfy-pending-pix";
+
+    /* O Mercado Pago expira o Pix; depois disso o QR
+       guardado não serve mais para nada. */
+    const PIX_TTL_MS = 60 * 60 * 1000;
+
+
+    const guardarPixPendente = (data) => {
+
+        try {
+
+            localStorage.setItem(
+                PIX_STORAGE_KEY,
+                JSON.stringify({
+                    paymentId: data.paymentId,
+                    companyHandle,
+                    productId,
+                    day,
+                    hour,
+                    status: data.status,
+                    pix: data.pix,
+                    savedAt: Date.now()
+                })
+            );
+
+        } catch {
+
+            /* Navegação privada: seguimos sem o atalho. */
+
+        }
+
+    };
+
+
+    const limparPixPendente = () => {
+
+        try {
+            localStorage.removeItem(PIX_STORAGE_KEY);
+        } catch {
+            /* nada a fazer */
+        }
+
+    };
+
+
+    /* Retoma o Pix em aberto ao voltar para a tela. */
+    useEffect(() => {
+
+        try {
+
+            const bruto =
+                localStorage.getItem(PIX_STORAGE_KEY);
+
+            if (!bruto) return;
+
+            const salvo = JSON.parse(bruto);
+
+            const vencido =
+                Date.now() - (salvo.savedAt || 0) > PIX_TTL_MS;
+
+            if (
+                vencido ||
+                salvo.companyHandle !== companyHandle ||
+                salvo.productId !== productId ||
+                !salvo.pix?.qrCode
+            ) {
+
+                if (vencido) limparPixPendente();
+
+                return;
+
+            }
+
+            setResult({
+                paymentId: salvo.paymentId,
+                status: "pending",
+                pix: salvo.pix
+            });
+
+        } catch {
+
+            /* JSON corrompido: ignora. */
+
+        }
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyHandle, productId]);
+
+
+    /*
+     * Observa a cobrança enquanto o QR está na tela.
+     *
+     * Quem confirma é o webhook do Mercado Pago, que escreve
+     * em paymentOrders. Aqui só escutamos esse nó — nada de
+     * ficar perguntando de tempos em tempos.
+     */
+    useEffect(() => {
+
+        const paymentId = result?.paymentId;
+
+        if (
+            !paymentId ||
+            !companyHandle ||
+            result?.status !== "pending" ||
+            !result?.pix?.qrCode
+        ) {
+            return undefined;
+        }
+
+        const unsubscribe = onValue(
+            ref(
+                getDatabase(),
+                `companys/${companyHandle}/paymentOrders/${paymentId}`
+            ),
+            (snapshot) => {
+
+                const ordem = snapshot.val();
+
+                if (!ordem) return;
+
+                const pago =
+                    ordem.status === "paid" ||
+                    ordem.mercadoPagoStatus === "approved" ||
+                    ordem.scheduleCreated === true;
+
+                if (pago) {
+
+                    setPixPaid(true);
+                    limparPixPendente();
+                    onSuccessRef.current?.(ordem);
+
+                }
+
+            }
+        );
+
+        return () => unsubscribe();
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [result?.paymentId, result?.status, companyHandle]);
 
 
     /*
@@ -224,9 +409,81 @@ const MercadoPagoPayment = ({
        ENVIAR PAGAMENTO
     ===================================================== */
 
-    const handleSubmit = async ({
-        selectedPaymentMethod,
-        formData
+    /*
+     * Monta o pagador que vai para o Mercado Pago.
+     *
+     * O que o Brick manda tem prioridade — foi o cliente que
+     * digitou ali. O resto vem do que já sabemos dele desde o
+     * agendamento, e é isso que faz o Pix não precisar de
+     * formulário: o e-mail obrigatório do pagador já está em
+     * mãos antes de a tela abrir.
+     */
+    const montarPagador = (formPayer = {}) => {
+
+        const [primeiroNome, ...restoDoNome] =
+            String(userName || "")
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean);
+
+        const email =
+            formPayer.email ||
+            payerEmail ||
+            "";
+
+        return {
+
+            ...(email ? { email } : {}),
+
+            ...(primeiroNome
+                ? { first_name: primeiroNome }
+                : {}
+            ),
+
+            ...(restoDoNome.length
+                ? { last_name: restoDoNome.join(" ") }
+                : {}
+            ),
+
+            /* CPF: sempre o que o Brick coletou. É ele quem
+               sabe quando o meio de pagamento exige, e quem
+               valida antes de enviar. */
+            ...(formPayer.identification?.number
+                ? {
+                    identification: {
+                        type:
+                            formPayer.identification.type,
+                        number:
+                            formPayer.identification.number
+                    }
+                }
+                : {}
+            ),
+
+            ...(payerPhone
+                ? {
+                    phone: {
+                        area_code:
+                            String(payerPhone).slice(0, 2),
+                        number:
+                            String(payerPhone).slice(2)
+                    }
+                }
+                : {}
+            )
+
+        };
+
+    };
+
+
+    /*
+     * O envio em si, compartilhado pelo cartão (que vem do
+     * Brick) e pelo Pix (que é um botão nosso).
+     */
+    const enviarPagamento = async ({
+        paymentMethodId,
+        formData = {}
     }) => {
 
         try {
@@ -246,11 +503,6 @@ const MercadoPagoPayment = ({
                 await currentUser.getIdToken();
 
 
-            const paymentMethodId =
-                formData?.payment_method_id ||
-                selectedPaymentMethod?.id ||
-                null;
-
             if (!paymentMethodId) {
                 throw new Error(
                     "Escolha uma forma de pagamento."
@@ -258,29 +510,14 @@ const MercadoPagoPayment = ({
             }
 
 
-            const payerData =
-                formData?.payer || {};
+            const payer =
+                montarPagador(formData?.payer);
 
-            const payer = {
-
-                ...(payerData.email
-                    ? { email: payerData.email }
-                    : {}
-                ),
-
-                ...(payerData.identification
-                    ? {
-                        identification: {
-                            type:
-                                payerData.identification.type,
-                            number:
-                                payerData.identification.number
-                        }
-                    }
-                    : {}
-                )
-
-            };
+            if (!payer.email) {
+                throw new Error(
+                    "Informe um e-mail para receber o comprovante."
+                );
+            }
 
 
             const paymentData = {
@@ -294,6 +531,8 @@ const MercadoPagoPayment = ({
                 hour,
                 userName,
                 clientId,
+
+                notes,
 
                 userId:
                     currentUser.uid,
@@ -316,9 +555,41 @@ const MercadoPagoPayment = ({
             };
 
 
+            /*
+             * Assinatura vai por outro caminho.
+             *
+             * /v1/payments cobra UMA vez. Cobrança que se
+             * repete sozinha é /preapproval, que guarda a
+             * autorização no cartão — e é por isso que
+             * mensalidade não aceita Pix nem boleto: não há
+             * como debitá-los automaticamente.
+             */
+            const endpoint =
+                subscriptionPlan
+                    ? "createMercadoPagoSubscription"
+                    : "createMercadoPagoPayment";
+
+            const corpo =
+                subscriptionPlan
+                    ? {
+                        companyHandle,
+                        productId,
+                        professionalId,
+                        professionalName,
+                        day,
+                        dayLabel,
+                        hour,
+                        userName,
+                        clientId,
+                        notes,
+                        cardTokenId: formData?.token || null,
+                        payerEmail: payer.email
+                    }
+                    : paymentData;
+
             const response =
                 await fetch(
-                    `${FUNCTIONS_URL}/createMercadoPagoPayment`,
+                    `${FUNCTIONS_URL}/${endpoint}`,
                     {
                         method: "POST",
                         headers: {
@@ -328,7 +599,7 @@ const MercadoPagoPayment = ({
                                 `Bearer ${idToken}`
                         },
                         body:
-                            JSON.stringify(paymentData)
+                            JSON.stringify(corpo)
                     }
                 );
 
@@ -340,11 +611,36 @@ const MercadoPagoPayment = ({
 
             if (!response.ok || !data.success) {
 
+                /*
+                 * `details` traz o texto do próprio Mercado
+                 * Pago. É lá que aparecem as recusas que não
+                 * têm nada a ver com o cartão do cliente —
+                 * conta de recebimento sem validação de
+                 * identidade, conta sem permissão para
+                 * receber, credencial desconectada. Sem
+                 * mostrar isso, o cliente lê "confira os
+                 * dados" e tenta de novo para sempre, e o dono
+                 * da empresa nunca fica sabendo que o problema
+                 * é a conta dele.
+                 */
                 const failure =
                     new Error(
-                        data.message ||
-                        "Não foi possível processar o pagamento."
+                        data.ownerAction
+                            ? data.message
+                            : [
+                                data.message,
+                                data.details &&
+                                data.details !== data.message
+                                    ? `Mercado Pago: ${data.details}`
+                                    : null
+                            ]
+                                .filter(Boolean)
+                                .join(" ") ||
+                            "Não foi possível processar o pagamento."
                     );
+
+                failure.ownerAction =
+                    Boolean(data.ownerAction);
 
                 failure.details =
                     data.details || null;
@@ -398,6 +694,10 @@ const MercadoPagoPayment = ({
 
             setResult(data);
 
+            if (data?.pix?.qrCode) {
+                guardarPixPendente(data);
+            }
+
             onSuccessRef.current?.(data);
 
         } catch (err) {
@@ -420,6 +720,27 @@ const MercadoPagoPayment = ({
 
             throw err;
         }
+
+    };
+
+
+    /* O Brick devolve o método escolhido e os dados do
+       cartão; daqui para baixo o caminho é o mesmo do Pix. */
+    const handleSubmit = async ({
+        selectedPaymentMethod,
+        formData
+    }) => {
+
+        return enviarPagamento({
+
+            paymentMethodId:
+                formData?.payment_method_id ||
+                selectedPaymentMethod?.id ||
+                null,
+
+            formData
+
+        });
 
     };
 
@@ -495,6 +816,42 @@ const MercadoPagoPayment = ({
         const pix =
             result.pix;
 
+        /* Caiu enquanto a pessoa esperava. */
+        if (pixPaid) {
+
+            return (
+                <div className="mercado-pago-payment-result">
+
+                    <Icon
+                        icon="solar:check-circle-bold"
+                        className="mercado-pago-payment-result-icon is-success"
+                    />
+
+                    <h3>Pagamento confirmado</h3>
+
+                    <p>
+                        Recebemos seu Pix e seu horário
+                        {dayLabel ? ` de ${dayLabel}` : ""}
+                        {hour ? ` às ${hour}` : ""} está reservado.
+                    </p>
+
+                    <button
+                        type="button"
+                        className="mercado-pago-payment-primary"
+                        onClick={() =>
+                            window.location.assign(
+                                `/central-user/${companyHandle}?tab=reservas`
+                            )
+                        }
+                    >
+                        Ver meu agendamento
+                    </button>
+
+                </div>
+            );
+
+        }
+
         if (
             result.status === "pending" &&
             pix?.qrCode
@@ -513,8 +870,23 @@ const MercadoPagoPayment = ({
                     <p>
                         Abra o app do seu banco, escolha pagar com Pix
                         e escaneie o código ou use o copia e cola.
-                        O horário é confirmado assim que o pagamento cair.
                     </p>
+
+                    {/* A tela vira sozinha quando o webhook do
+                        Mercado Pago confirma. Dizer isso evita a
+                        pessoa ficar recarregando — e recarregar
+                        era justamente o que a mandava de volta
+                        para a escolha de pagamento. */}
+                    <div className="mercado-pago-payment-waiting">
+
+                        <Icon icon="svg-spinners:ring-resize" />
+
+                        <span>
+                            Aguardando o pagamento. Esta tela
+                            se atualiza sozinha.
+                        </span>
+
+                    </div>
 
                     {pix.qrCodeBase64 && (
                         <img
@@ -629,18 +1001,153 @@ const MercadoPagoPayment = ({
                     </div>
                 )}
 
+                {/* =====================================================
+                    MENSALIDADE — O QUE VAI ACONTECER
+
+                    Assinar é autorizar uma cobrança que se
+                    repete sozinha. Isso precisa estar escrito
+                    antes do formulário, com o valor, a
+                    frequência e como cancelar — não em letra
+                    miúda depois.
+                ===================================================== */}
+
+                {subscriptionPlan && (
+
+                    <div className="mercado-pago-subscription-notice">
+
+                        <div className="mercado-pago-subscription-notice-head">
+                            <Icon icon="solar:refresh-circle-bold" />
+                            <strong>Cobrança automática</strong>
+                        </div>
+
+                        <ul>
+
+                            <li>
+                                <Icon icon="solar:card-outline" />
+                                <span>
+                                    Serão cobrados{" "}
+                                    <strong>
+                                        {Number(amount || 0).toLocaleString("pt-BR", {
+                                            style: "currency",
+                                            currency: "BRL"
+                                        })}
+                                    </strong>{" "}
+                                    no seu cartão{" "}
+                                    <strong>
+                                        {subscriptionPlan.billingCycleDescription ||
+                                            "a cada ciclo"}
+                                    </strong>
+                                    , sem você precisar fazer nada.
+                                </span>
+                            </li>
+
+                            <li>
+                                <Icon icon="solar:calendar-outline" />
+                                <span>
+                                    A cobrança se repete até você cancelar.
+                                </span>
+                            </li>
+
+                            <li>
+                                <Icon icon="solar:close-circle-outline" />
+                                <span>
+                                    Dá para cancelar quando quiser, pela aba{" "}
+                                    <strong>Reservas</strong>
+                                    {subscriptionPlan.cancellationNoticeDays > 0
+                                        ? `, avisando com ${subscriptionPlan.cancellationNoticeDays} dias de antecedência`
+                                        : ""}
+                                    {subscriptionPlan.loyaltyMonths > 0
+                                        ? `. Este plano tem fidelidade de ${subscriptionPlan.loyaltyMonths} ${subscriptionPlan.loyaltyMonths === 1 ? "mês" : "meses"}`
+                                        : ""}
+                                    .
+                                </span>
+                            </li>
+
+                            <li>
+                                <Icon icon="solar:bill-list-outline" />
+                                <span>
+                                    Só cartão de crédito: Pix e boleto não podem
+                                    ser debitados automaticamente.
+                                </span>
+                            </li>
+
+                        </ul>
+
+                        <label className="mercado-pago-subscription-accept">
+
+                            <input
+                                type="checkbox"
+                                checked={autoDebitAccepted}
+                                onChange={(e) =>
+                                    setAutoDebitAccepted(e.target.checked)
+                                }
+                            />
+
+                            <span>
+                                Entendi e autorizo a cobrança automática
+                                no meu cartão.
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                )}
+
+
+                {/* =====================================================
+                    PAGAMENTO — PAYMENT BRICK
+
+                    Pix e cartão, os dois pelo Brick do Mercado
+                    Pago.
+
+                    Já tentamos emitir o Pix por fora, com um
+                    botão nosso chamando a API direto. Não
+                    funcionou: o Mercado Pago exige um pagador
+                    completo — e-mail, CPF, primeiro e último
+                    nome — e recusa o que estiver faltando com
+                    um texto que não diz o que faltou ("Error
+                    in Financial Identity Use Case"). Montar
+                    esse pagador na mão significa reimplementar,
+                    campo a campo, a validação que o Brick já
+                    faz antes de enviar.
+
+                    O que o Brick pede a mais é pré-preenchido
+                    com o que o agendamento já sabe, então o
+                    cliente não redigita.
+                ===================================================== */}
+
+                {(!subscriptionPlan || autoDebitAccepted) && (
+
                 <Payment
 
                     initialization={{
-                        amount: Number(amount) || 0
+
+                        amount: Number(amount) || 0,
+
+                        /* Pré-preenche o pagador com o que o
+                           agendamento já coletou. */
+                        payer: payerEmail
+                            ? { email: payerEmail }
+                            : undefined
+
                     }}
 
                     customization={{
-                        paymentMethods: {
-                            creditCard: "all",
-                            debitCard: "all",
-                            bankTransfer: "all"
-                        }
+                        paymentMethods:
+                            subscriptionPlan
+                                ? {
+                                    /* Só crédito: débito e Pix não
+                                       sustentam cobrança recorrente. */
+                                    creditCard: "all"
+                                }
+                                : {
+                                    creditCard: "all",
+                                    debitCard: "all",
+
+                                    /* É por aqui que o Pix aparece. */
+                                    bankTransfer: "all"
+                                }
                     }}
 
                     onSubmit={handleSubmit}
@@ -660,6 +1167,8 @@ const MercadoPagoPayment = ({
                     }}
 
                 />
+
+                )}
 
             </div>
 

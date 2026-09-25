@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { getDatabase, ref, get, set, update } from "firebase/database";
+import {
+    getDatabase,
+    ref,
+    get,
+    set,
+    update,
+    query,
+    orderByChild,
+    equalTo
+} from "firebase/database";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
 import './Invite.css';
 import { Icon } from '@iconify/react'
@@ -120,9 +129,16 @@ export default function Invite() {
                 // Empresa ainda existe?
                 // =========================
 
+                /*
+                 * Só precisamos saber se a empresa existe.
+                 *
+                 * Ler companys/{handle} inteiro traria
+                 * produtos, agendamentos e pedidos.
+                 */
+
                 const companyRef = ref(
                     db,
-                    `companys/${inviteData.companyHandle}`
+                    `companys/${inviteData.companyHandle}/name`
                 );
 
                 const companySnap = await get(companyRef);
@@ -135,19 +151,53 @@ export default function Invite() {
 
                 }
 
-                const usersSnap = await get(ref(db, "users"));
+                /*
+                 * =========================
+                 * A conta já existe?
+                 * =========================
+                 *
+                 * Consulta por e-mail em vez de baixar o nó
+                 * "users" inteiro. Esta é uma rota pública:
+                 * a leitura completa expunha nome e e-mail
+                 * de toda a base.
+                 *
+                 * Requer .indexOn: ["email"] em "users".
+                 *
+                 * equalTo diferencia maiúsculas, então
+                 * testamos também o e-mail como veio no
+                 * convite, caso tenha sido gravado assim.
+                 */
 
-                let accountExists = false;
+                const invitedEmail =
+                    inviteData.invitedEmail;
 
-                if (usersSnap.exists()) {
+                const lowercasedEmail =
+                    invitedEmail.toLowerCase();
 
-                    const users = usersSnap.val();
+                const findUserByEmail = async (email) => {
 
-                    accountExists = Object.values(users).some(
-                        user =>
-                            user.email?.toLowerCase() ===
-                            inviteData.invitedEmail.toLowerCase()
+                    const snapshot = await get(
+                        query(
+                            ref(db, "users"),
+                            orderByChild("email"),
+                            equalTo(email)
+                        )
                     );
+
+                    return snapshot.exists();
+
+                };
+
+                let accountExists =
+                    await findUserByEmail(lowercasedEmail);
+
+                if (
+                    !accountExists &&
+                    invitedEmail !== lowercasedEmail
+                ) {
+
+                    accountExists =
+                        await findUserByEmail(invitedEmail);
 
                 }
 

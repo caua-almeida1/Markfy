@@ -1,8 +1,8 @@
 /* Cores temáticas */
-:root {
-    --mkf-text-primary: #333333;
-    --mkf-text-secondary: #666666;
-}
+/* Os tokens de cor agora vivem só em src/index.css.
+   Este arquivo redeclarava os mesmos nomes com valores
+   diferentes e vencia por ordem de import, o que
+   impedia o tema escuro de funcionar. */
 
 /* Animações */
 @keyframes mkf-scale-in {

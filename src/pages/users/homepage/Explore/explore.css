@@ -568,8 +568,7 @@ ter overflow horizontal.
 .explore-featured-content strong {
     overflow: hidden;
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 
     font-size: 15px;
 
@@ -876,8 +875,7 @@ ter overflow horizontal.
     background:
         var(--mkf-ui-primary);
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 
     transform:
         translateX(2px);
@@ -1005,8 +1003,7 @@ ter overflow horizontal.
     background:
         var(--mkf-ui-primary);
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 
     font-size: 9px;
 
@@ -2327,8 +2324,7 @@ ter overflow horizontal.
     background:
         var(--mkf-ui-primary);
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 }
 
 
@@ -2681,8 +2677,7 @@ ter overflow horizontal.
     background:
         var(--mkf-ui-primary);
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 
     transform:
         translateX(2px);

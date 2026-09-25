@@ -1,0 +1,213 @@
+/* =========================================================
+   MODAL COMUM — ANIMAÇÃO
+
+   Duas camadas, cada uma com a sua animação:
+
+     .mkf-modal-overlay  -> o fundo escurece
+     .mkf-modal-panel    -> o painel entra
+
+   O estado vem do atributo `data-state`, escrito pelo
+   componente: "entering" ou "leaving". Nada de classe
+   acumulando nem de estilo inline por quadro.
+
+   As durações aqui precisam bater com a prop `duration` do
+   Modal (220ms), que é quem de fato decide quando o
+   componente sai do DOM.
+========================================================= */
+
+.mkf-modal-overlay {
+    position: fixed;
+    inset: 0;
+
+    /* Fallback. Quem manda de verdade é o z-index inline
+       que o Modal escreve, que empilha um modal acima do
+       outro e passa por cima das barras do app. */
+    z-index: 500000;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+
+    padding: 24px;
+
+    background: rgba(9, 12, 20, 0.5);
+
+    /* Camada própria desde o primeiro quadro: sem isso o
+       compositor precisa montar o backdrop no meio da
+       animação, que é quando aparece a piscada. */
+    transform: translateZ(0);
+    will-change: opacity;
+    backface-visibility: hidden;
+}
+
+.mkf-modal-overlay[data-state="entering"] {
+    animation: mkfModalOverlayIn 0.22s ease backwards;
+}
+
+.mkf-modal-overlay[data-state="leaving"] {
+    animation: mkfModalOverlayOut 0.22s ease both;
+
+    /* Durante a saída o modal não responde mais a clique:
+       evita fechar duas vezes ou clicar em algo que já está
+       saindo. */
+    pointer-events: none;
+}
+
+@keyframes mkfModalOverlayIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes mkfModalOverlayOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+
+/* ---------- Painel ---------- */
+
+.mkf-modal-panel {
+    position: relative;
+
+    max-width: 100%;
+    max-height: 100%;
+
+    outline: none;
+
+    transform: translateZ(0);
+    backface-visibility: hidden;
+}
+
+.mkf-modal-panel--center[data-state="entering"] {
+    animation: mkfModalPanelIn 0.24s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.mkf-modal-panel--center[data-state="leaving"] {
+    animation: mkfModalPanelOut 0.2s ease-in both;
+}
+
+@keyframes mkfModalPanelIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+@keyframes mkfModalPanelOut {
+    from {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate3d(0, 6px, 0) scale(0.98);
+    }
+}
+
+
+/* ---------- Folha que sobe de baixo ---------- */
+
+.mkf-modal-panel--sheet {
+    width: 100%;
+    margin-top: auto;
+}
+
+.mkf-modal-panel--sheet[data-state="entering"] {
+    animation: mkfModalSheetIn 0.28s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.mkf-modal-panel--sheet[data-state="leaving"] {
+    animation: mkfModalSheetOut 0.22s ease-in both;
+}
+
+@keyframes mkfModalSheetIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 100%, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes mkfModalSheetOut {
+    from {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate3d(0, 100%, 0);
+    }
+}
+
+
+/*
+ * No celular o modal centralizado vira folha: encosta na
+ * base, ocupa a largura toda e arredonda só em cima. É o
+ * padrão que o resto do app já usa.
+ */
+@media (max-width: 680px) {
+
+    .mkf-modal-overlay {
+        align-items: flex-end;
+
+        padding: 0;
+    }
+
+    .mkf-modal-panel--center {
+        width: 100%;
+        margin-top: auto;
+    }
+
+    .mkf-modal-panel--center[data-state="entering"] {
+        animation-name: mkfModalSheetIn;
+    }
+
+    .mkf-modal-panel--center[data-state="leaving"] {
+        animation-name: mkfModalSheetOut;
+    }
+
+}
+
+
+/*
+ * Movimento reduzido: sem deslizar nem escalar, só o
+ * aparecer. O fechamento continua no mesmo tempo, porque
+ * quem manda nele é o relógio do useExitTransition.
+ */
+@media (prefers-reduced-motion: reduce) {
+
+    .mkf-modal-overlay[data-state],
+    .mkf-modal-panel[data-state] {
+        animation-name: mkfModalOverlayIn;
+        animation-duration: 0.01ms;
+    }
+
+    .mkf-modal-overlay[data-state="leaving"],
+    .mkf-modal-panel[data-state="leaving"] {
+        animation-name: mkfModalOverlayOut;
+    }
+
+}

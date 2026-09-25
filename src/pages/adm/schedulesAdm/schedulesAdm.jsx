@@ -442,19 +442,21 @@ const SchedulesAdm = () => {
 
     const schedulesByHour = useMemo(() => {
 
-        return schedules.reduce((acc, schedule) => {
+        const grouped = {};
+
+        for (const schedule of schedules) {
 
             const hour = schedule.hour.slice(0, 2);
 
-            if (!acc[hour]) {
-                acc[hour] = [];
+            if (!grouped[hour]) {
+                grouped[hour] = [];
             }
 
-            acc[hour].push(schedule);
+            grouped[hour].push(schedule);
 
-            return acc;
+        }
 
-        }, {});
+        return grouped;
 
     }, [schedules]);
 

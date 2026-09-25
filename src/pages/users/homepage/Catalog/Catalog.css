@@ -589,6 +589,483 @@
 
 
 /* =========================================================
+   FILTRO POR TIPO DE OFERTA
+
+   Separa serviços avulsos de mensalidades sem tirar
+   nenhum dos dois da página.
+========================================================= */
+
+.catalog-type-filter {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+
+    width: 100%;
+    max-width: 1280px;
+
+    margin: 0 auto 18px;
+
+    overflow-x: auto;
+
+    scrollbar-width: none;
+}
+
+.catalog-type-filter::-webkit-scrollbar {
+    display: none;
+}
+
+.catalog-type-filter button {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+
+    gap: 7px;
+
+    height: 38px;
+
+    padding: 0 15px;
+
+    border:
+        1px solid var(--mkf-ui-border);
+
+    border-radius: 999px;
+
+    background: var(--mkf-ui-white);
+
+    color:
+        var(--mkf-text-secondary);
+
+    font-family: inherit;
+
+    font-size: var(--mkf-font-xs);
+
+    font-weight: var(--mkf-font-medium);
+
+    cursor: pointer;
+
+    transition:
+        border-color 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.catalog-type-filter button svg {
+    flex-shrink: 0;
+
+    font-size: 1rem;
+}
+
+.catalog-type-filter button b {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-width: 20px;
+    height: 20px;
+
+    padding: 0 6px;
+
+    border-radius: 999px;
+
+    background:
+        var(--mkf-ui-background-secondary);
+
+    color:
+        var(--mkf-text-light);
+
+    font-size: var(--mkf-font-3xs);
+
+    font-weight: var(--mkf-font-semibold);
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease;
+}
+
+.catalog-type-filter button:hover {
+    border-color:
+        var(--mkf-ui-border-dark);
+
+    color:
+        var(--mkf-text-primary);
+}
+
+.catalog-type-filter button.active {
+    border-color:
+        var(--mkf-ui-primary);
+
+    background:
+        var(--mkf-ui-primary);
+
+    color: var(--mkf-on-primary);
+
+    font-weight: var(--mkf-font-semibold);
+}
+
+.catalog-type-filter button.active b {
+    background:
+        rgba(255, 255, 255, 0.22);
+
+    color: var(--mkf-on-primary);
+}
+
+
+/* =========================================================
+   ASSINATURAS — PLANOS DE MENSALIDADE
+
+   Bloco próprio acima da lista, para o cliente não
+   confundir cobrança recorrente com serviço avulso.
+========================================================= */
+
+.catalog-subscriptions {
+    width: 100%;
+    max-width: 1280px;
+
+    /* Vem depois da lista de serviços: eles são o foco
+       da página, as mensalidades são o complemento. */
+    margin: 34px auto 0;
+
+    padding-top: 28px;
+
+    border-top:
+        1px solid var(--mkf-ui-border);
+}
+
+/* Quando o filtro deixa só as mensalidades na tela, não
+   há lista acima para separar. */
+.catalog-subscriptions.is-only {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.catalog-subscriptions-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-bottom: 12px;
+}
+
+.catalog-subscriptions-heading span {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color:
+        var(--mkf-ui-primary);
+
+    font-size: var(--mkf-font-3xs);
+
+    font-weight: var(--mkf-font-semibold);
+
+    line-height: 1;
+
+    letter-spacing: 0.1em;
+
+    text-transform: uppercase;
+}
+
+.catalog-subscriptions-heading h3 {
+    margin: 0;
+
+    color:
+        var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-lg);
+
+    font-weight: var(--mkf-font-bold);
+
+    line-height: 1.2;
+
+    letter-spacing: -0.02em;
+}
+
+.catalog-subscriptions-heading>p {
+    margin: 0;
+
+    color:
+        var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-xs);
+
+    white-space: nowrap;
+}
+
+.catalog-subscriptions-note {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 9px;
+
+    margin-bottom: 14px;
+
+    padding: 11px 14px;
+
+    border:
+        1px solid var(--mkf-ui-primary-light);
+
+    border-radius: 13px;
+
+    background:
+        var(--mkf-ui-primary-lighter);
+}
+
+.catalog-subscriptions-note svg {
+    flex-shrink: 0;
+
+    margin-top: 1px;
+
+    color:
+        var(--mkf-ui-primary);
+
+    font-size: 1rem;
+}
+
+.catalog-subscriptions-note p {
+    margin: 0;
+
+    color:
+        var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-2xs);
+
+    line-height: 1.5;
+}
+
+.catalog-subscriptions-list {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 14px;
+}
+
+
+/* ---------- Card do plano ---------- */
+
+.catalog-subscription {
+    display: flex;
+
+    gap: 16px;
+
+    min-width: 0;
+
+    padding: 14px;
+
+    box-sizing: border-box;
+
+    border:
+        1px solid var(--mkf-ui-primary-light);
+
+    border-radius: 16px;
+
+    background: var(--mkf-ui-white);
+
+    cursor: pointer;
+
+    transition:
+        transform 0.2s ease,
+        border-color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+.catalog-subscription:hover {
+    transform:
+        translateY(-2px);
+
+    border-color:
+        var(--mkf-ui-primary);
+
+    box-shadow:
+        0 12px 30px rgba(9, 42, 243, 0.1);
+}
+
+.catalog-subscription-image {
+    position: relative;
+
+    width: 118px;
+    height: 118px;
+
+    flex-shrink: 0;
+
+    overflow: hidden;
+
+    border-radius: 13px;
+
+    background:
+        var(--mkf-ui-background-secondary);
+}
+
+.catalog-subscription-image img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+}
+
+.catalog-subscription-badge {
+    position: absolute;
+
+    top: 7px;
+    left: 7px;
+
+    padding: 4px 8px;
+
+    border-radius: 7px;
+
+    background:
+        var(--mkf-ui-primary);
+
+    color: var(--mkf-on-primary);
+
+    font-size: var(--mkf-font-3xs);
+
+    font-weight: var(--mkf-font-semibold);
+
+    line-height: 1;
+
+    letter-spacing: 0.05em;
+
+    text-transform: uppercase;
+
+    white-space: nowrap;
+}
+
+.catalog-subscription-content {
+    min-width: 0;
+
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.catalog-subscription-content h4 {
+    margin: 0;
+
+    overflow: hidden;
+
+    color:
+        var(--mkf-text-primary);
+
+    font-size: var(--mkf-font-sm);
+
+    font-weight: var(--mkf-font-semibold);
+
+    line-height: 1.3;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+.catalog-subscription-sessions {
+    margin-top: 2px;
+
+    color:
+        var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-3xs);
+}
+
+.catalog-subscription-details {
+    display: flex;
+    flex-direction: column;
+
+    gap: 4px;
+
+    margin: 10px 0 0;
+
+    padding: 0;
+
+    list-style: none;
+}
+
+.catalog-subscription-details li {
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+    min-width: 0;
+}
+
+.catalog-subscription-details li svg {
+    flex-shrink: 0;
+
+    color:
+        var(--mkf-ui-primary);
+
+    font-size: 0.85rem;
+}
+
+.catalog-subscription-details li span {
+    overflow: hidden;
+
+    color:
+        var(--mkf-text-secondary);
+
+    font-size: var(--mkf-font-3xs);
+
+    line-height: 1.35;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+}
+
+.catalog-subscription-action {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    margin-top: auto;
+
+    padding-top: 12px;
+}
+
+.catalog-subscription-price {
+    display: flex;
+    align-items: baseline;
+
+    gap: 3px;
+
+    min-width: 0;
+}
+
+.catalog-subscription-price strong {
+    color:
+        var(--mkf-ui-primary);
+
+    font-size: var(--mkf-font-md);
+
+    font-weight: var(--mkf-font-bold);
+
+    line-height: 1;
+
+    white-space: nowrap;
+}
+
+.catalog-subscription-price span {
+    color:
+        var(--mkf-text-tertiary);
+
+    font-size: var(--mkf-font-3xs);
+
+    font-weight: var(--mkf-font-semibold);
+}
+
+
+/* =========================================================
    LISTA DE PRODUTOS
 ========================================================= */
 
@@ -625,8 +1102,7 @@
 
     box-sizing: border-box;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     border:
         1px solid var(--mkf-ui-border);
@@ -902,8 +1378,7 @@
     background:
         var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-family: inherit;
 
@@ -1094,8 +1569,7 @@
     background:
         var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .catalog-category-button.active:hover {
@@ -1105,8 +1579,7 @@
     background:
         var(--mkf-ui-primary-hover);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 /* =========================================================
@@ -1300,6 +1773,16 @@
             repeat(2, minmax(0, 1fr));
     }
 
+    .catalog-subscriptions-list {
+        grid-template-columns:
+            minmax(0, 1fr);
+    }
+
+    .catalog-subscription-image {
+        width: 100px;
+        height: 100px;
+    }
+
     .catalog-product-image-wrapper {
         width: 100px;
         height: 100px;
@@ -1372,6 +1855,34 @@
 
     .catalog-page-title h2 {
         font-size: var(--mkf-font-2xl);
+    }
+
+
+    /* ==========================================
+       ASSINATURAS
+    ========================================== */
+
+    .catalog-subscriptions {
+        margin-bottom: 22px;
+    }
+
+    .catalog-subscriptions-heading>p {
+        display: none;
+    }
+
+    .catalog-subscription {
+        flex-direction: column;
+
+        gap: 12px;
+    }
+
+    .catalog-subscription-image {
+        width: 100%;
+        height: 140px;
+    }
+
+    .catalog-subscription-details li span {
+        white-space: normal;
     }
 
     .catalog-page-title p {
@@ -1498,8 +2009,7 @@
         border-radius:
             22px 22px 0 0;
 
-        background:
-            var(--mkf-ui-white);
+        background: var(--mkf-ui-white);
 
         box-shadow:
             0 -14px 50px var(--mkf-ui-shadow-strong);
@@ -1548,8 +2058,7 @@
         padding:
             12px 17px 15px;
 
-        background:
-            var(--mkf-ui-white);
+        background: var(--mkf-ui-white);
     }
 
 

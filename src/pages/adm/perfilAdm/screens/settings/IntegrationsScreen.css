@@ -301,8 +301,7 @@
 
     border-radius: 50%;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 1px 3px rgba(0, 0, 0, .15);

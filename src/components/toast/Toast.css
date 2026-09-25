@@ -14,7 +14,7 @@
     border-radius: 18px;
 
     background: #121212;
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     box-shadow: 0 20px 45px rgba(0, 0, 0, .25);
 
@@ -41,7 +41,7 @@
 .toast__icon svg {
 
     font-size: 26px;
-    color: white;
+    color: var(--mkf-on-primary);
 
 }
 

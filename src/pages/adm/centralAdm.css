@@ -48,11 +48,9 @@
 
     overflow: hidden;
 
-    background:
-        var(--mkf-ui-background, #ffffff);
+    background: var(--mkf-ui-background, var(--mkf-ui-white));
 
-    color:
-        var(--mkf-text-primary, #333333);
+    color: var(--mkf-text-primary);
 
     box-sizing: border-box;
 }
@@ -73,8 +71,7 @@
 
     pointer-events: none;
 
-    background:
-        var(--mkf-ui-background, #ffffff);
+    background: var(--mkf-ui-background, var(--mkf-ui-white));
 }
 
 
@@ -95,9 +92,8 @@
 
     border-radius: 50%;
 
-    background:
-        radial-gradient(circle,
-            var(--mkf-ui-primary, #092af3) 0%,
+    background: radial-gradient(circle,
+            var(--mkf-ui-primary) 0%,
             rgba(9, 42, 243, 0.72) 18%,
             rgba(9, 42, 243, 0.28) 42%,
             rgba(9, 42, 243, 0.08) 60%,
@@ -129,9 +125,8 @@
 
     border-radius: 50%;
 
-    background:
-        radial-gradient(circle,
-            var(--mkf-ui-primary, #092af3) 0%,
+    background: radial-gradient(circle,
+            var(--mkf-ui-primary) 0%,
             rgba(9, 42, 243, 0.62) 20%,
             rgba(9, 42, 243, 0.22) 43%,
             rgba(9, 42, 243, 0.06) 62%,
@@ -233,8 +228,7 @@
     top: 19%;
     left: 12%;
 
-    background:
-        var(--mkf-ui-primary, #092af3);
+    background: var(--mkf-ui-primary);
 
     opacity: 0.35;
 
@@ -250,8 +244,7 @@
     right: 16%;
     top: 27%;
 
-    background:
-        var(--mkf-ui-primary, #092af3);
+    background: var(--mkf-ui-primary);
 
     opacity: 0.22;
 
@@ -276,10 +269,9 @@
 
     overflow: hidden;
 
-    background:
-        var(--mkf-ui-white, #ffffff);
+    background: var(--mkf-ui-white);
 
-    border: 1px solid var(--mkf-ui-border, #eeeeee);
+    border: 1px solid var(--mkf-ui-border, var(--mkf-ui-gray-200));
 
     border-radius: 28px;
 
@@ -339,8 +331,7 @@
     background:
         rgba(255, 255, 255, 0.72);
 
-    color:
-        var(--mkf-ui-primary, #092af3);
+    color: var(--mkf-ui-primary);
 
     font-size:
         var(--mkf-font-xs, 0.75rem);
@@ -359,8 +350,7 @@
 
     border-radius: 50%;
 
-    background:
-        var(--mkf-ui-primary, #092af3);
+    background: var(--mkf-ui-primary);
 
     box-shadow:
         0 0 0 4px rgba(9, 42, 243, 0.08);
@@ -434,8 +424,7 @@
     border-radius:
         12px 12px 5px 5px;
 
-    background:
-        var(--mkf-ui-primary, #092af3);
+    background: var(--mkf-ui-primary);
 
     clip-path:
         polygon(8% 100%,
@@ -467,8 +456,7 @@
     border-radius:
         10px 10px 8px 8px;
 
-    background:
-        var(--mkf-ui-white, #ffffff);
+    background: var(--mkf-ui-white);
 
     border:
         1px solid rgba(9, 42, 243, 0.08);
@@ -611,8 +599,7 @@
 .central-adm-no-company__illustration-card--bottom div:last-child {
     width: 42px;
 
-    background:
-        var(--mkf-ui-primary, #092af3);
+    background: var(--mkf-ui-primary);
 
     opacity: 0.85;
 }
@@ -635,8 +622,7 @@
 
     margin-bottom: 8px;
 
-    color:
-        var(--mkf-ui-primary, #092af3);
+    color: var(--mkf-ui-primary);
 
     font-size:
         var(--mkf-font-xs, 0.75rem);
@@ -652,8 +638,7 @@
 .central-adm-no-company__visual-text strong {
     display: block;
 
-    color:
-        var(--mkf-text-primary, #333333);
+    color: var(--mkf-text-primary);
 
     font-size:
         var(--mkf-font-2xl, 1.5rem);
@@ -673,8 +658,7 @@
 
     margin: 10px 0 0;
 
-    color:
-        var(--mkf-text-tertiary, #666666);
+    color: var(--mkf-text-tertiary);
 
     font-size:
         var(--mkf-font-sm, 0.875rem);
@@ -718,8 +702,7 @@
     background:
         var(--mkf-ui-primary-light, #e9edff);
 
-    color:
-        var(--mkf-ui-primary, #092af3);
+    color: var(--mkf-ui-primary);
 }
 
 
@@ -743,8 +726,7 @@
 
     margin-bottom: 10px;
 
-    color:
-        var(--mkf-ui-primary, #092af3);
+    color: var(--mkf-ui-primary);
 
     font-size:
         var(--mkf-font-xs, 0.75rem);
@@ -760,8 +742,7 @@
 .central-adm-no-company__heading h1 {
     margin: 0;
 
-    color:
-        var(--mkf-text-primary, #333333);
+    color: var(--mkf-text-primary);
 
     font-size:
         clamp(var(--mkf-font-2xl, 1.5rem),
@@ -783,8 +764,7 @@
 
     margin: 16px 0 0;
 
-    color:
-        var(--mkf-text-tertiary, #666666);
+    color: var(--mkf-text-tertiary);
 
     font-size:
         var(--mkf-font-md, 1rem);
@@ -938,14 +918,11 @@
    ========================================================= */
 
 .central-adm-no-company__action--primary {
-    border:
-        1px solid var(--mkf-ui-primary, #092af3);
+    border: 1px solid var(--mkf-ui-primary);
 
-    background:
-        var(--mkf-ui-primary, #092af3);
+    background: var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white, #ffffff);
+    color: var(--mkf-on-primary);
 
     box-shadow:
         0 9px 24px rgba(9, 42, 243, 0.15);
@@ -975,38 +952,30 @@
    ========================================================= */
 
 .central-adm-no-company__action--secondary {
-    border:
-        1px solid var(--mkf-ui-border, #eeeeee);
+    border: 1px solid var(--mkf-ui-border, var(--mkf-ui-gray-200));
 
-    background:
-        var(--mkf-ui-white, #ffffff);
+    background: var(--mkf-ui-white);
 
-    color:
-        var(--mkf-text-primary, #333333);
+    color: var(--mkf-text-primary);
 }
 
 
 .central-adm-no-company__action--secondary:hover {
-    border-color:
-        var(--mkf-ui-border-dark, #d9d9d9);
+    border-color: var(--mkf-ui-border-dark);
 
-    background:
-        var(--mkf-ui-background-secondary, #f5f5f5);
+    background: var(--mkf-ui-background-secondary, var(--mkf-ui-gray-100));
 }
 
 
 .central-adm-no-company__action--secondary .central-adm-no-company__action-icon {
-    background:
-        var(--mkf-ui-background-secondary, #f5f5f5);
+    background: var(--mkf-ui-background-secondary, var(--mkf-ui-gray-100));
 
-    color:
-        var(--mkf-text-secondary, #555555);
+    color: var(--mkf-text-secondary);
 }
 
 
 .central-adm-no-company__action--secondary .central-adm-no-company__action-content small {
-    color:
-        var(--mkf-text-light, #999999);
+    color: var(--mkf-text-light);
 }
 
 
@@ -1040,11 +1009,9 @@
 
     border-radius: 10px;
 
-    background:
-        var(--mkf-ui-background-secondary, #f5f5f5);
+    background: var(--mkf-ui-background-secondary, var(--mkf-ui-gray-100));
 
-    color:
-        var(--mkf-text-tertiary, #666666);
+    color: var(--mkf-text-tertiary);
 }
 
 
@@ -1064,8 +1031,7 @@
 
     margin-bottom: 3px;
 
-    color:
-        var(--mkf-text-primary, #333333);
+    color: var(--mkf-text-primary);
 
     font-size:
         var(--mkf-font-xs, 0.75rem);
@@ -1078,8 +1044,7 @@
 .central-adm-no-company__help-content p {
     margin: 0;
 
-    color:
-        var(--mkf-text-light, #999999);
+    color: var(--mkf-text-light);
 
     font-size:
         var(--mkf-font-xs, 0.75rem);
@@ -1101,8 +1066,7 @@
 
     margin-top: 30px;
 
-    color:
-        var(--mkf-text-light, #999999);
+    color: var(--mkf-text-light);
 
     font-size:
         var(--mkf-font-2xs, 0.625rem);
@@ -1468,6 +1432,184 @@
 
         font-size:
             var(--mkf-font-3xs, 0.5625rem);
+    }
+
+}
+
+
+/* =========================================================
+   CARREGANDO O PAINEL
+
+   A logo pulsa, uma barra corre. As duas coisas existem
+   porque a espera tem duração variável: o pulso mostra que
+   a tela está viva, e a barra dá a sensação de progresso
+   mesmo sem saber quanto falta.
+   ========================================================= */
+
+.central-adm-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+
+    width: 100%;
+    min-height: 100dvh;
+    padding: 24px;
+
+    box-sizing: border-box;
+
+    background: var(--mkf-ui-background, #f7f8fc);
+    text-align: center;
+}
+
+
+/* ---------- Logo ---------- */
+
+.central-adm-loading__mark {
+    position: relative;
+
+    display: grid;
+    place-items: center;
+
+    width: 84px;
+    height: 84px;
+}
+
+.central-adm-loading__mark img {
+    position: relative;
+    z-index: 1;
+
+    width: 52px;
+    height: 52px;
+
+    animation: centralAdmBreathe 1.8s ease-in-out infinite;
+}
+
+/* As ondas saem de trás da logo. A segunda entra atrasada
+   para virar um pulso contínuo, e não um piscar. */
+.central-adm-loading__pulse {
+    position: absolute;
+    inset: 0;
+
+    border-radius: 50%;
+    background: var(--mkf-ui-primary, #092af3);
+    opacity: 0;
+
+    animation: centralAdmPulse 1.8s ease-out infinite;
+}
+
+.central-adm-loading__pulse--delayed {
+    animation-delay: .9s;
+}
+
+@keyframes centralAdmPulse {
+    0% {
+        transform: scale(.55);
+        opacity: .28;
+    }
+
+    70% {
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1.35);
+        opacity: 0;
+    }
+}
+
+@keyframes centralAdmBreathe {
+    0%, 100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.07);
+    }
+}
+
+
+/* ---------- Texto ---------- */
+
+.central-adm-loading__text {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.central-adm-loading__text strong {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary, #1d1d1d);
+}
+
+.central-adm-loading__text p {
+    margin: 0;
+    max-width: 34ch;
+
+    font-size: .9rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+
+/* ---------- Barra ---------- */
+
+.central-adm-loading__bar {
+    position: relative;
+
+    width: min(220px, 70vw);
+    height: 4px;
+
+    overflow: hidden;
+    border-radius: 100px;
+    background: var(--mkf-ui-border, #e4e7ef);
+}
+
+.central-adm-loading__bar span {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+
+    width: 42%;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-primary, #092af3);
+
+    animation: centralAdmSlide 1.4s ease-in-out infinite;
+}
+
+@keyframes centralAdmSlide {
+    0% {
+        left: -45%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+
+/* ---------- Movimento reduzido ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .central-adm-loading__mark img,
+    .central-adm-loading__pulse,
+    .central-adm-loading__bar span {
+        animation: none;
+    }
+
+    /* Sem movimento a barra vira um traço parado; ela deixa
+       de indicar qualquer coisa, então some. */
+    .central-adm-loading__bar {
+        display: none;
+    }
+
+    .central-adm-loading__pulse {
+        opacity: .18;
     }
 
 }

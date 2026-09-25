@@ -393,7 +393,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-family: inherit;
     font-size: var(--mkf-font-sm);
@@ -795,4 +795,28 @@
         margin: 16px 0;
     }
 
+}
+
+
+/* Enquanto verificamos se já existe um pedido em aberto. */
+.business-form--loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    min-height: 240px;
+
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.business-form--loading svg {
+    font-size: 28px;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.business-form-primary:disabled {
+    opacity: .6;
+    cursor: default;
 }

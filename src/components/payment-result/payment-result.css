@@ -18,7 +18,7 @@
 
     padding: 42px 32px;
 
-    background: var(--mkf-surface, #ffffff);
+    background: var(--mkf-surface, var(--mkf-ui-white));
 
     border-radius: 28px;
 
@@ -86,7 +86,7 @@
 
     line-height: 1.6;
 
-    color: var(--mkf-text-secondary, #666666);
+    color: var(--mkf-text-secondary, var(--mkf-text-tertiary));
 }
 
 .payment-result-hint {
@@ -138,7 +138,7 @@
 .payment-result-btn.primary {
     background: var(--mkf-primary, #111111);
 
-    color: #ffffff;
+    color: var(--mkf-on-primary);
 }
 
 .payment-result-btn.secondary {

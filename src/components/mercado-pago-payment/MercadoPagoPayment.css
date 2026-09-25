@@ -82,7 +82,7 @@
 .mercado-pago-payment-error svg,
 .mercado-pago-payment-result-icon {
     font-size: 3rem;
-    color: #092af3;
+    color: var(--mkf-ui-primary);
 }
 
 .mercado-pago-payment-error svg {
@@ -114,8 +114,8 @@
 
     border: 0;
     border-radius: 100px;
-    background: #092af3;
-    color: #fff;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
 
     font: inherit;
     font-weight: 600;
@@ -160,6 +160,120 @@
 }
 
 .mercado-pago-payment-result a {
-    color: #092af3;
+    color: var(--mkf-ui-primary);
     font-weight: 600;
+}
+
+
+/* =========================================================
+   MENSALIDADE — AVISO DE COBRANÇA AUTOMÁTICA
+
+   Fica acima do formulário, não abaixo: autorizar um débito
+   que se repete é a decisão principal desta tela, e quem
+   decide precisa ler antes de digitar o cartão.
+   ========================================================= */
+
+.mercado-pago-subscription-notice {
+    margin-bottom: 18px;
+    padding: 16px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 16px;
+    background: var(--mkf-ui-surface-hover, #f6f8fd);
+}
+
+.mercado-pago-subscription-notice-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    margin-bottom: 12px;
+
+    font-size: .95rem;
+    color: var(--mkf-text-primary);
+}
+
+.mercado-pago-subscription-notice-head svg {
+    font-size: 21px;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.mercado-pago-subscription-notice ul {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.mercado-pago-subscription-notice li {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+
+    font-size: .88rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.mercado-pago-subscription-notice li svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    font-size: 17px;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.mercado-pago-subscription-notice li strong {
+    color: var(--mkf-text-primary);
+}
+
+.mercado-pago-subscription-accept {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    margin-top: 14px;
+    padding-top: 14px;
+
+    border-top: 1px solid var(--mkf-ui-border, #e4e7ef);
+
+    font-size: .9rem;
+    line-height: 1.45;
+    color: var(--mkf-text-primary);
+    cursor: pointer;
+}
+
+.mercado-pago-subscription-accept input {
+    flex: 0 0 auto;
+    width: 19px;
+    height: 19px;
+    margin: 1px 0 0;
+    accent-color: var(--mkf-ui-primary, #092af3);
+    cursor: pointer;
+}
+
+
+/* Espera do Pix — a tela se atualiza sozinha. */
+
+.mercado-pago-payment-waiting {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+
+    margin: 4px 0 12px;
+    padding: 9px 15px;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-surface-hover, #f1f3f9);
+
+    font-size: .86rem;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.mercado-pago-payment-waiting svg {
+    font-size: 16px;
+    color: var(--mkf-ui-primary, #092af3);
 }

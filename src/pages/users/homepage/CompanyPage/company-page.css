@@ -206,7 +206,7 @@
 
 .company-btn-share {
     background-color: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .company-btn-share:hover {
@@ -275,7 +275,7 @@
     right: 6px;
     transform: translateY(-50%);
     background-color: var(--mkf-ui-primary);
-    color: white;
+    color: var(--mkf-on-primary);
     border: none;
     border-radius: 6px;
     padding: 8px 14px;
@@ -312,7 +312,7 @@
 
 .share-modal-confirm-btn {
     background-color: #2563eb;
-    color: white;
+    color: var(--mkf-on-primary);
     border: none;
     border-radius: 8px;
     padding: 8px 16px;

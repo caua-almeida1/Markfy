@@ -689,7 +689,7 @@
     border-radius: 12px;
 
     background: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-family: inherit;
     font-size: var(--mkf-font-xs);
@@ -1645,6 +1645,85 @@
 
     .checkout-order-total strong {
         font-size: var(--mkf-font-lg);
+    }
+
+}
+
+
+/* =============================================================================
+   SELO DE QUEM PROCESSA O PAGAMENTO
+
+   O cliente entrega o cartão numa tela com a marca do
+   Markfy; dizer de quem é a maquininha é o que evita a
+   dúvida de "para onde está indo meu dinheiro".
+============================================================================= */
+
+.checkout-header-processor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    margin-left: auto;
+    padding: 7px 14px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 100px;
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-3xs);
+    line-height: 1.2;
+
+    white-space: nowrap;
+}
+
+.checkout-header-processor svg {
+    flex: 0 0 auto;
+    font-size: 16px;
+    color: var(--mkf-ui-success, #00a650);
+}
+
+.checkout-header-processor strong {
+    margin-left: 4px;
+    color: var(--mkf-text-primary);
+    font-weight: var(--mkf-font-semibold);
+}
+
+
+/* =============================================================================
+   ROLAGEM
+
+   A página é uma coluna que cresce com o conteúdo. O
+   `min-height` garante a altura da janela quando há pouca
+   coisa; o que NÃO pode existir aqui é altura fixa ou
+   overflow escondido, senão o formulário de pagamento fica
+   inalcançável em tela pequena.
+============================================================================= */
+
+.checkout-page {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.checkout-payment-screen {
+    padding-bottom: 48px;
+}
+
+
+@media (max-width: 680px) {
+
+    .checkout-header-processor {
+        padding: 6px 10px;
+        font-size: 10px;
+    }
+
+    .checkout-header-processor span {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .checkout-header-processor strong {
+        margin-left: 0;
     }
 
 }

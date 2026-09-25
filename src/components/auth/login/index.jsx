@@ -6,14 +6,37 @@ import MarkfyLogo from "../../../img/logo-markfy.svg";
 import emailjs from "@emailjs/browser";
 
 import { realtimeDb } from '../../../firebase/firebase';
-import { ref, set, get, update } from 'firebase/database';
+import {
+  ref,
+  set,
+  get,
+  update,
+  query,
+  orderByChild,
+  equalTo
+} from 'firebase/database';
 
 import {
   doSignInWithEmailAndPassword,
-  doSignInWithGoogle
+  doSignInWithGoogle,
+  doGetRedirectResult,
+  doSendPasswordResetEmail,
+  descreverErroDeAuth
 } from '../../../firebase/auth';
 
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  RecaptchaVerifier,
+  signInWithPhoneNumber
+} from 'firebase/auth';
+
+import Modal from '../../modal/Modal';
+
+import {
+  formatPhoneBR,
+  isValidPhoneBR,
+  toE164BR
+} from '../../../utils/phoneBR';
 import { auth } from '../../../firebase/firebase';
 
 import { Icon } from '@iconify/react';
@@ -22,6 +45,46 @@ import './mainscreenregister.css';
 const SERVICE_ID = "service_2l02vyh";
 const TEMPLATE_ID = "template_6g6ub0p";
 const PUBLIC_KEY = "QlWjNn5vihbWi9uLf";
+
+/*
+ * O Firebase devolve um código por erro; sem traduzir, tudo
+ * vira "tente de novo" e a pessoa repete o mesmo engano.
+ */
+const descreverErroDeTelefone = (error) => {
+
+  switch (error?.code) {
+
+    case 'auth/invalid-verification-code':
+      return 'Código incorreto. Confira os 6 números do SMS.';
+
+    case 'auth/code-expired':
+      return 'Esse código expirou. Peça um novo SMS.';
+
+    case 'auth/invalid-phone-number':
+      return 'Número inválido. Use DDD + número.';
+
+    case 'auth/too-many-requests':
+      return 'Muitas tentativas nesse número. Espere alguns minutos.';
+
+    case 'auth/quota-exceeded':
+      return 'O limite de SMS foi atingido hoje. Tente mais tarde.';
+
+    case 'auth/network-request-failed':
+      return 'Sem conexão. Verifique sua internet.';
+
+    case 'auth/invalid-app-credential':
+      return 'A verificação por SMS está indisponível neste ambiente. Entre com e-mail ou Google.';
+
+    case 'auth/operation-not-allowed':
+      return 'A entrada por telefone não está habilitada.';
+
+    default:
+      return 'Não foi possível concluir a verificação. Tente novamente.';
+
+  }
+
+};
+
 
 const AuthScreen = () => {
   const navigate = useNavigate();
@@ -41,6 +104,260 @@ const AuthScreen = () => {
   const [isLogin, setIsLogin] = useState(!inviteId);
 
   const [isLoading, setIsLoading] = useState(false);
+
+  /* Recuperação de senha. O link apontava para
+     /forgot-password, uma rota que nunca existiu: quem
+     clicava caía na landing page. Agora é um painel aqui
+     mesmo, com o e-mail que a pessoa já digitou. */
+  const [showForgotPassword, setShowForgotPassword] =
+    useState(false);
+
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+
+  /* ============================================================
+     ENTRAR COM TELEFONE
+
+     Mesma verificação por SMS usada no agendamento, agora como
+     forma de entrar. Para quem só tem WhatsApp e nunca lembra
+     de senha, é o caminho mais curto até a conta.
+     ============================================================ */
+
+  const [showPhoneLogin, setShowPhoneLogin] = useState(false);
+  const [phoneStep, setPhoneStep] = useState('phone');
+  const [phoneValue, setPhoneValue] = useState('');
+  const [phoneCode, setPhoneCode] = useState('');
+  const [phoneConfirmation, setPhoneConfirmation] = useState(null);
+  const [phoneError, setPhoneError] = useState('');
+  const [phoneLoading, setPhoneLoading] = useState(false);
+
+
+  const abrirLoginPorTelefone = () => {
+
+    setPhoneStep('phone');
+    setPhoneCode('');
+    setPhoneError('');
+    setPhoneConfirmation(null);
+    setShowPhoneLogin(true);
+
+  };
+
+
+  /*
+   * Um nó virgem por tentativa.
+   *
+   * O grecaptcha marca o elemento onde já montou; reaproveitar
+   * o mesmo <div> levanta "reCAPTCHA has already been rendered
+   * in this element" e o token que sai dali é recusado.
+   */
+  const montarRecaptcha = () => {
+
+    const container =
+      document.getElementById('login-recaptcha');
+
+    if (!container) {
+      throw new Error('Container do reCAPTCHA não encontrado.');
+    }
+
+    if (window.loginRecaptchaVerifier) {
+      try {
+        window.loginRecaptchaVerifier.clear();
+      } catch {
+        /* já estava descartado */
+      }
+    }
+
+    container.innerHTML = '';
+
+    const host = document.createElement('div');
+    host.id = `login-recaptcha-host-${Date.now()}`;
+    container.appendChild(host);
+
+    const verifier = new RecaptchaVerifier(
+      auth,
+      host,
+      { size: 'invisible' }
+    );
+
+    window.loginRecaptchaVerifier = verifier;
+
+    return verifier;
+
+  };
+
+
+  const enviarCodigoTelefone = async () => {
+
+    const e164 = toE164BR(phoneValue);
+
+    if (!e164) {
+      setPhoneError('Informe um telefone válido, com DDD. Exemplo: (11) 98941-4218.');
+      return;
+    }
+
+    setPhoneLoading(true);
+    setPhoneError('');
+
+    try {
+
+      const confirmation = await signInWithPhoneNumber(
+        auth,
+        e164,
+        montarRecaptcha()
+      );
+
+      setPhoneConfirmation(confirmation);
+      setPhoneStep('code');
+      setPhoneCode('');
+
+    } catch (error) {
+
+      console.error('[TELEFONE] Erro ao enviar SMS:', error);
+
+      setPhoneError(descreverErroDeTelefone(error));
+
+      if (
+        error?.code === 'auth/invalid-app-credential' &&
+        window.location.hostname === 'localhost'
+      ) {
+        console.warn(
+          '[Markfy] O Firebase recusa o token do reCAPTCHA em http://localhost. ' +
+          'Use um número de teste (Console → Authentication → Sign-in method → Telefone).'
+        );
+      }
+
+    } finally {
+
+      setPhoneLoading(false);
+
+    }
+
+  };
+
+
+  const confirmarCodigoTelefone = async () => {
+
+    if (!phoneConfirmation) {
+      setPhoneError('Peça um novo código.');
+      return;
+    }
+
+    setPhoneLoading(true);
+    setPhoneError('');
+
+    try {
+
+      const credential =
+        await phoneConfirmation.confirm(phoneCode.trim());
+
+      const user = credential.user;
+
+      const userRef = ref(realtimeDb, `users/${user.uid}`);
+
+      const snapshot = await get(userRef);
+
+      const existente = snapshot.exists()
+        ? snapshot.val()
+        : {};
+
+      await update(userRef, {
+        ...existente,
+        uid: user.uid,
+        phone: user.phoneNumber,
+        name: existente.name || '',
+        provider: existente.provider || 'phone',
+        userType: existente.userType ?? existente.usertype ?? 'common',
+        initial: snapshot.exists() ? existente.initial ?? true : true
+      });
+
+      setShowPhoneLogin(false);
+
+      await checkUserInitial(
+        user.uid,
+        existente.email || '',
+        existente.name || ''
+      );
+
+    } catch (error) {
+
+      console.error('[TELEFONE] Erro ao confirmar:', error);
+
+      setPhoneError(descreverErroDeTelefone(error));
+
+      if (error?.code === 'auth/code-expired') {
+        setPhoneStep('phone');
+        setPhoneConfirmation(null);
+        setPhoneCode('');
+      }
+
+    } finally {
+
+      setPhoneLoading(false);
+
+    }
+
+  };
+
+
+  const abrirRecuperacao = () => {
+
+    setForgotEmail(formData.email || '');
+    setForgotError('');
+    setForgotSent(false);
+    setShowForgotPassword(true);
+
+  };
+
+
+  const enviarRecuperacao = async () => {
+
+    const email = forgotEmail.trim();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+      setForgotError('Digite um e-mail válido.');
+      return;
+    }
+
+    setForgotLoading(true);
+    setForgotError('');
+
+    try {
+
+      await doSendPasswordResetEmail(email);
+
+      setForgotSent(true);
+
+    } catch (error) {
+
+      console.error('[RESET] Erro:', error);
+
+      /*
+       * `auth/user-not-found` não vira mensagem.
+       *
+       * Responder "essa conta não existe" transforma a tela
+       * em um verificador de quem tem conta aqui. A tela diz
+       * sempre a mesma coisa; quem tem conta recebe o e-mail.
+       */
+      if (error?.code === 'auth/user-not-found') {
+
+        setForgotSent(true);
+
+      } else {
+
+        setForgotError(descreverErroDeAuth(error));
+
+      }
+
+    } finally {
+
+      setForgotLoading(false);
+
+    }
+
+  };
 
   const [verificationCode, setVerificationCode] = useState('');
   const [generatedCode, setGeneratedCode] = useState('');
@@ -491,20 +808,50 @@ const AuthScreen = () => {
        * ==========================================================
        */
 
-      const snapshot =
-        await get(
-          ref(realtimeDb, "users")
-        );
+      /*
+       * Consulta por e-mail em vez de baixar o nó "users"
+       * inteiro. Esta é uma rota pública: a leitura
+       * completa expunha nome e e-mail de toda a base.
+       *
+       * Requer .indexOn: ["email"] em "users".
+       *
+       * equalTo diferencia maiúsculas, então testamos
+       * também o e-mail como foi digitado.
+       */
 
-      const users =
-        snapshot.val();
+      const typedEmail =
+        formData.email;
 
-      const emailExists =
-        Object.values(users || {}).some(
-          user =>
-            user.email?.toLowerCase() ===
-            formData.email.toLowerCase()
-        );
+      const lowercasedEmail =
+        typedEmail.toLowerCase();
+
+      const emailInUse = async (email) => {
+
+        const snapshot =
+          await get(
+            query(
+              ref(realtimeDb, "users"),
+              orderByChild("email"),
+              equalTo(email)
+            )
+          );
+
+        return snapshot.exists();
+
+      };
+
+      let emailExists =
+        await emailInUse(lowercasedEmail);
+
+      if (
+        !emailExists &&
+        typedEmail !== lowercasedEmail
+      ) {
+
+        emailExists =
+          await emailInUse(typedEmail);
+
+      }
 
       if (emailExists) {
 
@@ -862,15 +1209,15 @@ const AuthScreen = () => {
    * ============================================================
    */
 
-  const signInWithGoogle = async () => {
+  /*
+   * Grava o usuário do Google e encaminha.
+   *
+   * Compartilhado pelo popup e pela volta do redirect, que
+   * chegam em momentos diferentes mas com o mesmo resultado.
+   */
+  const finalizarLoginGoogle = async (result) => {
 
-    try {
-
-      const result =
-        await doSignInWithGoogle();
-
-      const user =
-        result.user;
+    const user = result.user;
 
       const userRef =
         ref(
@@ -920,20 +1267,19 @@ const AuthScreen = () => {
             : true
       };
 
-      await set(
+      /*
+       * `update`, não `set`.
+       *
+       * O `set` reescreve o nó inteiro. Como o objeto era
+       * montado a partir de uma leitura feita antes, qualquer
+       * campo gravado entre a leitura e a escrita — o
+       * companyHandle, por exemplo — era apagado. O `update`
+       * mexe só nas chaves que passamos.
+       */
+      await update(
         userRef,
         userData
       );
-
-      console.log(
-        "[GOOGLE] Usuário:",
-        userData
-      );
-
-      /*
-       * Se for novo Google,
-       * vai para initial setup.
-       */
 
       await checkUserInitial(
         user.uid,
@@ -941,16 +1287,90 @@ const AuthScreen = () => {
         userData.name
       );
 
+  };
+
+
+  const signInWithGoogle = async () => {
+
+    setFormError('');
+    setIsLoading(true);
+
+    try {
+
+      const result =
+        await doSignInWithGoogle();
+
+      /*
+       * null = caiu para o redirect e a página já está
+       * saindo. Quem termina o login é o efeito da volta.
+       */
+      if (!result) {
+        return;
+      }
+
+      await finalizarLoginGoogle(result);
+
     } catch (error) {
 
-      console.error(
-        "[GOOGLE] Erro:",
-        error
-      );
+      console.error("[GOOGLE] Erro:", error);
 
-      alert(error.message);
+      /* Fechar o popup não é erro: não vale um aviso
+         vermelho na tela. */
+      const mensagem = descreverErroDeAuth(error);
+
+      if (mensagem) {
+        setFormError(mensagem);
+      }
+
+    } finally {
+
+      setIsLoading(false);
+
     }
   };
+
+
+  /*
+   * VOLTA DO REDIRECT
+   *
+   * Quando o popup não pôde abrir, o login termina aqui: a
+   * página recarrega vinda do Google e o resultado espera
+   * nesta chamada. Sem isto, quem passou pelo redirect
+   * voltava para a tela de login como se nada tivesse
+   * acontecido.
+   */
+  useEffect(() => {
+
+    let cancelado = false;
+
+    doGetRedirectResult()
+      .then((result) => {
+
+        if (!result || cancelado) {
+          return;
+        }
+
+        return finalizarLoginGoogle(result);
+
+      })
+      .catch((error) => {
+
+        console.error("[GOOGLE] Erro no redirect:", error);
+
+        const mensagem = descreverErroDeAuth(error);
+
+        if (mensagem && !cancelado) {
+          setFormError(mensagem);
+        }
+
+      });
+
+    return () => {
+      cancelado = true;
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /*
    * ============================================================
@@ -1330,6 +1750,31 @@ const AuthScreen = () => {
 
                 </button>
 
+
+                {/* Entrar pelo telefone.
+
+                    Vale tanto para entrar quanto para criar:
+                    quem confirma um número que o Firebase ainda
+                    não conhece ganha a conta na hora. Para quem
+                    só usa WhatsApp, é o caminho mais curto. */}
+                <button
+                  type="button"
+                  className="google-auth-button phone-auth-button"
+                  onClick={abrirLoginPorTelefone}
+                >
+
+                  <Icon
+                    icon="solar:phone-outline"
+                    className="google-icon"
+                  />
+
+                  {isLogin
+                    ? 'Conectar com telefone'
+                    : 'Registrar com telefone'
+                  }
+
+                </button>
+
                 {isLogin && (
 
                   <div className="auth-options">
@@ -1384,12 +1829,13 @@ const AuthScreen = () => {
 
                     </div>
 
-                    <a
-                      href="/forgot-password"
+                    <button
+                      type="button"
                       className="forgot-password"
+                      onClick={abrirRecuperacao}
                     >
                       Esqueceu a senha?
-                    </a>
+                    </button>
 
                   </div>
 
@@ -1495,6 +1941,279 @@ const AuthScreen = () => {
 
         </div>
       )}
+
+
+      {/* ============================================================
+          RECUPERAR SENHA
+          ============================================================ */}
+
+      <Modal
+        open={showForgotPassword}
+        onClose={() => setShowForgotPassword(false)}
+        overlayClassName="auth-modal-overlay"
+        className="auth-modal"
+        label="Recuperar senha"
+      >
+
+        {forgotSent ? (
+
+          <>
+            <div className="auth-modal-icon is-success">
+              <Icon icon="solar:letter-opened-outline" />
+            </div>
+
+            <h2>Confira seu e-mail</h2>
+
+            <p>
+              Se existir uma conta com <strong>{forgotEmail}</strong>,
+              o link para criar uma senha nova chega em instantes.
+              Vale olhar o spam.
+            </p>
+
+            <button
+              type="button"
+              className="auth-modal-button is-primary"
+              onClick={() => setShowForgotPassword(false)}
+            >
+              Entendi
+            </button>
+          </>
+
+        ) : (
+
+          <>
+            <div className="auth-modal-icon">
+              <Icon icon="solar:lock-password-outline" />
+            </div>
+
+            <h2>Recuperar senha</h2>
+
+            <p>
+              Digite o e-mail da sua conta. Enviamos um link para
+              você criar uma senha nova.
+            </p>
+
+            <input
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              className="auth-modal-input"
+              placeholder="voce@email.com"
+              value={forgotEmail}
+              autoFocus
+              onChange={(e) => setForgotEmail(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !forgotLoading) {
+                  enviarRecuperacao();
+                }
+              }}
+            />
+
+            {forgotError && (
+              <span className="auth-modal-error">
+                {forgotError}
+              </span>
+            )}
+
+            <div className="auth-modal-actions">
+
+              <button
+                type="button"
+                className="auth-modal-button"
+                onClick={() => setShowForgotPassword(false)}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="auth-modal-button is-primary"
+                disabled={forgotLoading}
+                onClick={enviarRecuperacao}
+              >
+                {forgotLoading ? 'Enviando...' : 'Enviar link'}
+              </button>
+
+            </div>
+          </>
+
+        )}
+
+      </Modal>
+
+
+      {/* ============================================================
+          ENTRAR COM TELEFONE
+          ============================================================ */}
+
+      <Modal
+        open={showPhoneLogin}
+        onClose={() => setShowPhoneLogin(false)}
+        overlayClassName="auth-modal-overlay"
+        className="auth-modal"
+        label="Entrar com telefone"
+      >
+
+        <div className="auth-modal-icon">
+          <Icon
+            icon={
+              phoneStep === 'code'
+                ? 'solar:chat-round-call-outline'
+                : 'solar:phone-outline'
+            }
+          />
+        </div>
+
+        {phoneStep === 'phone' ? (
+
+          <>
+            <h2>Entrar com telefone</h2>
+
+            <p>
+              Enviamos um código por SMS. Se ainda não tiver conta,
+              ela é criada com esse número.
+            </p>
+
+            <input
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={20}
+              className="auth-modal-input"
+              placeholder="(11) 98941-4218"
+              value={phoneValue}
+              autoFocus
+              onChange={(e) => setPhoneValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (
+                  e.key === 'Enter' &&
+                  isValidPhoneBR(phoneValue) &&
+                  !phoneLoading
+                ) {
+                  enviarCodigoTelefone();
+                }
+              }}
+            />
+
+            <span className="auth-modal-hint">
+              {isValidPhoneBR(phoneValue)
+                ? `Enviaremos o código para ${formatPhoneBR(phoneValue)}.`
+                : 'Com DDD, como (11) 98941-4218.'}
+            </span>
+
+            {phoneError && (
+              <span className="auth-modal-error">
+                {phoneError}
+              </span>
+            )}
+
+            <div className="auth-modal-actions">
+
+              <button
+                type="button"
+                className="auth-modal-button"
+                onClick={() => setShowPhoneLogin(false)}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="auth-modal-button is-primary"
+                disabled={phoneLoading || !isValidPhoneBR(phoneValue)}
+                onClick={enviarCodigoTelefone}
+              >
+                {phoneLoading ? 'Enviando...' : 'Enviar código'}
+              </button>
+
+            </div>
+          </>
+
+        ) : (
+
+          <>
+            <h2>Digite o código</h2>
+
+            <p>
+              Enviamos 6 números para{' '}
+              <strong>{formatPhoneBR(phoneValue)}</strong>.
+            </p>
+
+            <input
+              type="text"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={6}
+              className="auth-modal-input auth-modal-input--code"
+              placeholder="000000"
+              value={phoneCode}
+              autoFocus
+              onChange={(e) =>
+                setPhoneCode(e.target.value.replace(/\D/g, ''))
+              }
+              onKeyDown={(e) => {
+                if (
+                  e.key === 'Enter' &&
+                  phoneCode.length === 6 &&
+                  !phoneLoading
+                ) {
+                  confirmarCodigoTelefone();
+                }
+              }}
+            />
+
+            {phoneError && (
+              <span className="auth-modal-error">
+                {phoneError}
+              </span>
+            )}
+
+            <div className="auth-modal-actions">
+
+              <button
+                type="button"
+                className="auth-modal-button"
+                onClick={() => {
+                  setPhoneStep('phone');
+                  setPhoneError('');
+                  setPhoneCode('');
+                  setPhoneConfirmation(null);
+                }}
+              >
+                Voltar
+              </button>
+
+              <button
+                type="button"
+                className="auth-modal-button is-primary"
+                disabled={phoneLoading || phoneCode.length !== 6}
+                onClick={confirmarCodigoTelefone}
+              >
+                {phoneLoading ? 'Verificando...' : 'Confirmar'}
+              </button>
+
+            </div>
+          </>
+
+        )}
+
+      </Modal>
+
+
+      {/* O reCAPTCHA fica fora dos modais: o verificador guarda
+          o nó que recebeu, e o modal desmonta os filhos ao
+          fechar. */}
+      <div
+        id="login-recaptcha"
+        style={{
+          position: 'absolute',
+          width: 1,
+          height: 1,
+          overflow: 'hidden',
+          opacity: 0,
+          pointerEvents: 'none'
+        }}
+      />
 
     </div>
   );

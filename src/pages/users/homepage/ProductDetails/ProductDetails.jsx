@@ -4,11 +4,14 @@ import {
 } from "react-router-dom";
 
 import { createPortal } from "react-dom";
-import InputMask from "react-input-mask";
 import { getDatabase, ref, onValue, get, update } from "firebase/database";
-import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from '@iconify/react';
 import { getClientId } from "../../../../utils/clientID";
+import {
+    formatPhoneBR,
+    isValidPhoneBR,
+    toE164BR
+} from "../../../../utils/phoneBR";
 
 import Toast from "../../../../components/toast/Toast";
 import {
@@ -19,6 +22,7 @@ import {
 
 import {
     getAuth,
+    onAuthStateChanged,
     RecaptchaVerifier,
     signInWithPhoneNumber
 } from "firebase/auth";
@@ -26,16 +30,49 @@ import {
 import OrderSummary from "../../../../components/order-summary";
 import CompanyInfoModal from "../../CompanyInfoModal/CompanyInfoModal";
 
+import {
+    getPlanHighlights,
+    getPlanPriceSuffix,
+    getPlanSessionsLabel,
+    normalizeMonthlyPlan
+} from "../../../../utils/subscription";
+
+import {
+    getSubscriptionSummary,
+    getUserSubscription,
+    isSubscriptionUsable
+} from "../../../../utils/subscriptionRuntime";
+
+import { useSingleProductImages } from "../../../../utils/productImages";
+
+import { useExitTransition } from "../../../../hooks/useExitTransition";
+
 import "./product-details.css";
 
 import noprofessionalplaceholder from "../../../../img/product-details/not-professional.png";
 
 import MercadoPagoPayment from "../../../../components/mercado-pago-payment/MercadoPagoPayment";
+import Modal from "../../../../components/modal/Modal";
+
+/* Um recado, não um texto. O limite existe para o card do
+   pedido no painel continuar legível. */
+const NOTES_MAX_LENGTH = 300;
+
 
 const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onClose, formatDuration }) => {
     const clientId = getClientId();
 
     const navigate = useNavigate();
+
+    /* =========================================================
+       PLANO DE MENSALIDADE
+
+       `null` para produtos avulsos — todo o bloco de assinatura
+       depende desta única checagem.
+    ========================================================= */
+
+    const monthlyPlan =
+        normalizeMonthlyPlan(product);
 
     const [productDetailsSelectedProfessionalId, setProductDetailsSelectedProfessionalId] = useState(null);
     const [relatedUsersWithInfo, setRelatedUsersWithInfo] = useState([]);
@@ -99,6 +136,44 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     const [isUserLoggedIn, setIsUserLoggedIn] = useState(false);
     const [emailConfirmed, setEmailConfirmed] = useState(false);
 
+    /* Enquanto o Firebase restaura a sessão do disco,
+       auth.currentUser é null. Sem esperar por isso, quem já
+       estava logado caía no fluxo de visitante. */
+    const [authReady, setAuthReady] = useState(false);
+
+    /* Dados de quem não tem conta. O e-mail entra aqui porque
+       o Mercado Pago exige um pagador com e-mail para emitir
+       o Pix. */
+    const [guestEmail, setGuestEmail] = useState("");
+
+    /* Recado do cliente para quem vai atender. */
+    const [notes, setNotes] = useState("");
+
+    /* =====================================================
+       MENSALIDADE
+
+       Assinatura já ativa desta pessoa neste produto.
+
+       Quando existe, o produto deixa de ser "comprar" e vira
+       "usar o que já pago": a pessoa não passa por pagamento
+       nenhum, só escolhe o próximo horário dentro do que o
+       plano dá.
+    ===================================================== */
+
+    const [activeSubscription, setActiveSubscription] =
+        useState(null);
+
+    const [subscriptionSchedules, setSubscriptionSchedules] =
+        useState([]);
+
+    const [loadingSubscription, setLoadingSubscription] =
+        useState(false);
+
+    /* Segundos que faltam para poder reenviar o SMS. Sem isso
+       o reenvio em sequência cai no auth/too-many-requests do
+       Firebase e o número fica bloqueado por horas. */
+    const [resendIn, setResendIn] = useState(0);
+
     const DEFAULT_BUSINESS_HOURS = {
         open: "07:00",
         close: "22:00",
@@ -114,6 +189,20 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         "friday",
         "saturday"
     ];
+
+    /*
+      * Leva para a aba de reservas desta empresa. A URL manda
+      * na aba, então dá para chegar lá de qualquer tela sem
+      * precisar de callback vindo do centralUser.
+      */
+     const goToReservations = () => {
+
+        navigate(
+            `/central-user/${companyHandle}?tab=reservas`
+        );
+
+    };
+
 
     const openCheckout = () => {
 
@@ -143,7 +232,13 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         productPrice:
                             product.value,
 
-                        product,
+                        /* O checkout e o resumo do pedido
+                           leem product.images; repassamos as
+                           URLs já resolvidas do Storage. */
+                        product: {
+                            ...product,
+                            images
+                        },
 
                         professionalId:
                             productDetailsSelectedProfessionalId,
@@ -167,6 +262,37 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                         userName:
                             userName.trim(),
+
+                        /* O checkout precisa do pagador pronto:
+                           é com isso que ele emite o Pix sem
+                           abrir formulário nenhum. */
+                        payerEmail,
+
+                        payerPhone,
+
+                        notes:
+                            notes.trim(),
+
+                        /* O checkout precisa saber que é
+                           assinatura: muda o endpoint, os
+                           meios de pagamento e o aviso. */
+                        subscriptionPlan:
+                            monthlyPlan
+                                ? {
+                                    billingCycle:
+                                        monthlyPlan.billingCycle,
+                                    billingCycleDescription:
+                                        monthlyPlan.billingCyclePeriodLabel ||
+                                        monthlyPlan.billingCycleLabel,
+                                    cancellationNoticeDays:
+                                        monthlyPlan.cancellationNoticeDays,
+                                    loyaltyMonths:
+                                        monthlyPlan.loyaltyMonths
+                                }
+                                : null,
+
+                        isGuest:
+                            !isUserLoggedIn,
 
                         clientId
                     }
@@ -243,20 +369,25 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 const db = getDatabase();
                 const storage = getStorage();
 
-                const usersRef = ref(db, "users");
+                /*
+                 * Lê apenas os uids relacionados ao produto.
+                 *
+                 * Ler o nó "users" inteiro numa rota pública
+                 * expõe nome e e-mail de toda a base.
+                 */
 
-                const usersSnap = await get(usersRef);
+                const enrichedUsers = await Promise.all(
 
-                const usersData =
-                    usersSnap.exists()
-                        ? usersSnap.val()
-                        : {};
+                    product.relatedUsers.map(async (relUser) => {
 
-                const enrichedUsers =
-                    product.relatedUsers.map((relUser) => {
+                        const userSnap = await get(
+                            ref(db, `users/${relUser.id}`)
+                        );
 
                         const userInfo =
-                            usersData[relUser.id] || {};
+                            userSnap.exists()
+                                ? userSnap.val()
+                                : {};
 
                         return {
                             id: relUser.id,
@@ -264,7 +395,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             name: userInfo.name || "Sem nome"
                         };
 
-                    });
+                    })
+
+                );
 
                 setRelatedUsersWithInfo(
                     enrichedUsers
@@ -384,15 +517,26 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     }, [companyHandle]);
 
-    const groupedByMonth = availableTimes.reduce((acc, day) => {
-        const [dd, mm, yyyy] = day.day.split("/");
-        const dateObj = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
-        const monthLabel = dateObj.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
+    const groupedByMonth = {};
 
-        if (!acc[monthLabel]) acc[monthLabel] = [];
-        acc[monthLabel].push(day);
-        return acc;
-    }, {});
+    for (const day of availableTimes) {
+
+        const [dd, mm, yyyy] = day.day.split("/");
+
+        const dateObj = new Date(`${yyyy}-${mm}-${dd}T12:00:00`);
+
+        const monthLabel = dateObj.toLocaleDateString("pt-BR", {
+            month: "long",
+            year: "numeric"
+        });
+
+        if (!groupedByMonth[monthLabel]) {
+            groupedByMonth[monthLabel] = [];
+        }
+
+        groupedByMonth[monthLabel].push(day);
+
+    }
 
     const months = Object.keys(groupedByMonth);
 
@@ -1232,14 +1376,169 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     const maxLength = 100;
     const [selectedImage, setSelectedImage] = useState(0);
 
-    const images = Array.isArray(product?.images)
-        ? product.images.filter(Boolean)
-        : product?.images
-            ? [product.images]
-            : [];
+    const [showImageFullscreen, setShowImageFullscreen] = useState(false);
+
+    /* As imagens vêm do Storage
+       (companys/{handle}/products/{id}/images); o que houver
+       em product.images no RTDB é só fallback de cadastros
+       antigos. */
+    const images = useSingleProductImages(
+        companyHandle,
+        product
+    );
 
     const toggleExpanded = () => {
         setExpanded(prev => !prev);
+    };
+
+    const openImageFullscreen = () => {
+        if (!images.length) return;
+
+        setShowImageFullscreen(true);
+    };
+
+    const closeImageFullscreen = () => {
+        setShowImageFullscreen(false);
+    };
+
+    const showPreviousImage = () => {
+        if (images.length <= 1) return;
+
+        setSelectedImage((current) =>
+            current === 0
+                ? images.length - 1
+                : current - 1
+        );
+
+        setImgLoaded(false);
+    };
+
+    const showNextImage = () => {
+        if (images.length <= 1) return;
+
+        setSelectedImage((current) =>
+            current === images.length - 1
+                ? 0
+                : current + 1
+        );
+
+        setImgLoaded(false);
+    };
+
+    const shareProduct = async () => {
+        try {
+
+            const productUrl =
+                `${window.location.origin}/central-user/${encodeURIComponent(
+                    companyHandle
+                )}?product=${encodeURIComponent(
+                    product.id
+                )}`;
+
+            const shareData = {
+                title: product.name,
+                text: `Confira ${product.name} na ${companyName}.`,
+                url: productUrl
+            };
+
+            /*
+             * Compartilhamento nativo
+             * principalmente no celular.
+             */
+
+            if (
+                navigator.share &&
+                typeof navigator.share === "function"
+            ) {
+
+                await navigator.share(shareData);
+
+                return;
+            }
+
+            /*
+             * Fallback para navegadores
+             * que não possuem navigator.share.
+             */
+
+            if (
+                navigator.clipboard &&
+                typeof navigator.clipboard.writeText === "function"
+            ) {
+
+                await navigator.clipboard.writeText(
+                    productUrl
+                );
+
+                openToast(
+                    "success",
+                    "Link copiado",
+                    "O link deste produto foi copiado para a área de transferência."
+                );
+
+                return;
+            }
+
+            /*
+             * Último fallback para navegadores
+             * mais antigos.
+             */
+
+            const temporaryInput =
+                document.createElement("input");
+
+            temporaryInput.value = productUrl;
+
+            temporaryInput.style.position = "fixed";
+            temporaryInput.style.opacity = "0";
+            temporaryInput.style.pointerEvents = "none";
+
+            document.body.appendChild(
+                temporaryInput
+            );
+
+            temporaryInput.select();
+            temporaryInput.setSelectionRange(
+                0,
+                temporaryInput.value.length
+            );
+
+            document.execCommand("copy");
+
+            document.body.removeChild(
+                temporaryInput
+            );
+
+            openToast(
+                "success",
+                "Link copiado",
+                "O link deste produto foi copiado para a área de transferência."
+            );
+
+        } catch (error) {
+
+            /*
+             * O usuário pode simplesmente ter
+             * fechado o menu nativo de compartilhamento.
+             */
+
+            if (
+                error?.name === "AbortError"
+            ) {
+                return;
+            }
+
+            console.error(
+                "Erro ao compartilhar produto:",
+                error
+            );
+
+            openToast(
+                "error",
+                "Não foi possível compartilhar",
+                "Tente novamente."
+            );
+        }
     };
 
     const stripHtml = (html = "") => {
@@ -1321,15 +1620,26 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         }
     }, [images]);
 
+    /*
+     * Depende do ID, não do objeto.
+     *
+     * `product` é recriado a cada snapshot do Realtime (a
+     * home remonta a lista inteira), então com [product] este
+     * efeito rodava de novo a cada atualização da empresa:
+     * `setImgLoaded(false)` escondia a imagem já carregada e
+     * mostrava o skeleton por um quadro. Era uma das
+     * piscadas ao abrir os detalhes do produto.
+     */
     useEffect(() => {
-        if (!product) return;
+        if (!product?.id) return undefined;
         setVisible(true);
         setImgLoaded(false);
         setSelectedImage(0);
         const prev = document.body.style.overflow;
         document.body.style.overflow = "hidden";
         return () => { document.body.style.overflow = prev; };
-    }, [product]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [product?.id]);
 
     useEffect(() => {
         return () => {
@@ -1348,8 +1658,398 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         };
     }, []);
 
+    useEffect(() => {
+
+        if (!showImageFullscreen) {
+            return;
+        }
+
+        const handleKeyDown = (event) => {
+
+            if (event.key === "Escape") {
+                closeImageFullscreen();
+                return;
+            }
+
+            if (event.key === "ArrowLeft") {
+                showPreviousImage();
+                return;
+            }
+
+            if (event.key === "ArrowRight") {
+                showNextImage();
+            }
+
+        };
+
+        document.addEventListener(
+            "keydown",
+            handleKeyDown
+        );
+
+        return () => {
+
+            document.removeEventListener(
+                "keydown",
+                handleKeyDown
+            );
+
+        };
+
+    }, [showImageFullscreen, images.length]);
+
+
+    /*
+     * O travamento de scroll fica num efeito separado, com
+     * dependência só em `showImageFullscreen`.
+     *
+     * Junto com o listener de teclado ele dependia também de
+     * `images.length` — e como as imagens chegam do Storage
+     * depois da montagem, o overflow do body era destravado e
+     * travado de novo assim que elas resolviam. Um reflow do
+     * documento inteiro no meio da animação de abertura.
+     */
+    useEffect(() => {
+
+        if (!showImageFullscreen) {
+            return undefined;
+        }
+
+        const previousOverflow =
+            document.body.style.overflow;
+
+        document.body.style.overflow = "hidden";
+
+        return () => {
+
+            document.body.style.overflow =
+                previousOverflow;
+
+        };
+
+    }, [showImageFullscreen]);
+
+
+    /*
+     * Fechamento do modal.
+     *
+     * Antes era `AnimatePresence mode="wait"` com
+     * `onExitComplete={() => onClose?.()}` — ou seja, quem
+     * fechava de verdade era o fim da animação de saída. Se
+     * ela não rodasse (aba em segundo plano, GPU ocupada,
+     * movimento reduzido), `onClose` nunca era chamado e o
+     * modal ficava aberto.
+     *
+     * Agora a saída é por tempo, então fecha sempre.
+     */
+    /*
+     * QUEM É O CLIENTE
+     * ----------------
+     *
+     * Isto era uma função chamada no clique do "Continuar",
+     * lendo `auth.currentUser` na hora e só aceitando quem
+     * tivesse e-mail. Dois furos, e os dois apareciam como o
+     * mesmo sintoma — pedir SMS a quem já está logado:
+     *
+     *   1. no clique a sessão podia ainda estar sendo
+     *      restaurada do disco, e `currentUser` vir null;
+     *
+     *   2. quem entrou pelo telefone não tem e-mail, então
+     *      nunca contava como logado. Aí o fluxo pedia
+     *      verificação de novo, e o `confirm()` logava a
+     *      mesma conta sem e-mail — que continuava não
+     *      contando como logada. Esse era o loop.
+     *
+     * Agora a identidade vem do próprio listener do Firebase,
+     * `!!user` basta, e o e-mail é complementado pelo perfil
+     * em users/{uid} quando a conta não tem um.
+     */
+    useEffect(() => {
+
+        const auth = getAuth();
+
+        const unsubscribe = onAuthStateChanged(
+            auth,
+            async (currentUser) => {
+
+                setAuthReady(true);
+
+                if (!currentUser) {
+
+                    setIsUserLoggedIn(false);
+                    setLoggedUserEmail("");
+                    setLoggedUserId(null);
+
+                    return;
+                }
+
+                setIsUserLoggedIn(true);
+                setLoggedUserId(currentUser.uid);
+                setLoggedUserEmail(currentUser.email || "");
+
+                try {
+
+                    const snapshot =
+                        await get(
+                            ref(
+                                getDatabase(),
+                                `users/${currentUser.uid}`
+                            )
+                        );
+
+                    const profile =
+                        snapshot.val() || {};
+
+                    if (!currentUser.email && profile.email) {
+                        setLoggedUserEmail(profile.email);
+                    }
+
+                    /* Só preenche o nome se o cliente ainda
+                       não digitou nada, para não apagar o que
+                       ele escreveu. */
+                    setUserName(
+                        previous =>
+                            previous.trim()
+                                ? previous
+                                : (profile.name || currentUser.displayName || "")
+                    );
+
+                    if (currentUser.phoneNumber || profile.phone) {
+                        setAuthPhone(
+                            previous =>
+                                previous.trim()
+                                    ? previous
+                                    : (currentUser.phoneNumber || profile.phone)
+                        );
+                    }
+
+                } catch (error) {
+
+                    console.warn(
+                        "Não foi possível ler o perfil do usuário:",
+                        error
+                    );
+
+                }
+
+            }
+        );
+
+        return unsubscribe;
+
+    }, []);
+
+
+    /* O número em E.164, que é o formato que o Firebase
+       aceita — ou null enquanto o que foi digitado não for
+       um telefone brasileiro possível. */
+    const phoneE164 =
+        toE164BR(authPhone);
+
+    const guestPhoneValid =
+        isValidPhoneBR(authPhone);
+
+    const guestPhoneDigits =
+        phoneE164
+            ? phoneE164.slice(3)
+            : "";
+
+    const guestEmailValid =
+        /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(
+            guestEmail.trim()
+        );
+
+    /*
+     * Verificação por SMS só existe para visitante que vai
+     * pagar adiantado. Conta logada nunca passa por aqui: o
+     * `confirm()` do Firebase troca a sessão, e trocar a
+     * sessão de quem já entrou seria derrubá-lo da conta.
+     */
+    const needsPhoneVerification =
+        !isUserLoggedIn &&
+        requiresPayment &&
+        !monthlyPlan;
+
+
+    /* O pagador do Mercado Pago. Conta logada usa o e-mail
+       da conta; visitante usa o que digitou. */
+    /*
+     * Conta criada por telefone não tem e-mail, e o Mercado
+     * Pago não emite Pix sem um pagador com e-mail. Nesse
+     * caso o campo aparece mesmo para quem está logado — é a
+     * única informação que ainda falta.
+     */
+    const payerEmail =
+        (
+            (isUserLoggedIn && loggedUserEmail)
+                ? loggedUserEmail
+                : guestEmail
+        ).trim();
+
+    const precisaPedirEmail =
+        requiresPayment &&
+        !(isUserLoggedIn && loggedUserEmail);
+
+    const payerPhone =
+        guestPhoneDigits;
+
+
+    /*
+     * Assinatura ativa e os atendimentos já marcados nela.
+     *
+     * Os agendamentos entram junto porque é com eles que se
+     * conta quantas sessões sobraram no ciclo — o número não
+     * fica guardado em lugar nenhum de propósito: contar na
+     * hora não sai do lugar quando alguém desmarca.
+     */
+    useEffect(() => {
+
+        let cancelado = false;
+
+        const carregar = async () => {
+
+            if (
+                !monthlyPlan ||
+                !loggedUserId ||
+                !companyHandle ||
+                !product?.id
+            ) {
+                setActiveSubscription(null);
+                return;
+            }
+
+            setLoadingSubscription(true);
+
+            try {
+
+                const assinatura = await getUserSubscription(
+                    companyHandle,
+                    loggedUserId,
+                    product.id
+                );
+
+                if (cancelado) return;
+
+                setActiveSubscription(
+                    isSubscriptionUsable(assinatura)
+                        ? assinatura
+                        : null
+                );
+
+                if (isSubscriptionUsable(assinatura)) {
+
+                    const snapshot = await get(
+                        ref(
+                            getDatabase(),
+                            `companys/${companyHandle}/schedules`
+                        )
+                    );
+
+                    if (cancelado) return;
+
+                    setSubscriptionSchedules(
+                        Object.entries(snapshot.val() || {})
+                            .map(([id, item]) => ({ id, ...item }))
+                            .filter(
+                                item =>
+                                    item.subscriptionId === assinatura.id
+                            )
+                    );
+
+                }
+
+            } catch (error) {
+
+                console.warn(
+                    "Não foi possível ler a assinatura:",
+                    error
+                );
+
+            } finally {
+
+                if (!cancelado) setLoadingSubscription(false);
+
+            }
+
+        };
+
+        carregar();
+
+        return () => {
+            cancelado = true;
+        };
+
+    }, [
+        monthlyPlan,
+        loggedUserId,
+        companyHandle,
+        product?.id
+    ]);
+
+
+    /* Resumo pronto para a tela. */
+    const subscriptionSummary =
+        activeSubscription
+            ? getSubscriptionSummary(
+                activeSubscription,
+                subscriptionSchedules
+            )
+            : null;
+
+
+    /*
+     * Mensalidade exige conta — sempre, mesmo quando a
+     * empresa não pede pagamento antecipado.
+     *
+     * Não é burocracia: é uma cobrança que se repete sozinha
+     * todo mês. Quem assina precisa de um lugar para ver,
+     * pausar e cancelar, e isso só existe atrelado a uma
+     * conta. Um visitante identificado apenas pelo aparelho
+     * perderia esse acesso ao trocar de celular — com a
+     * cobrança seguindo normalmente.
+     */
+    const subscriptionNeedsLogin =
+        Boolean(monthlyPlan) &&
+        !isUserLoggedIn;
+
+
+    /* Contagem do reenvio de SMS. */
+    useEffect(() => {
+
+        if (resendIn <= 0) {
+            return undefined;
+        }
+
+        const timer = setTimeout(
+            () => setResendIn(value => value - 1),
+            1000
+        );
+
+        return () => clearTimeout(timer);
+
+    }, [resendIn]);
+
+    const {
+        rendered: overlayRendered,
+        leaving: overlayLeaving
+    } = useExitTransition(visible, onClose, 220);
+
     if (!product) return null;
 
+    /*
+     * O reCAPTCHA precisa de um nó VIRGEM.
+     *
+     * O `clear()` desfaz o verificador do lado do Firebase,
+     * mas o grecaptcha continua com o elemento marcado como
+     * já usado. Tentar montar de novo no mesmo <div> levanta
+     * "reCAPTCHA has already been rendered in this element",
+     * e a partir daí o token que sai de lá é recusado como
+     * inválido.
+     *
+     * Por isso cada tentativa ganha um filho novo, descartado
+     * no fim. O container externo continua fixo só para dar
+     * um lugar previsível na página.
+     */
     const setupRecaptcha = () => {
         const auth = getAuth();
 
@@ -1375,10 +2075,21 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
             window.recaptchaVerifier = null;
         }
 
+        /* Fora com o widget da tentativa anterior. */
+        container.innerHTML = "";
+
+        const host =
+            document.createElement("div");
+
+        host.id =
+            `recaptcha-host-${Date.now()}`;
+
+        container.appendChild(host);
+
         const verifier =
             new RecaptchaVerifier(
                 auth,
-                "recaptcha-container",
+                host,
                 {
                     size: "invisible",
 
@@ -1414,10 +2125,88 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         return verifier;
     };
 
+    /*
+     * O Firebase devolve um código por erro. Antes tudo virava
+     * "tente novamente", e era isso que fazia a tela parecer
+     * um loop: o cliente digitava o código errado, lia uma
+     * frase genérica, pedia outro SMS e caía no mesmo lugar,
+     * sem nunca saber o que estava acontecendo.
+     */
+    const describeAuthError = (error) => {
+
+        switch (error?.code) {
+
+            case "auth/invalid-verification-code":
+                return "Código incorreto. Confira os 6 números do SMS.";
+
+            case "auth/code-expired":
+                return "Esse código expirou. Peça um novo SMS.";
+
+            case "auth/invalid-phone-number":
+                return "Número inválido. Use DDD + número, como (11) 90000-0000.";
+
+            case "auth/missing-phone-number":
+                return "Informe seu número de telefone.";
+
+            case "auth/too-many-requests":
+                return "Muitas tentativas nesse número. Espere alguns minutos antes de tentar de novo.";
+
+            case "auth/quota-exceeded":
+                return "O limite de SMS da empresa foi atingido hoje. Tente mais tarde.";
+
+            case "auth/network-request-failed":
+                return "Sem conexão. Verifique sua internet e tente de novo.";
+
+            case "auth/captcha-check-failed":
+                return "A verificação de segurança falhou. Recarregue a página e tente de novo.";
+
+            /*
+             * O reCAPTCHA foi resolvido, mas o Google recusou
+             * o token.
+             *
+             * Não é o número nem o cliente. Medimos: o MESMO
+             * código, no mesmo minuto, é aceito em
+             * https://markfy-96942.firebaseapp.com e recusado
+             * em http://localhost:3000. É ambiente, não
+             * aplicação — em produção este caminho funciona.
+             *
+             * Em desenvolvimento, use os números de teste do
+             * Firebase (Console → Authentication → Sign-in
+             * method → Telefone), que pulam reCAPTCHA e SMS.
+             */
+            case "auth/invalid-app-credential":
+            case "auth/internal-error-encountered":
+                return "A verificação por SMS está indisponível neste ambiente. Entre com sua conta para concluir o pagamento.";
+
+            case "auth/operation-not-allowed":
+                return "A verificação por SMS não está habilitada. Entre com sua conta para concluir o pagamento.";
+
+            default:
+                return "Não foi possível concluir a verificação. Tente novamente.";
+
+        }
+
+    };
+
+
     const sendAuthCode = async () => {
 
-        if (!authPhone.trim()) {
-            setAuthError("Informe seu número de telefone.");
+        if (!phoneE164) {
+            setAuthError(
+                "Informe um telefone válido, com DDD. Exemplo: (11) 98941-4218."
+            );
+            return;
+        }
+
+        /*
+         * `confirm()` do Firebase faz login de verdade. Se
+         * alguém já está logado, isso trocaria a conta dele
+         * por uma conta de telefone — então esse caminho nem
+         * começa para quem tem sessão.
+         */
+        if (isUserLoggedIn) {
+            setPhoneVerified(true);
+            setAuthStep("authenticated");
             return;
         }
 
@@ -1428,10 +2217,17 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
             const auth = getAuth();
 
-            const phoneNumber =
-                authPhone.startsWith("+")
-                    ? authPhone
-                    : `+55${authPhone.replace(/\D/g, "")}`;
+            /*
+             * Normalizado em um lugar só.
+             *
+             * Antes era `authPhone.startsWith("+") ? authPhone
+             * : "+55" + digitos`. Quem digitava o número já com
+             * o 55 na frente via a máscara de 11 dígitos cortar
+             * o fim, e o "+55" ser colado no que sobrou: o
+             * Firebase recebia "+5555119894142", um número que
+             * não existe.
+             */
+            const phoneNumber = phoneE164;
 
             const appVerifier = setupRecaptcha();
 
@@ -1449,6 +2245,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
             setAuthConfirmation(confirmation);
             setAuthStep("code");
+            setAuthCode("");
+            setResendIn(60);
 
         } catch (error) {
 
@@ -1458,8 +2256,24 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
             );
 
             setAuthError(
-                "Não foi possível enviar o código. Verifique o número e tente novamente."
+                describeAuthError(error)
             );
+
+            if (
+                error?.code === "auth/invalid-app-credential" &&
+                window.location.hostname === "localhost"
+            ) {
+
+                console.warn(
+                    "[Markfy] O Firebase recusa o token do reCAPTCHA em " +
+                    "http://localhost. Não é bug do app: o mesmo código " +
+                    "funciona nos domínios autorizados em HTTPS. Para " +
+                    "testar aqui, cadastre um número de teste em " +
+                    "Firebase Console → Authentication → Sign-in method → " +
+                    "Telefone → Números de teste."
+                );
+
+            }
 
             if (window.recaptchaVerifier) {
                 try {
@@ -1526,8 +2340,20 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
             );
 
             setAuthError(
-                "Não foi possível verificar o código. Tente novamente."
+                describeAuthError(error)
             );
+
+            /* Código expirado não tem conserto: o cliente
+               precisa de um SMS novo, então já devolvemos ele
+               para a etapa do telefone em vez de deixá-lo
+               tentando o mesmo código. */
+            if (error?.code === "auth/code-expired") {
+
+                setAuthConfirmation(null);
+                setAuthStep("phone");
+                setAuthCode("");
+
+            }
 
         } finally {
 
@@ -1536,26 +2362,6 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         }
     };
 
-    const checkLoggedUser = () => {
-
-        const auth = getAuth();
-        const currentUser = auth.currentUser;
-
-        if (currentUser?.email) {
-
-            setIsUserLoggedIn(true);
-            setLoggedUserEmail(currentUser.email);
-            setLoggedUserId(currentUser.uid);
-
-            return true;
-        }
-
-        setIsUserLoggedIn(false);
-        setLoggedUserEmail("");
-        setLoggedUserId(null);
-
-        return false;
-    };
 
     const buildAgendamento = () => {
         return {
@@ -1583,6 +2389,21 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
             userName:
                 userName.trim(),
+
+            /* Só grava se a pessoa escreveu: um campo vazio em
+               todo agendamento é ruído no painel. */
+            ...(notes.trim()
+                ? { notes: notes.trim() }
+                : {}
+            ),
+
+            /* Atendimento consumido pela mensalidade. É por
+               este campo que o painel sabe que não há dinheiro
+               novo entrando neste agendamento. */
+            ...(activeSubscription
+                ? { subscriptionId: activeSubscription.id }
+                : {}
+            ),
 
             timestamp:
                 new Date().toISOString(),
@@ -1791,7 +2612,16 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
             const agendamentoComStatus = {
                 ...agendamento,
                 status: "pending",
-                clientId
+                clientId,
+
+                /* Liga o agendamento à conta, quando existe
+                   uma. O clientId sozinho identifica só o
+                   aparelho: trocar de celular fazia o
+                   histórico desaparecer. */
+                ...(loggedUserId
+                    ? { userId: loggedUserId }
+                    : {}
+                )
             };
 
             await update(
@@ -2134,20 +2964,45 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         }
     };
 
-    return createPortal(
-        <AnimatePresence
-            mode="wait"
-            onExitComplete={() => onClose?.()}
-        >
-            {visible && (
-                <motion.div
-                    className="product-details-overlay"
-                    onClick={() => setVisible(false)}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                >
+    if (!overlayRendered) {
+        return null;
+    }
 
+    return createPortal(
+        <div
+            className={`product-details-overlay ${overlayLeaving
+                ? "mkf-fade-leave"
+                : "mkf-fade-enter"
+                }`}
+            onClick={() => setVisible(false)}
+        >
+
+            {/* =====================================================
+                RECAPTCHA
+
+                Fica aqui, e não dentro do modal de confirmação,
+                porque o RecaptchaVerifier guarda o nó do DOM que
+                recebeu na criação. Se esse nó sai da árvore — e
+                o modal desmonta os filhos ao fechar, inclusive
+                durante a animação de saída — o verificador passa
+                a apontar para um elemento órfão e o envio do SMS
+                falha com captcha-check-failed.
+
+                Na raiz do produto ele sobrevive a todas as
+                etapas do fluxo.
+            ===================================================== */}
+
+            <div
+                id="recaptcha-container"
+                style={{
+                    position: "absolute",
+                    width: 1,
+                    height: 1,
+                    overflow: "hidden",
+                    opacity: 0,
+                    pointerEvents: "none"
+                }}
+            />
 
                     <CompanyInfoModal
                         isOpen={showCompanyInfo}
@@ -2157,40 +3012,12 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         onClose={() => setShowCompanyInfo(false)}
                     />
 
-                    <AnimatePresence>
-                        {showWhatsappModal && (
-
-                            <motion.div
-                                className="whatsapp-modal-overlay"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                onClick={() => setShowWhatsappModal(false)}
-                            >
-
-                                <motion.div
-                                    className="whatsapp-modal"
-                                    initial={{
-                                        opacity: 0,
-                                        scale: 0.9,
-                                        y: 20
-                                    }}
-                                    animate={{
-                                        opacity: 1,
-                                        scale: 1,
-                                        y: 0
-                                    }}
-                                    exit={{
-                                        opacity: 0,
-                                        scale: 0.9,
-                                        y: 20
-                                    }}
-                                    transition={{
-                                        duration: 0.25,
-                                        ease: "easeOut"
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                >
+                    <Modal
+                open={showWhatsappModal}
+                onClose={() => setShowWhatsappModal(false)}
+                overlayClassName="whatsapp-modal-overlay"
+                className="whatsapp-modal"
+            >
 
                                     <div className="whatsapp-modal-header">
 
@@ -2359,22 +3186,153 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                     </div>
 
-                                </motion.div>
+                                </Modal>
 
-                            </motion.div>
+                    {showImageFullscreen && images.length > 0 && (
 
-                        )}
-                    </AnimatePresence>
+                            <div
+                                className="product-image-fullscreen mkf-fade-enter"
+                                onClick={closeImageFullscreen}
+                            >
+
+                                {/* ==========================================
+                HEADER
+            ========================================== */}
+
+                                <div
+                                    className="product-image-fullscreen-header"
+                                    onClick={(event) =>
+                                        event.stopPropagation()
+                                    }
+                                >
+
+                                    <div className="product-image-fullscreen-counter">
+                                        {selectedImage + 1}
+                                        <span>
+                                            /
+                                        </span>
+                                        {images.length}
+                                    </div>
 
 
-                    <motion.div
+                                    <button
+                                        type="button"
+                                        className="product-image-fullscreen-close"
+                                        onClick={closeImageFullscreen}
+                                        aria-label="Fechar tela cheia"
+                                    >
+                                        <Icon icon="mdi:close" />
+                                    </button>
+
+                                </div>
+
+
+                                {/* ==========================================
+                IMAGEM
+            ========================================== */}
+
+                                <div
+                                    className="product-image-fullscreen-main"
+                                    onClick={(event) =>
+                                        event.stopPropagation()
+                                    }
+                                >
+
+                                    {images.length > 1 && (
+
+                                        <button
+                                            type="button"
+                                            className="product-image-fullscreen-nav previous"
+                                            onClick={showPreviousImage}
+                                            aria-label="Imagem anterior"
+                                        >
+                                            <Icon icon="humbleicons:arrow-left" />
+                                        </button>
+
+                                    )}
+
+
+                                    <img
+                                        key={images[selectedImage]}
+                                        src={images[selectedImage]}
+                                        alt={`${product.name} - imagem ${selectedImage + 1}`}
+                                        className="product-image-fullscreen-image mkf-fade-enter"
+                                    />
+
+
+                                    {images.length > 1 && (
+
+                                        <button
+                                            type="button"
+                                            className="product-image-fullscreen-nav next"
+                                            onClick={showNextImage}
+                                            aria-label="Próxima imagem"
+                                        >
+                                            <Icon icon="humbleicons:arrow-right" />
+                                        </button>
+
+                                    )}
+
+                                </div>
+
+
+                                {/* ==========================================
+                MINIATURAS
+            ========================================== */}
+
+                                {images.length > 1 && (
+
+                                    <div
+                                        className="product-image-fullscreen-thumbnails"
+                                        onClick={(event) =>
+                                            event.stopPropagation()
+                                        }
+                                    >
+
+                                        {images.map((image, index) => (
+
+                                            <button
+                                                type="button"
+                                                key={`${image}-${index}`}
+                                                className={`product-image-fullscreen-thumbnail ${selectedImage === index
+                                                    ? "active"
+                                                    : ""
+                                                    }`}
+                                                onClick={() => {
+                                                    if (
+                                                        index !== selectedImage
+                                                    ) {
+                                                        setImgLoaded(false);
+                                                        setSelectedImage(index);
+                                                    }
+                                                }}
+                                                aria-label={`Visualizar imagem ${index + 1}`}
+                                                aria-pressed={
+                                                    selectedImage === index
+                                                }
+                                            >
+
+                                                <img
+                                                    src={image}
+                                                    alt=""
+                                                />
+
+                                            </button>
+
+                                        ))}
+
+                                    </div>
+
+                                )}
+
+                            </div>
+
+                    )}
+
+                    <div
                         key={product.id}
-                        className="product-details-container"
+                        className="product-details-container mkf-product-enter"
                         onClick={(e) => e.stopPropagation()}
-                        initial={{ scale: 0.30, opacity: 0, borderRadius: "5rem" }}
-                        animate={{ scale: 1, opacity: 1, }}
-                        exit={{ scale: 0.30, opacity: 0, borderRadius: "5rem" }}
-                        transition={{ duration: 0.25, ease: "easeOut" }}
                         role="dialog"
                         aria-modal="true"
                     >
@@ -2417,13 +3375,50 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             )}
 
                             <div className="product-details-header">
-                                <button className="product-details-back" onClick={() => setVisible(false)}>
-                                    <Icon icon="humbleicons:arrow-left" className="icon" />
+
+                                <button
+                                    type="button"
+                                    className="product-details-back"
+                                    onClick={() => setVisible(false)}
+                                    aria-label="Voltar"
+                                >
+                                    <Icon
+                                        icon="humbleicons:arrow-left"
+                                        className="icon"
+                                    />
                                 </button>
 
-                                {/* <button className="product-details-cart" onClick={() => alert("Adicionado ao carrinho!")}>
-                                    <Icon icon="lucide:shopping-cart" className="icon" />
-                                </button> */}
+
+                                <div className="product-details-media-actions">
+
+                                    {/* COMPARTILHAR */}
+
+                                    <button
+                                        type="button"
+                                        className="product-details-media-action"
+                                        onClick={shareProduct}
+                                        aria-label="Compartilhar produto"
+                                        title="Compartilhar"
+                                    >
+                                        <Icon icon="solar:share-linear" />
+                                    </button>
+
+
+                                    {/* TELA CHEIA */}
+
+                                    <button
+                                        type="button"
+                                        className="product-details-media-action"
+                                        onClick={openImageFullscreen}
+                                        disabled={!images.length}
+                                        aria-label="Ver imagem em tela cheia"
+                                        title="Tela cheia"
+                                    >
+                                        <Icon icon="solar:maximize-linear" />
+                                    </button>
+
+                                </div>
+
                             </div>
                         </div>
 
@@ -2433,26 +3428,21 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                             <div className="product-details-content-scroll">
 
                                 <div className="product-details-info">
-                                    <AnimatePresence mode="wait">
-                                        {loadingProfessionals ? (
-                                            <motion.div
+                                    {/* Troca de conteúdo por CSS: o `key` remonta
+                                        e o fade de entrada reinicia. Sem saída,
+                                        o bloco novo não espera o antigo sumir. */}
+                                    {loadingProfessionals ? (
+                                            <div
                                                 key="loading"
-                                                className="loading-container-product-details"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.3 }}
+                                                className="loading-container-product-details mkf-fade-enter"
                                             >
                                                 <div className="spinner-product-details" />
                                                 <p>Carregando ...</p>
-                                            </motion.div>
+                                            </div>
                                         ) : !showProfessionals ? (
-                                            <motion.div
+                                            <div
                                                 key="info"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.3 }}
+                                                className="mkf-fade-enter"
                                             >
                                                 {/* --- BLOCO COMPLETO ORIGINAL --- */}
                                                 {product.categories && product.categories.length > 0 && (
@@ -2531,6 +3521,193 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                     </div>
                                                 )}
 
+                                                {/* ==========================================
+                                                    ASSINATURA — PLANO DE MENSALIDADE
+                                                ========================================== */}
+
+                                                {/* =========================================
+                                                    JÁ ASSINA
+
+                                                    Abrir de novo o produto que a pessoa já
+                                                    paga não pode parecer uma segunda compra.
+                                                    Aqui ela vê o que tem direito, quando
+                                                    cobra de novo, e marca o próximo
+                                                    atendimento pelo mesmo seletor de sempre.
+                                                ========================================= */}
+
+                                                {activeSubscription && subscriptionSummary && (
+
+                                                    <div className="product-details-subscription-active">
+
+                                                        <div className="product-details-subscription-active-head">
+
+                                                            <Icon icon="solar:verified-check-bold" />
+
+                                                            <div>
+                                                                <strong>
+                                                                    Você já assina este plano
+                                                                </strong>
+
+                                                                <span>
+                                                                    Escolha o dia e o horário do próximo
+                                                                    atendimento — não há nada a pagar agora.
+                                                                </span>
+                                                            </div>
+
+                                                        </div>
+
+                                                        <div className="product-details-subscription-active-facts">
+
+                                                            <div>
+                                                                <span>Neste ciclo</span>
+                                                                <strong>
+                                                                    {subscriptionSummary.sessoesRestantes === null
+                                                                        ? "Atendimentos ilimitados"
+                                                                        : `${subscriptionSummary.sessoesRestantes} de ${activeSubscription.sessionsPerCycle} restantes`}
+                                                                </strong>
+                                                            </div>
+
+                                                            <div>
+                                                                <span>Próxima cobrança</span>
+                                                                <strong>
+                                                                    {subscriptionSummary.proximaCobranca
+                                                                        .toLocaleDateString("pt-BR")}
+                                                                </strong>
+                                                            </div>
+
+                                                        </div>
+
+                                                        {subscriptionSummary.sessoesRestantes === 0 && (
+
+                                                            <p className="product-details-subscription-active-warning">
+                                                                <Icon icon="solar:danger-triangle-outline" />
+
+                                                                <span>
+                                                                    Você já usou todos os atendimentos deste
+                                                                    ciclo. A partir de{" "}
+                                                                    {subscriptionSummary.cycleEnd
+                                                                        .toLocaleDateString("pt-BR")}{" "}
+                                                                    eles voltam a ficar disponíveis.
+                                                                </span>
+                                                            </p>
+
+                                                        )}
+
+                                                    </div>
+
+                                                )}
+
+
+                                                {monthlyPlan && !activeSubscription && (
+
+                                                    <div className="product-details-subscription">
+
+                                                        {/* CABEÇALHO */}
+
+                                                        <div className="product-details-subscription-header">
+
+                                                            <div className="product-details-subscription-icon">
+                                                                <Icon icon="solar:refresh-circle-linear" />
+                                                            </div>
+
+                                                            <div className="product-details-subscription-heading">
+
+                                                                <span>
+                                                                    Assinatura
+                                                                    {" • "}
+                                                                    {monthlyPlan.billingCycleLabel}
+                                                                </span>
+
+                                                                <h3>
+                                                                    Este produto é uma mensalidade
+                                                                </h3>
+
+                                                                <p>
+                                                                    O valor é cobrado de forma recorrente
+                                                                    enquanto a assinatura estiver ativa,
+                                                                    e não apenas uma vez.
+                                                                </p>
+
+                                                            </div>
+
+                                                        </div>
+
+
+                                                        {/* VALOR */}
+
+                                                        <div className="product-details-subscription-price">
+
+                                                            <div>
+
+                                                                <span>
+                                                                    Valor da mensalidade
+                                                                </span>
+
+                                                                <strong>
+                                                                    {product.value}
+
+                                                                    <em>
+                                                                        {getPlanPriceSuffix(monthlyPlan)}
+                                                                    </em>
+                                                                </strong>
+
+                                                            </div>
+
+                                                            <span className="product-details-subscription-sessions">
+                                                                {getPlanSessionsLabel(monthlyPlan)}
+                                                            </span>
+
+                                                        </div>
+
+
+                                                        {/* DETALHES */}
+
+                                                        <ul className="product-details-subscription-list">
+
+                                                            {getPlanHighlights(monthlyPlan).map(
+                                                                (highlight) => (
+
+                                                                    <li key={highlight.id}>
+
+                                                                        <Icon icon={highlight.icon} />
+
+                                                                        <div>
+
+                                                                            <span>
+                                                                                {highlight.label}
+                                                                            </span>
+
+                                                                            <strong>
+                                                                                {highlight.value}
+                                                                            </strong>
+
+                                                                        </div>
+
+                                                                    </li>
+
+                                                                )
+                                                            )}
+
+                                                        </ul>
+
+
+                                                        {/* AVISOS */}
+
+                                                        <p className="product-details-subscription-footnote">
+
+                                                            <Icon icon="solar:info-circle-linear" />
+
+                                                            {monthlyPlan.autoRenew
+                                                                ? "A cobrança se repete automaticamente a cada ciclo até que você cancele."
+                                                                : "A renovação não é automática: será preciso renovar manualmente a cada ciclo."}
+
+                                                        </p>
+
+                                                    </div>
+
+                                                )}
+
+
                                                 <h1>Descrição</h1>
 
                                                 {product.description && (
@@ -2559,15 +3736,12 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                     </div>
                                                 )}
-                                            </motion.div>
+                                            </div>
                                         ) : (
 
-                                            <motion.div
+                                            <div
                                                 key="profissionais"
-                                                initial={{ opacity: 0 }}
-                                                animate={{ opacity: 1 }}
-                                                exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.3 }}
+                                                className="mkf-fade-enter"
                                             >
                                                 {/* --- BLOCO PROFISSIONAIS --- */}
                                                 <div className="product-details-professional">
@@ -2744,15 +3918,42 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                                             <div>
                                                                                 <span>
-                                                                                    Próxima etapa
+                                                                                    {activeSubscription
+                                                                                        ? "Sua mensalidade"
+                                                                                        : monthlyPlan
+                                                                                            ? "Primeiro atendimento"
+                                                                                            : "Próxima etapa"}
                                                                                 </span>
 
                                                                                 <h2>
-                                                                                    Escolha um dia
+                                                                                    {activeSubscription
+                                                                                        ? "Quando quer ser atendido?"
+                                                                                        : monthlyPlan
+                                                                                            ? "Quando começa?"
+                                                                                            : "Escolha um dia"}
                                                                                 </h2>
                                                                             </div>
 
                                                                         </div>
+
+                                                                        {/* O dia escolhido aqui é o
+                                                                            primeiro uso do plano, não
+                                                                            a data da cobrança — e não
+                                                                            prende a pessoa a ele. */}
+                                                                        {monthlyPlan && !activeSubscription && (
+
+                                                                            <p className="product-details-subscription-hint">
+                                                                                <Icon icon="solar:info-circle-outline" />
+
+                                                                                <span>
+                                                                                    Este é o dia do seu
+                                                                                    <strong> primeiro atendimento</strong>.
+                                                                                    Os próximos você marca quando
+                                                                                    quiser, na aba <strong>Reservas</strong>.
+                                                                                </span>
+                                                                            </p>
+
+                                                                        )}
 
                                                                         {months.length > 0 && (
 
@@ -2990,17 +4191,28 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                     )}
 
                                                 </div>
-                                            </motion.div>
+                                            </div>
                                         )}
-                                    </AnimatePresence>
                                 </div>
                             </div>
 
                             {/* Footer fixo */}
                             <div className="product-details-footer">
                                 <div className="product-details-footer-price">
-                                    <p>Preço Total</p>
-                                    <span>{product.value}</span>
+                                    <p>
+                                        {monthlyPlan
+                                            ? "Mensalidade"
+                                            : "Preço Total"}
+                                    </p>
+                                    <span>
+                                        {product.value}
+
+                                        {monthlyPlan && (
+                                            <em className="product-details-footer-cycle">
+                                                {getPlanPriceSuffix(monthlyPlan)}
+                                            </em>
+                                        )}
+                                    </span>
                                 </div>
                                 <button
                                     className={`product-details-footer-cta ${showProfessionals &&
@@ -3047,21 +4259,19 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                     }}
                                 >
                                     <Icon icon="ic:round-schedule-send" className="icon" />
-                                    {showProfessionals ? "Prosseguir" : "Agendar Agora"}
+                                    {showProfessionals
+                                        ? "Prosseguir"
+                                        : monthlyPlan
+                                            ? "Assinar Agora"
+                                            : "Agendar Agora"}
                                 </button>
                             </div>
                         </div>
 
-                    </motion.div >
-                    <AnimatePresence>
-                        {showConfirmationModal && (
-                            <motion.div
-                                className="confirmation-modal-overlay"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                transition={{ duration: 0.25, ease: "easeOut" }}
-                                onClick={() => {
+                    </div>
+                    <Modal
+                open={showConfirmationModal}
+                onClose={() => {
                                     if (
                                         isConfirmed !== "loading" &&
                                         paymentStatus !== "loading"
@@ -3069,49 +4279,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                         setShowConfirmationModal(false);
                                     }
                                 }}
-                            >
-                                <motion.div
-                                    className="confirmation-modal"
-                                    role="dialog"
-                                    aria-modal="true"
-                                    aria-labelledby="confirmation-modal-title"
-                                    onClick={(e) => e.stopPropagation()}
-                                    initial={{
-                                        opacity: 0,
-                                        y: 24,
-                                        scale: 0.96
-                                    }}
-                                    animate={{
-                                        opacity: 1,
-                                        y: 0,
-                                        scale: 1
-                                    }}
-                                    exit={{
-                                        opacity: 0,
-                                        y: 20,
-                                        scale: 0.97
-                                    }}
-                                    transition={{
-                                        duration: 0.28,
-                                        ease: [0.22, 1, 0.36, 1]
-                                    }}
-                                >
-
-                                    {/* =====================================================
-                    RECAPTCHA
-                ===================================================== */}
-
-                                    <div
-                                        id="recaptcha-container"
-                                        style={{
-                                            position: "absolute",
-                                            width: 1,
-                                            height: 1,
-                                            overflow: "hidden",
-                                            opacity: 0,
-                                            pointerEvents: "none"
-                                        }}
-                                    />
+                overlayClassName="confirmation-modal-overlay"
+                className="confirmation-modal"
+            >
 
                                     {/* =====================================================
                     HEADER
@@ -3175,13 +4345,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                         !showPaymentAuth &&
                                         isConfirmed === false && (
 
-                                            <motion.div
+                                            <div
                                                 key="confirmation-step"
-                                                className="confirmation-modal-step"
-                                                initial={{ opacity: 0, x: -12 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: 12 }}
-                                                transition={{ duration: 0.2 }}
+                                                className="confirmation-modal-step mkf-fade-enter"
                                             >
 
                                                 {/* Serviço */}
@@ -3382,8 +4548,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                     <button
                                                         type="button"
                                                         className="confirmation-modal-button confirmation-modal-button--primary"
+                                                        disabled={!authReady}
                                                         onClick={() => {
-                                                            checkLoggedUser();
 
                                                             setEmailConfirmed(false);
 
@@ -3399,7 +4565,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                 </div>
 
-                                            </motion.div>
+                                            </div>
                                         )}
 
                                     {/* =====================================================
@@ -3410,28 +4576,108 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     ETAPA 2 — IDENTIFICAÇÃO
 ===================================================== */}
 
+                                    {/* =====================================================
+                        MENSALIDADE — PRECISA DE CONTA
+
+                        Antes do formulário de identificação, e
+                        no lugar dele: assinar cria uma cobrança
+                        que se repete sozinha, e isso precisa de
+                        um lugar onde a pessoa possa ver, pausar
+                        e cancelar depois.
+                    ===================================================== */}
+
                                     {isAskingPhone &&
+                                        subscriptionNeedsLogin &&
+                                        isConfirmed === false && (
+
+                                            <div
+                                                key="subscription-login"
+                                                className="confirmation-modal-step mkf-fade-enter"
+                                            >
+
+                                                <div className="confirmation-step-intro">
+
+                                                    <div className="confirmation-step-icon">
+                                                        <Icon icon="solar:shield-user-outline" />
+                                                    </div>
+
+                                                    <div>
+
+                                                        <span className="confirmation-step-label">
+                                                            Mensalidade
+                                                        </span>
+
+                                                        <h3>
+                                                            Entre para assinar
+                                                        </h3>
+
+                                                        <p>
+                                                            A mensalidade é cobrada de forma
+                                                            automática a cada ciclo. Para você
+                                                            poder acompanhar, pausar ou cancelar
+                                                            quando quiser, ela fica ligada a uma
+                                                            conta.
+                                                        </p>
+
+                                                    </div>
+
+                                                </div>
+
+                                                <div className="confirmation-subscription-points">
+
+                                                    <div>
+                                                        <Icon icon="solar:calendar-outline" />
+                                                        <span>
+                                                            Seus atendimentos ficam salvos e você
+                                                            remarca pela aba Reservas.
+                                                        </span>
+                                                    </div>
+
+                                                    <div>
+                                                        <Icon icon="solar:card-outline" />
+                                                        <span>
+                                                            Você vê a próxima cobrança e cancela
+                                                            sem precisar falar com ninguém.
+                                                        </span>
+                                                    </div>
+
+                                                </div>
+
+                                                <div className="confirmation-modal-actions">
+
+                                                    <button
+                                                        type="button"
+                                                        className="confirmation-modal-button confirmation-modal-button--secondary"
+                                                        onClick={() => setIsAskingPhone(false)}
+                                                    >
+                                                        <Icon icon="solar:arrow-left-outline" />
+                                                        <span>Voltar</span>
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        className="confirmation-modal-button confirmation-modal-button--primary"
+                                                        onClick={() => navigate("/login")}
+                                                    >
+                                                        <span>Entrar ou criar conta</span>
+                                                        <Icon icon="solar:arrow-right-outline" />
+                                                    </button>
+
+                                                </div>
+
+                                            </div>
+
+                                        )}
+
+
+                                    {isAskingPhone &&
+                                        !subscriptionNeedsLogin &&
                                         !showPaymentAuth &&
                                         isConfirmed === false && (
 
-                                            <motion.div
+                                            <div
                                                 key="identification-step"
-                                                className="confirmation-modal-step"
-                                                initial={{
-                                                    opacity: 0,
-                                                    x: 16
-                                                }}
-                                                animate={{
-                                                    opacity: 1,
-                                                    x: 0
-                                                }}
-                                                exit={{
-                                                    opacity: 0,
-                                                    x: -16
-                                                }}
-                                                transition={{
-                                                    duration: 0.22
-                                                }}
+                                                className="confirmation-modal-step mkf-fade-enter"
                                             >
 
                                                 {/* =====================================================
@@ -3530,37 +4776,140 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         E-MAIL DA CONTA
                     ================================================= */}
 
-                                                        <div
-                                                            className="confirmation-logged-email"
-                                                            style={{
-                                                                marginTop: "16px",
-                                                                marginBottom: "0"
-                                                            }}
-                                                        >
+                                                        {loggedUserEmail ? (
 
-                                                            <div className="confirmation-logged-email-icon">
+                                                            <div
+                                                                className="confirmation-logged-email"
+                                                                style={{
+                                                                    marginTop: "16px",
+                                                                    marginBottom: "0"
+                                                                }}
+                                                            >
 
-                                                                <Icon icon="solar:letter-outline" />
+                                                                <div className="confirmation-logged-email-icon">
+
+                                                                    <Icon icon="solar:letter-outline" />
+
+                                                                </div>
+
+                                                                <div className="confirmation-logged-email-content">
+
+                                                                    <span>
+                                                                        Esse é o seu e-mail?
+                                                                    </span>
+
+                                                                    <strong>
+                                                                        {loggedUserEmail}
+                                                                    </strong>
+
+                                                                </div>
+
+                                                                <div className="confirmation-logged-email-check">
+
+                                                                    <Icon icon="solar:check-circle-bold" />
+
+                                                                </div>
 
                                                             </div>
 
-                                                            <div className="confirmation-logged-email-content">
+                                                        ) : precisaPedirEmail && (
 
-                                                                <span>
-                                                                    Esse é o seu e-mail?
+                                                            <div
+                                                                className="confirmation-form"
+                                                                style={{ marginTop: "16px" }}
+                                                            >
+
+                                                                <label
+                                                                    htmlFor="confirmation-logged-email"
+                                                                    className="confirmation-form-label"
+                                                                >
+                                                                    E-mail
+                                                                </label>
+
+                                                                <div
+                                                                    className={`confirmation-input-wrapper ${guestEmailValid
+                                                                        ? "has-value"
+                                                                        : ""
+                                                                        }`}
+                                                                >
+
+                                                                    <Icon
+                                                                        icon="solar:letter-outline"
+                                                                        className="confirmation-input-icon"
+                                                                    />
+
+                                                                    <input
+                                                                        id="confirmation-logged-email"
+                                                                        type="email"
+                                                                        autoComplete="email"
+                                                                        inputMode="email"
+                                                                        placeholder="voce@email.com"
+                                                                        value={guestEmail}
+                                                                        onChange={(e) =>
+                                                                            setGuestEmail(
+                                                                                e.target.value
+                                                                            )
+                                                                        }
+                                                                    />
+
+                                                                    {guestEmailValid && (
+
+                                                                        <Icon
+                                                                            icon="solar:check-circle-outline"
+                                                                            className="confirmation-input-success"
+                                                                        />
+
+                                                                    )}
+
+                                                                </div>
+
+                                                                <span className="confirmation-form-hint">
+                                                                    Sua conta é de telefone e ainda não tem
+                                                                    e-mail. É para lá que vai o comprovante.
                                                                 </span>
 
-                                                                <strong>
-                                                                    {loggedUserEmail}
-                                                                </strong>
-
                                                             </div>
 
-                                                            <div className="confirmation-logged-email-check">
+                                                        )}
 
-                                                                <Icon icon="solar:check-circle-bold" />
 
-                                                            </div>
+                                                        {/* =================================================
+                        OBSERVAÇÕES
+
+                        Opcional de propósito. É o lugar de
+                        "cabelo muito grosso", "vou chegar 10
+                        minutos atrasado", "sou alérgico a X" —
+                        coisas que hoje vão por WhatsApp e se
+                        perdem antes de chegar em quem atende.
+                    ================================================= */}
+
+                                                        <div className="confirmation-form">
+
+                                                            <label
+                                                                htmlFor="confirmation-notes"
+                                                                className="confirmation-form-label"
+                                                            >
+                                                                Observações
+                                                                <span className="confirmation-form-optional">
+                                                                    opcional
+                                                                </span>
+                                                            </label>
+
+                                                            <textarea
+                                                                id="confirmation-notes"
+                                                                className="confirmation-textarea"
+                                                                rows={3}
+                                                                maxLength={NOTES_MAX_LENGTH}
+                                                                placeholder="Algo que o profissional precise saber antes do atendimento?"
+                                                                value={notes}
+                                                                onChange={(e) =>
+                                                                    setNotes(e.target.value)
+                                                                }
+                                                            />
+
+                                                            <span className="confirmation-form-hint">
+                                                                {notes.length}/{NOTES_MAX_LENGTH}
+                                                            </span>
 
                                                         </div>
 
@@ -3635,13 +4984,29 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             <button
                                                                 type="button"
                                                                 className="confirmation-modal-button confirmation-modal-button--primary"
-                                                                disabled={!userName.trim()}
+                                                                disabled={
+                                                                    !userName.trim() ||
+                                                                    (precisaPedirEmail && !guestEmailValid)
+                                                                }
                                                                 onClick={async () => {
 
                                                                     const agendamento =
                                                                         buildAgendamento();
 
                                                                     setEmailConfirmed(true);
+
+                                                                    /*
+                                                                     * Já assina: usa a mensalidade.
+                                                                     */
+                                                                    if (activeSubscription) {
+
+                                                                        await finalizeAgendamento(
+                                                                            agendamento
+                                                                        );
+
+                                                                        return;
+
+                                                                    }
 
                                                                     /*
                                                                      * Usuário já está autenticado.
@@ -3762,34 +5127,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                     }
                                                                     onKeyDown={(e) => {
 
-                                                                        if (
-                                                                            e.key === "Enter" &&
-                                                                            userName.trim()
-                                                                        ) {
-
-                                                                            const agendamento =
-                                                                                buildAgendamento();
-
-                                                                            if (requiresPayment) {
-
-                                                                                setPhoneVerified(false);
-
-                                                                                setShowPaymentAuth(true);
-
-                                                                                setAuthStep("phone");
-
-                                                                                setAuthCode("");
-
-                                                                                setAuthError("");
-
-                                                                                return;
-
-                                                                            }
-
-                                                                            finalizeAgendamento(
-                                                                                agendamento
-                                                                            );
-
+                                                                        if (e.key === "Enter") {
+                                                                            e.preventDefault();
                                                                         }
 
                                                                     }}
@@ -3809,6 +5148,194 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             <span className="confirmation-form-hint">
                                                                 Usaremos esse nome apenas para identificar
                                                                 seu agendamento.
+                                                            </span>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        TELEFONE
+                    ================================================= */}
+
+                                                        <div className="confirmation-form">
+
+                                                            <label
+                                                                htmlFor="confirmation-guest-phone"
+                                                                className="confirmation-form-label"
+                                                            >
+                                                                Telefone
+                                                            </label>
+
+                                                            <div
+                                                                className={`confirmation-input-wrapper ${guestPhoneDigits.length >= 10
+                                                                    ? "has-value"
+                                                                    : ""
+                                                                    }`}
+                                                            >
+
+                                                                <Icon
+                                                                    icon="solar:phone-outline"
+                                                                    className="confirmation-input-icon"
+                                                                />
+
+                                                                {/*
+                                                                    Campo livre, sem máscara.
+
+                                                                    A máscara de 11 dígitos era o que
+                                                                    estragava o número de quem digita
+                                                                    ou cola com o 55 na frente: ela
+                                                                    cortava o fim e o código ainda
+                                                                    colava "+55" no que sobrou. Agora
+                                                                    o texto é livre e a normalização
+                                                                    acontece em toE164BR, que entende
+                                                                    +55, 55, 0 na frente ou só o DDD.
+                                                                */}
+                                                                <input
+                                                                    id="confirmation-guest-phone"
+                                                                    type="tel"
+                                                                    autoComplete="tel"
+                                                                    inputMode="tel"
+                                                                    maxLength={20}
+                                                                    placeholder="(11) 98941-4218"
+                                                                    value={authPhone}
+                                                                    onChange={(e) =>
+                                                                        setAuthPhone(
+                                                                            e.target.value
+                                                                        )
+                                                                    }
+                                                                />
+
+                                                                {guestPhoneValid && (
+
+                                                                    <Icon
+                                                                        icon="solar:check-circle-outline"
+                                                                        className="confirmation-input-success"
+                                                                    />
+
+                                                                )}
+
+                                                            </div>
+
+                                                            <span className="confirmation-form-hint">
+                                                                {guestPhoneValid
+                                                                    ? (
+                                                                        needsPhoneVerification
+                                                                            ? `Enviaremos o código para ${formatPhoneBR(authPhone)}.`
+                                                                            : `A empresa vai falar com você em ${formatPhoneBR(authPhone)}.`
+                                                                    )
+                                                                    : (
+                                                                        authPhone.trim()
+                                                                            ? "Número incompleto. Use DDD + número, como (11) 98941-4218."
+                                                                            : "Com DDD, como (11) 98941-4218."
+                                                                    )}
+                                                            </span>
+
+                                                        </div>
+
+
+                                                        {/* =================================================
+                        E-MAIL
+
+                        Obrigatório só quando há pagamento: o
+                        Mercado Pago exige um pagador com
+                        e-mail para emitir o Pix, e é por ele
+                        que o comprovante chega.
+                    ================================================= */}
+
+                                                        {requiresPayment && (
+
+                                                            <div className="confirmation-form">
+
+                                                                <label
+                                                                    htmlFor="confirmation-guest-email"
+                                                                    className="confirmation-form-label"
+                                                                >
+                                                                    E-mail
+                                                                </label>
+
+                                                                <div
+                                                                    className={`confirmation-input-wrapper ${guestEmailValid
+                                                                        ? "has-value"
+                                                                        : ""
+                                                                        }`}
+                                                                >
+
+                                                                    <Icon
+                                                                        icon="solar:letter-outline"
+                                                                        className="confirmation-input-icon"
+                                                                    />
+
+                                                                    <input
+                                                                        id="confirmation-guest-email"
+                                                                        type="email"
+                                                                        autoComplete="email"
+                                                                        inputMode="email"
+                                                                        placeholder="voce@email.com"
+                                                                        value={guestEmail}
+                                                                        onChange={(e) =>
+                                                                            setGuestEmail(
+                                                                                e.target.value
+                                                                            )
+                                                                        }
+                                                                    />
+
+                                                                    {guestEmailValid && (
+
+                                                                        <Icon
+                                                                            icon="solar:check-circle-outline"
+                                                                            className="confirmation-input-success"
+                                                                        />
+
+                                                                    )}
+
+                                                                </div>
+
+                                                                <span className="confirmation-form-hint">
+                                                                    O comprovante do pagamento vai para
+                                                                    esse endereço.
+                                                                </span>
+
+                                                            </div>
+
+                                                        )}
+
+
+                                                        {/* =================================================
+                        OBSERVAÇÕES
+
+                        Opcional de propósito. É o lugar de
+                        "cabelo muito grosso", "vou chegar 10
+                        minutos atrasado", "sou alérgico a X" —
+                        coisas que hoje vão por WhatsApp e se
+                        perdem antes de chegar em quem atende.
+                    ================================================= */}
+
+                                                        <div className="confirmation-form">
+
+                                                            <label
+                                                                htmlFor="confirmation-notes"
+                                                                className="confirmation-form-label"
+                                                            >
+                                                                Observações
+                                                                <span className="confirmation-form-optional">
+                                                                    opcional
+                                                                </span>
+                                                            </label>
+
+                                                            <textarea
+                                                                id="confirmation-notes"
+                                                                className="confirmation-textarea"
+                                                                rows={3}
+                                                                maxLength={NOTES_MAX_LENGTH}
+                                                                placeholder="Algo que o profissional precise saber antes do atendimento?"
+                                                                value={notes}
+                                                                onChange={(e) =>
+                                                                    setNotes(e.target.value)
+                                                                }
+                                                            />
+
+                                                            <span className="confirmation-form-hint">
+                                                                {notes.length}/{NOTES_MAX_LENGTH}
                                                             </span>
 
                                                         </div>
@@ -3886,13 +5413,37 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             <button
                                                                 type="button"
                                                                 className="confirmation-modal-button confirmation-modal-button--primary"
-                                                                disabled={!userName.trim()}
+                                                                disabled={
+                                                                    !userName.trim() ||
+                                                                    !guestPhoneValid ||
+                                                                    (requiresPayment && !guestEmailValid)
+                                                                }
                                                                 onClick={async () => {
 
                                                                     const agendamento =
                                                                         buildAgendamento();
 
-                                                                    if (requiresPayment) {
+                                                                    /*
+                                                                     * Já assina: o atendimento sai da
+                                                                     * mensalidade que ele paga, então
+                                                                     * não há o que cobrar aqui.
+                                                                     */
+                                                                    if (activeSubscription) {
+
+                                                                        await finalizeAgendamento(
+                                                                            agendamento
+                                                                        );
+
+                                                                        return;
+
+                                                                    }
+
+                                                                    /*
+                                                                     * Agendamento gratuito não passa
+                                                                     * por SMS: sem dinheiro em jogo,
+                                                                     * o código só atrapalharia.
+                                                                     */
+                                                                    if (needsPhoneVerification) {
 
                                                                         setPhoneVerified(false);
 
@@ -3903,6 +5454,14 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                         setAuthCode("");
 
                                                                         setAuthError("");
+
+                                                                        return;
+
+                                                                    }
+
+                                                                    if (requiresPayment) {
+
+                                                                        openCheckout();
 
                                                                         return;
 
@@ -3929,7 +5488,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                 )}
 
-                                            </motion.div>
+                                            </div>
                                         )}
                                     {/* =====================================================
                     PAGAMENTO — AUTENTICAÇÃO
@@ -3938,13 +5497,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                     {showPaymentAuth &&
                                         isConfirmed === false && (
 
-                                            <motion.div
+                                            <div
                                                 key="payment-auth"
-                                                className="confirmation-modal-step confirmation-payment-auth"
-                                                initial={{ opacity: 0, x: 18 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                exit={{ opacity: 0, x: -18 }}
-                                                transition={{ duration: 0.22 }}
+                                                className="confirmation-modal-step confirmation-payment-auth mkf-fade-enter"
                                             >
 
                                                 <button
@@ -3993,11 +5548,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                 {/* Telefone */}
 
                                                 {authStep === "phone" && !phoneVerified && (
-                                                    <motion.div
+                                                    <div
                                                         key="phone"
-                                                        className="confirmation-auth-content"
-                                                        initial={{ opacity: 0 }}
-                                                        animate={{ opacity: 1 }}
+                                                        className="confirmation-auth-content mkf-fade-enter"
                                                     >
 
                                                         <div className="confirmation-form">
@@ -4016,54 +5569,65 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                     className="confirmation-input-icon"
                                                                 />
 
-                                                                <InputMask
-                                                                    mask="(99) 99999-9999"
+                                                                <input
+                                                                    id="confirmation-auth-phone"
+                                                                    type="tel"
+                                                                    autoComplete="tel"
+                                                                    inputMode="tel"
+                                                                    maxLength={20}
+                                                                    autoFocus
+                                                                    placeholder="(11) 98941-4218"
                                                                     value={authPhone}
                                                                     onChange={(e) =>
                                                                         setAuthPhone(
                                                                             e.target.value
                                                                         )
                                                                     }
-                                                                >
-                                                                    {(inputProps) => (
-                                                                        <input
-                                                                            {...inputProps}
-                                                                            id="confirmation-auth-phone"
-                                                                            type="tel"
-                                                                            autoComplete="tel"
-                                                                            placeholder="(00) 00000-0000"
-                                                                            autoFocus
-                                                                        />
-                                                                    )}
-                                                                </InputMask>
+                                                                    onKeyDown={(e) => {
+
+                                                                        if (
+                                                                            e.key === "Enter" &&
+                                                                            guestPhoneValid &&
+                                                                            !authLoading
+                                                                        ) {
+                                                                            sendAuthCode();
+                                                                        }
+
+                                                                    }}
+                                                                />
+
+                                                                {guestPhoneValid && (
+
+                                                                    <Icon
+                                                                        icon="solar:check-circle-outline"
+                                                                        className="confirmation-input-success"
+                                                                    />
+
+                                                                )}
 
                                                             </div>
 
+                                                            {/* Mostra o número exato antes de gastar
+                                                                um envio: é mais barato ler do que
+                                                                esperar um SMS que nunca chega. */}
                                                             <span className="confirmation-form-hint">
-                                                                Enviaremos um código de verificação
-                                                                por SMS.
+                                                                {guestPhoneValid
+                                                                    ? `Enviaremos um código para ${formatPhoneBR(authPhone)}.`
+                                                                    : "Digite com DDD. Exemplo: (11) 98941-4218."}
                                                             </span>
 
                                                         </div>
 
                                                         {authError && (
-                                                            <motion.div
-                                                                className="confirmation-auth-error"
-                                                                initial={{
-                                                                    opacity: 0,
-                                                                    y: -5
-                                                                }}
-                                                                animate={{
-                                                                    opacity: 1,
-                                                                    y: 0
-                                                                }}
+                                                            <div
+                                                                className="confirmation-auth-error mkf-fade-enter"
                                                             >
                                                                 <Icon icon="solar:danger-triangle-outline" />
 
                                                                 <span>
                                                                     {authError}
                                                                 </span>
-                                                            </motion.div>
+                                                            </div>
                                                         )}
 
                                                         <button
@@ -4071,7 +5635,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             className="confirmation-modal-button confirmation-modal-button--primary confirmation-auth-button"
                                                             disabled={
                                                                 authLoading ||
-                                                                !authPhone.trim()
+                                                                !guestPhoneValid
                                                             }
                                                             onClick={sendAuthCode}
                                                         >
@@ -4096,23 +5660,15 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             )}
                                                         </button>
 
-                                                    </motion.div>
+                                                    </div>
                                                 )}
 
                                                 {/* Código */}
 
                                                 {authStep === "code" && !phoneVerified && (
-                                                    <motion.div
+                                                    <div
                                                         key="code"
-                                                        className="confirmation-auth-content"
-                                                        initial={{
-                                                            opacity: 0,
-                                                            x: 12
-                                                        }}
-                                                        animate={{
-                                                            opacity: 1,
-                                                            x: 0
-                                                        }}
+                                                        className="confirmation-auth-content mkf-fade-enter"
                                                     >
 
                                                         <div className="confirmation-code-header">
@@ -4180,23 +5736,15 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                         </div>
 
                                                         {authError && (
-                                                            <motion.div
-                                                                className="confirmation-auth-error"
-                                                                initial={{
-                                                                    opacity: 0,
-                                                                    y: -5
-                                                                }}
-                                                                animate={{
-                                                                    opacity: 1,
-                                                                    y: 0
-                                                                }}
+                                                            <div
+                                                                className="confirmation-auth-error mkf-fade-enter"
                                                             >
                                                                 <Icon icon="solar:danger-triangle-outline" />
 
                                                                 <span>
                                                                     {authError}
                                                                 </span>
-                                                            </motion.div>
+                                                            </div>
                                                         )}
 
                                                         <button
@@ -4229,6 +5777,28 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             )}
                                                         </button>
 
+                                                        {/* Reenviar, com espera.
+
+                                                            Sem a espera o cliente que não recebe o
+                                                            SMS fica martelando o botão, o Firebase
+                                                            responde too-many-requests e aí o número
+                                                            dele fica bloqueado por horas — o que
+                                                            parece, de fora, o app travado pedindo
+                                                            código para sempre. */}
+
+                                                        <button
+                                                            type="button"
+                                                            className="confirmation-change-phone"
+                                                            disabled={resendIn > 0 || authLoading}
+                                                            onClick={sendAuthCode}
+                                                        >
+                                                            <Icon icon="solar:refresh-outline" />
+
+                                                            {resendIn > 0
+                                                                ? `Reenviar SMS em ${resendIn}s`
+                                                                : "Reenviar SMS"}
+                                                        </button>
+
                                                         <button
                                                             type="button"
                                                             className="confirmation-change-phone"
@@ -4237,6 +5807,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                 setAuthStep("phone");
                                                                 setAuthCode("");
                                                                 setAuthError("");
+                                                                setAuthConfirmation(null);
 
                                                             }}
                                                         >
@@ -4245,7 +5816,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             Alterar número
                                                         </button>
 
-                                                    </motion.div>
+                                                    </div>
                                                 )}
 
                                                 {/* =====================================================
@@ -4253,21 +5824,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 ===================================================== */}
 
                                                 {phoneVerified && (
-                                                    <motion.div
+                                                    <div
                                                         key="phone-verified"
-                                                        className="confirmation-auth-verified"
-                                                        initial={{
-                                                            opacity: 0,
-                                                            y: 8
-                                                        }}
-                                                        animate={{
-                                                            opacity: 1,
-                                                            y: 0
-                                                        }}
-                                                        transition={{
-                                                            duration: 0.3,
-                                                            ease: [0.22, 1, 0.36, 1]
-                                                        }}
+                                                        className="confirmation-auth-verified mkf-fade-enter"
                                                     >
 
                                                         <div className="confirmation-auth-verified-main">
@@ -4312,8 +5871,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                         <button
                                                             type="button"
                                                             className="confirmation-modal-button confirmation-modal-button--primary confirmation-auth-button"
-                                                            onClick={async () => {
-                                                                await createMercadoPagoCheckout();
+                                                            onClick={() => {
+                                                                openCheckout();
                                                             }}
                                                         >
                                                             <span>
@@ -4323,10 +5882,10 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             <Icon icon="solar:arrow-right-outline" />
                                                         </button>
 
-                                                    </motion.div>
+                                                    </div>
                                                 )}
 
-                                            </motion.div>
+                                            </div>
                                         )}
 
                                     {/* =====================================================
@@ -4335,21 +5894,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                     {isConfirmed === "loading" && (
 
-                                        <motion.div
+                                        <div
                                             key="loading"
-                                            className="confirmation-modal-state confirmation-modal-state--loading"
-                                            initial={{
-                                                opacity: 0,
-                                                scale: 0.96
-                                            }}
-                                            animate={{
-                                                opacity: 1,
-                                                scale: 1
-                                            }}
-                                            exit={{
-                                                opacity: 0,
-                                                scale: 0.96
-                                            }}
+                                            className="confirmation-modal-state confirmation-modal-state--loading mkf-fade-enter"
                                         >
 
                                             <div className="confirmation-loading-icon">
@@ -4375,7 +5922,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                 <span />
                                             </div>
 
-                                        </motion.div>
+                                        </div>
 
                                     )}
 
@@ -4385,25 +5932,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                     {isConfirmed === "success" && (
 
-                                        <motion.div
+                                        <div
                                             key="success"
-                                            className="confirmation-modal-state confirmation-modal-state--success"
-                                            initial={{
-                                                opacity: 0,
-                                                scale: 0.94
-                                            }}
-                                            animate={{
-                                                opacity: 1,
-                                                scale: 1
-                                            }}
-                                            exit={{
-                                                opacity: 0,
-                                                scale: 0.94
-                                            }}
-                                            transition={{
-                                                duration: 0.35,
-                                                ease: [0.22, 1, 0.36, 1]
-                                            }}
+                                            className="confirmation-modal-state confirmation-modal-state--success mkf-fade-enter"
                                         >
 
                                             <div className="confirmation-success-icon">
@@ -4520,17 +6051,28 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                             </div>
 
-                                        </motion.div>
+                                            {/* O resumo acima é só deste
+                                                agendamento; daqui a pessoa
+                                                chega à lista completa. */}
+                                            <button
+                                                type="button"
+                                                className="confirmation-modal-link"
+                                                onClick={goToReservations}
+                                            >
+                                                <Icon icon="solar:calendar-mark-outline" />
+
+                                                <span>
+                                                    Verificar meus agendamentos
+                                                </span>
+                                            </button>
+
+                                        </div>
 
                                     )}
 
-                                </motion.div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                </Modal>
 
-                    <AnimatePresence>
-                        {showOrderSummary && (
+                    {showOrderSummary && (
                             <OrderSummary
                                 agendamento={lastAgendamento}
 
@@ -4552,7 +6094,6 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                 }}
                             />
                         )}
-                    </AnimatePresence>
                     <Toast
                         show={showToast}
                         type={toastType}
@@ -4560,10 +6101,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         message={toastMessage}
                         onClose={() => setShowToast(false)}
                     />
-                </motion.div >
-            )
-            }
-        </AnimatePresence >,
+        </div>,
         document.body
     );
 };

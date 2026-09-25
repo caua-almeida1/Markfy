@@ -1,16 +1,7 @@
-:root {
-    --mkf-ui-primary: #092AF3;
-    --mkf-ui-primary-hover: rgba(9, 42, 243, 0.7);
-    --mkf-ui-secondary: #f5f5f5;
-    --mkf-ui-border: #eeeeee;
-    --mkf-text-primary: #333333;
-    --mkf-text-secondary: #555555;
-    --mkf-text-tertiary: #666666;
-    --mkf-text-light: #999999;
-    --mkf-ui-shadow: rgba(0, 0, 0, 0.1);
-    --mkf-ui-white: #ffffff;
-    --mkf-link-color: #4a6bdf;
-}
+/* Os tokens de cor agora vivem só em src/index.css.
+   Este arquivo redeclarava os mesmos nomes com valores
+   diferentes e vencia por ordem de import, o que
+   impedia o tema escuro de funcionar. */
 
 @keyframes mkf-main-fade-in {
     from {
@@ -285,7 +276,7 @@
     top: 3px;
     left: 2px;
     fill: none;
-    stroke: #ffffff;
+    stroke: var(--mkf-on-primary);
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -345,7 +336,7 @@
     width: 100%;
     padding: 14px;
     background-color: var(--mkf-ui-primary);
-    color: white;
+    color: var(--mkf-on-primary);
     border: none;
     border-radius: 8px;
     font-size: 0.8rem;
@@ -393,7 +384,7 @@
 .google-auth-button {
     width: 100%;
     padding: 12px;
-    background-color: white;
+    background-color: var(--mkf-ui-white);
     color: #5f6368;
     border: 1px solid #dadce0;
     border-radius: 8px;
@@ -541,4 +532,171 @@
     .auth-button {
         padding: 10px;
     }
+}
+
+
+/* =========================================================
+   PAINÉIS DE AUTENTICAÇÃO
+
+   Recuperar senha e entrar com telefone. Os dois usam o
+   componente Modal, então aqui é só o conteúdo.
+   ========================================================= */
+
+.auth-modal {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+
+    width: min(420px, 100%);
+    padding: 30px 26px;
+
+    box-sizing: border-box;
+
+    border-radius: 24px;
+    background: var(--mkf-ui-surface, #fff);
+
+    text-align: center;
+}
+
+.auth-modal-icon {
+    display: grid;
+    place-items: center;
+
+    width: 58px;
+    height: 58px;
+
+    border-radius: 50%;
+    background: var(--mkf-ui-primary-soft, #eef1ff);
+    color: var(--mkf-ui-primary, #092af3);
+
+    font-size: 28px;
+}
+
+.auth-modal-icon.is-success {
+    background: #e7f7ee;
+    color: #1a8f4c;
+}
+
+.auth-modal h2 {
+    margin: 6px 0 0;
+
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.auth-modal p {
+    margin: 0 0 6px;
+
+    font-size: .92rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.auth-modal-input {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 15px;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 12px;
+    background: var(--mkf-ui-background, #fff);
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    /* 16px, ou o Safari do iPhone dá zoom ao focar. */
+    font-size: 1rem;
+    text-align: center;
+}
+
+.auth-modal-input:focus {
+    outline: 2px solid var(--mkf-ui-primary, #092af3);
+    outline-offset: 1px;
+}
+
+.auth-modal-input--code {
+    letter-spacing: .5em;
+    text-indent: .5em;
+    font-weight: 600;
+}
+
+.auth-modal-hint {
+    font-size: .82rem;
+    line-height: 1.4;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.auth-modal-error {
+    width: 100%;
+    padding: 9px 12px;
+
+    box-sizing: border-box;
+
+    border-radius: 10px;
+    background: #fdecea;
+    color: #a3261c;
+
+    font-size: .86rem;
+    line-height: 1.4;
+}
+
+.auth-modal-actions {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    margin-top: 6px;
+}
+
+.auth-modal-button {
+    flex: 1;
+    min-height: 46px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 100px;
+    background: none;
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.auth-modal-button.is-primary {
+    border-color: transparent;
+    background: var(--mkf-ui-primary, #092af3);
+    color: #fff;
+}
+
+.auth-modal-button:disabled {
+    opacity: .55;
+    cursor: default;
+}
+
+
+/* O botão de telefone acompanha o do Google. */
+.phone-auth-button {
+    margin-top: 10px;
+}
+
+/* "Esqueceu a senha?" virou <button>; sem isto ele herdaria
+   a aparência de botão do navegador. */
+button.forgot-password {
+    padding: 0;
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+}
+
+
+@media (max-width: 680px) {
+
+    .auth-modal {
+        border-radius: 22px 22px 0 0;
+        padding: 26px 20px 30px;
+    }
+
 }

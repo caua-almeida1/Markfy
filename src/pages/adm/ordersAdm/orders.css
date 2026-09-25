@@ -156,8 +156,7 @@
     border-radius:
         14px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     /* box-shadow:
         0 3px 12px rgba(0, 0, 0, .035); */
@@ -455,8 +454,7 @@
     outline:
         none;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-primary);
@@ -576,8 +574,7 @@
     border-radius:
         9px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -657,14 +654,241 @@
     background:
         var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-size:
         var(--mkf-font-3xs);
 
     font-weight:
         var(--mkf-font-bold);
+}
+
+
+/* =========================================================
+   BULK SELECTION BAR
+========================================================= */
+
+.orders-bulk-bar {
+    display:
+        flex;
+
+    align-items:
+        center;
+    justify-content:
+        space-between;
+
+    flex-wrap:
+        wrap;
+
+    gap:
+        12px;
+
+    margin-top:
+        14px;
+
+    padding:
+        12px 16px;
+
+    border:
+        1px solid rgba(9, 42, 243, .18);
+
+    border-radius:
+        10px;
+
+    background:
+        var(--mkf-ui-primary-lighter);
+}
+
+.orders-bulk-select-all {
+    display:
+        inline-flex;
+
+    align-items:
+        center;
+
+    gap:
+        9px;
+
+    color:
+        var(--mkf-ui-primary);
+
+    font-size:
+        var(--mkf-font-xs);
+
+    font-weight:
+        var(--mkf-font-semibold);
+
+    cursor:
+        pointer;
+}
+
+.orders-bulk-select-all input[type="checkbox"] {
+    width:
+        17px;
+
+    height:
+        17px;
+
+    accent-color:
+        var(--mkf-ui-primary);
+
+    cursor:
+        pointer;
+}
+
+.orders-bulk-actions {
+    display:
+        flex;
+
+    align-items:
+        center;
+
+    flex-wrap:
+        wrap;
+
+    gap:
+        8px;
+}
+
+.orders-bulk-actions button {
+    display:
+        inline-flex;
+
+    align-items:
+        center;
+
+    gap:
+        7px;
+
+    height:
+        36px;
+
+    padding:
+        0 13px;
+
+    border:
+        1px solid var(--mkf-ui-border);
+
+    border-radius:
+        8px;
+
+    background: var(--mkf-ui-white);
+
+    color:
+        var(--mkf-text-secondary);
+
+    font-family:
+        inherit;
+
+    font-size:
+        var(--mkf-font-xs);
+
+    font-weight:
+        var(--mkf-font-semibold);
+
+    cursor:
+        pointer;
+
+    transition:
+        background .2s ease,
+        border-color .2s ease,
+        transform .2s ease;
+}
+
+.orders-bulk-actions button:active {
+    transform:
+        translateY(1px);
+}
+
+.orders-bulk-actions button svg {
+    width:
+        14px;
+
+    height:
+        14px;
+}
+
+.orders-bulk-complete {
+    border-color:
+        rgba(34, 197, 94, .25) !important;
+
+    background:
+        var(--mkf-success-light) !important;
+
+    color:
+        var(--mkf-success) !important;
+}
+
+.orders-bulk-complete:hover {
+    background:
+        #c9f7d8 !important;
+}
+
+.orders-bulk-cancel {
+    border-color:
+        rgba(245, 158, 11, .25) !important;
+
+    background:
+        var(--mkf-warning-light) !important;
+
+    color:
+        var(--mkf-warning) !important;
+}
+
+.orders-bulk-delete {
+    border-color:
+        rgba(239, 68, 68, .25) !important;
+
+    background:
+        var(--mkf-error-light) !important;
+
+    color:
+        var(--mkf-error) !important;
+}
+
+
+/* =========================================================
+   ROW CHECKBOX
+========================================================= */
+
+.orders-row-checkbox {
+    display:
+        flex;
+
+    align-items:
+        center;
+    justify-content:
+        center;
+}
+
+.orders-row-checkbox input[type="checkbox"] {
+    width:
+        18px;
+
+    height:
+        18px;
+
+    accent-color:
+        var(--mkf-ui-primary);
+
+    cursor:
+        pointer;
+}
+
+.orders-list.has-selection .orders-table-header,
+.orders-list.has-selection .orders-row {
+    grid-template-columns:
+        40px minmax(220px, 1.55fr) minmax(170px, 1.1fr) minmax(150px, 1fr) minmax(155px, 1fr) minmax(90px, .65fr) minmax(100px, .75fr) 92px;
+}
+
+.orders-row.selected {
+    background:
+        var(--mkf-ui-primary-lighter);
+}
+
+.orders-row.selected:hover {
+    background:
+        var(--mkf-ui-primary-lighter);
 }
 
 
@@ -829,8 +1053,7 @@
     border-radius:
         14px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     /*
      * Sombra um pouco mais evidente porque agora
@@ -906,8 +1129,7 @@
     border-bottom:
         1px solid var(--mkf-ui-border-light);
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     transition:
         background .2s ease;
@@ -1398,8 +1620,7 @@
     border-radius:
         7px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     cursor:
         pointer;
@@ -1563,8 +1784,7 @@
     border-radius:
         8px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -1832,8 +2052,7 @@
     border-radius:
         16px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 25px 70px rgba(0, 0, 0, .16);
@@ -1954,8 +2173,7 @@
     border-radius:
         16px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 25px 70px rgba(0, 0, 0, .16);
@@ -2057,8 +2275,7 @@
     border-radius:
         8px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -2172,8 +2389,7 @@
     outline:
         none;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-primary);
@@ -2356,8 +2572,7 @@
     border:
         1px solid var(--mkf-ui-border);
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -2375,8 +2590,7 @@
     background:
         var(--mkf-ui-primary);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .orders-modal-primary:hover {
@@ -2405,8 +2619,7 @@
     border-radius:
         18px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 30px 90px rgba(0, 0, 0, .18);
@@ -2707,8 +2920,7 @@
     padding:
         15px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 }
 
 .orders-details-item span {
@@ -2915,8 +3127,7 @@
     border:
         1px solid var(--mkf-ui-border);
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -2934,8 +3145,7 @@
     background:
         var(--mkf-success);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .orders-details-complete:hover {
@@ -2961,8 +3171,7 @@
     border-radius:
         16px;
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     text-align:
         center;
@@ -3086,8 +3295,7 @@
     border:
         1px solid var(--mkf-ui-border);
 
-    background:
-        var(--mkf-ui-white);
+    background: var(--mkf-ui-white);
 
     color:
         var(--mkf-text-secondary);
@@ -3105,8 +3313,7 @@
     background:
         var(--mkf-error);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .orders-confirm-actions button.warning {
@@ -3116,8 +3323,7 @@
     background:
         var(--mkf-warning);
 
-    color:
-        var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 
@@ -3208,6 +3414,20 @@
 
         column-gap:
             13px;
+    }
+
+    .orders-list.has-selection .orders-table-header,
+    .orders-list.has-selection .orders-row {
+        grid-template-columns:
+            36px minmax(190px, 1.4fr) minmax(145px, 1fr) minmax(130px, .9fr) minmax(140px, 1fr) minmax(80px, .6fr) minmax(95px, .7fr) 76px;
+    }
+
+    .orders-bulk-bar {
+        flex-direction:
+            column;
+
+        align-items:
+            flex-start;
     }
 
     .orders-table-header,
@@ -3607,7 +3827,7 @@
             grid;
 
         grid-template-columns:
-            1fr 1fr;
+            repeat(3, 1fr);
 
         width:
             100%;
@@ -3624,13 +3844,24 @@
             42px;
 
         padding:
-            0 11px;
+            0 8px;
 
         border-radius:
             9px;
 
         font-size:
-            var(--mkf-font-xs);
+            var(--mkf-font-2xs);
+    }
+
+    .orders-toolbar-button span {
+        overflow:
+            hidden;
+
+        text-overflow:
+            ellipsis;
+
+        white-space:
+            nowrap;
     }
 
     .orders-toolbar-button svg {
@@ -3639,6 +3870,50 @@
 
         height:
             15px;
+
+        flex-shrink:
+            0;
+    }
+
+
+    /* =====================================================
+       BULK BAR (MOBILE)
+    ===================================================== */
+
+    .orders-bulk-bar {
+        flex-direction:
+            column;
+
+        align-items:
+            stretch;
+
+        gap:
+            10px;
+
+        margin-top:
+            11px;
+
+        padding:
+            12px 14px;
+    }
+
+    .orders-bulk-actions {
+        display:
+            grid;
+
+        grid-template-columns:
+            repeat(auto-fit, minmax(100px, 1fr));
+
+        width:
+            100%;
+    }
+
+    .orders-bulk-actions button {
+        width:
+            100%;
+
+        justify-content:
+            center;
     }
 
 
@@ -3801,8 +4076,7 @@
         border-radius:
             14px;
 
-        background:
-            var(--mkf-ui-white);
+        background: var(--mkf-ui-white);
 
         box-shadow:
             0 3px 12px rgba(0, 0, 0, .035);
@@ -3814,8 +4088,47 @@
     }
 
     .orders-row:hover {
+        background: var(--mkf-ui-white);
+    }
+
+    .orders-row.selected {
+        border-color:
+            rgba(9, 42, 243, .35);
+
         background:
-            var(--mkf-ui-white);
+            var(--mkf-ui-primary-lighter);
+    }
+
+
+    /* =====================================================
+       SELECTION CHECKBOX (MOBILE)
+    ===================================================== */
+
+    .orders-row-checkbox {
+        position:
+            absolute;
+
+        top:
+            12px;
+
+        right:
+            12px;
+
+        z-index:
+            2;
+    }
+
+    .orders-row-checkbox input[type="checkbox"] {
+        width:
+            20px;
+
+        height:
+            20px;
+    }
+
+    .orders-list.has-selection .orders-row {
+        padding-right:
+            42px;
     }
 
 
@@ -4173,8 +4486,7 @@
         border-radius:
             14px;
 
-        background:
-            var(--mkf-ui-white);
+        background: var(--mkf-ui-white);
 
         box-shadow:
             0 3px 12px rgba(0, 0, 0, .035);
@@ -4850,6 +5162,282 @@
 
         font-size:
             var(--mkf-font-3xs);
+    }
+
+}
+
+
+/* =========================================================
+   OBSERVAÇÃO DO CLIENTE
+
+   Destacada com a cor de aviso: é informação que muda o
+   atendimento e não pode passar batido no meio dos dados
+   do pedido.
+   ========================================================= */
+
+.orders-details-notes {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding: 14px 16px;
+
+    border: 1px solid var(--mkf-ui-warning-border, #f3ddb0);
+    border-radius: 14px;
+    background: var(--mkf-ui-warning-soft, #fff8e8);
+}
+
+.orders-details-notes-head {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #8a6314;
+}
+
+.orders-details-notes-head svg {
+    font-size: 15px;
+}
+
+.orders-details-notes p {
+    margin: 0;
+
+    font-size: .93rem;
+    line-height: 1.5;
+    color: var(--mkf-text-primary);
+
+    /* Recado colado de outro lugar pode vir com quebras. */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   ASSINATURAS — PAINEL
+
+   Uma assinatura não cabe numa linha de tabela como um
+   pedido: ela tem saldo de ciclo e uma lista de dias. Por
+   isso é cartão, e não linha.
+   ========================================================= */
+
+.orders-subscriptions-total {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+}
+
+.orders-subscriptions-total span {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.orders-subscriptions-total strong {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.orders-subscriptions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.orders-subscription {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    padding: 17px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 16px;
+    background: var(--mkf-ui-white, #fff);
+}
+
+.orders-subscription header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.orders-subscription-avatar {
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 42px;
+    height: 42px;
+
+    border-radius: 50%;
+    background: var(--mkf-ui-primary-soft, #eef1ff);
+    color: var(--mkf-ui-primary, #092af3);
+
+    font-size: 20px;
+}
+
+.orders-subscription-who {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.orders-subscription-who strong {
+    font-size: .96rem;
+    font-weight: 600;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.orders-subscription-who span {
+    font-size: .83rem;
+    color: var(--mkf-text-secondary, #5c6278);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.orders-subscription-price {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+    flex: 0 0 auto;
+}
+
+.orders-subscription-price strong {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.orders-subscription-price span {
+    font-size: .74rem;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.orders-subscription-badge {
+    flex: 0 0 auto;
+    padding: 5px 11px;
+
+    border-radius: 100px;
+
+    font-size: .72rem;
+    font-weight: 600;
+}
+
+.orders-subscription-badge.is-active {
+    background: #e7f7ee;
+    color: #1a8f4c;
+}
+
+.orders-subscription-badge.is-late {
+    background: #fdecea;
+    color: #a3261c;
+}
+
+.orders-subscription-facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9px;
+}
+
+.orders-subscription-facts > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    padding: 10px 12px;
+
+    border-radius: 11px;
+    background: var(--mkf-ui-background-secondary, #f4f6fb);
+}
+
+.orders-subscription-facts span {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.orders-subscription-facts strong {
+    font-size: .9rem;
+    font-weight: 600;
+}
+
+.orders-subscription-days {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    padding-top: 13px;
+    border-top: 1px solid var(--mkf-ui-border, #e4e7ef);
+}
+
+.orders-subscription-days-label {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.orders-subscription-days em {
+    font-size: .87rem;
+    font-style: normal;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.orders-subscription-days-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.orders-subscription-days-list button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    min-height: 34px;
+    padding: 0 12px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 100px;
+    background: none;
+
+    font: inherit;
+    font-size: .83rem;
+    color: var(--mkf-text-primary);
+    cursor: pointer;
+}
+
+.orders-subscription-days-list button:hover {
+    border-color: var(--mkf-ui-primary, #092af3);
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+
+@media (max-width: 680px) {
+
+    .orders-subscription-facts {
+        grid-template-columns: 1fr;
+    }
+
+    .orders-subscription header {
+        flex-wrap: wrap;
     }
 
 }

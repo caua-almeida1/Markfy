@@ -1,0 +1,347 @@
+/* =========================================================
+   SOU CLIENTE — EXPLORAR
+
+   Acompanha o business-form: mesma largura, mesmo respiro,
+   mesmos cartões de borda fina. As cores saem dos tokens,
+   então claro e escuro funcionam sem regra extra.
+   ========================================================= */
+
+.client-explore {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+
+    box-sizing: border-box;
+}
+
+
+/* ---------- Intro ---------- */
+
+.client-explore-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.client-explore-overline {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.client-explore-intro h1 {
+    margin: 0;
+
+    font-size: clamp(1.5rem, 3.4vw, 2rem);
+    font-weight: 600;
+    line-height: 1.15;
+    letter-spacing: -.03em;
+    color: var(--mkf-text-primary);
+}
+
+.client-explore-intro p {
+    max-width: 52ch;
+    margin: 0;
+
+    font-size: .94rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+
+/* ---------- Busca ---------- */
+
+.client-explore-search {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    padding: 0 14px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 14px;
+    background: var(--mkf-ui-surface, #fff);
+}
+
+.client-explore-search:focus-within {
+    border-color: var(--mkf-ui-primary, #092af3);
+}
+
+.client-explore-search > svg {
+    flex: 0 0 auto;
+    font-size: 19px;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.client-explore-search input {
+    flex: 1;
+    min-width: 0;
+    min-height: 50px;
+
+    border: 0;
+    background: none;
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    /* 16px, ou o Safari do iPhone dá zoom ao focar. */
+    font-size: 1rem;
+}
+
+.client-explore-search input:focus {
+    outline: none;
+}
+
+.client-explore-search button {
+    display: grid;
+    place-items: center;
+
+    padding: 0;
+
+    border: 0;
+    background: none;
+    color: var(--mkf-text-secondary, #5c6278);
+
+    font-size: 18px;
+    cursor: pointer;
+}
+
+
+/* ---------- Grupos de categoria ---------- */
+
+.client-explore-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.client-explore-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+
+    min-height: 40px;
+    padding: 0 14px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 100px;
+    background: var(--mkf-ui-surface, #fff);
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    font-size: .88rem;
+    cursor: pointer;
+
+    transition: border-color .16s ease, background-color .16s ease;
+}
+
+.client-explore-group:hover {
+    border-color: var(--mkf-ui-primary, #092af3);
+}
+
+.client-explore-group.is-active {
+    border-color: transparent;
+    background: var(--mkf-ui-primary, #092af3);
+    color: #fff;
+}
+
+.client-explore-group svg {
+    font-size: 17px;
+}
+
+.client-explore-group small {
+    padding: 1px 7px;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-surface-hover, #f1f3f9);
+    color: var(--mkf-text-secondary, #5c6278);
+
+    font-size: .74rem;
+    font-weight: 600;
+}
+
+.client-explore-group.is-active small {
+    background: rgba(255, 255, 255, .22);
+    color: #fff;
+}
+
+
+/* ---------- Lista de empresas ---------- */
+
+.client-explore-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.client-explore-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    padding: 14px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 16px;
+    background: var(--mkf-ui-surface, #fff);
+
+    transition: border-color .16s ease;
+}
+
+.client-explore-card:hover {
+    border-color: var(--mkf-ui-primary, #092af3);
+}
+
+.client-explore-card-logo {
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 52px;
+    width: 52px;
+    height: 52px;
+
+    overflow: hidden;
+    border-radius: 14px;
+    background: var(--mkf-ui-primary-soft, #eef1ff);
+    color: var(--mkf-ui-primary, #092af3);
+
+    font-size: 25px;
+}
+
+.client-explore-card-logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.client-explore-card-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.client-explore-card-text strong {
+    font-size: .98rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.client-explore-card-handle {
+    font-size: .82rem;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.client-explore-card-tags {
+    font-size: .8rem;
+    color: var(--mkf-text-secondary, #5c6278);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.client-explore-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.client-explore-info {
+    display: grid;
+    place-items: center;
+
+    width: 40px;
+    height: 40px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 12px;
+    background: none;
+    color: var(--mkf-text-secondary, #5c6278);
+
+    font-size: 19px;
+    cursor: pointer;
+}
+
+.client-explore-info:hover {
+    border-color: var(--mkf-ui-primary, #092af3);
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.client-explore-enter {
+    min-height: 40px;
+    padding: 0 18px;
+
+    border: 0;
+    border-radius: 100px;
+    background: var(--mkf-ui-primary, #092af3);
+    color: #fff;
+
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+
+/* ---------- Estados ---------- */
+
+.client-explore-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    padding: 48px 24px;
+
+    border: 1px dashed var(--mkf-ui-border, #e4e7ef);
+    border-radius: 18px;
+
+    text-align: center;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.client-explore-state > svg {
+    font-size: 30px;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.client-explore-state strong {
+    font-size: 1rem;
+    color: var(--mkf-text-primary);
+}
+
+.client-explore-state span {
+    max-width: 38ch;
+    font-size: .9rem;
+    line-height: 1.5;
+}
+
+
+/* ---------- Celular ---------- */
+
+@media (max-width: 680px) {
+
+    .client-explore-card {
+        flex-wrap: wrap;
+    }
+
+    .client-explore-card-actions {
+        width: 100%;
+    }
+
+    .client-explore-enter {
+        flex: 1;
+    }
+
+}

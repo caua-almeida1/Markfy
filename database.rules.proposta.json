@@ -1,0 +1,109 @@
+{
+  "_comentario": [
+    "PROPOSTA de regras do Realtime Database.",
+    "",
+    "Este arquivo NAO esta ligado ao firebase.json e NAO foi publicado.",
+    "Revise, teste no simulador do console e so entao aplique.",
+    "",
+    "Hoje o banco esta aberto: qualquer pessoa sem login le users,",
+    "companys (com CPF/CNPJ) e invites via curl.",
+    "",
+    "Pontos de atencao ao aplicar:",
+    "- companiesIndex precisa de leitura publica (a tela Explorar",
+    "  roda sem login).",
+    "- documentsIndex nunca libera o no pai, so a chave exata.",
+    "- users fica restrito ao proprio uid; a checagem de e-mail",
+    "  existente (Invite e cadastro) precisa virar Cloud Function",
+    "  antes de aplicar a regra abaixo, senao essas telas quebram.",
+    "- a consulta rasa de companys no contexto passa a falhar e cai",
+    "  automaticamente para companiesIndex, que e publico."
+  ],
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "companiesIndex": {
+      ".read": true,
+      "$handle": {
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+      }
+    },
+    "documentsIndex": {
+      ".read": false,
+      ".write": false,
+      "$document": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "companys": {
+      ".read": false,
+      ".write": false,
+      "$handle": {
+        ".read": true,
+        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        "joinRequests": {
+          "_comentario": [
+            "Pedido de entrada numa empresa.",
+            "",
+            "Quem pede AINDA NAO e membro, entao a regra do $handle",
+            "acima (que exige membro para escrever) o barraria. Esta",
+            "regra mais funda devolve o acesso, mas so ao proprio no:",
+            "cada pessoa escreve companys/{handle}/joinRequests/{seu uid}.",
+            "",
+            "O .validate impede o solicitante de se auto-aprovar: ele",
+            "so consegue gravar status 'pending'. Mudar para 'approved'",
+            "exige ser membro."
+          ],
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || root.child('companys').child($handle).child('members').child(auth.uid).exists())",
+            ".write": "auth != null && (auth.uid === $uid || root.child('companys').child($handle).child('members').child(auth.uid).exists())",
+            ".validate": "!data.exists() || !newData.exists() || root.child('companys').child($handle).child('members').child(auth.uid).exists() || newData.child('status').val() === 'pending'"
+          }
+        }
+      }
+    },
+    "users": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": [
+        "email"
+      ],
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "companyHandle": {
+          "_comentario": [
+            "Ao aprovar um pedido, quem administra grava o handle no",
+            "usuario aprovado — e esse no pertence a OUTRA pessoa, que",
+            "a regra de users/$uid so libera para o dono.",
+            "",
+            "Esta regra abre exatamente esse caso: um membro da empresa",
+            "pode escrever o companyHandle de alguem que tem um pedido",
+            "aprovado naquela empresa. Nada alem disso.",
+            "",
+            "A tela de espera tambem grava esse campo sozinha ao ver a",
+            "aprovacao, entao o fluxo funciona mesmo que esta regra",
+            "seja removida."
+          ],
+          ".write": "auth != null && (auth.uid === $uid || root.child('companys').child(newData.val()).child('joinRequests').child($uid).child('status').val() === 'approved')"
+        }
+      }
+    },
+    "invites": {
+      ".read": false,
+      ".write": false,
+      "$inviteId": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+    "mercadoPagoConnections": {
+      ".read": false,
+      ".write": false,
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+      }
+    }
+  }
+}

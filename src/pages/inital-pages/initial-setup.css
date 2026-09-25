@@ -168,7 +168,7 @@
     border-color: var(--mkf-ui-primary);
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .initial-setup-progress-line {
@@ -325,7 +325,7 @@
 .initial-setup-role.selected .initial-setup-role-icon {
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 
@@ -396,7 +396,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 
@@ -501,7 +501,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-family: inherit;
     font-size: var(--mkf-font-sm);

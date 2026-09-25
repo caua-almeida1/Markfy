@@ -10,11 +10,18 @@ import {
     update,
     remove
 } from "firebase/database";
-import { motion, AnimatePresence } from "framer-motion";
 
 import "./orders.css";
 import placeholder from "../../../img/1.jpg";
 import Toast from "../../../components/toast/Toast";
+import Modal from "../../../components/modal/Modal";
+import useLastValue from "../../../hooks/useLastValue";
+
+import {
+    getSubscriptionSummary,
+    isSubscriptionUsable,
+    watchCompanySubscriptions
+} from "../../../utils/subscriptionRuntime";
 
 const Orders = ({ company, initialOrder }) => {
 
@@ -24,6 +31,38 @@ const Orders = ({ company, initialOrder }) => {
 
     const [activeTab, setActiveTab] = useState("ativos");
 
+    /* =========================================================
+       ASSINATURAS
+
+       Uma aba à parte porque uma mensalidade não é um pedido:
+       não tem data, não é concluída, e o que importa nela é
+       quanto ainda vai render e quando cobra de novo. Misturar
+       com os agendamentos esconderia as duas coisas.
+    ========================================================= */
+
+    const [subscriptions, setSubscriptions] = useState([]);
+
+
+    useEffect(() => {
+
+        if (!company?.handle) {
+            setSubscriptions([]);
+            return undefined;
+        }
+
+        const unsubscribe = watchCompanySubscriptions(
+            company.handle,
+            setSubscriptions
+        );
+
+        return () => unsubscribe();
+
+    }, [company?.handle]);
+
+
+    const activeSubscriptions =
+        subscriptions.filter(isSubscriptionUsable);
+
     const [orders, setOrders] = useState([]);
 
     const [loading, setLoading] = useState(true);
@@ -32,9 +71,27 @@ const Orders = ({ company, initialOrder }) => {
 
     const [openOrderDetails, setOpenOrderDetails] = useState(null);
 
+    /* O modal de detalhes só sai do DOM depois da animação,
+       quando o state já é null: sem guardar o último pedido
+       o painel sairia vazio. */
+    const orderDetails = useLastValue(openOrderDetails);
+
     const [orderToDelete, setOrderToDelete] = useState(null);
 
     const [orderToCancel, setOrderToCancel] = useState(null);
+
+
+    /* =========================================================
+       SELEÇÃO EM LOTE
+    ========================================================= */
+
+    const [selectionMode, setSelectionMode] = useState(false);
+
+    const [selectedOrderIds, setSelectedOrderIds] = useState([]);
+
+    const [showBulkCancelConfirm, setShowBulkCancelConfirm] = useState(false);
+
+    const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
 
 
     /* =========================================================
@@ -1149,6 +1206,258 @@ const Orders = ({ company, initialOrder }) => {
 
 
     /* =========================================================
+       AÇÕES DE SELEÇÃO
+    ========================================================= */
+
+    const toggleSelectionMode = () => {
+
+        setSelectionMode(
+            prev => !prev
+        );
+
+        setSelectedOrderIds(
+            []
+        );
+
+    };
+
+
+    const toggleSelectOrder = (id) => {
+
+        setSelectedOrderIds(
+            prev =>
+                prev.includes(id)
+                    ? prev.filter(
+                        item =>
+                            item !== id
+                    )
+                    : [
+                        ...prev,
+                        id
+                    ]
+        );
+
+    };
+
+
+    const isAllFilteredSelected =
+        filteredOrders.length > 0 &&
+        filteredOrders.every(
+            order =>
+                selectedOrderIds.includes(
+                    order.id
+                )
+        );
+
+
+    const toggleSelectAll = () => {
+
+        if (isAllFilteredSelected) {
+
+            setSelectedOrderIds(
+                []
+            );
+
+        } else {
+
+            setSelectedOrderIds(
+                filteredOrders.map(
+                    order =>
+                        order.id
+                )
+            );
+
+        }
+
+    };
+
+
+    useEffect(() => {
+
+        setSelectedOrderIds(
+            []
+        );
+
+    }, [activeTab]);
+
+
+    /* =========================================================
+       AÇÕES EM LOTE
+    ========================================================= */
+
+    const handleBulkComplete = async () => {
+
+        if (selectedOrderIds.length === 0) {
+            return;
+        }
+
+        const ids = selectedOrderIds;
+
+        try {
+
+            const db =
+                getDatabase();
+
+            await Promise.all(
+                ids.map(
+                    (id) =>
+                        update(
+                            ref(
+                                db,
+                                `companys/${company.handle}/schedules/${id}`
+                            ),
+                            {
+                                status:
+                                    "completed"
+                            }
+                        )
+                )
+            );
+
+            setSelectedOrderIds(
+                []
+            );
+
+            openToast(
+                "success",
+                "Pedidos concluídos",
+                `${ids.length} pedido(s) finalizado(s) com sucesso.`
+            );
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+            openToast(
+                "error",
+                "Erro",
+                "Não foi possível concluir os pedidos selecionados."
+            );
+
+        }
+
+    };
+
+
+    const handleBulkCancel = async () => {
+
+        if (selectedOrderIds.length === 0) {
+            return;
+        }
+
+        const ids = selectedOrderIds;
+
+        try {
+
+            const db =
+                getDatabase();
+
+            await Promise.all(
+                ids.map(
+                    (id) =>
+                        update(
+                            ref(
+                                db,
+                                `companys/${company.handle}/schedules/${id}`
+                            ),
+                            {
+                                status:
+                                    "cancelados"
+                            }
+                        )
+                )
+            );
+
+            setSelectedOrderIds(
+                []
+            );
+
+            setShowBulkCancelConfirm(
+                false
+            );
+
+            openToast(
+                "success",
+                "Pedidos cancelados",
+                `${ids.length} agendamento(s) cancelado(s) com sucesso.`
+            );
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+            openToast(
+                "error",
+                "Erro",
+                "Não foi possível cancelar os pedidos selecionados."
+            );
+
+        }
+
+    };
+
+
+    const handleBulkDelete = async () => {
+
+        if (selectedOrderIds.length === 0) {
+            return;
+        }
+
+        const ids = selectedOrderIds;
+
+        try {
+
+            const db =
+                getDatabase();
+
+            await Promise.all(
+                ids.map(
+                    (id) =>
+                        remove(
+                            ref(
+                                db,
+                                `companys/${company.handle}/schedules/${id}`
+                            )
+                        )
+                )
+            );
+
+            setSelectedOrderIds(
+                []
+            );
+
+            setShowBulkDeleteConfirm(
+                false
+            );
+
+            openToast(
+                "success",
+                "Pedidos excluídos",
+                `${ids.length} agendamento(s) removido(s) com sucesso.`
+            );
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+            openToast(
+                "error",
+                "Erro",
+                "Não foi possível excluir os pedidos selecionados."
+            );
+
+        }
+
+    };
+
+
+    /* =========================================================
        AÇÕES DOS FILTROS
     ========================================================= */
 
@@ -1349,6 +1658,11 @@ const Orders = ({ company, initialOrder }) => {
                                 id: "cancelados",
                                 label: "Cancelados",
                                 icon: "lucide:x-circle"
+                            },
+                            {
+                                id: "assinaturas",
+                                label: "Assinaturas",
+                                icon: "lucide:repeat"
                             }
                         ].map((tab) => (
 
@@ -1376,7 +1690,9 @@ const Orders = ({ company, initialOrder }) => {
                                 </span>
 
                                 <strong>
-                                    {orderCounts[tab.id]}
+                                    {tab.id === "assinaturas"
+                                        ? activeSubscriptions.length
+                                        : orderCounts[tab.id]}
                                 </strong>
 
                             </button>
@@ -1493,9 +1809,141 @@ const Orders = ({ company, initialOrder }) => {
 
                         </button>
 
+
+                        <button
+                            type="button"
+                            className={
+                                `orders-toolbar-button ${selectionMode
+                                    ? "has-filter"
+                                    : ""
+                                }`
+                            }
+                            onClick={
+                                toggleSelectionMode
+                            }
+                        >
+
+                            <Icon
+                                icon={
+                                    selectionMode
+                                        ? "lucide:x"
+                                        : "lucide:list-checks"
+                                }
+                            />
+
+                            <span>
+                                {selectionMode
+                                    ? "Cancelar seleção"
+                                    : "Selecionar"}
+                            </span>
+
+                        </button>
+
                     </div>
 
                 </section>
+
+
+                {/* =================================================
+                    BULK ACTIONS BAR
+                ================================================= */}
+
+                {selectionMode && (
+
+                    <div className="orders-bulk-bar">
+
+                        <label className="orders-bulk-select-all">
+
+                            <input
+                                type="checkbox"
+                                checked={
+                                    isAllFilteredSelected
+                                }
+                                onChange={
+                                    toggleSelectAll
+                                }
+                            />
+
+                            <span>
+                                {selectedOrderIds.length > 0
+                                    ? `${selectedOrderIds.length} selecionado${selectedOrderIds.length > 1 ? "s" : ""}`
+                                    : "Selecionar todos"}
+                            </span>
+
+                        </label>
+
+
+                        {selectedOrderIds.length > 0 && (
+
+                            <div className="orders-bulk-actions">
+
+                                {activeTab === "ativos" && (
+
+                                    <>
+
+                                        <button
+                                            type="button"
+                                            className="orders-bulk-complete"
+                                            onClick={
+                                                handleBulkComplete
+                                            }
+                                        >
+
+                                            <Icon
+                                                icon="lucide:check"
+                                            />
+
+                                            Completar
+
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="orders-bulk-cancel"
+                                            onClick={() =>
+                                                setShowBulkCancelConfirm(
+                                                    true
+                                                )
+                                            }
+                                        >
+
+                                            <Icon
+                                                icon="lucide:circle-alert"
+                                            />
+
+                                            Cancelar
+
+                                        </button>
+
+                                    </>
+
+                                )}
+
+                                <button
+                                    type="button"
+                                    className="orders-bulk-delete"
+                                    onClick={() =>
+                                        setShowBulkDeleteConfirm(
+                                            true
+                                        )
+                                    }
+                                >
+
+                                    <Icon
+                                        icon="lucide:trash-2"
+                                    />
+
+                                    Excluir
+
+                                </button>
+
+                            </div>
+
+                        )}
+
+                    </div>
+
+                )}
 
 
                 {/* =================================================
@@ -1616,6 +2064,252 @@ const Orders = ({ company, initialOrder }) => {
 
 
                 {/* =================================================
+                    ASSINATURAS
+
+                    Substitui a lista de pedidos quando a aba
+                    está selecionada. Cada linha responde o que
+                    o dono da empresa precisa saber: quem
+                    assina, quanto rende, quanto já usou do
+                    ciclo e quando entra o próximo dinheiro.
+                ================================================= */}
+
+                {activeTab === "assinaturas" ? (
+
+                    <section className="orders-list-section">
+
+                        <div className="orders-list-header">
+
+                            <div>
+                                <span>
+                                    {activeSubscriptions.length}
+                                    {" "}
+                                    {activeSubscriptions.length === 1
+                                        ? "assinatura ativa"
+                                        : "assinaturas ativas"}
+                                </span>
+
+                                <h2>Receita recorrente</h2>
+                            </div>
+
+                            {activeSubscriptions.length > 0 && (
+
+                                <div className="orders-subscriptions-total">
+                                    <span>Por ciclo</span>
+
+                                    <strong>
+                                        {activeSubscriptions
+                                            .reduce(
+                                                (soma, item) =>
+                                                    soma + Number(item.price || 0),
+                                                0
+                                            )
+                                            .toLocaleString("pt-BR", {
+                                                style: "currency",
+                                                currency: "BRL"
+                                            })}
+                                    </strong>
+                                </div>
+
+                            )}
+
+                        </div>
+
+
+                        {activeSubscriptions.length === 0 ? (
+
+                            <div className="orders-empty">
+
+                                <Icon icon="lucide:repeat" />
+
+                                <h3>Nenhuma assinatura ativa</h3>
+
+                                <p>
+                                    Quando alguém assinar um produto de
+                                    mensalidade, ele aparece aqui com o
+                                    saldo do ciclo e a próxima cobrança.
+                                </p>
+
+                            </div>
+
+                        ) : (
+
+                            <div className="orders-subscriptions-list">
+
+                                {activeSubscriptions.map((assinatura) => {
+
+                                    const resumo =
+                                        getSubscriptionSummary(
+                                            assinatura,
+                                            orders
+                                        );
+
+                                    /* Os dias que a pessoa já marcou
+                                       dentro do ciclo atual. É o que o
+                                       profissional precisa ver para se
+                                       organizar. */
+                                    const diasMarcados =
+                                        orders
+                                            .filter(
+                                                (pedido) =>
+                                                    pedido.subscriptionId ===
+                                                    assinatura.id
+                                            )
+                                            .filter((pedido) => {
+
+                                                const data =
+                                                    parseOrderDateTime(pedido);
+
+                                                return (
+                                                    data &&
+                                                    data >= resumo.cycleStart &&
+                                                    data < resumo.cycleEnd &&
+                                                    pedido.status !== "cancelados"
+                                                );
+
+                                            })
+                                            .sort(
+                                                (a, b) =>
+                                                    (parseOrderDateTime(a) || 0) -
+                                                    (parseOrderDateTime(b) || 0)
+                                            );
+
+                                    return (
+                                        <article
+                                            key={assinatura.id}
+                                            className="orders-subscription"
+                                        >
+
+                                            <header>
+
+                                                <div className="orders-subscription-avatar">
+                                                    <Icon icon="lucide:user-round" />
+                                                </div>
+
+                                                <div className="orders-subscription-who">
+
+                                                    <strong>
+                                                        {assinatura.userName ||
+                                                            "Sem nome"}
+                                                    </strong>
+
+                                                    <span>
+                                                        {assinatura.productName ||
+                                                            "Mensalidade"}
+                                                    </span>
+
+                                                </div>
+
+                                                <div className="orders-subscription-price">
+
+                                                    <strong>
+                                                        {Number(assinatura.price || 0)
+                                                            .toLocaleString("pt-BR", {
+                                                                style: "currency",
+                                                                currency: "BRL"
+                                                            })}
+                                                    </strong>
+
+                                                    <span>
+                                                        {resumo.ciclo.periodLabel}
+                                                    </span>
+
+                                                </div>
+
+                                                <span
+                                                    className={`orders-subscription-badge ${assinatura.status === "past_due"
+                                                        ? "is-late"
+                                                        : "is-active"
+                                                        }`}
+                                                >
+                                                    {assinatura.status === "past_due"
+                                                        ? "Em atraso"
+                                                        : "Ativa"}
+                                                </span>
+
+                                            </header>
+
+                                            <div className="orders-subscription-facts">
+
+                                                <div>
+                                                    <span>Usou no ciclo</span>
+                                                    <strong>
+                                                        {resumo.sessoesUsadas}
+                                                        {resumo.sessoesRestantes === null
+                                                            ? " (ilimitado)"
+                                                            : ` de ${assinatura.sessionsPerCycle}`}
+                                                    </strong>
+                                                </div>
+
+                                                <div>
+                                                    <span>Próxima cobrança</span>
+                                                    <strong>
+                                                        {resumo.proximaCobranca
+                                                            .toLocaleDateString("pt-BR")}
+                                                    </strong>
+                                                </div>
+
+                                                <div>
+                                                    <span>Cliente desde</span>
+                                                    <strong>
+                                                        {new Date(assinatura.startedAt)
+                                                            .toLocaleDateString("pt-BR")}
+                                                    </strong>
+                                                </div>
+
+                                            </div>
+
+                                            <div className="orders-subscription-days">
+
+                                                <span className="orders-subscription-days-label">
+                                                    Dias marcados neste ciclo
+                                                </span>
+
+                                                {diasMarcados.length === 0 ? (
+
+                                                    <em>
+                                                        Nada marcado ainda.
+                                                    </em>
+
+                                                ) : (
+
+                                                    <div className="orders-subscription-days-list">
+
+                                                        {diasMarcados.map((pedido) => (
+
+                                                            <button
+                                                                key={pedido.id}
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setOpenOrderDetails(pedido)
+                                                                }
+                                                            >
+                                                                <Icon icon="lucide:calendar" />
+
+                                                                {pedido.day} · {pedido.hour}
+                                                            </button>
+
+                                                        ))}
+
+                                                    </div>
+
+                                                )}
+
+                                            </div>
+
+                                        </article>
+                                    );
+
+                                })}
+
+                            </div>
+
+                        )}
+
+                    </section>
+
+                ) : (<>
+
+                {/* =================================================
                     LIST HEADER
                 ================================================= */}
 
@@ -1652,29 +2346,20 @@ const Orders = ({ company, initialOrder }) => {
                         LIST
                     ================================================= */}
 
-                    <AnimatePresence mode="wait">
-
-                        <motion.div
-                            key={
-                                `${activeTab}-${selectedSort}-${searchTerm}-${selectedPeriod}`
-                            }
-                            className="orders-list"
-                            initial={{
-                                opacity: 0,
-                                y: 8
-                            }}
-                            animate={{
-                                opacity: 1,
-                                y: 0
-                            }}
-                            exit={{
-                                opacity: 0,
-                                y: -8
-                            }}
-                            transition={{
-                                duration: 0.2
-                            }}
-                        >
+                    {/* Reordenar/filtrar remonta a lista pelo `key` e
+                        a entrada do CSS reinicia. Sem animação de
+                        saída, a lista nova não espera a antiga. */}
+                    <div
+                        key={
+                            `${activeTab}-${selectedSort}-${searchTerm}-${selectedPeriod}`
+                        }
+                        className={
+                            `orders-list mkf-list-enter ${selectionMode
+                                ? "has-selection"
+                                : ""
+                            }`
+                        }
+                    >
 
                             {/* =========================================
                                 TABLE HEADER
@@ -1683,6 +2368,24 @@ const Orders = ({ company, initialOrder }) => {
                             {filteredOrders.length > 0 && (
 
                                 <div className="orders-table-header">
+
+                                    {selectionMode && (
+
+                                        <div className="orders-row-checkbox">
+
+                                            <input
+                                                type="checkbox"
+                                                checked={
+                                                    isAllFilteredSelected
+                                                }
+                                                onChange={
+                                                    toggleSelectAll
+                                                }
+                                            />
+
+                                        </div>
+
+                                    )}
 
                                     <span>
                                         Serviço
@@ -1732,14 +2435,50 @@ const Orders = ({ company, initialOrder }) => {
                                             "Cliente";
 
 
+                                        const isOrderSelected =
+                                            selectedOrderIds.includes(
+                                                order.id
+                                            );
+
+
                                         return (
 
                                             <article
-                                                className="orders-row"
+                                                className={
+                                                    `orders-row ${isOrderSelected
+                                                        ? "selected"
+                                                        : ""
+                                                    }`
+                                                }
                                                 key={
                                                     order.id
                                                 }
                                             >
+
+                                                {selectionMode && (
+
+                                                    <div
+                                                        className="orders-row-checkbox"
+                                                        onClick={(e) =>
+                                                            e.stopPropagation()
+                                                        }
+                                                    >
+
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={
+                                                                isOrderSelected
+                                                            }
+                                                            onChange={() =>
+                                                                toggleSelectOrder(
+                                                                    order.id
+                                                                )
+                                                            }
+                                                        />
+
+                                                    </div>
+
+                                                )}
 
                                                 {/* =====================
                                                     SERVICE
@@ -2066,11 +2805,11 @@ const Orders = ({ company, initialOrder }) => {
 
                             )}
 
-                        </motion.div>
-
-                    </AnimatePresence>
+                        </div>
 
                 </section>
+
+                </>)}
 
             </main>
 
@@ -2079,52 +2818,15 @@ const Orders = ({ company, initialOrder }) => {
                 MODAL DE ORDENAÇÃO
             ===================================================== */}
 
-            <AnimatePresence>
-
-                {isSortOpen && (
-
-                    <motion.div
-                        className="orders-modal-overlay"
-                        initial={{
-                            opacity: 0
-                        }}
-                        animate={{
-                            opacity: 1
-                        }}
-                        exit={{
-                            opacity: 0
-                        }}
-                        onClick={() =>
+            <Modal
+                open={isSortOpen}
+                onClose={() =>
                             setIsSortOpen(
                                 false
-                            )
-                        }
-                    >
-
-                        <motion.div
-                            className="orders-sort-modal"
-                            initial={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-                            animate={{
-                                opacity: 1,
-                                scale: 1,
-                                y: 0
-                            }}
-                            exit={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-                            transition={{
-                                duration: 0.2
-                            }}
-                            onClick={(e) =>
-                                e.stopPropagation()
-                            }
-                        >
+                            )}
+                overlayClassName="orders-modal-overlay"
+                className="orders-sort-modal"
+            >
 
                             <div className="orders-modal-header">
 
@@ -2238,65 +2940,22 @@ const Orders = ({ company, initialOrder }) => {
 
                             </div>
 
-                        </motion.div>
-
-                    </motion.div>
-
-                )}
-
-            </AnimatePresence>
+                        </Modal>
 
 
             {/* =====================================================
                 MODAL DE FILTROS
             ===================================================== */}
 
-            <AnimatePresence>
-
-                {isFilterOpen && (
-
-                    <motion.div
-                        className="orders-modal-overlay"
-                        initial={{
-                            opacity: 0
-                        }}
-                        animate={{
-                            opacity: 1
-                        }}
-                        exit={{
-                            opacity: 0
-                        }}
-                        onClick={() =>
+            <Modal
+                open={isFilterOpen}
+                onClose={() =>
                             setIsFilterOpen(
                                 false
-                            )
-                        }
-                    >
-
-                        <motion.div
-                            className="orders-filter-modal-new"
-                            initial={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-                            animate={{
-                                opacity: 1,
-                                scale: 1,
-                                y: 0
-                            }}
-                            exit={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-                            transition={{
-                                duration: 0.2
-                            }}
-                            onClick={(e) =>
-                                e.stopPropagation()
-                            }
-                        >
+                            )}
+                overlayClassName="orders-modal-overlay"
+                className="orders-filter-modal-new"
+            >
 
                             <div className="orders-modal-header">
 
@@ -2672,35 +3331,16 @@ const Orders = ({ company, initialOrder }) => {
 
                             </div>
 
-                        </motion.div>
-
-                    </motion.div>
-
-                )}
-
-            </AnimatePresence>
+                        </Modal>
 
 
             {/* =====================================================
                 MODAL DETALHES
             ===================================================== */}
 
-            <AnimatePresence>
-
-                {openOrderDetails && (
-
-                    <motion.div
-                        className="orders-details-overlay"
-                        initial={{
-                            opacity: 0
-                        }}
-                        animate={{
-                            opacity: 1
-                        }}
-                        exit={{
-                            opacity: 0
-                        }}
-                        onClick={(e) => {
+            <Modal
+                open={!!openOrderDetails}
+                onClose={(e) => {
 
                             if (
                                 e.target.classList.contains(
@@ -2715,31 +3355,12 @@ const Orders = ({ company, initialOrder }) => {
                             }
 
                         }}
-                    >
+                overlayClassName="orders-details-overlay"
+                className="orders-details-modal"
+            >
 
-                        <motion.div
-                            className="orders-details-modal"
-                            initial={{
-                                opacity: 0,
-                                scale: 0.95,
-                                y: 15
-                            }}
-                            animate={{
-                                opacity: 1,
-                                scale: 1,
-                                y: 0
-                            }}
-                            exit={{
-                                opacity: 0,
-                                scale: 0.95,
-                                y: 15
-                            }}
-                            transition={{
-                                type: "spring",
-                                stiffness: 280,
-                                damping: 25
-                            }}
-                        >
+                {orderDetails && (
+                    <>
 
                             {/* =========================
                                 HEADER
@@ -2758,7 +3379,7 @@ const Orders = ({ company, initialOrder }) => {
                                     </h2>
 
                                     <p>
-                                        #{openOrderDetails.id}
+                                        #{orderDetails.id}
                                     </p>
 
                                 </div>
@@ -2797,11 +3418,11 @@ const Orders = ({ company, initialOrder }) => {
 
                                         <img
                                             src={
-                                                openOrderDetails.productImage ||
+                                                orderDetails.productImage ||
                                                 placeholder
                                             }
                                             alt={
-                                                openOrderDetails.productName
+                                                orderDetails.productName
                                             }
                                             onError={(
                                                 e
@@ -2824,13 +3445,13 @@ const Orders = ({ company, initialOrder }) => {
 
                                         <h3>
                                             {
-                                                openOrderDetails.productName
+                                                orderDetails.productName
                                             }
                                         </h3>
 
                                         <strong>
                                             {
-                                                openOrderDetails.productValue
+                                                orderDetails.productValue
                                             }
                                         </strong>
 
@@ -2839,21 +3460,21 @@ const Orders = ({ company, initialOrder }) => {
 
                                     <span
                                         className={
-                                            `orders-status-badge ${openOrderDetails.statusDisplay}`
+                                            `orders-status-badge ${orderDetails.statusDisplay}`
                                         }
                                     >
 
                                         <Icon
                                             icon={
                                                 getStatusIcon(
-                                                    openOrderDetails.statusDisplay
+                                                    orderDetails.statusDisplay
                                                 )
                                             }
                                         />
 
                                         {
                                             formatStatus(
-                                                openOrderDetails.statusDisplay
+                                                orderDetails.statusDisplay
                                             )
                                         }
 
@@ -2877,8 +3498,8 @@ const Orders = ({ company, initialOrder }) => {
                                         <strong>
                                             {
                                                 truncate(
-                                                    openOrderDetails.userName ||
-                                                    openOrderDetails.clientName ||
+                                                    orderDetails.userName ||
+                                                    orderDetails.clientName ||
                                                     "Cliente",
                                                     28
                                                 )
@@ -2897,7 +3518,7 @@ const Orders = ({ company, initialOrder }) => {
                                         <strong>
                                             {
                                                 truncate(
-                                                    openOrderDetails.professionalName,
+                                                    orderDetails.professionalName,
                                                     28
                                                 )
                                             }
@@ -2914,8 +3535,8 @@ const Orders = ({ company, initialOrder }) => {
 
                                         <strong>
                                             {
-                                                openOrderDetails.dayLabel ||
-                                                openOrderDetails.day ||
+                                                orderDetails.dayLabel ||
+                                                orderDetails.day ||
                                                 "—"
                                             }
                                         </strong>
@@ -2931,8 +3552,8 @@ const Orders = ({ company, initialOrder }) => {
 
                                         <strong>
                                             {
-                                                openOrderDetails.fullHour ||
-                                                openOrderDetails.hour ||
+                                                orderDetails.fullHour ||
+                                                orderDetails.hour ||
                                                 "—"
                                             }
                                         </strong>
@@ -2947,8 +3568,8 @@ const Orders = ({ company, initialOrder }) => {
                                         </span>
 
                                         <strong>
-                                            {openOrderDetails.duration
-                                                ? `${openOrderDetails.duration} min`
+                                            {orderDetails.duration
+                                                ? `${orderDetails.duration} min`
                                                 : "—"}
                                         </strong>
 
@@ -2963,7 +3584,7 @@ const Orders = ({ company, initialOrder }) => {
 
                                         <strong>
                                             {
-                                                openOrderDetails.productValue
+                                                orderDetails.productValue
                                             }
                                         </strong>
 
@@ -2973,10 +3594,44 @@ const Orders = ({ company, initialOrder }) => {
 
 
                                 {/* =====================
+                                    OBSERVAÇÃO DO CLIENTE
+
+                                    Fica antes do id do produto
+                                    porque é o que muda o
+                                    atendimento — alergia, atraso,
+                                    preferência. Um id de produto
+                                    ninguém lê com pressa; um
+                                    recado, sim.
+                                ===================== */}
+
+                                {orderDetails.notes && (
+
+                                    <section className="orders-details-notes">
+
+                                        <div className="orders-details-notes-head">
+
+                                            <Icon icon="lucide:message-square-text" />
+
+                                            <span>
+                                                Observação do cliente
+                                            </span>
+
+                                        </div>
+
+                                        <p>
+                                            {orderDetails.notes}
+                                        </p>
+
+                                    </section>
+
+                                )}
+
+
+                                {/* =====================
                                     ID DO PRODUTO
                                 ===================== */}
 
-                                {openOrderDetails.productId && (
+                                {orderDetails.productId && (
 
                                     <section className="orders-details-reference">
 
@@ -2987,7 +3642,7 @@ const Orders = ({ company, initialOrder }) => {
                                             </span>
 
                                             <strong>
-                                                #{openOrderDetails.productId}
+                                                #{orderDetails.productId}
                                             </strong>
 
                                         </div>
@@ -3015,7 +3670,7 @@ const Orders = ({ company, initialOrder }) => {
                                     onClick={() => {
 
                                         setOrderToDelete(
-                                            openOrderDetails
+                                            orderDetails
                                         );
 
                                         setOpenOrderDetails(
@@ -3034,7 +3689,7 @@ const Orders = ({ company, initialOrder }) => {
                                 </button>
 
 
-                                {openOrderDetails.statusDisplay ===
+                                {orderDetails.statusDisplay ===
                                     "ativos" && (
 
                                         <>
@@ -3045,7 +3700,7 @@ const Orders = ({ company, initialOrder }) => {
                                                 onClick={() => {
 
                                                     setOrderToCancel(
-                                                        openOrderDetails
+                                                        orderDetails
                                                     );
 
                                                     setOpenOrderDetails(
@@ -3065,7 +3720,7 @@ const Orders = ({ company, initialOrder }) => {
                                                 className="orders-details-complete"
                                                 onClick={() =>
                                                     handleComplete(
-                                                        openOrderDetails
+                                                        orderDetails
                                                     )
                                                 }
                                             >
@@ -3084,51 +3739,22 @@ const Orders = ({ company, initialOrder }) => {
 
                             </footer>
 
-                        </motion.div>
-
-                    </motion.div>
-
+                    </>
                 )}
 
-            </AnimatePresence>
+                        </Modal>
 
 
             {/* =====================================================
                 MODAL EXCLUSÃO
             ===================================================== */}
 
-            <AnimatePresence>
-
-                {orderToDelete && (
-
-                    <motion.div
-                        className="orders-confirm-overlay"
-                        initial={{
-                            opacity: 0
-                        }}
-                        animate={{
-                            opacity: 1
-                        }}
-                        exit={{
-                            opacity: 0
-                        }}
-                    >
-
-                        <motion.div
-                            className="orders-confirm-modal"
-                            initial={{
-                                opacity: 0,
-                                scale: 0.92
-                            }}
-                            animate={{
-                                opacity: 1,
-                                scale: 1
-                            }}
-                            exit={{
-                                opacity: 0,
-                                scale: 0.92
-                            }}
-                        >
+            <Modal
+                open={orderToDelete}
+                onClose={() => setOrderToDelete(null)}
+                overlayClassName="orders-confirm-overlay"
+                className="orders-confirm-modal"
+            >
 
                             <div className="orders-confirm-icon danger">
 
@@ -3173,51 +3799,19 @@ const Orders = ({ company, initialOrder }) => {
 
                             </div>
 
-                        </motion.div>
-
-                    </motion.div>
-
-                )}
-
-            </AnimatePresence>
+                        </Modal>
 
 
             {/* =====================================================
                 MODAL CANCELAMENTO
             ===================================================== */}
 
-            <AnimatePresence>
-
-                {orderToCancel && (
-
-                    <motion.div
-                        className="orders-confirm-overlay"
-                        initial={{
-                            opacity: 0
-                        }}
-                        animate={{
-                            opacity: 1
-                        }}
-                        exit={{
-                            opacity: 0
-                        }}
-                    >
-
-                        <motion.div
-                            className="orders-confirm-modal"
-                            initial={{
-                                opacity: 0,
-                                scale: 0.92
-                            }}
-                            animate={{
-                                opacity: 1,
-                                scale: 1
-                            }}
-                            exit={{
-                                opacity: 0,
-                                scale: 0.92
-                            }}
-                        >
+            <Modal
+                open={orderToCancel}
+                onClose={() => setOrderToCancel(null)}
+                overlayClassName="orders-confirm-overlay"
+                className="orders-confirm-modal"
+            >
 
                             <div className="orders-confirm-icon warning">
 
@@ -3274,13 +3868,122 @@ const Orders = ({ company, initialOrder }) => {
 
                             </div>
 
-                        </motion.div>
+                        </Modal>
 
-                    </motion.div>
 
-                )}
+            {/* =====================================================
+                MODAL CANCELAMENTO EM LOTE
+            ===================================================== */}
 
-            </AnimatePresence>
+            <Modal
+                open={showBulkCancelConfirm}
+                onClose={() => setShowBulkCancelConfirm(false)}
+                overlayClassName="orders-confirm-overlay"
+                className="orders-confirm-modal"
+            >
+
+                            <div className="orders-confirm-icon warning">
+
+                                <Icon
+                                    icon="lucide:circle-alert"
+                                />
+
+                            </div>
+
+                            <h2>
+                                Cancelar pedidos selecionados?
+                            </h2>
+
+                            <p>
+                                Tem certeza que deseja cancelar
+                                {" "}{selectedOrderIds.length} agendamento(s)?
+                                Os clientes poderão ser notificados
+                                sobre o cancelamento.
+                            </p>
+
+                            <div className="orders-confirm-actions">
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowBulkCancelConfirm(
+                                            false
+                                        )
+                                    }
+                                >
+                                    Voltar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="warning"
+                                    onClick={
+                                        handleBulkCancel
+                                    }
+                                >
+                                    Cancelar pedidos
+                                </button>
+
+                            </div>
+
+                        </Modal>
+
+
+            {/* =====================================================
+                MODAL EXCLUSÃO EM LOTE
+            ===================================================== */}
+
+            <Modal
+                open={showBulkDeleteConfirm}
+                onClose={() => setShowBulkDeleteConfirm(false)}
+                overlayClassName="orders-confirm-overlay"
+                className="orders-confirm-modal"
+            >
+
+                            <div className="orders-confirm-icon danger">
+
+                                <Icon
+                                    icon="lucide:trash-2"
+                                />
+
+                            </div>
+
+                            <h2>
+                                Excluir pedidos selecionados?
+                            </h2>
+
+                            <p>
+                                Tem certeza que deseja excluir
+                                {" "}{selectedOrderIds.length} pedido(s)?
+                                Essa ação não pode ser desfeita.
+                            </p>
+
+                            <div className="orders-confirm-actions">
+
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setShowBulkDeleteConfirm(
+                                            false
+                                        )
+                                    }
+                                >
+                                    Voltar
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="danger"
+                                    onClick={
+                                        handleBulkDelete
+                                    }
+                                >
+                                    Excluir pedidos
+                                </button>
+
+                            </div>
+
+                        </Modal>
 
 
             {/* =====================================================
@@ -3359,50 +4062,13 @@ export const OrderDetailsModal = ({
 
     return (
 
-        <motion.div
-            className="orders-details-overlay"
-            initial={{
-                opacity: 0
-            }}
-            animate={{
-                opacity: 1
-            }}
-            exit={{
-                opacity: 0
-            }}
-            onClick={(e) => {
-
-                if (
-                    e.target.classList.contains(
-                        "orders-details-overlay"
-                    )
-                ) {
-
-                    onClose();
-
-                }
-
-            }}
+        <Modal
+            open
+            onClose={onClose}
+            overlayClassName="orders-details-overlay"
+            className="orders-details-modal"
+            label="Detalhes do pedido"
         >
-
-            <motion.div
-                className="orders-details-modal"
-                initial={{
-                    opacity: 0,
-                    scale: 0.95,
-                    y: 15
-                }}
-                animate={{
-                    opacity: 1,
-                    scale: 1,
-                    y: 0
-                }}
-                exit={{
-                    opacity: 0,
-                    scale: 0.95,
-                    y: 15
-                }}
-            >
 
                 <header className="orders-details-header">
 
@@ -3603,9 +4269,7 @@ export const OrderDetailsModal = ({
 
                 </footer>
 
-            </motion.div>
-
-        </motion.div>
+        </Modal>
 
     );
 

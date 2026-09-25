@@ -8,13 +8,6 @@ import {
   update
 } from "firebase/database";
 
-import {
-  getStorage,
-  ref as storageRef,
-  uploadString,
-  getDownloadURL
-} from "firebase/storage";
-
 import { getAuth } from "firebase/auth";
 
 import "./preview-company.css";
@@ -24,6 +17,15 @@ import { Icon } from "@iconify/react";
 import {
   removeDraftImage
 } from "../create-company/utils/companyDraft";
+
+import {
+  syncCompanyIndex,
+  setDocumentOwner
+} from "../../../../firebase/companiesIndex";
+
+import {
+  uploadCompanyLogo
+} from "../../../../firebase/companyLogo";
 
 
 /* ============================================================
@@ -273,110 +275,6 @@ export default function PreviewCompany() {
 
   /*
    * ============================================================
-   * COMPRESSÃO DA LOGO
-   * ============================================================
-   */
-
-  const compressImage = (
-    dataUrl,
-    maxWidth = 500,
-    quality = 0.7
-  ) => {
-
-    return new Promise((resolve, reject) => {
-
-      const img =
-        new Image();
-
-
-      img.onload = () => {
-
-        try {
-
-          const canvas =
-            document.createElement(
-              "canvas"
-            );
-
-
-          const scale =
-            Math.min(
-              maxWidth / img.width,
-              1
-            );
-
-
-          canvas.width =
-            img.width * scale;
-
-
-          canvas.height =
-            img.height * scale;
-
-
-          const ctx =
-            canvas.getContext(
-              "2d"
-            );
-
-
-          if (!ctx) {
-
-            reject(
-              new Error(
-                "Não foi possível criar o canvas."
-              )
-            );
-
-            return;
-          }
-
-
-          ctx.drawImage(
-            img,
-            0,
-            0,
-            canvas.width,
-            canvas.height
-          );
-
-
-          resolve(
-            canvas.toDataURL(
-              "image/png",
-              quality
-            )
-          );
-
-        } catch (error) {
-
-          reject(error);
-
-        }
-
-      };
-
-
-      img.onerror = () => {
-
-        reject(
-          new Error(
-            "Não foi possível carregar a imagem."
-          )
-        );
-
-      };
-
-
-      img.src = dataUrl;
-
-    });
-
-  };
-
-
-  /*
-   * ============================================================
    * CADASTRAR EMPRESA
    * ============================================================
    */
@@ -434,35 +332,13 @@ export default function PreviewCompany() {
 
         try {
 
-          const compressedLogo =
-            await compressImage(
-              companyData.logoPreview,
-              500,
-              0.7
-            );
-
-
-          const storage =
-            getStorage();
-
-
-          const logoRef =
-            storageRef(
-              storage,
-              `companys/${companyData.handle}/logo.png`
-            );
-
-
-          await uploadString(
-            logoRef,
-            compressedLogo,
-            "data_url"
-          );
-
-
+          /* Comprime e envia para companys/{handle}/logo.png.
+             Mesma função usada pela tela de marca, para os
+             dois caminhos gravarem igual. */
           logoURL =
-            await getDownloadURL(
-              logoRef
+            await uploadCompanyLogo(
+              companyData.handle,
+              companyData.logoPreview
             );
 
 
@@ -524,8 +400,13 @@ export default function PreviewCompany() {
           description:
             companyData.description || "",
 
-          logoPreview:
-            logoURL,
+          /*
+           * A logo NÃO entra aqui: ela vive no Storage, em
+           * companys/{handle}/logo.png, e quem precisa dela
+           * resolve pelo useCompanyLogo. O campo fica nulo
+           * de propósito.
+           */
+          logoPreview: null,
 
           /*
            * LOCALIZAÇÃO
@@ -541,6 +422,10 @@ export default function PreviewCompany() {
        * ========================================================
        * MEMBRO MASTER
        * ========================================================
+       *
+       * Vem antes dos índices: a regra de escrita do
+       * companiesIndex exige que o usuário já seja membro.
+       * ========================================================
        */
 
       await set(
@@ -551,6 +436,48 @@ export default function PreviewCompany() {
         {
           role: "master"
         }
+      );
+
+
+      /*
+       * ========================================================
+       * ÍNDICES
+       * ========================================================
+       *
+       * companiesIndex/{handle} alimenta a tela Explorar sem
+       * que ela precise ler o nó "companys".
+       *
+       * documentsIndex/{documento} serve para detectar
+       * CPF/CNPJ duplicado sem varrer todas as empresas.
+       * ========================================================
+       */
+
+      await syncCompanyIndex(
+        companyData.handle,
+        {
+
+          handle:
+            companyData.handle,
+
+          name:
+            companyData.name,
+
+          description:
+            companyData.description || "",
+
+          logoPreview:
+            logoURL,
+
+          location:
+            companyLocation
+
+        }
+      );
+
+
+      await setDocumentOwner(
+        companyData.document,
+        companyData.handle
       );
 
 

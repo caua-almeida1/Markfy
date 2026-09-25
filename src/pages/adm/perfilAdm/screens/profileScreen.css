@@ -33,7 +33,7 @@
 
     border-radius: 20px;
 
-    background: #ffffff;
+    background: var(--mkf-ui-white);
 
     box-shadow:
         0 20px 60px rgba(0, 0, 0, 0.18);
@@ -158,7 +158,7 @@
 
     background: #2563eb;
 
-    color: #ffffff;
+    color: var(--mkf-on-primary);
 
     font-size: 15px;
     font-weight: 600;

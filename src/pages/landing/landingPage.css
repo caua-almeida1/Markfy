@@ -102,7 +102,7 @@ body.landing-active #root > div {
 
 /* Defesa contra seletores de elemento sem escopo:
    home.css:102 declara `nav { position: fixed; width: 456px;
-   background: #fff; ... }` e captura TODA <nav> do app,
+   background: var(--mkf-ui-white); ... }` e captura TODA <nav> do app,
    inclusive as deste rodapé. Reafirmamos o padrão aqui.
    A correção de raiz é escopar aquele seletor. */
 .mk-landing nav {
@@ -179,7 +179,7 @@ body.landing-active #root > div {
     border-radius: var(--r-sm);
 
     background: var(--ink);
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     text-decoration: none;
 }
@@ -233,7 +233,7 @@ body.landing-active #root > div {
 
 .mk-btn--solid {
     background: var(--blue);
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-btn--solid:hover {
@@ -248,7 +248,7 @@ body.landing-active #root > div {
 .mk-btn--outline {
     border-color: rgba(255, 255, 255, 0.26);
     background: transparent;
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-btn--outline:hover {
@@ -257,7 +257,7 @@ body.landing-active #root > div {
 }
 
 .mk-btn--light {
-    background: #fff;
+    background: var(--mkf-ui-white);
     color: var(--blue-deep);
 }
 
@@ -325,7 +325,7 @@ body.landing-active #root > div {
     border: 1px solid transparent;
     border-radius: 100px;
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     transition:
         background-color 0.3s var(--ease),
@@ -479,7 +479,7 @@ body.landing-active #root > div {
     padding: 132px 0 88px;
 
     background: var(--ink);
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-hero__depth {
@@ -564,7 +564,7 @@ body.landing-active #root > div {
 .mk-hero__title {
     font-size: clamp(2.5rem, 8.4vw, 4.4rem);
     font-weight: 600;
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-hero__lede {
@@ -596,7 +596,7 @@ body.landing-active #root > div {
 .mk-hero__facts dt {
     font-size: 0.95rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-hero__facts dd {
@@ -701,7 +701,7 @@ body.landing-active #root > div {
     font-family: "Bricolage Grotesque", sans-serif;
     font-size: 1.16rem;
     font-weight: 600;
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-agenda__meta {
@@ -799,7 +799,7 @@ body.landing-active #root > div {
     font-size: 0.9rem;
     font-weight: 600;
     line-height: 1.35;
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     overflow: hidden;
     text-overflow: ellipsis;
@@ -892,7 +892,7 @@ body.landing-active #root > div {
     padding: 13px 17px;
 
     border-radius: var(--r-md);
-    background: #fff;
+    background: var(--mkf-ui-white);
     color: var(--text);
 
     box-shadow: 0 26px 56px rgba(0, 0, 0, 0.4);
@@ -1257,7 +1257,7 @@ body.landing-active #root > div {
     background:
         radial-gradient(120% 120% at 15% 0%, var(--blue-lift) 0%, var(--blue) 42%, var(--blue-deep) 100%);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-flow__shell {
@@ -1322,7 +1322,7 @@ body.landing-active #root > div {
 
 .mk-flow__text h3 {
     font-size: 1.25rem;
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-flow__text p {
@@ -1421,7 +1421,7 @@ body.landing-active #root > div {
     border-radius: 12px;
     background: var(--blue);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
     font-size: 0.8rem;
     font-weight: 700;
 }
@@ -1558,7 +1558,7 @@ body.landing-active #root > div {
 .mk-phone__block--times span.is-picked {
     border-color: var(--blue);
     background: var(--blue);
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-phone__cta {
@@ -1567,7 +1567,7 @@ body.landing-active #root > div {
 
     border-radius: 12px;
     background: var(--ink);
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     text-align: center;
     font-size: 0.86rem;
@@ -1729,7 +1729,7 @@ body.landing-active #root > div {
     border-radius: 50%;
     background: var(--ink);
 
-    color: #fff;
+    color: var(--mkf-on-primary);
     font-family: "Bricolage Grotesque", sans-serif;
     font-size: 0.92rem;
     font-weight: 600;
@@ -1797,7 +1797,7 @@ body.landing-active #root > div {
 
     border-radius: 34px;
     background: var(--ink);
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     text-align: center;
 
@@ -1809,7 +1809,7 @@ body.landing-active #root > div {
     max-width: 18ch;
     margin-inline: auto;
     font-size: clamp(1.9rem, 5.6vw, 2.9rem);
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-final__box p {
@@ -1833,7 +1833,7 @@ body.landing-active #root > div {
 .mk-footer {
     padding: 62px 0 28px;
     background: var(--ink);
-    color: #fff;
+    color: var(--mkf-on-primary);
 }
 
 .mk-footer__grid {

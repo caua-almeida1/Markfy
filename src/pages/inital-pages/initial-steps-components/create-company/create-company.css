@@ -186,7 +186,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .create-company-progress-line {
@@ -528,7 +528,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-family: inherit;
     font-size: var(--mkf-font-sm);
@@ -928,7 +928,7 @@
 
     background: rgba(0, 0, 0, 0.48);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     opacity: 0;
 
@@ -1304,8 +1304,7 @@
 
     border-radius: 14px;
 
-    background:
-        linear-gradient(45deg,
+    background: linear-gradient(45deg,
             var(--mkf-ui-background-secondary) 25%,
             var(--mkf-ui-white) 25%,
             var(--mkf-ui-white) 50%,
@@ -1390,7 +1389,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .create-company-logo-modal-primary:hover {
@@ -1651,7 +1650,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-size: var(--mkf-font-sm);
     font-weight: var(--mkf-font-semibold);
@@ -1717,9 +1716,8 @@
 
     border-radius: 50%;
 
-    background:
-        repeating-conic-gradient(#f3f3f3 0% 25%,
-            #ffffff 0% 50%) 50% / 20px 20px;
+    background: repeating-conic-gradient(#f3f3f3 0% 25%,
+            var(--mkf-ui-white) 0% 50%) 50% / 20px 20px;
 
     overflow: hidden;
 }
@@ -1873,7 +1871,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-size: var(--mkf-font-sm);
     font-weight: var(--mkf-font-semibold);
@@ -2047,7 +2045,7 @@
 
     background: rgba(0, 0, 0, 0.48);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     opacity: 0;
 
@@ -2087,9 +2085,8 @@
 
     border-radius: 50%;
 
-    background:
-        repeating-conic-gradient(#f3f3f3 0% 25%,
-            #ffffff 0% 50%) 50% / 20px 20px;
+    background: repeating-conic-gradient(#f3f3f3 0% 25%,
+            var(--mkf-ui-white) 0% 50%) 50% / 20px 20px;
 
     overflow: hidden;
 
@@ -2149,7 +2146,7 @@
 
     background: rgba(0, 0, 0, 0.52);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     opacity: 0;
 
@@ -2273,7 +2270,7 @@
 
     background: var(--mkf-ui-primary);
 
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 
     font-family: inherit;
 

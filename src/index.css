@@ -4,22 +4,39 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
 
-:root {
-    --main-color: #092AF3;
-    --white-color: #ffffff;
-    --lighter-color: #f5f5f5;
-    --dark-color: #1D1D1D;
-    --second-dark-color: #222222;
-    --button-dark-color: #282828;
-    --light-dark-color: #757575;
-    --second-light-dark-color: #9a9a9a;
-    --border-radius-card1: 2rem;
-    --border-radius-card2: 1.5rem;
-    --box-shadow-1: rgb(50 50 93 / 25%) 0 50px 100px -20px,
-        rgb(0 0 0 / 10%) 0 30px 60px -30px;
-}
+/* =========================================================
+   TOKENS — FONTE ÚNICA DE TEMA
+
+   Este é o ÚNICO :root com cor no projeto. Antes,
+   home.css, productsAdm.css, mainscreenregister.css,
+   preview-company.css e splashscreen.css declaravam cada
+   um o seu :root com os MESMOS nomes e valores DIFERENTES.
+   Como no CRA tudo vira um bundle só, quem vencia dependia
+   da ordem de import — e o efeito colateral era que
+   `--dark-color` virava #ff0000 (vermelho) por causa do
+   productsAdm.css, justamente a variável que o
+   `body.dark-mode` usa de fundo.
+
+   Os valores de luz abaixo são exatamente os que já
+   venciam na aplicação hoje, então a identidade não muda:
+   a paleta em uso vinha do home.css, e o que ele não
+   definia vinha daqui.
+
+   TEMA
+   ----
+   O tema é escolhido por atributo em <html>:
+
+       data-theme="light"  -> claro, sempre
+       data-theme="dark"   -> escuro, sempre
+       (sem atributo)      -> segue o sistema operacional
+
+   A classe .dark-mode continua funcionando como apelido do
+   escuro, porque telas antigas já a usam.
+========================================================= */
 
 :root {
+    color-scheme: light;
+
     /* ==================== PRIMÁRIA ==================== */
     --mkf-ui-primary: #092af3;
     --mkf-ui-primary-hover: #0b33ff;
@@ -28,9 +45,12 @@
 
     /* ==================== BACKGROUNDS ==================== */
     --mkf-ui-white: #ffffff;
-    --mkf-ui-background: #ffffff;
+    --mkf-ui-background: #f8f9fb;
     --mkf-ui-background-secondary: #f5f5f5;
     --mkf-ui-background-tertiary: #f0f0f0;
+
+    --mkf-ui-surface: #ffffff;
+    --mkf-ui-surface-soft: #f4f5f7;
 
     /* ==================== CINZAS ==================== */
     --mkf-ui-gray-50: #fafafa;
@@ -47,15 +67,16 @@
             #3d3d3d 100%);
 
     /* ==================== BORDAS ==================== */
-    --mkf-ui-border: #eeeeee;
+    --mkf-ui-border: #e8e9ed;
     --mkf-ui-border-light: #f3f3f3;
     --mkf-ui-border-dark: #d9d9d9;
+    --mkf-ui-border-strong: #dedfe4;
 
     /* ==================== TEXTOS ==================== */
-    --mkf-text-primary: #333333;
-    --mkf-text-secondary: #555555;
-    --mkf-text-tertiary: #666666;
-    --mkf-text-light: #999999;
+    --mkf-text-primary: #17181c;
+    --mkf-text-secondary: #5f626b;
+    --mkf-text-tertiary: #858891;
+    --mkf-text-light: #a2a4ab;
     --mkf-text-disabled: #bcbcbc;
 
     /* ==================== FEEDBACK ==================== */
@@ -71,13 +92,39 @@
     --mkf-info: #3b82f6;
     --mkf-info-light: #dbeafe;
 
+    /*
+     * Texto/ícone sobre o fundo -light correspondente.
+     * Precisa de par próprio: no claro é escuro sobre
+     * fundo claro, no escuro é claro sobre fundo escuro.
+     */
+    --mkf-success-text: #166534;
+    --mkf-warning-text: #92400e;
+    --mkf-warning-text-strong: #78350f;
+    --mkf-error-text: #991b1b;
+    --mkf-info-text: #1e40af;
+
     /* ==================== SOMBRAS ==================== */
     --mkf-ui-shadow: rgba(0, 0, 0, 0.08);
     --mkf-ui-shadow-medium: rgba(0, 0, 0, 0.12);
     --mkf-ui-shadow-strong: rgba(0, 0, 0, 0.18);
 
+    --mkf-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.045);
+    --mkf-shadow-md: 0 12px 35px rgba(0, 0, 0, 0.07);
+    --mkf-shadow-lg: 0 25px 70px rgba(0, 0, 0, 0.12);
+
     /* ==================== LINKS ==================== */
     --mkf-link-color: #4a6bdf;
+
+    /*
+     * Texto/ícone sobre fundo colorido (botão primário,
+     * selo, badge). NÃO inverte no tema escuro: o fundo
+     * continua azul, então o conteúdo continua branco.
+     *
+     * É o par de --mkf-ui-white, que é superfície e
+     * inverte.
+     */
+    --mkf-on-primary: #ffffff;
+    --mkf-on-dark: #ffffff;
 
     /* ==================== FONT SIZE ==================== */
     --mkf-font-3xs: 0.5625rem;
@@ -117,22 +164,546 @@
     --mkf-line-normal: 1.5;
     --mkf-line-relaxed: 1.7;
 
+    /* ==================== RAIOS E MEDIDAS ==================== */
+    --mkf-radius-sm: 10px;
+    --mkf-radius-md: 16px;
+    --mkf-radius-lg: 22px;
+    --mkf-radius-xl: 28px;
+
+    --mkf-content-width: 1180px;
+
+    --border-radius-card1: 2rem;
+    --border-radius-card2: 1.5rem;
+
+
+    /* =====================================================
+       APELIDOS DE COMPATIBILIDADE
+
+       Nomes antigos, e nomes que telas usavam sem nunca
+       terem sido definidos em lugar nenhum — resolviam
+       para vazio e a regra simplesmente não pintava.
+       Agora apontam para o token semântico certo.
+    ===================================================== */
+
+    --main-color: var(--mkf-ui-primary);
+    --main-color-transparent: rgba(9, 42, 243, 0.2);
+    --primary-color: var(--mkf-ui-primary);
+
+    --white-color: var(--mkf-ui-white);
+    --lighter-color: var(--mkf-ui-gray-100);
+    --second-lighter-color: #ededed;
+    --black-color: var(--mkf-text-primary);
+
+    --mkf-ui-secondary: var(--mkf-ui-gray-100);
+
+    --dark-color: #1d1d1d;
+    --second-dark-color: #222222;
+    --button-dark-color: #282828;
+    --second-black-color: var(--mkf-text-primary);
+
+    --light-dark-color: #757575;
+    --second-light-dark-color: #9a9a9a;
+
+    --box-shadow-1:
+        rgba(50, 50, 93, 0.1) 0 50px 100px -20px,
+        rgba(0, 0, 0, 0.05) 0 30px 60px -30px;
+
+    /* Usados por payment-result.css, perfilAdm.css,
+       productsAdm.css e order-summary.css. */
+    --mkf-primary: var(--mkf-ui-primary);
+    --mkf-background: var(--mkf-ui-background);
+    --mkf-surface: var(--mkf-ui-surface);
+    --mkf-surface-secondary: var(--mkf-ui-surface-soft);
+    --mkf-border: var(--mkf-ui-border);
+    --mkf-text: var(--mkf-text-primary);
+    --mkf-text-muted: var(--mkf-text-light);
+    --mkf-text-quartiary: var(--mkf-text-light);
+
+    /* Nomes alternativos de tipografia usados por
+       product-details.css. */
+    --mkf-font-size-xs: var(--mkf-font-xs);
+    --mkf-font-size-sm: var(--mkf-font-sm);
+    --mkf-font-size-md: var(--mkf-font-md);
+    --mkf-font-size-lg: var(--mkf-font-lg);
+    --mkf-font-size-xl: var(--mkf-font-xl);
+    --mkf-font-weight-medium: var(--mkf-font-medium);
+    --mkf-font-weight-semibold: var(--mkf-font-semibold);
+    --mkf-line-height-tight: var(--mkf-line-tight);
 }
 
 
+/* =========================================================
+   TEMA ESCURO
+
+   Um bloco só de valores; nenhuma regra de layout muda.
+   Toda tela que usa os tokens acima vira escura de graça.
+
+   Os três seletores existem para: a escolha explícita
+   (data-theme), o apelido antigo (.dark-mode) e o modo
+   automático seguindo o sistema (mais abaixo).
+========================================================= */
+
+:root[data-theme="dark"],
+:root.dark-mode,
+.dark-mode {
+    color-scheme: dark;
+
+    --mkf-ui-primary: #4160ff;
+    --mkf-ui-primary-hover: #5570ff;
+    --mkf-ui-primary-light: #1e2547;
+    --mkf-ui-primary-lighter: #171a2e;
+
+    --mkf-ui-white: #1a1b1f;
+    --mkf-ui-background: #111214;
+    --mkf-ui-background-secondary: #17181b;
+    --mkf-ui-background-tertiary: #1f2024;
+
+    --mkf-ui-surface: #1a1b1f;
+    --mkf-ui-surface-soft: #222329;
+
+    --mkf-ui-gray-50: #1c1d21;
+    --mkf-ui-gray-100: #222329;
+    --mkf-ui-gray-200: #2a2b31;
+    --mkf-ui-gray-300: #34353c;
+    --mkf-ui-gray-400: #414249;
+    --mkf-ui-gray-500: #5a5c65;
+
+    --mkf-ui-pro-gradient:
+        linear-gradient(90deg,
+            #e8e8e8 0%,
+            #a9a9a9 100%);
+
+    --mkf-ui-border: #303137;
+    --mkf-ui-border-light: #26272c;
+    --mkf-ui-border-dark: #43454d;
+    --mkf-ui-border-strong: #3b3d45;
+
+    --mkf-text-primary: #f7f7f8;
+    --mkf-text-secondary: #c4c5ca;
+    --mkf-text-tertiary: #9799a2;
+    --mkf-text-light: #73757e;
+    --mkf-text-disabled: #5b5d66;
+
+    --mkf-success: #4ade80;
+    --mkf-success-light: #16351f;
+
+    --mkf-warning: #fbbf24;
+    --mkf-warning-light: #3a2c0c;
+
+    --mkf-error: #f87171;
+    --mkf-error-light: #3b1a1a;
+
+    --mkf-info: #60a5fa;
+    --mkf-info-light: #16273f;
+
+    --mkf-success-text: #86efac;
+    --mkf-warning-text: #fcd34d;
+    --mkf-warning-text-strong: #fde68a;
+    --mkf-error-text: #fca5a5;
+    --mkf-info-text: #93c5fd;
+
+    --mkf-ui-shadow: rgba(0, 0, 0, 0.5);
+    --mkf-ui-shadow-medium: rgba(0, 0, 0, 0.6);
+    --mkf-ui-shadow-strong: rgba(0, 0, 0, 0.7);
+
+    --mkf-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.22);
+    --mkf-shadow-md: 0 12px 35px rgba(0, 0, 0, 0.28);
+    --mkf-shadow-lg: 0 25px 70px rgba(0, 0, 0, 0.4);
+
+    --mkf-link-color: #8fa3ff;
+
+    /* Apelidos: no escuro invertem, senão texto escuro
+       ficaria sobre fundo escuro. */
+    --second-lighter-color: #2a2b31;
+    --dark-color: #111214;
+    --second-dark-color: #17181b;
+    --button-dark-color: #222329;
+    --light-dark-color: #9799a2;
+    --second-light-dark-color: #73757e;
+
+    --box-shadow-1:
+        rgba(0, 0, 0, 0.5) 0 50px 100px -20px,
+        rgba(0, 0, 0, 0.35) 0 30px 60px -30px;
+}
+
+
+/*
+ * MODO AUTOMÁTICO
+ *
+ * Sem escolha registrada (nenhum data-theme em <html>), o
+ * tema segue o sistema operacional. A escolha explícita
+ * sempre vence, porque estes seletores exigem a ausência
+ * do atributo.
+ */
+@media (prefers-color-scheme: dark) {
+
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
+        color-scheme: dark;
+
+        --mkf-ui-primary: #4160ff;
+        --mkf-ui-primary-hover: #5570ff;
+        --mkf-ui-primary-light: #1e2547;
+        --mkf-ui-primary-lighter: #171a2e;
+
+        --mkf-ui-white: #1a1b1f;
+        --mkf-ui-background: #111214;
+        --mkf-ui-background-secondary: #17181b;
+        --mkf-ui-background-tertiary: #1f2024;
+
+        --mkf-ui-surface: #1a1b1f;
+        --mkf-ui-surface-soft: #222329;
+
+        --mkf-ui-gray-50: #1c1d21;
+        --mkf-ui-gray-100: #222329;
+        --mkf-ui-gray-200: #2a2b31;
+        --mkf-ui-gray-300: #34353c;
+        --mkf-ui-gray-400: #414249;
+        --mkf-ui-gray-500: #5a5c65;
+
+        --mkf-ui-pro-gradient:
+            linear-gradient(90deg,
+                #e8e8e8 0%,
+                #a9a9a9 100%);
+
+        --mkf-ui-border: #303137;
+        --mkf-ui-border-light: #26272c;
+        --mkf-ui-border-dark: #43454d;
+        --mkf-ui-border-strong: #3b3d45;
+
+        --mkf-text-primary: #f7f7f8;
+        --mkf-text-secondary: #c4c5ca;
+        --mkf-text-tertiary: #9799a2;
+        --mkf-text-light: #73757e;
+        --mkf-text-disabled: #5b5d66;
+
+        --mkf-success: #4ade80;
+        --mkf-success-light: #16351f;
+
+        --mkf-warning: #fbbf24;
+        --mkf-warning-light: #3a2c0c;
+
+        --mkf-error: #f87171;
+        --mkf-error-light: #3b1a1a;
+
+        --mkf-info: #60a5fa;
+        --mkf-info-light: #16273f;
+
+        --mkf-success-text: #86efac;
+        --mkf-warning-text: #fcd34d;
+        --mkf-warning-text-strong: #fde68a;
+        --mkf-error-text: #fca5a5;
+        --mkf-info-text: #93c5fd;
+
+        --mkf-ui-shadow: rgba(0, 0, 0, 0.5);
+        --mkf-ui-shadow-medium: rgba(0, 0, 0, 0.6);
+        --mkf-ui-shadow-strong: rgba(0, 0, 0, 0.7);
+
+        --mkf-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.22);
+        --mkf-shadow-md: 0 12px 35px rgba(0, 0, 0, 0.28);
+        --mkf-shadow-lg: 0 25px 70px rgba(0, 0, 0, 0.4);
+
+        --mkf-link-color: #8fa3ff;
+
+        --second-lighter-color: #2a2b31;
+        --dark-color: #111214;
+        --second-dark-color: #17181b;
+        --button-dark-color: #222329;
+        --light-dark-color: #9799a2;
+        --second-light-dark-color: #73757e;
+
+        --box-shadow-1:
+            rgba(0, 0, 0, 0.5) 0 50px 100px -20px,
+            rgba(0, 0, 0, 0.35) 0 30px 60px -30px;
+    }
+
+}
+
+
+/*
+ * Durante a troca de tema, as cores fazem uma transição
+ * curta em vez de piscar. A classe é adicionada e removida
+ * pelo ThemeProvider só no instante da troca, então não
+ * custa nada no resto da navegação.
+ */
+.mkf-theme-transition,
+.mkf-theme-transition *,
+.mkf-theme-transition *::before,
+.mkf-theme-transition *::after {
+    transition:
+        background-color 0.22s ease,
+        border-color 0.22s ease,
+        color 0.22s ease,
+        fill 0.22s ease,
+        stroke 0.22s ease !important;
+}
+
+
+
+/* =========================================================
+   ESTABILIDADE DE LAYOUT DURANTE ANIMAÇÕES
+
+   `scrollbar-gutter: stable` reserva o espaço da barra de
+   rolagem o tempo todo.
+
+   Sem isso, todo modal que trava o scroll do body (a classe
+   .no-scroll, e os modais que setam overflow: hidden) faz a
+   barra sumir — e no Windows, onde a barra ocupa ~15px de
+   verdade, a página inteira salta 15px para a direita ao
+   abrir e volta ao fechar. Dois reflows do documento dentro
+   da animação, que é exatamente o que se enxerga como
+   piscada.
+
+   Em navegadores com barra sobreposta (macOS, mobile) a
+   regra não custa nada, porque lá a barra já não ocupa
+   espaço.
+========================================================= */
+
+:root {
+    scrollbar-gutter: stable;
+}
+
+
+/* ---------------------------------------------------------
+   ANIMAÇÕES DE MONTAGEM SEM AnimatePresence
+
+   Classes usadas pelo useExitTransition e pelas trocas de
+   tela com `key`. São animações de CSS puro: rodam sozinhas
+   no compositor, sem depender de JavaScript por quadro, e
+   se por algum motivo não rodarem o componente aparece ou
+   some do mesmo jeito — nada fica preso esperando callback.
+
+   POR QUE AS ENTRADAS USAM `backwards` E NÃO `both`
+   -------------------------------------------------
+
+   `both` inclui `forwards`: terminada a animação, o último
+   quadro FICA aplicado no elemento. Como esse quadro traz
+   `transform: translate3d(0, 0, 0)` ou `scale(1)`, o
+   elemento fica para sempre com um transform. Na tela é
+   igual a não ter nenhum — no layout, não é.
+
+   Elemento com transform vira o bloco de referência de todo
+   `position: fixed` dentro dele. O modal que se acha preso à
+   janela passa a ficar preso à caixa da aba: abre torto,
+   cortado, no ponto onde foi clicado, e anda com o scroll.
+   Foi o que acontecia com os modais de produto, que
+   renderizam dentro da aba em vez de ir ao <body> por
+   portal.
+
+   `backwards` segura só o primeiro quadro (antes de a
+   animação começar, se houver delay) e não deixa marca no
+   fim. Como toda entrada aqui termina no estado natural do
+   elemento — opacidade 1, sem transform —, o resultado na
+   tela é idêntico.
+
+   A saída (mkfFadeOut) continua `both`: ela termina em
+   `opacity: 0` e sem o forwards o elemento reapareceria no
+   último quadro.
+
+   Quem mexer aqui: só volte para `both` numa animação que
+   termine FORA do estado natural do elemento.
+--------------------------------------------------------- */
+
+.mkf-fade-enter {
+    animation: mkfFadeIn 0.22s ease backwards;
+}
+
+.mkf-fade-leave {
+    animation: mkfFadeOut 0.22s ease both;
+    pointer-events: none;
+}
+
+@keyframes mkfFadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes mkfFadeOut {
+    from {
+        opacity: 1;
+    }
+
+    to {
+        opacity: 0;
+    }
+}
+
+
+/* Menu suspenso (dropdown): só entrada. Fechar na hora é
+   o comportamento esperado de um menu. */
+.mkf-pop-enter {
+    animation: mkfPopIn 0.16s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    transform-origin: top center;
+}
+
+@keyframes mkfPopIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, -8px, 0) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+
+/* Painel do produto, que entra junto com o overlay. */
+.mkf-product-enter {
+    animation: mkfProductIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+@keyframes mkfProductIn {
+    from {
+        opacity: 0;
+        transform: scale(0.94) translate3d(0, 12px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1) translate3d(0, 0, 0);
+    }
+}
+
+
+/* Relista pedidos ao filtrar/ordenar. */
+.mkf-list-enter {
+    animation: mkfListIn 0.2s ease backwards;
+}
+
+@keyframes mkfListIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 8px, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+
+/* Troca de foto no visualizador da empresa. */
+.mkf-photo-enter {
+    animation: mkfPhotoIn 0.2s ease-out backwards;
+}
+
+@keyframes mkfPhotoIn {
+    from {
+        opacity: 0;
+        transform: scale(0.96);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+
+/*
+ * Troca de tela (abas, pilha de telas do perfil).
+ *
+ * Só ENTRADA, de propósito: é a animação de saída que
+ * obriga a segurar o componente antigo montado. Sem ela, o
+ * conteúdo novo entra na hora e nunca há como travar.
+ */
+.mkf-view-enter {
+    animation: mkfViewInRight 0.26s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.mkf-view-enter[data-direction="left"] {
+    animation-name: mkfViewInLeft;
+}
+
+@keyframes mkfViewInRight {
+    from {
+        opacity: 0;
+        transform: translate3d(28px, 0, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+@keyframes mkfViewInLeft {
+    from {
+        opacity: 0;
+        transform: translate3d(-28px, 0, 0);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+
+/* ---------------------------------------------------------
+   BACKDROP-FILTER SOB ANIMAÇÃO DE OPACIDADE
+
+   Todos os overlays abaixo combinam duas coisas que o
+   compositor do Chrome no Windows não gosta: têm
+   `backdrop-filter` e têm a opacidade animada de 0 a 1 pelo
+   AnimatePresence.
+
+   A cada frame o navegador precisa decidir o "backdrop
+   root" e re-rasterizar o que está atrás do blur. Com o
+   elemento ainda sem camada própria, isso costuma render um
+   frame branco ou preto na tela inteira — a piscada.
+
+   `translateZ(0)` promove o overlay a camada desde o
+   primeiro frame, e `will-change` avisa o compositor antes
+   de a animação começar, então o backdrop é rasterizado uma
+   vez em vez de a cada quadro.
+
+   Se em algum navegador isso consumir memória demais, é só
+   remover este bloco: ele é puramente de renderização e não
+   afeta layout nem comportamento.
+--------------------------------------------------------- */
+
+.product-details-overlay,
+.confirmation-modal-overlay,
+.company-info-modal-overlay,
+.professional-info-modal-overlay,
+.whatsapp-modal-overlay,
+.share-modal-overlay,
+.orders-modal-overlay,
+.orders-details-overlay,
+.orders-confirm-overlay,
+.dashboard-logout-overlay,
+.dashboard-members-modal-overlay,
+.dashboard-member-details-overlay,
+.dashboard-remove-member-overlay,
+.product-image-fullscreen,
+.adm_products-modal-backdrop,
+.mkf-consent-overlay {
+    transform: translateZ(0);
+    will-change: opacity;
+    backface-visibility: hidden;
+}
+
+/*
+ * O fundo e o texto do body saem dos tokens, então trocam
+ * junto com o tema sem regra extra. As classes
+ * body.dark-mode / body.light-mode deixaram de ser
+ * necessárias: o tema vive no <html>.
+ */
 body {
     font-family: Poppins, sans-serif !important;
     margin: 0;
     width: 100%;
     min-height: 100vh;
-}
-
-body.dark-mode {
-    background-color: var(--dark-color);
-}
-
-body.light-mode {
-    background-color: var(--white-color);
+    background-color: var(--mkf-ui-background);
+    color: var(--mkf-text-primary);
 }
 
 /* ===== MOBILE (default) ===== */

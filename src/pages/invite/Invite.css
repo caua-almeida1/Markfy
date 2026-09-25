@@ -9,7 +9,7 @@
 
 .invite-card {
     width: min(760px, 100%);
-    background: #fff;
+    background: var(--mkf-ui-white);
     border-radius: 28px;
     overflow: hidden;
     border: 1px solid rgba(0, 0, 0, .06);
@@ -36,7 +36,7 @@
     height: 48px;
     border-radius: 50%;
     object-fit: cover;
-    background: #fff;
+    background: var(--mkf-ui-white);
     padding: 10px;
     border: 1px solid rgba(0, 0, 0, .06);
 }
@@ -73,7 +73,7 @@
 }
 
 .invite-header-menu:hover {
-    background: #f5f5f5;
+    background: var(--mkf-ui-gray-100);
 }
 
 .invite-header-menu svg {
@@ -291,7 +291,7 @@
     border-radius: 14px;
 
     background: var(--mkf-ui-primary);
-    color: #fff;
+    color: var(--mkf-on-primary);
 
     font-size: .95rem;
     font-weight: 600;

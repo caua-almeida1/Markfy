@@ -9,6 +9,18 @@ import { getDatabase, ref, onValue } from "firebase/database";
 import ProductDetails from "../ProductDetails/ProductDetails";
 import Thumb1 from "../../../../img/1.jpg";
 
+import {
+    getPlanHighlights,
+    getPlanPriceSuffix,
+    getPlanSessionsLabel,
+    isSubscriptionProduct,
+    normalizeMonthlyPlan
+} from "../../../../utils/subscription";
+
+import { useProductImages } from "../../../../utils/productImages";
+
+import { useCompanyLogo } from "../../../../firebase/companyLogo";
+
 import "./Catalog.css";
 
 const Catalog = () => {
@@ -21,8 +33,14 @@ const Catalog = () => {
     const [products, setProducts] = useState([]);
 
     const [companyName, setCompanyName] = useState("");
-    const [companyLogo, setCompanyLogo] = useState("");
+    /* Valor legado do RTDB; a logo real vem do Storage. */
+    const [legacyLogo, setLegacyLogo] = useState("");
     const [companyHandle, setCompanyHandle] = useState("");
+
+    const companyLogo = useCompanyLogo(
+        companyHandle || handle,
+        legacyLogo
+    );
 
     const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -30,7 +48,28 @@ const Catalog = () => {
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [categoryLoading, setCategoryLoading] = useState(false);
 
+    /* Tipo de oferta: "all" | "individual" | "monthly".
+       Serviços avulsos são o foco da página, então vêm
+       primeiro e são o que aparece em "Todos". */
+    const [selectedType, setSelectedType] = useState("all");
+
     const [loadedImages, setLoadedImages] = useState({});
+
+
+    // ==========================================
+    // IMAGENS (STORAGE)
+    //
+    // Ficam em companys/{handle}/products/{id}/images,
+    // e não no Realtime Database.
+    // ==========================================
+
+    const productImages = useProductImages(
+        companyHandle || handle,
+        products
+    );
+
+    const getProductImage = (product) =>
+        productImages[product?.id]?.[0] || Thumb1;
 
 
     // ==========================================
@@ -67,7 +106,7 @@ const Catalog = () => {
                     setProducts([]);
 
                     setCompanyName("");
-                    setCompanyLogo("");
+                    setLegacyLogo("");
                     setCompanyHandle(handle);
 
                     return;
@@ -83,7 +122,7 @@ const Catalog = () => {
                     data.name || ""
                 );
 
-                setCompanyLogo(
+                setLegacyLogo(
                     data.logoPreview || ""
                 );
 
@@ -576,6 +615,78 @@ const Catalog = () => {
 
 
     // ==========================================
+    // ASSINATURAS
+    //
+    // Planos de mensalidade saem da lista normal
+    // para não misturar cobrança recorrente com
+    // serviço avulso.
+    // ==========================================
+
+    const subscriptionProducts = useMemo(
+        () =>
+            selectedType === "individual"
+                ? []
+                : filteredProducts.filter(
+                    isSubscriptionProduct
+                ),
+        [filteredProducts, selectedType]
+    );
+
+
+    const catalogProducts = useMemo(
+        () =>
+            selectedType === "monthly"
+                ? []
+                : filteredProducts.filter(
+                    (product) =>
+                        !isSubscriptionProduct(product)
+                ),
+        [filteredProducts, selectedType]
+    );
+
+
+    const TYPE_OPTIONS = [
+        {
+            id: "all",
+            label: "Tudo",
+            icon: "lucide:layers"
+        },
+        {
+            id: "individual",
+            label: "Serviços",
+            icon: "solar:scissors-outline"
+        },
+        {
+            id: "monthly",
+            label: "Mensalidades",
+            icon: "solar:refresh-circle-linear"
+        }
+    ];
+
+
+    const visibleCount =
+        catalogProducts.length +
+        subscriptionProducts.length;
+
+
+    const typeCounts = useMemo(() => {
+
+        const monthly =
+            filteredProducts.filter(
+                isSubscriptionProduct
+            ).length;
+
+        return {
+            all: filteredProducts.length,
+            monthly,
+            individual:
+                filteredProducts.length - monthly
+        };
+
+    }, [filteredProducts]);
+
+
+    // ==========================================
     // TEXTO DA ORDENAÇÃO ATUAL
     // ==========================================
 
@@ -669,13 +780,13 @@ const Catalog = () => {
 
                     <p>
 
-                        {filteredProducts.length}
+                        {visibleCount}
 
                         {" "}
 
-                        {filteredProducts.length === 1
-                            ? "serviço disponível"
-                            : "serviços disponíveis"}
+                        {visibleCount === 1
+                            ? "item disponível"
+                            : "itens disponíveis"}
 
                     </p>
 
@@ -1262,6 +1373,44 @@ const Catalog = () => {
                 )
             }
 
+
+            {/* =================================================
+                TIPO DE OFERTA
+            ================================================= */}
+
+            <div className="catalog-type-filter">
+
+                {TYPE_OPTIONS.map((option) => (
+
+                    <button
+                        key={option.id}
+                        type="button"
+                        className={
+                            selectedType === option.id
+                                ? "active"
+                                : ""
+                        }
+                        onClick={() =>
+                            setSelectedType(option.id)
+                        }
+                    >
+
+                        <Icon icon={option.icon} />
+
+                        <span>
+                            {option.label}
+                        </span>
+
+                        <b>
+                            {typeCounts[option.id]}
+                        </b>
+
+                    </button>
+
+                ))}
+
+            </div>
+
             <div className="catalog-list">
 
                 {categoryLoading ? (
@@ -1316,9 +1465,9 @@ const Catalog = () => {
 
                     ))
 
-                ) : filteredProducts.length > 0 ? (
+                ) : catalogProducts.length > 0 ? (
 
-                    filteredProducts.map(
+                    catalogProducts.map(
                         (product) => (
 
                             <div
@@ -1348,9 +1497,9 @@ const Catalog = () => {
 
                                     <img
                                         src={
-                                            product.images?.[0]
-                                                ? product.images[0]
-                                                : Thumb1
+                                            getProductImage(
+                                                product
+                                            )
                                         }
                                         alt={
                                             product.name ||
@@ -1501,7 +1650,7 @@ const Catalog = () => {
                         )
                     )
 
-                ) : (
+                ) : subscriptionProducts.length > 0 ? null : (
 
                     <div className="catalog-empty">
 
@@ -1535,6 +1684,210 @@ const Catalog = () => {
                 )}
 
             </div>
+
+
+            {/* =================================================
+                ASSINATURAS
+            ================================================= */}
+
+            {!categoryLoading &&
+                subscriptionProducts.length > 0 && (
+
+                    <div
+                        className={`catalog-subscriptions ${catalogProducts.length === 0
+                            ? "is-only"
+                            : ""
+                            }`}
+                    >
+
+                        <div className="catalog-subscriptions-heading">
+
+                            <div>
+
+                                <span>
+                                    Assinaturas
+                                </span>
+
+                                <h3>
+                                    Planos de mensalidade
+                                </h3>
+
+                            </div>
+
+                            <p>
+
+                                {subscriptionProducts.length}
+
+                                {" "}
+
+                                {subscriptionProducts.length === 1
+                                    ? "plano disponível"
+                                    : "planos disponíveis"}
+
+                            </p>
+
+                        </div>
+
+
+                        <div className="catalog-subscriptions-note">
+
+                            <Icon icon="solar:info-circle-linear" />
+
+                            <p>
+                                Os itens abaixo têm cobrança
+                                recorrente: o valor se repete a cada
+                                ciclo enquanto a assinatura estiver
+                                ativa.
+                            </p>
+
+                        </div>
+
+
+                        <div className="catalog-subscriptions-list">
+
+                            {subscriptionProducts.map((product) => {
+
+                                const plan =
+                                    normalizeMonthlyPlan(product);
+
+                                if (!plan) {
+                                    return null;
+                                }
+
+                                return (
+
+                                    <div
+                                        key={product.id}
+                                        className="catalog-subscription"
+                                        onClick={() =>
+                                            openProduct(product)
+                                        }
+                                    >
+
+                                        {/* IMAGEM */}
+
+                                        <div className="catalog-subscription-image">
+
+                                            <img
+                                                src={
+                                                    getProductImage(
+                                                        product
+                                                    )
+                                                }
+                                                alt={
+                                                    product.name ||
+                                                    "Plano"
+                                                }
+                                                onError={(event) => {
+
+                                                    event.currentTarget.src =
+                                                        Thumb1;
+
+                                                }}
+                                            />
+
+                                            <span className="catalog-subscription-badge">
+                                                {plan.billingCycleLabel}
+                                            </span>
+
+                                        </div>
+
+
+                                        {/* CONTEÚDO */}
+
+                                        <div className="catalog-subscription-content">
+
+                                            <h4>
+                                                {product.name}
+                                            </h4>
+
+                                            <span className="catalog-subscription-sessions">
+                                                {getPlanSessionsLabel(
+                                                    plan
+                                                )}
+                                            </span>
+
+
+                                            <ul className="catalog-subscription-details">
+
+                                                {getPlanHighlights(
+                                                    plan
+                                                ).map((highlight) => (
+
+                                                    <li
+                                                        key={highlight.id}
+                                                    >
+
+                                                        <Icon
+                                                            icon={
+                                                                highlight.icon
+                                                            }
+                                                        />
+
+                                                        <span>
+                                                            {highlight.value}
+                                                        </span>
+
+                                                    </li>
+
+                                                ))}
+
+                                            </ul>
+
+
+                                            <div className="catalog-subscription-action">
+
+                                                <div className="catalog-subscription-price">
+
+                                                    <strong>
+                                                        {product.value}
+                                                    </strong>
+
+                                                    <span>
+                                                        {getPlanPriceSuffix(
+                                                            plan
+                                                        )}
+                                                    </span>
+
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    className="catalog-product-schedule"
+                                                    onClick={(event) => {
+
+                                                        event.stopPropagation();
+
+                                                        openProduct(
+                                                            product
+                                                        );
+
+                                                    }}
+                                                >
+
+                                                    Ver mensalidade
+
+                                                    <Icon
+                                                        icon="humbleicons:arrow-right"
+                                                    />
+
+                                                </button>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                );
+
+                            })}
+
+                        </div>
+
+                    </div>
+
+                )}
 
 
             {/* =================================================

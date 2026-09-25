@@ -29,6 +29,58 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Markfy</title>
+
+    <!--
+      TEMA — aplicado ANTES do primeiro paint.
+
+      Roda de forma síncrona, antes do React e antes do CSS
+      pintar qualquer coisa. Sem isso a tela nasceria clara
+      e piscaria para escura quando o JavaScript carregasse.
+
+      Lê o cookie `markfy_theme` (com localStorage de
+      reserva). Sem escolha registrada, não escreve atributo
+      nenhum e o CSS segue o sistema operacional sozinho,
+      via @media (prefers-color-scheme).
+    -->
+    <script>
+      (function () {
+        try {
+          var m = document.cookie.match(/(?:^|;\s*)markfy_theme=([^;]*)/);
+          var t = m ? decodeURIComponent(m[1]) : null;
+
+          if (t !== "light" && t !== "dark" && t !== "system") {
+            try { t = localStorage.getItem("markfy-theme"); } catch (e) { t = null; }
+          }
+
+          if (t !== "light" && t !== "dark" && t !== "system") {
+            t = "system";
+          }
+
+          var root = document.documentElement;
+
+          if (t === "system") {
+            root.removeAttribute("data-theme");
+          } else {
+            root.setAttribute("data-theme", t);
+          }
+
+          var dark =
+            t === "dark" ||
+            (t === "system" &&
+              window.matchMedia &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+
+          if (dark) {
+            root.classList.add("dark-mode");
+
+            var meta = document.querySelector('meta[name="theme-color"]');
+            if (meta) meta.setAttribute("content", "#111214");
+          }
+        } catch (e) {
+          /* Sem tema salvo, o CSS segue o sistema. */
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

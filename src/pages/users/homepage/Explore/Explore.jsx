@@ -12,136 +12,24 @@ import {
     ref
 } from "firebase/database";
 
+import { getAuth } from "firebase/auth";
+
+import { fetchCompaniesFromSource }
+    from "../../../../firebase/companiesIndex";
+
+import { useCompanyLogos }
+    from "../../../../firebase/companyLogo";
+
 import "./explore.css";
+
+import {
+    CATEGORY_GROUPS,
+    COMPANY_CATEGORIES
+} from "../../../../utils/companyCategories";
 
 import CompanyInfoModal
     from "../../../users/CompanyInfoModal/CompanyInfoModal";
 
-
-const COMPANY_CATEGORIES = [
-    { id: 'barbearia', name: 'Barbearia', icon: 'solar:scissors-outline' },
-    { id: 'salao-beleza', name: 'Salão de beleza', icon: 'solar:mirror-outline' },
-    { id: 'cabeleireiro', name: 'Cabeleireiro', icon: 'solar:scissors-outline' },
-    { id: 'manicure-pedicure', name: 'Manicure e pedicure', icon: 'solar:hand-stars-outline' },
-    { id: 'sobrancelhas', name: 'Design de sobrancelhas', icon: 'solar:eye-outline' },
-    { id: 'cilios', name: 'Extensão de cílios', icon: 'solar:eye-scan-outline' },
-    { id: 'maquiagem', name: 'Maquiagem', icon: 'solar:palette-outline' },
-    { id: 'tatuagem', name: 'Estúdio de tatuagem', icon: 'solar:pen-new-square-outline' },
-    { id: 'fotografia', name: 'Estúdio de fotografia', icon: 'solar:camera-outline' },
-    { id: 'estetica', name: 'Clínica de estética', icon: 'solar:heart-pulse-outline' },
-    { id: 'massoterapia', name: 'Massoterapia', icon: 'solar:hand-heart-outline' },
-    { id: 'spa', name: 'Spa e bem-estar', icon: 'solar:leaf-outline' },
-    { id: 'odontologia', name: 'Clínica odontológica', icon: 'solar:medical-kit-outline' },
-    { id: 'medicina', name: 'Consultório médico', icon: 'solar:stethoscope-outline' },
-    { id: 'fisioterapia', name: 'Fisioterapia', icon: 'solar:health-outline' },
-    { id: 'nutricao', name: 'Nutrição', icon: 'solar:chef-hat-outline' },
-    { id: 'psicologia', name: 'Psicologia', icon: 'solar:brain-outline' },
-    { id: 'personal-trainer', name: 'Personal trainer', icon: 'solar:running-outline' },
-    { id: 'academia', name: 'Academia', icon: 'solar:dumbbell-outline' },
-    { id: 'pilates', name: 'Pilates', icon: 'solar:body-outline' },
-    { id: 'yoga', name: 'Yoga', icon: 'solar:meditation-outline' },
-    { id: 'pet-shop', name: 'Pet shop', icon: 'solar:cat-outline' },
-    { id: 'banho-tosa', name: 'Banho e tosa', icon: 'solar:scissors-square-outline' },
-    { id: 'eventos', name: 'Fotografia e eventos', icon: 'solar:gallery-outline' },
-    { id: 'design', name: 'Agência de design', icon: 'solar:pen-2-outline' },
-    { id: 'marketing', name: 'Marketing e publicidade', icon: 'solar:graph-up-outline' },
-    { id: 'tecnologia', name: 'Tecnologia e desenvolvimento', icon: 'solar:code-outline' },
-    { id: 'consultoria', name: 'Consultoria', icon: 'solar:case-outline' },
-    { id: 'educacao', name: 'Educação e cursos', icon: 'solar:book-2-outline' },
-    { id: 'automotivo', name: 'Serviços automotivos', icon: 'solar:wheel-outline' }
-];
-
-const CATEGORY_GROUPS = [
-    {
-        id: "beauty",
-        name: "Beleza",
-        description: "Cuidados, estética e visual",
-        icon: "solar:magic-stick-3-linear",
-
-        categories: [
-            "barbearia",
-            "salao-beleza",
-            "cabeleireiro",
-            "manicure-pedicure",
-            "sobrancelhas",
-            "cilios",
-            "maquiagem",
-            "tatuagem",
-            "estetica"
-        ]
-    },
-
-    {
-        id: "health",
-        name: "Saúde",
-        description: "Profissionais e cuidados",
-        icon: "solar:health-linear",
-
-        categories: [
-            "odontologia",
-            "medicina",
-            "fisioterapia",
-            "nutricao",
-            "psicologia"
-        ]
-    },
-
-    {
-        id: "movement",
-        name: "Movimento",
-        description: "Treino, corpo e performance",
-        icon: "solar:running-2-linear",
-
-        categories: [
-            "personal-trainer",
-            "academia",
-            "pilates",
-            "yoga"
-        ]
-    },
-
-    {
-        id: "wellness",
-        name: "Bem-estar",
-        description: "Relaxamento e autocuidado",
-        icon: "solar:leaf-linear",
-
-        categories: [
-            "massoterapia",
-            "spa"
-        ]
-    },
-
-    {
-        id: "pets",
-        name: "Pets",
-        description: "Cuidados para seu pet",
-        icon: "solar:paw-linear",
-
-        categories: [
-            "pet-shop",
-            "banho-tosa"
-        ]
-    },
-
-    {
-        id: "services",
-        name: "Serviços",
-        description: "Profissionais e negócios",
-        icon: "solar:case-linear",
-
-        categories: [
-            "fotografia",
-            "eventos",
-            "design",
-            "marketing",
-            "tecnologia",
-            "consultoria",
-            "educacao",
-            "automotivo"
-        ]
-    }
-];
 
 const Explore = () => {
 
@@ -203,10 +91,58 @@ const Explore = () => {
 
         const database = getDatabase();
 
+        /*
+         * Índice leve: só os campos do card.
+         *
+         * Escutar "companys" aqui baixaria produtos,
+         * agendamentos e pedidos de todas as empresas.
+         */
+
         const companiesRef = ref(
             database,
-            "companys"
+            "companiesIndex"
         );
+
+        let cancelled = false;
+
+        /*
+         * Empresas criadas antes do índice existir não têm
+         * entrada em companiesIndex e sumiam da tela — tanto
+         * de "Perto de você" quanto da lista completa.
+         *
+         * Quando o índice vem vazio, montamos as mesmas
+         * entradas a partir de companys/, lendo só os campos
+         * do card (ver firebase/companiesIndex.js).
+         */
+        const loadFromSource = async () => {
+
+            let authToken = null;
+
+            try {
+
+                authToken =
+                    await getAuth()
+                        .currentUser
+                        ?.getIdToken();
+
+            } catch (error) {
+
+                authToken = null;
+
+            }
+
+            const fallback =
+                await fetchCompaniesFromSource(authToken);
+
+            if (cancelled) {
+                return;
+            }
+
+            setCompanies(fallback);
+
+            setLoading(false);
+
+        };
 
         const unsubscribe = onValue(
             companiesRef,
@@ -216,9 +152,7 @@ const Explore = () => {
 
                 if (!data) {
 
-                    setCompanies([]);
-
-                    setLoading(false);
+                    loadFromSource();
 
                     return;
                 }
@@ -237,6 +171,16 @@ const Explore = () => {
                                 company.name
                         );
 
+                /* Índice existe mas está incompleto: ainda
+                   assim é melhor mostrar o que há do que
+                   uma tela vazia. */
+                if (!companiesArray.length) {
+
+                    loadFromSource();
+
+                    return;
+                }
+
                 setCompanies(
                     companiesArray
                 );
@@ -251,14 +195,18 @@ const Explore = () => {
                     error
                 );
 
-                setCompanies([]);
-
-                setLoading(false);
+                loadFromSource();
 
             }
         );
 
-        return () => unsubscribe();
+        return () => {
+
+            cancelled = true;
+
+            unsubscribe();
+
+        };
 
     }, []);
 
@@ -407,10 +355,22 @@ const Explore = () => {
     };
 
 
+    /*
+     * Logos resolvidas no Storage.
+     *
+     * Quando o índice já traz logoUrl (que é uma download
+     * URL do Storage), ela é usada direto; quem não tem cai
+     * no getDownloadURL de companys/{handle}/logo.png.
+     * logoPreview do RTDB não entra: é o formato legado que
+     * está sendo retirado de circulação.
+     */
+    const companyLogos = useCompanyLogos(companies);
+
+
     const getCompanyLogo = (company) => {
 
         return (
-            company?.logoPreview ||
+            companyLogos[company?.handle] ||
             ""
         );
 
@@ -753,6 +713,27 @@ LOCALIZAÇÃO
     */
 
     const geocodeCompanyAddress = async (company) => {
+
+        /*
+         * Se o índice já trouxe as coordenadas, não
+         * precisamos consultar o geocodificador.
+         */
+
+        if (
+            company?.coordinates?.latitude != null &&
+            company?.coordinates?.longitude != null
+        ) {
+
+            return {
+                latitude:
+                    Number(company.coordinates.latitude),
+
+                longitude:
+                    Number(company.coordinates.longitude)
+            };
+
+        }
+
 
         const location =
             getCompanyLocation(
@@ -3376,7 +3357,7 @@ LOCALIZAÇÃO
                 }
 
                 companyLogo={
-                    selectedCompany?.logoPreview ||
+                    companyLogos[selectedCompany?.handle] ||
                     ""
                 }
 

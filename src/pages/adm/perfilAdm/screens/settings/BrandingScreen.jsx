@@ -16,6 +16,21 @@ import heic2any from "heic2any";
 import { useUserCompany } from "../../../../../contexts/companyContext/UserCompanyContext";
 import Toast from "../../../../../components/toast/Toast";
 
+import {
+    updateCompanyIndex
+} from "../../../../../firebase/companiesIndex";
+
+import {
+    uploadCompanyLogo,
+    useCompanyLogo
+} from "../../../../../firebase/companyLogo";
+
+import {
+    COMPANY_THEMES,
+    DEFAULT_COMPANY_THEME,
+    isValidCompanyTheme
+} from "../../../../../theme/companyThemes";
+
 const MAX_PHOTOS = 12;
 
 const PHOTO_CATEGORIES = [
@@ -45,8 +60,18 @@ const BrandingScreen = () => {
 
     const { company } = useUserCompany();
 
+    /* Fonte da logo: o arquivo em companys/{handle}/logo.png. */
+    const storedLogo = useCompanyLogo(company?.handle);
+
     const [logo, setLogo] = useState("");
     const [initialLogo, setInitialLogo] = useState("");
+
+    /* Paleta da página pública da empresa. */
+    const [companyTheme, setCompanyTheme] =
+        useState(DEFAULT_COMPANY_THEME);
+
+    const [initialCompanyTheme, setInitialCompanyTheme] =
+        useState(DEFAULT_COMPANY_THEME);
 
     const [photos, setPhotos] = useState([]);
     const [initialPhotos, setInitialPhotos] = useState([]);
@@ -69,10 +94,24 @@ const BrandingScreen = () => {
 
         if (!company) return;
 
-        const currentLogo = company.logoPreview || "";
+        /* A logo vem do Storage (ver storedLogo abaixo).
+           company.logoPreview só é lido para cobrir o
+           instante anterior à migração do legado. */
+        const currentLogo =
+            storedLogo ||
+            company.logoPreview ||
+            "";
 
         setLogo(currentLogo);
         setInitialLogo(currentLogo);
+
+        const savedTheme =
+            isValidCompanyTheme(company.theme)
+                ? company.theme
+                : DEFAULT_COMPANY_THEME;
+
+        setCompanyTheme(savedTheme);
+        setInitialCompanyTheme(savedTheme);
 
         const currentPhotos = Array.isArray(company.photos)
             ? company.photos
@@ -86,7 +125,7 @@ const BrandingScreen = () => {
         setPhotos(currentPhotos);
         setInitialPhotos(currentPhotos);
 
-    }, [company]);
+    }, [company, storedLogo]);
 
     const openToast = (type, title, message) => {
 
@@ -427,12 +466,10 @@ const BrandingScreen = () => {
             setPhotos(updatedPhotos);
 
             const photosObject =
-                updatedPhotos.reduce(
-                    (acc, photo) => {
-                        acc[photo.id] = photo;
-                        return acc;
-                    },
-                    {}
+                Object.fromEntries(
+                    updatedPhotos.map(
+                        (photo) => [photo.id, photo]
+                    )
                 );
 
             const db =
@@ -543,16 +580,10 @@ const BrandingScreen = () => {
             );
 
             const photosObject =
-                updatedPhotos.reduce(
-                    (acc, item) => {
-
-                        acc[item.id] =
-                            item;
-
-                        return acc;
-
-                    },
-                    {}
+                Object.fromEntries(
+                    updatedPhotos.map(
+                        (item) => [item.id, item]
+                    )
                 );
 
             const db =
@@ -621,9 +652,13 @@ const BrandingScreen = () => {
         JSON.stringify(photos) !==
         JSON.stringify(initialPhotos);
 
+    const hasThemeChanges =
+        companyTheme !== initialCompanyTheme;
+
     const hasChanges =
         hasLogoChanges ||
-        hasPhotoChanges;
+        hasPhotoChanges ||
+        hasThemeChanges;
 
     const handleSave = async () => {
 
@@ -661,10 +696,37 @@ const BrandingScreen = () => {
 
             const updates = {};
 
+            /*
+             * A logo vai para o Storage, nunca para o RTDB.
+             *
+             * Antes daqui saía `updates.logoPreview = logo`
+             * com o base64 inteiro (~40 KB) dentro do nó da
+             * empresa, que é lido pela home, pelo catálogo,
+             * pelos detalhes do produto e pelo checkout.
+             *
+             * `logoPreview: null` também limpa o que tiver
+             * sobrado de base64 de uma gravação anterior.
+             */
+
+            let uploadedLogoUrl = null;
+
             if (hasLogoChanges) {
 
-                updates.logoPreview =
-                    logo;
+                uploadedLogoUrl =
+                    await uploadCompanyLogo(
+                        company.handle,
+                        logo
+                    );
+
+                updates.logoPreview = null;
+
+            }
+
+            /* Campo curto no nó da empresa: é o que a página
+               pública lê para saber com que paleta pintar. */
+            if (hasThemeChanges) {
+
+                updates.theme = companyTheme;
 
             }
 
@@ -674,16 +736,10 @@ const BrandingScreen = () => {
             ) {
 
                 updates.photos =
-                    photos.reduce(
-                        (acc, photo) => {
-
-                            acc[photo.id] =
-                                photo;
-
-                            return acc;
-
-                        },
-                        {}
+                    Object.fromEntries(
+                        photos.map(
+                            (photo) => [photo.id, photo]
+                        )
                     );
 
             }
@@ -696,9 +752,41 @@ const BrandingScreen = () => {
                 updates
             );
 
+
+            /*
+             * ====================================================
+             * ÍNDICE PÚBLICO
+             * ====================================================
+             *
+             * Guarda a download URL do arquivo que acabou de
+             * subir, para a tela Explorar montar o card sem
+             * precisar de uma ida ao Storage por empresa.
+             * ====================================================
+             */
+
+            if (hasLogoChanges) {
+
+                await updateCompanyIndex(
+                    company.handle,
+                    {
+                        logoUrl: uploadedLogoUrl
+                    }
+                );
+
+            }
+
+
+            setInitialCompanyTheme(companyTheme);
+
             setInitialLogo(
-                logo
+                uploadedLogoUrl || logo
             );
+
+            if (uploadedLogoUrl) {
+
+                setLogo(uploadedLogoUrl);
+
+            }
 
             setInitialPhotos(
                 JSON.parse(
@@ -804,6 +892,142 @@ const BrandingScreen = () => {
                 </div>
 
             </div>
+
+            {/* ==================================================
+                TEMA DA PÁGINA
+
+                Pinta a página que o cliente abre pelo link da
+                empresa. Não afeta este painel: aqui vale o
+                tema pessoal de quem está logado.
+            ================================================== */}
+
+            <div className="branding-section-header">
+
+                <div>
+
+                    <h3>
+                        Tema da sua página
+                    </h3>
+
+                    <p>
+                        A paleta que o cliente vê ao abrir o link da
+                        sua empresa.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div className="company-card branding-themes-card">
+
+                <div className="branding-themes-grid">
+
+                    {COMPANY_THEMES.map((option) => {
+
+                        const isSelected =
+                            companyTheme === option.id;
+
+                        return (
+
+                            <button
+                                key={option.id}
+                                type="button"
+                                className={`branding-theme ${isSelected ? "selected" : ""}`}
+                                onClick={() =>
+                                    setCompanyTheme(option.id)
+                                }
+                                aria-pressed={isSelected}
+                            >
+
+                                {/* AMOSTRA */}
+
+                                <span
+                                    className="branding-theme-preview"
+                                    style={{
+                                        background: option.swatch[2]
+                                    }}
+                                >
+
+                                    <span
+                                        className="branding-theme-bar"
+                                        style={{
+                                            background: option.swatch[0]
+                                        }}
+                                    />
+
+                                    <span className="branding-theme-lines">
+
+                                        <i
+                                            style={{
+                                                background: option.swatch[1]
+                                            }}
+                                        />
+
+                                        <i
+                                            style={{
+                                                background: option.swatch[1]
+                                            }}
+                                        />
+
+                                    </span>
+
+                                    <span
+                                        className="branding-theme-chip"
+                                        style={{
+                                            background: option.swatch[0]
+                                        }}
+                                    />
+
+                                </span>
+
+
+                                {/* NOME */}
+
+                                <span className="branding-theme-info">
+
+                                    <strong>
+                                        {option.name}
+                                    </strong>
+
+                                    <small>
+                                        {option.description}
+                                    </small>
+
+                                </span>
+
+
+                                <span
+                                    className={`branding-theme-check ${isSelected ? "active" : ""}`}
+                                    aria-hidden
+                                >
+                                    <Icon icon="material-symbols:check-rounded" />
+                                </span>
+
+                            </button>
+
+                        );
+
+                    })}
+
+                </div>
+
+
+                <p className="branding-themes-note">
+
+                    <Icon icon="solar:info-circle-linear" />
+
+                    Cada tema tem versão clara e escura: quem
+                    navega no escuro continua vendo a sua cor,
+                    só que adaptada. O tema
+                    {" "}
+                    <strong>Noturno</strong>
+                    {" "}
+                    é escuro sempre, de propósito.
+
+                </p>
+
+            </div>
+
 
             {/* ==================================================
                 FOTOS DO LOCAL

@@ -1,10 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
-
-import {
-    motion,
-    AnimatePresence
-} from "framer-motion";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { Icon } from "@iconify/react";
 
@@ -17,12 +12,23 @@ import CompanyPage from "./CompanyPage/CompanyPage";
 import Explore from "./Explore/Explore";
 import Profile from "./Profile/Profile";
 
+import { useCompanyTheme } from "../../../theme/useCompanyTheme";
+
 import "./centralUser.css";
 
 
 const CentralUser = () => {
 
     const location = useLocation();
+
+    const navigate = useNavigate();
+
+    const { handle } = useParams();
+
+    /* A empresa da rota define a paleta da página pública.
+       O hook escreve data-company-theme no <html>, então
+       vale também para os modais em portal. */
+    useCompanyTheme(handle);
 
 
     /*
@@ -152,6 +158,23 @@ const CentralUser = () => {
     ============================================================
     */
 
+    /*
+     * A URL é a fonte de verdade da aba.
+     *
+     * Antes, trocar de aba só mexia no estado e deixava o
+     * `?tab=` antigo na URL. Bastava alguém escrever na
+     * query — abrir um produto na home escreve
+     * `?product=` preservando os parâmetros — para o efeito
+     * "URL → TAB" ler o `tab` velho e puxar a aba de volta.
+     *
+     * Era isso que jogava o usuário de volta ao catálogo com
+     * o produto aberto, em ciclo: o CompanyInfoModal leva
+     * para `?tab=catalog`, a pessoa vai para Início, abre um
+     * produto e a URL ainda dizia `tab=catalog`.
+     *
+     * `product` também sai fora na troca de aba, senão a
+     * aba de destino reabriria o modal do produto anterior.
+     */
     const handleTabChange = (
         tab
     ) => {
@@ -171,6 +194,24 @@ const CentralUser = () => {
 
         setActiveTab(
             tab
+        );
+
+
+        const params =
+            new URLSearchParams(
+                location.search
+            );
+
+        params.set("tab", tab);
+
+        params.delete("product");
+
+
+        navigate(
+            `${location.pathname}?${params.toString()}`,
+            {
+                replace: true
+            }
         );
 
     };
@@ -219,45 +260,6 @@ const CentralUser = () => {
     ============================================================
     */
 
-    const variants = {
-
-        initial: (
-            direction
-        ) => ({
-
-            x:
-                direction === "right"
-                    ? "100%"
-                    : "-100%",
-
-            opacity: 0
-
-        }),
-
-
-        animate: {
-
-            x: 0,
-
-            opacity: 1
-
-        },
-
-
-        exit: (
-            direction
-        ) => ({
-
-            x:
-                direction === "right"
-                    ? "-100%"
-                    : "100%",
-
-            opacity: 0
-
-        })
-
-    };
 
 
     /*
@@ -371,13 +373,9 @@ const CentralUser = () => {
         const handleGoToReservations =
             () => {
 
-                setPrevTab(
-                    activeTab
-                );
-
-                setActiveTab(
-                    "reservas"
-                );
+                /* Pelo handleTabChange, para a URL
+                   acompanhar a aba. */
+                handleTabChange("reservas");
 
             };
 
@@ -411,13 +409,9 @@ const CentralUser = () => {
         const handleGoToCatalog =
             () => {
 
-                setPrevTab(
-                    activeTab
-                );
-
-                setActiveTab(
-                    "catalog"
-                );
+                /* Pelo handleTabChange, para a URL
+                   acompanhar a aba. */
+                handleTabChange("catalog");
 
             };
 
@@ -452,40 +446,25 @@ const CentralUser = () => {
 
             <div className="content">
 
-                <AnimatePresence
-                    mode="wait"
-                    custom={
-                        getDirection()
-                    }
+                {/*
+                    Troca de aba por CSS, sem AnimatePresence.
+
+                    O `key` faz o React remontar o bloco, e a
+                    animação de entrada do CSS reinicia sozinha.
+                    Não existe animação de saída de propósito: era
+                    ela que obrigava o AnimatePresence a segurar a
+                    aba antiga montada — e quando a animação não
+                    rodava, a aba nova nunca aparecia.
+                */}
+                <div
+                    key={activeTab}
+                    className="mkf-view-enter"
+                    data-direction={getDirection()}
                 >
 
-                    <motion.div
-                        key={activeTab}
+                    {renderContent()}
 
-                        custom={
-                            getDirection()
-                        }
-
-                        initial="initial"
-
-                        animate="animate"
-
-                        exit="exit"
-
-                        variants={
-                            variants
-                        }
-
-                        transition={{
-                            duration: 0.3
-                        }}
-                    >
-
-                        {renderContent()}
-
-                    </motion.div>
-
-                </AnimatePresence>
+                </div>
 
             </div>
 

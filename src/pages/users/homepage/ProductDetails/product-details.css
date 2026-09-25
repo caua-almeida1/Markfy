@@ -7,6 +7,7 @@
  02. Mídia e carrossel
  03. Header e navegação
  04. Informações do serviço
+ 04.1 Media Tools do serviço
  05. Empresa
  06. Pagamento antecipado
  07. Descrição formatada
@@ -46,7 +47,7 @@
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: #fff;
+    background: var(--mkf-ui-white);
     overflow-y: auto;
 }
 
@@ -197,7 +198,7 @@
 .product-details-back:hover,
 .product-details-cart:hover {
     background: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
     box-shadow: 0 2px 3rem var(--mkf-ui-primary);
 }
 
@@ -254,6 +255,371 @@
     margin-left: 4px;
 }
 
+/* =============================================================================
+   04.1. MEDIA ACTIONS
+============================================================================= */
+
+.product-details-media-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.product-details-media-action {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    color: var(--mkf-on-primary);
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease,
+        opacity 0.2s ease;
+}
+
+.product-details-media-action svg {
+    width: 19px;
+    height: 19px;
+}
+
+.product-details-media-action:hover {
+    background: rgba(0, 0, 0, 0.65);
+    transform: translateY(-1px);
+}
+
+.product-details-media-action:active {
+    transform: scale(0.94);
+}
+
+.product-details-media-action:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+
+/* =========================================================
+   TELA CHEIA
+========================================================= */
+
+.product-image-fullscreen {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 999999;
+
+    width: 100vw;
+    height: 100dvh;
+
+    display: flex;
+    flex-direction: column;
+
+    background: rgba(8, 8, 8, 0.98);
+
+    color: var(--mkf-on-primary);
+
+    overflow: hidden;
+
+    isolation: isolate;
+}
+
+
+/* =========================================================
+   HEADER TELA CHEIA
+========================================================= */
+
+.product-image-fullscreen-header {
+    position: absolute;
+
+    top: 0;
+    left: 0;
+    right: 0;
+
+    z-index: 10;
+
+    height: 76px;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 0 24px;
+
+    pointer-events: none;
+
+    background:
+        linear-gradient(to bottom,
+            rgba(0, 0, 0, 0.55),
+            transparent);
+}
+
+.product-image-fullscreen-counter {
+    display: flex;
+    align-items: center;
+
+    gap: 6px;
+
+    padding: 8px 12px;
+
+    border-radius: 999px;
+
+    background: rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-medium);
+
+    color: var(--mkf-on-primary);
+}
+
+.product-image-fullscreen-counter span {
+    opacity: 0.45;
+}
+
+.product-image-fullscreen-close {
+    width: 42px;
+    height: 42px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    color: var(--mkf-on-primary);
+
+    cursor: pointer;
+
+    pointer-events: auto;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.product-image-fullscreen-close:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.product-image-fullscreen-close:active {
+    transform: scale(0.94);
+}
+
+.product-image-fullscreen-close svg {
+    width: 21px;
+    height: 21px;
+}
+
+
+/* =========================================================
+   ÁREA PRINCIPAL
+========================================================= */
+
+.product-image-fullscreen-main {
+    position: relative;
+
+    width: 100%;
+    height: 100%;
+
+    flex: 1;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 90px 100px 120px;
+
+    box-sizing: border-box;
+}
+
+
+/* =========================================================
+   IMAGEM
+========================================================= */
+
+.product-image-fullscreen-image {
+    display: block;
+
+    width: auto;
+    height: auto;
+
+    max-width: 100%;
+    max-height: 100%;
+
+    object-fit: contain;
+
+    user-select: none;
+    -webkit-user-drag: none;
+
+    border-radius: 8px;
+}
+
+
+/* =========================================================
+   NAVEGAÇÃO
+========================================================= */
+
+.product-image-fullscreen-nav {
+    position: absolute;
+
+    top: 50%;
+
+    width: 48px;
+    height: 48px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+
+    background: rgba(0, 0, 0, 0.42);
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    color: var(--mkf-on-primary);
+
+    cursor: pointer;
+
+    z-index: 5;
+
+    transform: translateY(-50%);
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.product-image-fullscreen-nav:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.product-image-fullscreen-nav:active {
+    transform: translateY(-50%) scale(0.93);
+}
+
+.product-image-fullscreen-nav.previous {
+    left: 28px;
+}
+
+.product-image-fullscreen-nav.next {
+    right: 28px;
+}
+
+.product-image-fullscreen-nav svg {
+    width: 22px;
+    height: 22px;
+}
+
+
+/* =========================================================
+   MINIATURAS
+========================================================= */
+
+.product-image-fullscreen-thumbnails {
+    position: absolute;
+
+    left: 50%;
+    bottom: 20px;
+
+    z-index: 10;
+
+    max-width: calc(100% - 30px);
+
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    padding: 7px;
+
+    border-radius: 14px;
+
+    background: rgba(0, 0, 0, 0.48);
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    transform: translateX(-50%);
+
+    overflow-x: auto;
+
+    scrollbar-width: none;
+}
+
+.product-image-fullscreen-thumbnails::-webkit-scrollbar {
+    display: none;
+}
+
+.product-image-fullscreen-thumbnail {
+    position: relative;
+
+    width: 58px;
+    height: 58px;
+
+    flex: 0 0 58px;
+
+    padding: 0;
+
+    border: 2px solid transparent;
+    border-radius: 9px;
+
+    background: rgba(255, 255, 255, 0.08);
+
+    overflow: hidden;
+
+    cursor: pointer;
+
+    opacity: 0.65;
+
+    transition:
+        opacity 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.2s ease;
+}
+
+.product-image-fullscreen-thumbnail:hover {
+    opacity: 0.9;
+}
+
+.product-image-fullscreen-thumbnail.active {
+    border-color: var(--mkf-ui-white);
+    opacity: 1;
+}
+
+.product-image-fullscreen-thumbnail:active {
+    transform: scale(0.94);
+}
+
+.product-image-fullscreen-thumbnail img {
+    width: 100%;
+    height: 100%;
+
+    display: block;
+
+    object-fit: cover;
+}
 
 /* =============================================================================
    05. EMPRESA
@@ -322,6 +688,20 @@
     box-shadow: 0 2px 1rem rgba(0, 0, 0, 0.05);
 }
 
+/* O botão do WhatsApp saía preto porque a regra acima
+   (`.product-details-company-actions button`, especificidade
+   0-1-1) vencia uma seletor de classe só. Daí o seletor
+   descendente aqui. */
+.product-details-company-actions .product-details-whatsap-button {
+    color: #25d366;
+}
+
+.product-details-company-actions .product-details-whatsap-button:hover {
+    background: #25d366;
+    color: var(--mkf-on-primary);
+    box-shadow: 0 4px 14px rgba(37, 211, 102, 0.35);
+}
+
 
 /* =============================================================================
    06. PAGAMENTO ANTECIPADO
@@ -372,6 +752,225 @@
     font-size: var(--mkf-font-3xs);
     line-height: 1.45;
     color: var(--mkf-text-tertiary);
+}
+
+
+/* =============================================================================
+   06.1 ASSINATURA — PLANO DE MENSALIDADE
+
+   Bloco exibido apenas quando o produto tem type === "monthly".
+   A intenção é que o cliente perceba a recorrência antes de
+   chegar ao rodapé com o botão de confirmação.
+============================================================================= */
+
+.product-details-subscription {
+    width: 100%;
+    margin: 1rem 0;
+    padding: 1rem;
+    border: 1px solid var(--mkf-ui-primary-light);
+    border-radius: 1.25rem;
+    background: var(--mkf-ui-primary-lighter);
+}
+
+.product-details-subscription-header {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+}
+
+.product-details-subscription-icon {
+    width: 38px;
+    height: 38px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: .7rem;
+    background: var(--mkf-ui-white);
+    color: var(--mkf-ui-primary);
+}
+
+.product-details-subscription-icon svg {
+    font-size: 1.3rem;
+}
+
+.product-details-subscription-heading {
+    min-width: 0;
+}
+
+.product-details-subscription-heading span {
+    display: block;
+    margin-bottom: .2rem;
+    color: var(--mkf-ui-primary);
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-semibold);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.product-details-subscription-heading h3 {
+    margin: 0;
+    color: var(--mkf-text-primary);
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.product-details-subscription-heading p {
+    margin: .25rem 0 0;
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-3xs);
+    line-height: 1.5;
+}
+
+
+/* ---------- Valor ---------- */
+
+.product-details-subscription-price {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: .75rem;
+    margin-top: .9rem;
+    padding: .8rem .9rem;
+    border-radius: 1rem;
+    background: var(--mkf-ui-white);
+}
+
+.product-details-subscription-price>div {
+    min-width: 0;
+}
+
+.product-details-subscription-price>div span {
+    display: block;
+    margin-bottom: .15rem;
+    color: var(--mkf-text-light);
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-medium);
+}
+
+.product-details-subscription-price strong {
+    color: var(--mkf-ui-primary);
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.product-details-subscription-price strong em {
+    margin-left: 2px;
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-xs);
+    font-style: normal;
+    font-weight: var(--mkf-font-semibold);
+}
+
+.product-details-subscription-sessions {
+    flex-shrink: 0;
+    padding: .35rem .6rem;
+    border-radius: 999px;
+    background: var(--mkf-ui-primary-light);
+    color: var(--mkf-ui-primary);
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-semibold);
+    text-align: right;
+}
+
+
+/* ---------- Detalhes ---------- */
+
+.product-details-subscription-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: .7rem;
+    margin: .9rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.product-details-subscription-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+    min-width: 0;
+}
+
+.product-details-subscription-list li svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--mkf-ui-primary);
+    font-size: 1rem;
+}
+
+.product-details-subscription-list li>div {
+    min-width: 0;
+}
+
+.product-details-subscription-list li span {
+    display: block;
+    color: var(--mkf-text-light);
+    font-size: var(--mkf-font-3xs);
+    font-weight: var(--mkf-font-semibold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.product-details-subscription-list li strong {
+    display: block;
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-medium);
+    line-height: 1.4;
+}
+
+
+/* ---------- Rodapé do bloco ---------- */
+
+.product-details-subscription-footnote {
+    display: flex;
+    align-items: flex-start;
+    gap: .4rem;
+    margin: .9rem 0 0;
+    padding-top: .8rem;
+    border-top: 1px solid var(--mkf-ui-primary-light);
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-3xs);
+    line-height: 1.5;
+}
+
+.product-details-subscription-footnote svg {
+    flex-shrink: 0;
+    margin-top: 1px;
+    color: var(--mkf-ui-primary);
+    font-size: .9rem;
+}
+
+
+/* ---------- Ciclo no rodapé fixo ---------- */
+
+.product-details-footer-cycle {
+    margin-left: 2px;
+    font-size: 0.8rem;
+    font-style: normal;
+    font-weight: 500;
+    opacity: 0.7;
+}
+
+
+@media (max-width: 520px) {
+
+    .product-details-subscription-list {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .product-details-subscription-price {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: .5rem;
+    }
+
+    .product-details-subscription-sessions {
+        text-align: left;
+    }
+
 }
 
 
@@ -626,7 +1225,7 @@
 
 .professional-selection-check.selected {
     background: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
     transform: scale(1.05);
 }
 
@@ -813,7 +1412,7 @@
 .slot-button.selected {
     border-color: var(--mkf-ui-primary);
     background: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
 }
 
 .product-details-available-times {
@@ -935,7 +1534,7 @@
 
 .product-details-footer-cta {
     background: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
     border: none;
     height: 100%;
     padding: 0.75rem 4rem;
@@ -951,7 +1550,7 @@
 
 .product-details-footer-cta.disabled {
     background: #ccc !important;
-    color: #666 !important;
+    color: var(--mkf-text-tertiary) !important;
     cursor: not-allowed !important;
     opacity: 0.7;
     box-shadow: none;
@@ -1178,7 +1777,7 @@
 .confirmation-modal-button--primary {
     flex: 1;
     background: var(--mkf-ui-primary);
-    color: var(--mkf-ui-white);
+    color: var(--mkf-on-primary);
     box-shadow:
         0 5px 16px rgba(9, 42, 243, 0.18);
 }
@@ -2197,7 +2796,7 @@
 .product-details-button {
     margin-top: 1.5rem;
     background: var(--mkf-ui-primary);
-    color: white;
+    color: var(--mkf-on-primary);
     padding: 0.75rem;
     border: none;
     border-radius: 12px;
@@ -2405,6 +3004,29 @@
     .confirmation-modal-step {
         padding-left: 13px;
         padding-right: 13px;
+    }
+
+
+    .product-details-media-action {
+        width: 36px;
+        height: 36px;
+    }
+
+    .product-image-fullscreen-main {
+        padding-left: 42px;
+        padding-right: 42px;
+    }
+
+    .product-image-fullscreen-nav {
+        width: 34px;
+        height: 34px;
+    }
+
+    .product-image-fullscreen-thumbnail {
+        width: 43px;
+        height: 43px;
+
+        flex-basis: 43px;
     }
 
 }
@@ -2772,7 +3394,7 @@
         font-size: .57rem;
         line-height: 1.4;
     }
-    
+
     /* ---------------- CONFIRMAÇÃO — PAGAMENTO E AUTENTICAÇÃO ---------------- */
 
     .confirmation-payment-notice {
@@ -3269,6 +3891,344 @@
 
     .product-details-footer-cta .icon {
         font-size: 1.1rem;
+    }
+
+
+    .product-details-media-actions {
+        gap: 6px;
+    }
+
+    .product-details-media-action {
+        width: 38px;
+        height: 38px;
+    }
+
+    .product-details-media-action svg {
+        width: 18px;
+        height: 18px;
+    }
+
+
+    /* =========================================
+       FULLSCREEN MOBILE
+    ========================================= */
+
+    .product-image-fullscreen-header {
+        height: 64px;
+
+        padding:
+            env(safe-area-inset-top)
+            14px
+            0
+            14px;
+
+        box-sizing: border-box;
+    }
+
+    .product-image-fullscreen-counter {
+        padding: 7px 10px;
+
+        font-size: var(--mkf-font-xs);
+    }
+
+    .product-image-fullscreen-close {
+        width: 38px;
+        height: 38px;
+    }
+
+
+    .product-image-fullscreen-main {
+        padding:
+            70px
+            48px
+            105px;
+    }
+
+
+    .product-image-fullscreen-image {
+        max-width: 100%;
+        max-height: 100%;
+
+        border-radius: 5px;
+    }
+
+
+    .product-image-fullscreen-nav {
+        width: 38px;
+        height: 38px;
+    }
+
+    .product-image-fullscreen-nav.previous {
+        left: 8px;
+    }
+
+    .product-image-fullscreen-nav.next {
+        right: 8px;
+    }
+
+    .product-image-fullscreen-nav svg {
+        width: 18px;
+        height: 18px;
+    }
+
+
+    .product-image-fullscreen-thumbnails {
+        bottom: max(
+            12px,
+            env(safe-area-inset-bottom)
+        );
+
+        max-width: calc(100% - 20px);
+
+        gap: 5px;
+
+        padding: 5px;
+
+        border-radius: 11px;
+    }
+
+    .product-image-fullscreen-thumbnail {
+        width: 48px;
+        height: 48px;
+
+        flex-basis: 48px;
+
+        border-radius: 7px;
+    }
+}
+
+
+/* ---------- Link de ação secundária do modal ---------- */
+
+.confirmation-modal-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    width: 100%;
+    min-height: 44px;
+    margin-top: 10px;
+    padding: 0 12px;
+
+    border: 0;
+    background: none;
+
+    font: inherit;
+    font-size: .92rem;
+    font-weight: 500;
+    color: var(--mkf-ui-primary);
+
+    cursor: pointer;
+}
+
+.confirmation-modal-link:hover {
+    text-decoration: underline;
+}
+
+
+/* ---------- Campo de observações ---------- */
+
+.confirmation-form-optional {
+    margin-left: 7px;
+    padding: 2px 7px;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-surface-hover, #f1f3f9);
+    color: var(--mkf-text-secondary, #5c6278);
+
+    font-size: .68rem;
+    font-weight: 500;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.confirmation-textarea {
+    width: 100%;
+    padding: 12px 14px;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 12px;
+    background: var(--mkf-ui-background, #fff);
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    /* 16px, ou o Safari do iPhone dá zoom ao focar. */
+    font-size: 1rem;
+    line-height: 1.45;
+
+    resize: vertical;
+    min-height: 84px;
+}
+
+.confirmation-textarea:focus {
+    outline: 2px solid var(--mkf-ui-primary, #092af3);
+    outline-offset: 1px;
+}
+
+.confirmation-textarea::placeholder {
+    color: var(--mkf-text-secondary, #9a9a9a);
+}
+
+
+/* =========================================================
+   MENSALIDADE — AVISOS E ESTADO DA ASSINATURA
+   ========================================================= */
+
+.product-details-subscription-hint {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+
+    margin: 12px 0 0;
+    padding: 12px 14px;
+
+    border-radius: 12px;
+    background: var(--mkf-ui-primary-soft, #eef1ff);
+
+    font-size: .88rem;
+    line-height: 1.5;
+    color: var(--mkf-text-primary);
+}
+
+.product-details-subscription-hint svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    font-size: 17px;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.product-details-subscription-active {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    margin-bottom: 18px;
+    padding: 16px;
+
+    border: 1px solid #b8e4c9;
+    border-radius: 16px;
+    background: #f1faf4;
+}
+
+.product-details-subscription-active-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.product-details-subscription-active-head > svg {
+    flex: 0 0 auto;
+    font-size: 26px;
+    color: #1a8f4c;
+}
+
+.product-details-subscription-active-head strong {
+    display: block;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #146135;
+}
+
+.product-details-subscription-active-head span {
+    font-size: .88rem;
+    line-height: 1.5;
+    color: #2f6b4c;
+}
+
+.product-details-subscription-active-facts {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+}
+
+.product-details-subscription-active-facts > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    padding: 11px 13px;
+
+    border-radius: 12px;
+    background: #fff;
+}
+
+.product-details-subscription-active-facts span {
+    font-size: .74rem;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: #2f6b4c;
+}
+
+.product-details-subscription-active-facts strong {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.product-details-subscription-active-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+
+    margin: 0;
+    padding: 11px 13px;
+
+    border-radius: 12px;
+    background: #fff8e8;
+
+    font-size: .86rem;
+    line-height: 1.5;
+    color: #8a6314;
+}
+
+.product-details-subscription-active-warning svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    font-size: 16px;
+}
+
+
+/* Pontos do painel "entre para assinar". */
+
+.confirmation-subscription-points {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    margin: 16px 0 4px;
+}
+
+.confirmation-subscription-points > div {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 12px 14px;
+
+    border-radius: 12px;
+    background: var(--mkf-ui-surface-hover, #f4f6fb);
+
+    font-size: .88rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.confirmation-subscription-points svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    font-size: 18px;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+
+@media (max-width: 680px) {
+
+    .product-details-subscription-active-facts {
+        grid-template-columns: 1fr;
     }
 
 }

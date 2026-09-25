@@ -1,0 +1,808 @@
+/* =========================================================
+   AVISO DE COOKIES — LGPD
+
+   O banner fica sobre o conteúdo, mas sem bloquear a
+   navegação: recusar não pode custar o acesso ao serviço,
+   então nada de cookie wall.
+========================================================= */
+
+.mkf-consent-banner[data-state="entering"] {
+    animation: mkfConsentBannerIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.mkf-consent-banner[data-state="leaving"] {
+    animation: mkfConsentBannerOut 0.3s ease-in both;
+    pointer-events: none;
+}
+
+@keyframes mkfConsentBannerIn {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 28px, 0) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+@keyframes mkfConsentBannerOut {
+    from {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+
+    to {
+        opacity: 0;
+        transform: translate3d(0, 24px, 0) scale(0.98);
+    }
+}
+
+.mkf-consent-banner {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    left: 16px;
+
+    z-index: 4000;
+
+    display: flex;
+    align-items: center;
+
+    gap: 16px;
+
+    box-sizing: border-box;
+
+    width: min(980px, calc(100% - 32px));
+
+    margin: 0 auto;
+
+    padding: 18px 20px;
+
+    border: 1px solid var(--mkf-ui-border, var(--mkf-ui-gray-200));
+
+    border-radius: 20px;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow:
+        0 18px 50px rgba(0, 0, 0, 0.16),
+        0 2px 8px rgba(0, 0, 0, 0.06);
+
+    font-family: "Poppins", system-ui, sans-serif;
+}
+
+/* A central do usuário tem uma barra de navegação fixa no
+   rodapé. O banner é renderizado em portal no <body>, fora
+   dela, então sobe pela presença do shell na página — senão
+   os dois disputariam o mesmo canto. */
+body:has(.central-user) .mkf-consent-banner {
+    bottom: 104px;
+}
+
+.mkf-consent-banner-icon {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+
+    width: 46px;
+    height: 46px;
+
+    border-radius: 14px;
+
+    background: var(--mkf-ui-primary-lighter, #f5f7ff);
+
+    color: var(--mkf-ui-primary);
+
+    font-size: 26px;
+}
+
+.mkf-consent-banner-text {
+    min-width: 0;
+    flex: 1;
+}
+
+.mkf-consent-banner-text strong {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: var(--mkf-text-primary, #17181c);
+
+    font-size: 0.9375rem;
+    font-weight: 600;
+}
+
+.mkf-consent-banner-text p {
+    margin: 0;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: 0.75rem;
+    line-height: 1.55;
+}
+
+.mkf-consent-banner-text a,
+.mkf-consent-panel-legal a {
+    color: var(--mkf-ui-primary);
+
+    font-weight: 600;
+
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.mkf-consent-banner-actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+
+    gap: 8px;
+}
+
+
+/* ---------- Botões ---------- */
+
+.mkf-consent-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 40px;
+
+    padding: 0 16px;
+
+    border: 1px solid transparent;
+    border-radius: 11px;
+
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    white-space: nowrap;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        border-color 0.2s ease,
+        color 0.2s ease,
+        transform 0.15s ease;
+}
+
+.mkf-consent-btn:active {
+    transform: scale(0.97);
+}
+
+.mkf-consent-btn--primary {
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+}
+
+.mkf-consent-btn--primary:hover {
+    background: var(--mkf-ui-primary-hover, #0b33ff);
+}
+
+/* "Recusar" tem o mesmo tamanho e destaque de "Aceitar":
+   consentimento só é livre se recusar custar o mesmo
+   esforço (LGPD, Art. 8º). */
+.mkf-consent-btn--secondary {
+    border-color: var(--mkf-ui-border-dark);
+    background: var(--mkf-ui-white);
+    color: var(--mkf-text-primary, #17181c);
+}
+
+.mkf-consent-btn--secondary:hover {
+    border-color: var(--mkf-text-light);
+    background: var(--mkf-ui-gray-50);
+}
+
+.mkf-consent-btn--ghost {
+    background: transparent;
+    color: var(--mkf-text-secondary);
+}
+
+.mkf-consent-btn--ghost:hover {
+    background: var(--mkf-ui-gray-100);
+    color: var(--mkf-text-primary, #17181c);
+}
+
+
+/* =========================================================
+   PAINEL DE PREFERÊNCIAS
+========================================================= */
+
+.mkf-consent-overlay {
+    position: fixed;
+    inset: 0;
+
+    z-index: 4100;
+
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+
+    padding: 0;
+
+    background: rgba(0, 0, 0, 0.45);
+
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.mkf-consent-panel {
+    display: flex;
+    flex-direction: column;
+
+    box-sizing: border-box;
+
+    width: 100%;
+    max-height: 92dvh;
+
+    border-radius: 24px 24px 0 0;
+
+    background: var(--mkf-ui-white);
+
+    font-family: "Poppins", system-ui, sans-serif;
+
+    overflow: hidden;
+}
+
+.mkf-consent-panel-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    padding: 22px 22px 16px;
+
+    border-bottom: 1px solid var(--mkf-ui-border, var(--mkf-ui-gray-200));
+}
+
+.mkf-consent-panel-header span {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: var(--mkf-ui-primary);
+
+    font-size: 0.5625rem;
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: 0.1em;
+
+    text-transform: uppercase;
+}
+
+.mkf-consent-panel-header h2 {
+    margin: 0;
+
+    color: var(--mkf-text-primary, #17181c);
+
+    font-size: 1.125rem;
+    font-weight: 700;
+    line-height: 1.2;
+
+    letter-spacing: -0.02em;
+}
+
+.mkf-consent-panel-close {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+
+    width: 34px;
+    height: 34px;
+
+    border: 0;
+    border-radius: 50%;
+
+    background: var(--mkf-ui-gray-100);
+
+    color: var(--mkf-text-secondary);
+
+    font-size: 17px;
+
+    cursor: pointer;
+
+    transition: background 0.2s ease;
+}
+
+.mkf-consent-panel-close:hover {
+    background: var(--mkf-ui-gray-200);
+}
+
+.mkf-consent-panel-content {
+    flex: 1;
+
+    min-height: 0;
+
+    padding: 18px 22px 22px;
+
+    overflow-y: auto;
+
+    scrollbar-width: thin;
+}
+
+.mkf-consent-panel-intro {
+    margin: 0 0 16px;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: 0.75rem;
+    line-height: 1.6;
+}
+
+
+/* ---------- Categorias ---------- */
+
+.mkf-consent-categories {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+}
+
+.mkf-consent-category {
+    border: 1px solid var(--mkf-ui-border, var(--mkf-ui-gray-200));
+    border-radius: 15px;
+
+    background: var(--mkf-ui-white);
+
+    overflow: hidden;
+
+    transition: border-color 0.2s ease;
+}
+
+.mkf-consent-category.expanded {
+    border-color: var(--mkf-ui-primary-light, #e9edff);
+}
+
+.mkf-consent-category-head {
+    display: flex;
+    align-items: center;
+
+    gap: 12px;
+
+    padding: 12px 14px;
+}
+
+.mkf-consent-category-toggle {
+    display: flex;
+    flex: 1;
+    align-items: center;
+
+    gap: 9px;
+
+    min-width: 0;
+
+    padding: 0;
+
+    border: 0;
+
+    background: transparent;
+
+    font-family: inherit;
+
+    text-align: left;
+
+    cursor: pointer;
+}
+
+.mkf-consent-category-chevron {
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: 15px;
+
+    transition: transform 0.25s ease;
+}
+
+.mkf-consent-category.expanded .mkf-consent-category-chevron {
+    transform: rotate(90deg);
+}
+
+.mkf-consent-category-toggle > span {
+    min-width: 0;
+}
+
+.mkf-consent-category-toggle strong {
+    display: flex;
+    align-items: center;
+
+    gap: 7px;
+
+    color: var(--mkf-text-primary, #17181c);
+
+    font-size: 0.8125rem;
+    font-weight: 600;
+}
+
+.mkf-consent-category-toggle strong em {
+    padding: 2px 7px;
+
+    border-radius: 999px;
+
+    background: var(--mkf-ui-gray-100);
+
+    color: var(--mkf-text-light);
+
+    font-size: 0.5625rem;
+    font-style: normal;
+    font-weight: 600;
+
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.mkf-consent-category-toggle small {
+    display: block;
+
+    margin-top: 2px;
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: 0.6875rem;
+    line-height: 1.45;
+}
+
+
+/* ---------- Chave ---------- */
+
+.mkf-consent-switch {
+    position: relative;
+
+    flex-shrink: 0;
+
+    width: 42px;
+    height: 24px;
+
+    cursor: pointer;
+}
+
+.mkf-consent-switch input {
+    position: absolute;
+
+    width: 100%;
+    height: 100%;
+
+    margin: 0;
+
+    opacity: 0;
+
+    cursor: inherit;
+}
+
+.mkf-consent-switch > span {
+    position: absolute;
+    inset: 0;
+
+    border-radius: 999px;
+
+    background: var(--mkf-ui-gray-300);
+
+    transition: background 0.22s ease;
+
+    pointer-events: none;
+}
+
+.mkf-consent-switch > span::after {
+    content: "";
+
+    position: absolute;
+    top: 3px;
+    left: 3px;
+
+    width: 18px;
+    height: 18px;
+
+    border-radius: 50%;
+
+    background: var(--mkf-ui-white);
+
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+
+    transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.mkf-consent-switch.on > span {
+    background: var(--mkf-ui-primary);
+}
+
+.mkf-consent-switch.on > span::after {
+    transform: translateX(18px);
+}
+
+.mkf-consent-switch.locked {
+    cursor: not-allowed;
+    opacity: 0.55;
+}
+
+
+/* ---------- Detalhe da categoria ---------- */
+
+/*
+ * 0fr -> 1fr é o truque que permite animar até a altura
+ * real do conteúdo. `height: auto` não é animável; isto é.
+ */
+.mkf-consent-category-body {
+    display: grid;
+    grid-template-rows: 0fr;
+
+    opacity: 0;
+
+    transition:
+        grid-template-rows 0.25s ease,
+        opacity 0.2s ease;
+}
+
+.mkf-consent-category-body[data-open="true"] {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+/* min-height: 0 é o que deixa a linha do grid encolher
+   abaixo do conteúdo; sem ele nada fecha. */
+.mkf-consent-category-body > div {
+    min-height: 0;
+    overflow: hidden;
+    padding: 0 14px 14px 37px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    .mkf-consent-category-body {
+        transition-duration: 0.01ms;
+    }
+
+}
+
+.mkf-consent-category-body p {
+    margin: 0 0 10px;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: 0.6875rem;
+    line-height: 1.6;
+}
+
+.mkf-consent-category-body ul {
+    display: flex;
+    flex-direction: column;
+
+    gap: 9px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.mkf-consent-category-body li {
+    padding: 9px 11px;
+
+    border-radius: 10px;
+
+    background: var(--mkf-ui-gray-50);
+}
+
+.mkf-consent-category-body code {
+    display: block;
+
+    margin-bottom: 3px;
+
+    color: var(--mkf-ui-primary);
+
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+    font-size: 0.625rem;
+    font-weight: 600;
+
+    word-break: break-all;
+}
+
+.mkf-consent-category-body li span {
+    display: block;
+
+    color: var(--mkf-text-secondary);
+
+    font-size: 0.6875rem;
+    line-height: 1.5;
+}
+
+.mkf-consent-category-body li small {
+    display: block;
+
+    margin-top: 3px;
+
+    color: var(--mkf-text-light);
+
+    font-size: 0.625rem;
+}
+
+.mkf-consent-category-empty {
+    margin: 0;
+
+    color: var(--mkf-text-light);
+
+    font-style: italic;
+}
+
+
+/* ---------- Rodapé legal ---------- */
+
+.mkf-consent-panel-legal {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 8px;
+
+    margin: 18px 0 0;
+
+    padding: 12px 14px;
+
+    border-radius: 13px;
+
+    background: var(--mkf-ui-primary-lighter, #f5f7ff);
+
+    color: var(--mkf-text-tertiary);
+
+    font-size: 0.6875rem;
+    line-height: 1.6;
+}
+
+.mkf-consent-panel-legal svg {
+    flex-shrink: 0;
+
+    margin-top: 1px;
+
+    color: var(--mkf-ui-primary);
+
+    font-size: 15px;
+}
+
+
+/* ---------- Ações do painel ---------- */
+
+.mkf-consent-panel-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    padding: 14px 22px;
+
+    border-top: 1px solid var(--mkf-ui-border, var(--mkf-ui-gray-200));
+
+    background: var(--mkf-ui-white);
+}
+
+.mkf-consent-panel-actions > div {
+    display: flex;
+    align-items: center;
+
+    gap: 8px;
+}
+
+
+/* =========================================================
+   DESKTOP
+========================================================= */
+
+@media (min-width: 768px) {
+
+    .mkf-consent-overlay {
+        align-items: center;
+
+        padding: 32px 24px;
+    }
+
+    .mkf-consent-panel {
+        width: min(640px, 100%);
+        max-height: min(760px, 100%);
+
+        border-radius: 22px;
+    }
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 760px) {
+
+    .mkf-consent-banner {
+        right: 10px;
+        bottom: 10px;
+        left: 10px;
+
+        flex-direction: column;
+        align-items: stretch;
+
+        gap: 12px;
+
+        width: calc(100% - 20px);
+
+        padding: 16px;
+
+        border-radius: 18px;
+    }
+
+    body:has(.central-user) .mkf-consent-banner {
+        bottom: 96px;
+    }
+
+    .mkf-consent-banner-icon {
+        width: 38px;
+        height: 38px;
+
+        font-size: 22px;
+    }
+
+    .mkf-consent-banner-actions {
+        display: grid;
+
+        grid-template-columns: 1fr 1fr;
+    }
+
+    /* "Personalizar" ocupa a linha inteira; recusar e
+       aceitar dividem a de baixo, lado a lado e do mesmo
+       tamanho. */
+    .mkf-consent-banner-actions .mkf-consent-btn--ghost {
+        grid-column: 1 / -1;
+        order: -1;
+    }
+
+    .mkf-consent-panel-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+    }
+
+    .mkf-consent-panel-actions > div {
+        display: grid;
+
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .mkf-consent-panel-actions .mkf-consent-btn {
+        width: 100%;
+    }
+
+}
+
+
+/* =========================================================
+   MODO ESCURO
+========================================================= */
+
+.dark-mode .mkf-consent-banner,
+.dark-mode .mkf-consent-panel,
+.dark-mode .mkf-consent-panel-actions {
+    background: var(--mkf-ui-surface, #1a1b1f);
+}
+
+.dark-mode .mkf-consent-category,
+.dark-mode .mkf-consent-btn--secondary {
+    background: var(--mkf-ui-surface, #1a1b1f);
+}
+
+
+/* =========================================================
+   MOVIMENTO REDUZIDO
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .mkf-consent-switch > span::after,
+    .mkf-consent-category-chevron {
+        transition: none;
+    }
+
+}

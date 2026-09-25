@@ -16,28 +16,40 @@ import {
     update,
     remove
 } from "firebase/database";
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+
+import {
+    getStorage,
+    ref as storageRef,
+    uploadBytes,
+    getDownloadURL,
+    listAll
+} from "firebase/storage";
+
 import { getAuth } from "firebase/auth";
 
 import { Icon } from "@iconify/react";
 import imageCompression from "browser-image-compression";
 
 import Thumb1 from "../../../img/adm-content/image-not-found.svg";
-import ThumbProduct from "../../../img/adm-content/file (63).png"
 
 import { useUserCompany } from "../../../contexts/companyContext/UserCompanyContext";
 import Toast from "../../../components/toast/Toast";
 import ProductManagementSlider from "./components/ProductManagementModal"
+import ProductCreationModal from "./components/ProductCreationModal";
+
 
 import {
-    motion,
-    AnimatePresence
-} from "framer-motion";
+    buildMonthlyPlan,
+    getPlanPriceSuffix,
+    isSubscriptionProduct,
+    normalizeMonthlyPlan
+} from "../../../utils/subscription";
 
 import "./productsAdm.css";
+import Modal from "../../../components/modal/Modal";
 
 const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
-    const { company } = useUserCompany();
+    const { company, companyHandle } = useUserCompany();
     const [duration, setDuration] = useState(0);
     const [activeTab, setActiveTab] = useState("ativos");
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -60,8 +72,44 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [selectedSort, setSelectedSort] = useState("nameAsc");
 
+    /* Tipo de oferta: "all" | "individual" | "monthly".
+       Produtos antigos não têm `type`, então valem como
+       individuais. */
+    const [selectedType, setSelectedType] = useState("all");
+
     const [tempCategory, setTempCategory] = useState("all");
     const [tempSort, setTempSort] = useState("nameAsc");
+    const [tempType, setTempType] = useState("all");
+
+    const TYPE_OPTIONS = [
+        {
+            id: "all",
+            label: "Todos",
+            icon: "lucide:layers"
+        },
+        {
+            id: "individual",
+            label: "Produtos",
+            icon: "mdi:package-variant"
+        },
+        {
+            id: "monthly",
+            label: "Mensalidades",
+            icon: "solar:refresh-circle-linear"
+        }
+    ];
+
+    const matchesSelectedType = (product, type) => {
+
+        if (type === "all") {
+            return true;
+        }
+
+        return type === "monthly"
+            ? isSubscriptionProduct(product)
+            : !isSubscriptionProduct(product);
+
+    };
 
     const sortOptions = [
         {
@@ -104,9 +152,8 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     ========================================================= */
 
     const activeFiltersCount =
-        selectedCategory !== "all"
-            ? 1
-            : 0;
+        (selectedCategory !== "all" ? 1 : 0) +
+        (selectedType !== "all" ? 1 : 0);
 
 
     /* =========================================================
@@ -163,13 +210,36 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 );
 
 
+            /* =========================
+               TIPO DE OFERTA
+            ========================= */
+
+            const matchesType =
+                matchesSelectedType(
+                    product,
+                    selectedType
+                );
+
+
             return (
                 matchesTab &&
                 matchesSearch &&
-                matchesCategory
+                matchesCategory &&
+                matchesType
             );
         })
         .sort((a, b) => {
+
+            /* Produtos avulsos vêm sempre antes das
+               mensalidades, independente da ordenação
+               escolhida — o foco da lista são eles. */
+            const subscriptionOrder =
+                Number(isSubscriptionProduct(a)) -
+                Number(isSubscriptionProduct(b));
+
+            if (subscriptionOrder !== 0) {
+                return subscriptionOrder;
+            }
 
             switch (selectedSort) {
 
@@ -304,13 +374,27 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             // console.log("Tipo de Produto é:", productType);
         }
 
+        if (step === 2.5) {
+            setProductInfo(prev => ({
+                ...prev,
+                monthlyPlan: buildMonthlyPlan({
+                    billingCycle,
+                    unlimitedSessions,
+                    sessionsPerCycle,
+                    autoRenew,
+                    trialDays,
+                    loyaltyMonths,
+                    cancellationNoticeDays:
+                        subscriptionCancellationNoticeDays
+                })
+            }));
+        }
+
         if (step === 3) {
             // console.log("Imagens fornecidas:", productImages.filter(img => img !== null));
         }
 
         if (step === 4) {
-            const name = document.getElementById('input1').value;
-            const duration = parseInt(document.getElementById('duration').value);
 
             setProductInfo({
                 ...productInfo,
@@ -451,7 +535,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             setIsAnimating(true);
             setStepDirection("next");
             setTimeout(() => {
-                setStep(prev => prev + 1);
+                setStep(prev => getNextStepValue(prev));
                 setIsAnimating(false);
             }, 400);
         }
@@ -462,7 +546,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             setIsAnimating(true);
             setStepDirection("prev");
             setTimeout(() => {
-                setStep((prev) => prev - 1);
+                setStep((prev) => getPrevStepValue(prev));
                 setIsAnimating(false);
             }, 400);
         }
@@ -475,7 +559,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             prevSelectedButton === buttonId ? null : buttonId
         );
         // Atualiza o tipo de produto
-        setProductType(buttonId === 1 ? 'individual' : 'package');
+        setProductType(buttonId === 1 ? 'individual' : 'monthly');
     };
 
     const [time, setTime] = useState({ hours: 0, minutes: 0 });
@@ -654,85 +738,36 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
         };
     }, [isProductsGalleryOpen, currentGalleryImageIndex]);
 
-    // ============== QUARTO PASSO RANGE DURAÇÃO
+    /* =========================================================
+       QUARTO PASSO — DURAÇÃO
 
-    useEffect(() => {
-        const rangeInput = document.getElementById('duration');
-        if (rangeInput) {
-            const handleDurationChange = () => {
-                const duration = parseInt(rangeInput.value);
-                setProductInfo(prev => ({ ...prev, duration }));
-            };
+       A duração é um estado controlado: o range e os campos
+       de hora/minuto são só duas entradas para o mesmo
+       número de minutos, ambos limitados ao mesmo teto.
+    ========================================================= */
 
-            rangeInput.addEventListener('input', handleDurationChange);
-            return () => rangeInput.removeEventListener('input', handleDurationChange);
-        }
-    }, [step]);
+    const DURATION_MAX_MINUTES = 300;
 
-    useEffect(() => {
-        const rangeInput = document.getElementById('duration');
-        const rangeValue = document.getElementById('duration-value');
-        const rangeTooltip = document.getElementById('range-tooltip');
+    const handleDurationChange = (value) => {
 
-        const formatTime = (minutes) => {
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-            if (hours === 0) {
-                return `${mins}m`;
-            } else {
-                return `${hours}h ${mins}m`;
-            }
-        };
+        const parsed = parseInt(value, 10);
 
-        const updateRangeStyle = () => {
-            if (!rangeInput || !rangeValue || !rangeTooltip) return;
+        const minutes =
+            Number.isNaN(parsed)
+                ? 0
+                : Math.min(
+                    Math.max(parsed, 0),
+                    DURATION_MAX_MINUTES
+                );
 
-            // Usar o valor do estado duration em vez do valor do input
-            const value = duration;
-            const max = parseInt(rangeInput.max, 10);
-            const percent = (value / max) * 100;
+        setDuration(minutes);
 
-            // Atualiza o input range com o valor do estado
-            rangeInput.value = value;
+        setProductInfo(prev => ({
+            ...prev,
+            duration: minutes
+        }));
 
-            // Atualiza o gradiente e o valor exibido
-            rangeInput.style.setProperty('--range-percent', `${percent}%`);
-            rangeValue.textContent = formatTime(value);
-
-            // Atualiza o retângulo (tooltip)
-            const thumbPosition = (value / max) * rangeInput.offsetWidth;
-            rangeTooltip.textContent = formatTime(value);
-            rangeTooltip.style.left = `${thumbPosition}px`;
-        };
-
-        if (rangeInput && rangeValue && rangeTooltip) {
-            // Atualiza o range quando o componente monta ou quando duration muda
-            updateRangeStyle();
-
-            // Adiciona event listener para atualizar o estado quando o range é alterado
-            const handleInputChange = (e) => {
-                const newDuration = parseInt(e.target.value);
-                setDuration(newDuration);
-                setProductInfo(prev => ({ ...prev, duration: newDuration }));
-            };
-
-            rangeInput.addEventListener('input', handleInputChange);
-
-            rangeInput.addEventListener('mousedown', () => {
-                const rangeTooltip = document.getElementById('range-tooltip');
-                if (rangeTooltip) rangeTooltip.style.opacity = '1';
-            });
-
-            rangeInput.addEventListener('mouseup', () => {
-                const rangeTooltip = document.getElementById('range-tooltip');
-                if (rangeTooltip) rangeTooltip.style.opacity = '0';
-            });
-
-            return () => {
-                rangeInput.removeEventListener('input', handleInputChange);
-            };
-        }
-    }, [duration, step]); // Adicione duration como dependência
+    };
 
     // =========== FORMATAÇÃO DE PREÇO INPUT 
 
@@ -914,6 +949,113 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     const handleCurrencyPromoChange = (e) => {
         setCurrencyPromo(e.target.value);
+    };
+
+    /* =========================================================
+       BUSCAR IMAGENS DO PRODUTO NO FIREBASE STORAGE
+    
+       As imagens NÃO ficam no Realtime Database.
+    
+       Caminho:
+    
+       companys/{companyKey}/products/{productId}/images/
+    
+       Retorna somente URLs em memória para utilização na UI.
+    ========================================================= */
+
+    const getProductStorageImages = async (
+        companyKey,
+        productId
+    ) => {
+
+        try {
+
+            if (!companyKey || !productId) {
+                return [];
+            }
+
+            const storage = getStorage();
+
+            const productImagesRef = storageRef(
+                storage,
+                `companys/${companyKey}/products/${productId}/images`
+            );
+
+            const result = await listAll(
+                productImagesRef
+            );
+
+            if (!result.items.length) {
+                return [];
+            }
+
+            /*
+             * Ordena pelo nome:
+             *
+             * image_0.jpg
+             * image_1.jpg
+             * image_2.jpg
+             *
+             * Isso garante que a primeira imagem
+             * seja sempre a principal.
+             */
+
+            const sortedItems = [...result.items].sort(
+                (a, b) =>
+                    a.name.localeCompare(
+                        b.name,
+                        undefined,
+                        {
+                            numeric: true,
+                            sensitivity: "base"
+                        }
+                    )
+            );
+
+            const imageUrls =
+                await Promise.all(
+                    sortedItems.map(
+                        async (item) => {
+
+                            try {
+
+                                return await getDownloadURL(
+                                    item
+                                );
+
+                            } catch (error) {
+
+                                console.error(
+                                    `Erro ao obter URL da imagem ${item.name}:`,
+                                    error
+                                );
+
+                                return null;
+
+                            }
+
+                        }
+                    )
+                );
+
+            return imageUrls.filter(Boolean);
+
+        } catch (error) {
+
+            /*
+             * Se o produto ainda não possui imagens
+             * no Storage, simplesmente retorna vazio.
+             */
+
+            console.warn(
+                `Não foi possível carregar imagens do produto ${productId}:`,
+                error
+            );
+
+            return [];
+
+        }
+
     };
 
     const formatCurrency = (value, currency) => {
@@ -1276,24 +1418,13 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 const user = auth.currentUser;
                 if (!user) return;
 
-                const db = getDatabase();
-                const companysRef = ref(db, "companys");
-
-                const snapshot = await get(companysRef);
-                if (!snapshot.exists()) return;
-
-                const companies = snapshot.val();
-                let companyKey = null;
-
-                // Descobrir qual empresa o user pertence
-                for (const [key, value] of Object.entries(companies)) {
-                    if (value.members && value.members[user.uid]) {
-                        companyKey = key;
-                        break;
-                    }
-                }
+                // O handle vem do contexto: não precisamos
+                // varrer o nó "companys" para descobri-lo.
+                const companyKey = companyHandle;
 
                 if (!companyKey) return;
+
+                const db = getDatabase();
 
                 // Buscar os membros dessa empresa
                 const membersRef = ref(db, `companys/${companyKey}/members`);
@@ -1302,20 +1433,28 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 if (membersSnap.exists()) {
                     const membersData = membersSnap.val();
 
-                    // Buscar info de cada user na tabela users
-                    const usersRef = ref(db, "users");
-                    const usersSnap = await get(usersRef);
-                    const usersData = usersSnap.exists() ? usersSnap.val() : {};
+                    // Buscar apenas os uids necessários,
+                    // nunca o nó "users" inteiro.
+                    const entries = Object.entries(membersData);
 
-                    const parsedMembers = Object.entries(membersData).map(([uid, info]) => {
-                        const userInfo = usersData[uid] || {};
-                        return {
-                            id: uid,
-                            name: userInfo.name || "Sem nome",
-                            avatar: userInfo.avatar || null,
-                            role: info.role || "Sem função",
-                        };
-                    });
+                    const parsedMembers = await Promise.all(
+                        entries.map(async ([uid, info]) => {
+                            const userSnap = await get(
+                                ref(db, `users/${uid}`)
+                            );
+
+                            const userInfo = userSnap.exists()
+                                ? userSnap.val()
+                                : {};
+
+                            return {
+                                id: uid,
+                                name: userInfo.name || "Sem nome",
+                                avatar: userInfo.avatar || null,
+                                role: info.role || "Sem função",
+                            };
+                        })
+                    );
 
                     setMembers(parsedMembers);
                 }
@@ -1325,7 +1464,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
         };
 
         fetchMembers();
-    }, []);
+    }, [companyHandle]);
 
     const [selectedAdmins, setSelectedAdmins] = useState([]);
 
@@ -1371,193 +1510,340 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     const handleConfirmation = async () => {
 
-        // Impede uma segunda execução enquanto a primeira ainda está acontecendo
-        if (isAddingProduct) return;
+        if (isAddingProduct) {
+            return;
+        }
 
         setIsAddingProduct(true);
 
         try {
 
-            const discountPercentage = calculateDiscountPercentage();
+            /* =========================================================
+               EMPRESA
+            ========================================================= */
 
-            const productImages = Array.isArray(carouselItems)
-                ? carouselItems
-                    .map(item => item.image)
-                    .filter(img => img !== null)
-                : [];
+            const companyHandle =
+                company?.handle;
 
-            const productImage =
-                productImages.length > 0
-                    ? productImages[0]
-                    : Thumb1;
+            if (!companyHandle) {
 
-            const auth = getAuth();
-            const user = auth.currentUser;
-
-            if (!user) {
-                throw new Error("Usuário não autenticado");
-            }
-
-            const db = getDatabase();
-            const storage = getStorage();
-            const companysRef = ref(db, "companys");
-
-            const snapshot = await get(companysRef);
-
-            if (!snapshot.exists()) {
-                throw new Error("Nenhuma empresa encontrada");
-            }
-
-            const companies = snapshot.val();
-            let companyKey = null;
-
-            for (const [key, value] of Object.entries(companies)) {
-
-                if (
-                    value.members &&
-                    value.members[user.uid]
-                ) {
-                    companyKey = key;
-                    break;
-                }
-
-            }
-
-            if (!companyKey) {
                 throw new Error(
-                    "Usuário não pertence a nenhuma empresa"
+                    "Não foi possível identificar a empresa."
                 );
+
             }
 
-            const generateCustomId = (length = 12) => {
+
+            /* =========================================================
+               DESCONTO
+            ========================================================= */
+
+            const discountPercentage =
+                calculateDiscountPercentage();
+
+
+            /* =========================================================
+               IMAGENS SELECIONADAS
+            ========================================================= */
+
+            const productImages =
+                Array.isArray(carouselItems)
+                    ? carouselItems
+                        .map(item => item?.image)
+                        .filter(Boolean)
+                    : [];
+
+
+            /* =========================================================
+               ID DO PRODUTO
+            ========================================================= */
+
+            const generateCustomId = (
+                length = 12
+            ) => {
 
                 const chars =
                     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
 
                 return Array.from(
-                    { length },
+                    {
+                        length
+                    },
                     () =>
                         chars.charAt(
                             Math.floor(
-                                Math.random() * chars.length
+                                Math.random() *
+                                chars.length
                             )
                         )
                 ).join("");
 
             };
 
-            const customId = generateCustomId(12);
 
-            // ===============================
-            // 📷 UPLOAD DAS IMAGENS
-            // ===============================
+            const customId =
+                generateCustomId(12);
 
-            const uploadPromises = productImages.map(
-                async (imageFile, index) => {
 
-                    let file;
+            /* =========================================================
+               FIREBASE
+            ========================================================= */
 
-                    if (
-                        typeof imageFile === "string" &&
-                        imageFile.startsWith("data:")
-                    ) {
+            const db =
+                getDatabase();
 
-                        const res = await fetch(imageFile);
-                        const blob = await res.blob();
+            const storage =
+                getStorage();
 
-                        file = new File(
-                            [blob],
-                            `image_${index}.jpg`,
-                            {
-                                type: "image/jpeg"
-                            }
-                        );
 
-                    } else {
+            /* =========================================================
+               📷 UPLOAD DAS IMAGENS
+               
+               IMPORTANTE:
+               
+               As imagens NÃO serão salvas no RTDB.
+               
+               Elas serão salvas somente em:
+               
+               companys/{companyHandle}/products/{customId}/images/
+               
+               ========================================================= */
 
-                        file = imageFile;
+            const uploadedImages = [];
 
-                    }
 
-                    const compressedFile =
-                        await imageCompression(
-                            file,
-                            {
-                                maxSizeMB: 0.3,
-                                maxWidthOrHeight: 1280,
-                                useWebWorker: true
-                            }
-                        );
-
-                    const imgRef = storageRef(
-                        storage,
-                        `companys/${companyKey}/products/${customId}/images/${compressedFile.name}`
-                    );
-
-                    await uploadBytes(
-                        imgRef,
-                        compressedFile
-                    );
-
-                    return await getDownloadURL(
-                        imgRef
-                    );
-
-                }
-            );
-
-            const uploadedImageUrls =
-                await Promise.all(uploadPromises);
-
-            // ===============================
-            // 👤 USUÁRIOS RELACIONADOS
-            // ===============================
-
-            const currentUser = auth.currentUser;
-
-            let relatedUsers = members
-                .filter(member =>
-                    selectedAdmins.includes(member.id)
-                )
-                .map(member => ({
-                    id: member.id,
-                    role: capitalizeFirst(member.role)
-                }));
-
-            // Nenhum usuário selecionado:
-            // relaciona automaticamente o usuário logado
-            if (
-                relatedUsers.length === 0 &&
-                currentUser
+            for (
+                let index = 0;
+                index < productImages.length;
+                index++
             ) {
 
-                relatedUsers = [
+                const imageFile =
+                    productImages[index];
+
+
+                let file;
+
+
+                /* =====================================================
+                   DATA URL
+                ===================================================== */
+
+                if (
+                    typeof imageFile === "string" &&
+                    imageFile.startsWith("data:")
+                ) {
+
+                    const response =
+                        await fetch(
+                            imageFile
+                        );
+
+
+                    const blob =
+                        await response.blob();
+
+
+                    file =
+                        new File(
+                            [
+                                blob
+                            ],
+                            `image_${index}.jpg`,
+                            {
+                                type:
+                                    blob.type ||
+                                    "image/jpeg"
+                            }
+                        );
+
+                }
+
+                /* =====================================================
+                   FILE
+                ===================================================== */
+
+                else if (
+                    imageFile instanceof File
+                ) {
+
+                    file =
+                        imageFile;
+
+                }
+
+                else {
+
+                    console.warn(
+                        "Imagem ignorada:",
+                        imageFile
+                    );
+
+                    continue;
+                }
+
+
+                /* =====================================================
+                   COMPRESSÃO
+                ===================================================== */
+
+                const compressedFile =
+                    await imageCompression(
+                        file,
+                        {
+
+                            maxSizeMB:
+                                0.3,
+
+                            maxWidthOrHeight:
+                                1280,
+
+                            useWebWorker:
+                                true,
+
+                            fileType:
+                                "image/jpeg",
+
+                            initialQuality:
+                                0.82
+
+                        }
+                    );
+
+
+                /* =====================================================
+                   NOME PADRONIZADO
+                ===================================================== */
+
+                const fileName =
+                    `image_${index}.jpg`;
+
+
+                /* =====================================================
+                   CAMINHO NO STORAGE
+                ===================================================== */
+
+                const imagePath =
+                    `companys/${companyHandle}/products/${customId}/images/${fileName}`;
+
+
+                const imageRef =
+                    storageRef(
+                        storage,
+                        imagePath
+                    );
+
+
+                /* =====================================================
+                   UPLOAD
+                ===================================================== */
+
+                await uploadBytes(
+                    imageRef,
+                    compressedFile,
                     {
-                        id: currentUser.uid,
-                        role: "Administrador"
+                        contentType:
+                            "image/jpeg"
                     }
-                ];
+                );
+
+
+                /* =====================================================
+                   URL
+                   
+                   A URL pode ser usada em memória/UI.
+                   
+                   NÃO será salva no produto do RTDB.
+                   ===================================================== */
+
+                const downloadUrl =
+                    await getDownloadURL(
+                        imageRef
+                    );
+
+
+                uploadedImages.push({
+
+                    name:
+                        fileName,
+
+                    path:
+                        imagePath,
+
+                    url:
+                        downloadUrl
+
+                });
 
             }
-            // ===============================
-            // 📝 PRODUTO
-            // ===============================
+
+
+            /* =========================================================
+               👤 USUÁRIOS RELACIONADOS
+            ========================================================= */
+
+            const relatedUsers =
+                members
+                    .filter(
+                        member =>
+                            selectedAdmins.includes(
+                                member.id
+                            )
+                    )
+                    .map(
+                        member => ({
+
+                            id:
+                                member.id,
+
+                            role:
+                                capitalizeFirst(
+                                    member.role
+                                )
+
+                        })
+                    );
+
+
+            /* =========================================================
+               📝 PRODUTO
+               
+               ATENÇÃO:
+               
+               NÃO existe:
+               
+               image
+               images
+               
+               aqui.
+               
+               ========================================================= */
 
             const newProduct = {
 
-                name: productInfo.name,
+                name:
+                    productInfo.name,
 
-                status: "ativos",
+                status:
+                    "ativos",
 
-                value: productInfo.price,
+                type:
+                    productType || "individual",
 
-                orders: 0,
+                value:
+                    productInfo.price,
 
-                description: productInfo.description,
+                orders:
+                    0,
 
-                duration: productInfo.duration,
+                description:
+                    productInfo.description,
 
-                categories: productInfo.categories,
+                duration:
+                    productInfo.duration,
+
+                categories:
+                    productInfo.categories,
 
                 discount:
                     discountPercentage !== null
@@ -1566,15 +1852,11 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                 relatedUsers,
 
-                image:
-                    uploadedImageUrls[0] || Thumb1,
+                originalPrice:
+                    priceFrom,
 
-                images:
-                    uploadedImageUrls,
-
-                originalPrice: priceFrom,
-
-                discountedPrice: priceTo,
+                discountedPrice:
+                    priceTo,
 
                 currency,
 
@@ -1584,9 +1866,32 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 cancellationAdvance:
                     productInfo.cancellationAdvance,
 
+                /* O plano é remontado aqui a partir dos estados
+                   do passo 2.5 (e não de productInfo.monthlyPlan)
+                   para que o que foi digitado por último sempre
+                   chegue ao banco, mesmo que o admin tenha voltado
+                   e editado a assinatura sem avançar de novo. */
+                monthlyPlan:
+                    productType === "monthly"
+                        ? buildMonthlyPlan({
+                            billingCycle,
+                            unlimitedSessions,
+                            sessionsPerCycle,
+                            autoRenew,
+                            trialDays,
+                            loyaltyMonths,
+                            cancellationNoticeDays:
+                                subscriptionCancellationNoticeDays,
+                            price:
+                                productInfo.price,
+                            currency
+                        })
+                        : null,
+
                 settings: {
 
-                    privacy: isPrivate,
+                    privacy:
+                        isPrivate,
 
                     notifications:
                         notificationsEnabled,
@@ -1598,10 +1903,12 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                         reschedulingAllowed,
 
                     dynamicPricing:
-                        productInfo.settings.dynamicPricing,
+                        productInfo.settings
+                            .dynamicPricing,
 
                     extraFees:
-                        productInfo.settings.extraFees
+                        productInfo.settings
+                            .extraFees
 
                 },
 
@@ -1610,40 +1917,75 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
             };
 
-            // ===============================
-            // 💾 SALVAR NO REALTIME DATABASE
-            // ===============================
 
-            const productRef = ref(
-                db,
-                `companys/${companyKey}/products/${customId}`
-            );
+            /* =========================================================
+               💾 SALVAR NO REALTIME DATABASE
+               
+               SOMENTE DADOS DO PRODUTO.
+               
+               IMAGENS FICAM NO STORAGE.
+               ========================================================= */
+
+            const productRef =
+                ref(
+                    db,
+                    `companys/${companyHandle}/products/${customId}`
+                );
+
 
             await set(
                 productRef,
                 newProduct
             );
 
+
+            /* =========================================================
+               LOG
+            ========================================================= */
+
             console.log(
-                "Produto salvo em:",
-                `companys/${companyKey}/products/${customId}`
+                "Produto salvo no Realtime Database:",
+                `companys/${companyHandle}/products/${customId}`
             );
 
-            // Fecha modal de confirmação
+
+            console.log(
+                "Imagens salvas no Firebase Storage:",
+                uploadedImages
+            );
+
+
+            /* =========================================================
+               FECHAR CONFIRMAÇÃO
+            ========================================================= */
+
             closeConfirmationModal();
 
-            // Reseta formulário
+
+            /* =========================================================
+               RESETAR FORMULÁRIO
+            ========================================================= */
+
             resetAllStates();
 
-            // Fecha modal principal
+
+            /* =========================================================
+               FECHAR MODAL PRINCIPAL
+            ========================================================= */
+
             closeModal();
 
-            // Toast de sucesso
+
+            /* =========================================================
+               TOAST
+            ========================================================= */
+
             openToast(
                 "success",
                 "Produto criado",
                 "O produto foi criado com sucesso."
             );
+
 
         } catch (error) {
 
@@ -1652,11 +1994,14 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 error
             );
 
+
             openToast(
                 "error",
                 "Erro ao criar produto",
+                error?.message ||
                 "Não foi possível criar o produto. Tente novamente."
             );
+
 
         } finally {
 
@@ -1703,7 +2048,8 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 hours: 0,
                 minutes: 0
             },
-            relatedUsers: []
+            relatedUsers: [],
+            monthlyPlan: null
         });
         setProductName('');
         setProductDescription('');
@@ -1727,6 +2073,13 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
         setPrepaymentRequired(false);
         setReschedulingAllowed(true);
         setProductType(null);
+        setBillingCycle('monthly');
+        setUnlimitedSessions(true);
+        setSessionsPerCycle('');
+        setAutoRenew(true);
+        setTrialDays('');
+        setLoyaltyMonths('');
+        setSubscriptionCancellationNoticeDays('');
         setBookingAdvanceDays("");
         setBookingAdvanceHours("");
         setBookingAdvanceMinutes("");
@@ -1739,6 +2092,31 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     // ============== SAVE DE INFORMAÇÕES ===============
     const [productType, setProductType] = useState(null);
+
+    // ============== PASSO 2.5 — PLANO DE MENSALIDADE ===============
+
+    const [billingCycle, setBillingCycle] = useState('monthly');
+    const [unlimitedSessions, setUnlimitedSessions] = useState(true);
+    const [sessionsPerCycle, setSessionsPerCycle] = useState('');
+    const [autoRenew, setAutoRenew] = useState(true);
+    const [trialDays, setTrialDays] = useState('');
+    const [loyaltyMonths, setLoyaltyMonths] = useState('');
+    const [subscriptionCancellationNoticeDays, setSubscriptionCancellationNoticeDays] = useState('');
+
+    // Calcula o próximo/anterior step considerando o sub-passo
+    // exclusivo do plano de mensalidade (2.5), que só existe
+    // quando o produto selecionado no passo 2 é "monthly".
+    const getNextStepValue = (current) => {
+        if (current === 2 && productType === 'monthly') return 2.5;
+        if (current === 2.5) return 3;
+        return current + 1;
+    };
+
+    const getPrevStepValue = (current) => {
+        if (current === 2.5) return 2;
+        if (current === 3 && productType === 'monthly') return 2.5;
+        return current - 1;
+    };
 
     const [productName, setProductName] = useState('');
     const [productDescription, setProductDescription] = useState('');
@@ -1887,7 +2265,8 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             hours: 0,
             minutes: 0
         },
-        relatedUsers: []
+        relatedUsers: [],
+        monthlyPlan: null
     });
 
     useEffect(() => {
@@ -2030,6 +2409,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     useEffect(() => {
 
         let unsubscribeProducts = null;
+        let isMounted = true;
 
         const fetchProducts = async () => {
 
@@ -2037,39 +2417,77 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                 setLoading(true);
 
-                const auth = getAuth();
-                const user = auth.currentUser;
+
+                /* =====================================================
+                   AUTENTICAÇÃO
+                ===================================================== */
+
+                const auth =
+                    getAuth();
+
+                const user =
+                    auth.currentUser;
+
 
                 if (!user) {
+
                     throw new Error(
                         "Usuário não autenticado"
                     );
+
                 }
 
-                const db = getDatabase();
+
+                /* =====================================================
+                   FIREBASE
+                ===================================================== */
+
+                const db =
+                    getDatabase();
+
+
+                const storage =
+                    getStorage();
+
+
+                /* =====================================================
+                   EMPRESAS
+                ===================================================== */
 
                 const companysRef =
-                    ref(db, "companys");
+                    ref(
+                        db,
+                        "companys"
+                    );
 
-                // ===============================
-                // BUSCAR EMPRESAS
-                // ===============================
 
                 const snapshot =
-                    await get(companysRef);
+                    await get(
+                        companysRef
+                    );
+
 
                 if (!snapshot.exists()) {
+
                     throw new Error(
                         "Nenhuma empresa encontrada"
                     );
+
                 }
+
 
                 const companies =
                     snapshot.val();
 
-                let companyKey = null;
 
-                // Descobre a empresa do usuário
+                let companyKey =
+                    null;
+
+
+                /* =====================================================
+                   DESCOBRIR EMPRESA DO USUÁRIO
+                ===================================================== */
+
                 for (
                     const [key, value]
                     of Object.entries(companies)
@@ -2080,21 +2498,28 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                         value.members[user.uid]
                     ) {
 
-                        companyKey = key;
+                        companyKey =
+                            key;
 
                         break;
+
                     }
+
                 }
 
+
                 if (!companyKey) {
+
                     throw new Error(
                         "Usuário não pertence a nenhuma empresa"
                     );
+
                 }
 
-                // ===============================
-                // PRODUTOS
-                // ===============================
+
+                /* =====================================================
+                   PRODUTOS
+                ===================================================== */
 
                 const productsRef =
                     ref(
@@ -2102,17 +2527,24 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                         `companys/${companyKey}/products`
                     );
 
-                // ===============================
-                // VERIFICA PRODUTOS EXPIRADOS
-                // ===============================
+
+                /* =====================================================
+                   LIMPEZA DOS ARQUIVADOS
+                ===================================================== */
 
                 const productsSnapshot =
-                    await get(productsRef);
+                    await get(
+                        productsRef
+                    );
 
-                if (productsSnapshot.exists()) {
+
+                if (
+                    productsSnapshot.exists()
+                ) {
 
                     const productsData =
                         productsSnapshot.val();
+
 
                     await removeExpiredArchivedProducts(
                         productsData,
@@ -2122,51 +2554,139 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                 }
 
-                // ===============================
-                // ESCUTA PRODUTOS
-                // ===============================
 
-                unsubscribeProducts = onValue(
-                    productsRef,
-                    (snapshot) => {
+                /* =====================================================
+                   ESCUTAR PRODUTOS
+                ===================================================== */
 
-                        const data =
-                            snapshot.val();
+                unsubscribeProducts =
+                    onValue(
+                        productsRef,
+                        async (snapshot) => {
 
-                        if (data) {
+                            if (!isMounted) {
+                                return;
+                            }
+
+
+                            const data =
+                                snapshot.val();
+
+
+                            if (!data) {
+
+                                setProducts([]);
+
+                                setLoading(false);
+
+                                return;
+
+                            }
+
+
+                            /* =================================================
+                               TRANSFORMAR RTDB EM ARRAY
+                            ================================================= */
 
                             const productsArray =
                                 Object.keys(data).map(
                                     (key) => ({
-                                        id: key,
-                                        ...data[key],
+
+                                        id:
+                                            key,
+
+                                        ...data[key]
+
                                     })
                                 );
 
+
+                            /* =================================================
+                               BUSCAR IMAGENS DO STORAGE
+                               
+                               IMPORTANTE:
+                               
+                               As imagens são carregadas paralelamente.
+                               
+                               Não são salvas no RTDB.
+                            ================================================= */
+
+                            const productsWithImages =
+                                await Promise.all(
+
+                                    productsArray.map(
+                                        async (product) => {
+
+                                            const storageImages =
+                                                await getProductStorageImages(
+                                                    companyKey,
+                                                    product.id
+                                                );
+
+
+                                            return {
+
+                                                ...product,
+
+                                                /*
+                                                 * Estas duas propriedades
+                                                 * existem somente no estado
+                                                 * React.
+                                                 */
+
+                                                storageImages,
+
+                                                storageImage:
+                                                    storageImages[0] ||
+                                                    null
+
+                                            };
+
+                                        }
+                                    )
+
+                                );
+
+
+                            if (!isMounted) {
+                                return;
+                            }
+
+
+                            /* =================================================
+                               ATUALIZAR LISTA
+                            ================================================= */
+
                             setProducts(
-                                productsArray
+                                productsWithImages
                             );
 
-                        } else {
 
-                            setProducts([]);
+                            setLoading(
+                                false
+                            );
+
+                        },
+
+                        (error) => {
+
+                            console.error(
+                                "Erro ao buscar produtos:",
+                                error
+                            );
+
+
+                            if (isMounted) {
+
+                                setLoading(
+                                    false
+                                );
+
+                            }
 
                         }
+                    );
 
-                        setLoading(false);
-
-                    },
-                    (error) => {
-
-                        console.error(
-                            "Erro ao buscar produtos:",
-                            error
-                        );
-
-                        setLoading(false);
-
-                    }
-                );
 
             } catch (error) {
 
@@ -2175,20 +2695,38 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                     error
                 );
 
-                setLoading(false);
+
+                if (isMounted) {
+
+                    setProducts([]);
+
+                    setLoading(
+                        false
+                    );
+
+                }
 
             }
+
         };
+
 
         fetchProducts();
 
+
         return () => {
 
+            isMounted = false;
+
+
             if (unsubscribeProducts) {
+
                 unsubscribeProducts();
+
             }
 
         };
+
 
     }, []);
 
@@ -2442,6 +2980,56 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                     </div>
 
+
+                    {/* TIPO DE OFERTA */}
+
+                    <div className="adm_products-type-tabs">
+
+                        {TYPE_OPTIONS.map((option) => {
+
+                            const count =
+                                products.filter(
+                                    (product) =>
+                                        product.status === activeTab &&
+                                        matchesSelectedType(
+                                            product,
+                                            option.id
+                                        )
+                                ).length;
+
+                            return (
+
+                                <button
+                                    key={option.id}
+                                    type="button"
+                                    className={
+                                        selectedType === option.id
+                                            ? "active"
+                                            : ""
+                                    }
+                                    onClick={() =>
+                                        setSelectedType(option.id)
+                                    }
+                                >
+
+                                    <Icon icon={option.icon} />
+
+                                    <span>
+                                        {option.label}
+                                    </span>
+
+                                    <b>
+                                        {count}
+                                    </b>
+
+                                </button>
+
+                            );
+
+                        })}
+
+                    </div>
+
                 </div>
 
 
@@ -2508,6 +3096,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                 }`}
                             onClick={() => {
                                 setTempCategory(selectedCategory);
+                                setTempType(selectedType);
                                 setIsFilterOpen(true);
                             }}
                         >
@@ -2567,10 +3156,18 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                     <span className="adm_products-current-sort">
 
-                        {sortOptions.find(
-                            option =>
-                                option.id === selectedSort
-                        )?.label}
+                        <Icon icon="lucide:arrow-up-down" />
+
+                        Ordenado por
+
+                        {" "}
+
+                        <b>
+                            {sortOptions.find(
+                                option =>
+                                    option.id === selectedSort
+                            )?.label}
+                        </b>
 
                     </span>
 
@@ -2583,6 +3180,29 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                 {activeFiltersCount > 0 && (
                     <div className="adm_products-filter-chips">
+
+                        {selectedType !== "all" && (
+                            <button
+                                type="button"
+                                className="adm_products-filter-chip"
+                                onClick={() =>
+                                    setSelectedType("all")
+                                }
+                            >
+
+                                <span>
+                                    {
+                                        TYPE_OPTIONS.find(
+                                            option =>
+                                                option.id === selectedType
+                                        )?.label
+                                    }
+                                </span>
+
+                                <Icon icon="lucide:x" />
+
+                            </button>
+                        )}
 
                         {selectedCategory !== "all" && (
                             <button
@@ -2622,27 +3242,101 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 </div>
             ) : filteredProducts.length > 0 ? (
                 filteredProducts.map((product) => (
-                    <div key={product.id} className="adm_products-card">
+                    <div
+                        key={product.id}
+                        className={`adm_products-card ${isSubscriptionProduct(product)
+                            ? "is-subscription"
+                            : ""
+                            }`}
+                    >
                         <div className="adm_products-card-top-info">
                             <div
                                 className="adm_products-image-wrapper"
-                                onClick={() => product.images?.length > 0 && openProductsGallery(product.images)}
+                                onClick={() => {
+
+                                    if (
+                                        product.storageImages &&
+                                        product.storageImages.length > 0
+                                    ) {
+
+                                        openProductsGallery(
+                                            product.storageImages
+                                        );
+
+                                    }
+
+                                }}
                             >
+
                                 <img
-                                    src={product.image || Thumb1}
-                                    alt={product.name}
-                                    onError={(e) => e.target.src = Thumb1}
+                                    src={product.storageImage || Thumb1}
+                                    alt={product.name || "Produto"}
+                                    onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src = Thumb1;
+                                    }}
                                     className="adm_products-main-image"
                                 />
-                                {product.images?.length > 0 && (
+
+                                {/* =====================================================
+        INDICADOR DE GALERIA
+    ===================================================== */}
+
+                                {product.storageImages?.length > 0 && (
+
                                     <div className="adm_products-image-hover">
-                                        <Icon icon="mdi:image-multiple" className="adm_products-hover-icon" />
-                                        <span>Ver {product.images.length} foto{product.images.length > 1 ? 's' : ''}</span>
+
+                                        <Icon
+                                            icon="mdi:image-multiple"
+                                            className="adm_products-hover-icon"
+                                        />
+
+                                        <span>
+
+                                            Ver{" "}
+
+                                            {
+                                                product.storageImages.length
+                                            }
+
+                                            {" "}
+
+                                            foto
+                                            {
+                                                product.storageImages.length > 1
+                                                    ? "s"
+                                                    : ""
+                                            }
+
+                                        </span>
+
                                     </div>
+
                                 )}
+
                             </div>
 
                             <div className="adm_products-card-content">
+
+                                {isSubscriptionProduct(product) && (
+
+                                    <span className="adm_products-card-subscription-tag">
+
+                                        <Icon icon="solar:refresh-circle-linear" />
+
+                                        Mensalidade
+
+                                        {" • "}
+
+                                        {
+                                            normalizeMonthlyPlan(product)
+                                                ?.billingCycleLabel
+                                        }
+
+                                    </span>
+
+                                )}
+
                                 <h2 className="adm_products-card-name" title={product.name}>
                                     {product.name}
                                 </h2>
@@ -2660,8 +3354,22 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                 <h1>#{product.id}</h1>
                             </div>
                             <div className="adm_products-card-bottom-info-content-item">
-                                <p>Valor</p>
-                                <h1>{product.value}</h1>
+                                <p>
+                                    {isSubscriptionProduct(product)
+                                        ? "Mensalidade"
+                                        : "Valor"}
+                                </p>
+                                <h1>
+                                    {product.value}
+
+                                    {isSubscriptionProduct(product) && (
+                                        <em className="adm_products-card-cycle">
+                                            {getPlanPriceSuffix(
+                                                normalizeMonthlyPlan(product)
+                                            )}
+                                        </em>
+                                    )}
+                                </h1>
                             </div>
                             <div className="adm_products-card-bottom-info-content-item">
                                 <p>Total de Pedidos</p>
@@ -2695,59 +3403,13 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             )}
             </div>
 
-            <AnimatePresence>
-
-                {isSortOpen && (
-
-                    <motion.div
-                        className="adm_products-modal-overlay"
-
-                        initial={{
-                            opacity: 0
-                        }}
-
-                        animate={{
-                            opacity: 1
-                        }}
-
-                        exit={{
-                            opacity: 0
-                        }}
-
-                        onClick={() =>
-                            setIsSortOpen(false)
-                        }
-                    >
-
-                        <motion.div
-                            className="adm_products-sort-modal"
-
-                            initial={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-
-                            animate={{
-                                opacity: 1,
-                                scale: 1,
-                                y: 0
-                            }}
-
-                            exit={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-
-                            transition={{
-                                duration: 0.2
-                            }}
-
-                            onClick={(e) =>
-                                e.stopPropagation()
-                            }
-                        >
+            <Modal
+                open={isSortOpen}
+                onClose={() =>
+                            setIsSortOpen(false)}
+                overlayClassName="adm_products-modal-overlay"
+                className="adm_products-sort-modal"
+            >
 
                             <div className="adm_products-modal-header">
 
@@ -2854,67 +3516,15 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                             </div>
 
-                        </motion.div>
+                        </Modal>
 
-                    </motion.div>
-
-                )}
-
-            </AnimatePresence>
-
-            <AnimatePresence>
-
-                {isFilterOpen && (
-
-                    <motion.div
-                        className="adm_products-modal-overlay"
-
-                        initial={{
-                            opacity: 0
-                        }}
-
-                        animate={{
-                            opacity: 1
-                        }}
-
-                        exit={{
-                            opacity: 0
-                        }}
-
-                        onClick={() =>
-                            setIsFilterOpen(false)
-                        }
-                    >
-
-                        <motion.div
-                            className="adm_products-filter-modal"
-
-                            initial={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-
-                            animate={{
-                                opacity: 1,
-                                scale: 1,
-                                y: 0
-                            }}
-
-                            exit={{
-                                opacity: 0,
-                                scale: 0.94,
-                                y: 10
-                            }}
-
-                            transition={{
-                                duration: 0.2
-                            }}
-
-                            onClick={(e) =>
-                                e.stopPropagation()
-                            }
-                        >
+            <Modal
+                open={isFilterOpen}
+                onClose={() =>
+                            setIsFilterOpen(false)}
+                overlayClassName="adm_products-modal-overlay"
+                className="adm_products-filter-modal"
+            >
 
                             {/* HEADER */}
 
@@ -2949,6 +3559,68 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                             {/* CONTENT */}
 
                             <div className="adm_products-filter-modal-content">
+
+                                <section className="adm_products-filter-block">
+
+                                    <div className="adm_products-filter-block-header">
+
+                                        <h3>
+                                            Tipo de oferta
+                                        </h3>
+
+                                        <span>
+                                            Separe produtos avulsos de mensalidades
+                                        </span>
+
+                                    </div>
+
+
+                                    <div className="adm_products-filter-selection-list">
+
+                                        {TYPE_OPTIONS.map((option) => (
+
+                                            <button
+                                                key={option.id}
+                                                type="button"
+
+                                                className={
+                                                    tempType === option.id
+                                                        ? "active"
+                                                        : ""
+                                                }
+
+                                                onClick={() =>
+                                                    setTempType(option.id)
+                                                }
+                                            >
+
+                                                <span>
+                                                    <Icon
+                                                        icon={option.icon}
+                                                        className="adm_products-filter-option-icon"
+                                                    />
+
+                                                    {option.id === "all"
+                                                        ? "Todos os tipos"
+                                                        : option.label}
+                                                </span>
+
+                                                {tempType === option.id && (
+
+                                                    <Icon
+                                                        icon="lucide:check"
+                                                    />
+
+                                                )}
+
+                                            </button>
+
+                                        ))}
+
+                                    </div>
+
+                                </section>
+
 
                                 <section className="adm_products-filter-block">
 
@@ -3056,8 +3728,10 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                     onClick={() => {
 
                                         setTempCategory("all");
+                                        setTempType("all");
 
                                         setSelectedCategory("all");
+                                        setSelectedType("all");
 
                                     }}
                                 >
@@ -3074,6 +3748,10 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                             tempCategory
                                         );
 
+                                        setSelectedType(
+                                            tempType
+                                        );
+
                                         setIsFilterOpen(
                                             false
                                         );
@@ -3085,13 +3763,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
                             </div>
 
-                        </motion.div>
-
-                    </motion.div>
-
-                )}
-
-            </AnimatePresence>
+                        </Modal>
 
             {isManagementModalOpen && selectedProduct && (
                 <ProductManagementSlider
@@ -3102,13 +3774,29 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             )}
 
             {isProductsGalleryOpen && (
-                <div className="adm_products-gallery-overlay" onClick={closeProductsGallery}>
-                    <div className="adm_products-gallery-container" onClick={e => e.stopPropagation()}>
-                        <button className="adm_products-gallery-close" onClick={closeProductsGallery}>
+
+                <div
+                    className="adm_products-gallery-overlay"
+                    onClick={closeProductsGallery}
+                >
+
+                    <div
+                        className="adm_products-gallery-container"
+                        onClick={(e) =>
+                            e.stopPropagation()
+                        }
+                    >
+
+                        <button
+                            className="adm_products-gallery-close"
+                            onClick={closeProductsGallery}
+                        >
                             <Icon icon="mdi:close" />
                         </button>
 
+
                         <div className="adm_products-gallery-content">
+
                             <button
                                 className="adm_products-gallery-arrow adm_products-gallery-prev"
                                 onClick={goToGalleryPrevImage}
@@ -3116,11 +3804,32 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                                 <Icon icon="mdi:chevron-left" />
                             </button>
 
+
                             <img
-                                src={galleryImages[currentGalleryImageIndex]}
-                                alt={`Produto ${currentGalleryImageIndex + 1}`}
+                                src={
+                                    galleryImages[
+                                    currentGalleryImageIndex
+                                    ]
+                                }
+
+                                alt={
+                                    `Produto ${currentGalleryImageIndex + 1
+                                    }`
+                                }
+
                                 className="adm_products-gallery-image"
+
+                                onError={(e) => {
+
+                                    e.currentTarget.onerror =
+                                        null;
+
+                                    e.currentTarget.src =
+                                        Thumb1;
+
+                                }}
                             />
+
 
                             <button
                                 className="adm_products-gallery-arrow adm_products-gallery-next"
@@ -3128,1288 +3837,197 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                             >
                                 <Icon icon="mdi:chevron-right" />
                             </button>
+
                         </div>
+
 
                         <div className="adm_products-gallery-thumbnails">
-                            {galleryImages.map((img, index) => (
-                                <img
-                                    key={index}
-                                    src={img}
-                                    alt={`Miniatura ${index + 1}`}
-                                    className={`adm_products-gallery-thumb ${index === currentGalleryImageIndex ? 'is-active' : ''}`}
-                                    onClick={() => setCurrentGalleryImageIndex(index)}
-                                />
-                            ))}
+
+                            {galleryImages.map(
+                                (img, index) => (
+
+                                    <img
+                                        key={index}
+
+                                        src={img}
+
+                                        alt={
+                                            `Miniatura ${index + 1
+                                            }`
+                                        }
+
+                                        className={`
+                                adm_products-gallery-thumb
+                                ${index ===
+                                                currentGalleryImageIndex
+                                                ? "is-active"
+                                                : ""
+                                            }
+                            `}
+
+                                        onClick={() =>
+                                            setCurrentGalleryImageIndex(
+                                                index
+                                            )
+                                        }
+
+                                        onError={(e) => {
+
+                                            e.currentTarget.onerror =
+                                                null;
+
+                                            e.currentTarget.src =
+                                                Thumb1;
+
+                                        }}
+
+                                    />
+
+                                )
+                            )}
+
                         </div>
+
                     </div>
+
                 </div>
+
             )}
 
-            {isModalOpen && (
-                <div
-                    className={`
-            adm_products-modal-backdrop
-            ${isClosing ? 'adm_products-modal-backdrop-closing' : ''}
-            ${isModalOpen && !isClosing ? 'adm_products-modal-backdrop-active' : ''}
-        `}
-                    onClick={closeModal}
-                >
-                    <div
-                        className={`adm_products-modal ${isClosing ? "closing" : ""}`}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        {step === 1 && (
-                            <div
-                                className={`adm_products-modal-content first-step ${isAnimating
-                                    ? stepDirection === "next"
-                                        ? "slide-out-left"
-                                        : "slide-out-right"
-                                    : ""
-                                    } ${!isAnimating
-                                        ? stepDirection === "next"
-                                            ? "slide-in-right"
-                                            : "slide-in-left"
-                                        : ""
-                                    }`}
-                            >
-                                <img
-                                    src={ThumbProduct}
-                                    alt="Produto"
-                                    className="adm_products-modal-thumb"
-                                />
-                                <h1>Cadastre um novo Produto!</h1>
-                                <h2>Realize o passo a passo para a criação de um novo produto.</h2>
-
-                                <div className="adm_products-modal-buttons">
-                                    <button
-                                        className="adm_products-modal-btn secondary-btn"
-                                        onClick={closeModal}
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        className="adm_products-modal-btn primary-btn"
-                                        onClick={nextStep}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 2 && (
-                            <div
-                                className={`adm_products-modal-content second-step ${isAnimating
-                                    ? stepDirection === "next"
-                                        ? "slide-out-left"
-                                        : "slide-out-right"
-                                    : ""
-                                    } ${!isAnimating
-                                        ? stepDirection === "next"
-                                            ? "slide-in-right"
-                                            : "slide-in-left"
-                                        : ""
-                                    }`}
-                            >
-                                <h2 className="adm_products-modal-content-title">Selecione um Tipo de Produto</h2>
-                                <div className="circle-buttons">
-                                    <div className="button-container">
-                                        <button
-                                            className={`circle-btn ${productType === 'individual' ? "selected" : ""}`}
-                                            onClick={() => {
-                                                handleButtonSelect(1);
-                                                setProductType('individual');
-                                            }}
-                                        >
-                                            <Icon icon="mdi:package-variant" className="product-icon" />
-                                            {productType === 'individual' && (
-                                                <span className="check-icon">
-                                                    <Icon icon="fe:check" className="icon" />
-                                                </span>
-                                            )}
-                                        </button>
-                                        <h2 className="product-type-title">Produto Individual</h2>
-                                    </div>
-
-                                    <div className="button-container">
-                                        <button
-                                            className={`circle-btn ${productType === 'package' ? "selected" : ""}`}
-                                            onClick={() => {
-                                                handleButtonSelect(2);
-                                                setProductType('package');
-                                            }}
-                                        >
-                                            <Icon icon="mdi:package-variant-closed" className="product-icon" />
-                                            {productType === 'package' && (
-                                                <span className="check-icon">
-                                                    <Icon icon="fe:check" className="icon" />
-                                                </span>
-                                            )}
-                                        </button>
-                                        <h2 className="product-type-title">Pacote de Produtos</h2>
-                                    </div>
-                                </div>
-
-                                <div className="adm_products-modal-buttons">
-                                    <button
-                                        className="adm_products-modal-btn secondary-btn"
-                                        onClick={prevStep}
-                                    >
-                                        Voltar
-                                    </button>
-                                    <button
-                                        className={`adm_products-modal-btn primary-btn ${productType === null ? "disabled" : ""}`}
-                                        onClick={nextStep}
-                                        style={{
-                                            cursor: productType === null ? "not-allowed" : "pointer",
-                                            opacity: productType === null ? 0.5 : 1
-                                        }}
-                                        disabled={productType === null}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 3 && (
-                            <div
-                                className={`adm_products-modal-content first-step ${isAnimating
-                                    ? stepDirection === "next"
-                                        ? "slide-out-left"
-                                        : "slide-out-right"
-                                    : ""
-                                    } ${!isAnimating
-                                        ? stepDirection === "next"
-                                            ? "slide-in-right"
-                                            : "slide-in-left"
-                                        : ""
-                                    }`}
-                            >
-                                <h2 className="adm_products-modal-content-title">Coleção de Fotos do Produto</h2>
-                                <p className="adm_products-modal-content-subtitle">Adicione até 5 fotos ao catálogo de fotos do seu produto</p>
-
-                                <div className="adm_products-modal-carousel-container">
-                                    <div className="adm_products-modal-carousel">
-                                        {carouselItems.map((item, index) => (
-                                            item.image !== null ? (
-                                                <div key={item.id} className="adm_products-modal-carousel-item" >
-                                                    <input
-                                                        id={`file-input-filled-${index}`}
-                                                        type="file"
-                                                        accept="image/*"
-                                                        style={{ display: "none" }}
-                                                        onChange={(e) => handleImageUpload(e, index)}
-                                                        multiple
-                                                    />
-                                                    <img
-                                                        src={item.image}
-                                                        alt={`Imagem ${index}`}
-                                                        className="adm_products-modal-carousel-image"
-                                                    />
-                                                    <div className="overlay-replace-image">Substituir</div>
-                                                    <button
-                                                        className="remove-item-button"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleRemoveItem(index);
-                                                        }}
-                                                    >
-                                                        <Icon icon="lucide:trash" className="remove-item-icon" />
-                                                    </button>
-                                                </div>
-                                            ) : null
-                                        ))}
-                                        {carouselItems.filter(item => item.image === null).length > 0 && (
-                                            <div className="adm_products-modal-carousel-item" onClick={() => document.getElementById('file-input-empty').click()}>
-                                                <input
-                                                    id="file-input-empty"
-                                                    type="file"
-                                                    accept="image/*"
-                                                    style={{ display: "none" }}
-                                                    onChange={(e) => handleImageUpload(e, carouselItems.length)}
-                                                    multiple
-                                                />
-                                                <div
-                                                    className="adm_products-modal-carousel-item-content"
-
-                                                >
-                                                    <Icon icon="material-symbols:upload-rounded" className="adm_products-modal-carousel-icon" />
-                                                    <span className="adm_products-modal-carousel-text">Adicionar Imagem</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="adm_products-modal-buttons">
-                                    <button
-                                        className="adm_products-modal-btn secondary-btn"
-                                        onClick={prevStep}
-                                    >
-                                        Voltar
-                                    </button>
-
-                                    <button
-                                        className="adm_products-modal-btn primary-btn"
-                                        onClick={nextStep}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 4 && (
-                            <div
-                                className={`adm_products-modal-content first-step ${isAnimating
-                                    ? stepDirection === "next"
-                                        ? "slide-out-left"
-                                        : "slide-out-right"
-                                    : ""
-                                    } ${!isAnimating
-                                        ? stepDirection === "next"
-                                            ? "slide-in-right"
-                                            : "slide-in-left"
-                                        : ""
-                                    }`}
-                            >
-                                <h2 className="adm_products-modal-content-title">Informações do Produto</h2>
-
-                                {/* Inputs com labels */}
-                                <div className="adm_products-modal-input-group">
-                                    <label htmlFor="input1">Nome do produto</label>
-                                    <input
-                                        type="text"
-                                        id="input1"
-                                        className="adm_products-modal-input"
-                                        placeholder="Digite o nome do produto aqui..."
-                                        value={productName}
-                                        onChange={(e) => setProductName(e.target.value)}
-                                    />
-                                </div>
-
-                                <div className="adm_products-description-group">
-
-                                    <label>
-                                        Descrição
-                                    </label>
-
-                                    <div className="adm_products-description-editor">
-
-                                        {/* =========================
-            TOOLBAR
-        ========================= */}
-
-                                        <div className="adm_products-description-toolbar">
-
-                                            {/* NEGRITO */}
-
-                                            <button
-                                                type="button"
-                                                title="Negrito"
-                                                onMouseDown={(e) => {
-
-                                                    e.preventDefault();
-
-                                                    execDescriptionCommand("bold");
-
-                                                }}
-                                            >
-                                                <strong>B</strong>
-                                            </button>
-
-
-                                            {/* ITÁLICO */}
-
-                                            <button
-                                                type="button"
-                                                title="Itálico"
-                                                onMouseDown={(e) => {
-
-                                                    e.preventDefault();
-
-                                                    execDescriptionCommand("italic");
-
-                                                }}
-                                            >
-                                                <em>I</em>
-                                            </button>
-
-
-                                            <div className="adm_products-description-toolbar-divider" />
-
-
-                                            {/* LISTA */}
-
-                                            <button
-                                                type="button"
-                                                title="Lista"
-                                                onMouseDown={(e) => {
-
-                                                    e.preventDefault();
-
-                                                    execDescriptionCommand(
-                                                        "insertUnorderedList"
-                                                    );
-
-                                                }}
-                                            >
-                                                <Icon icon="lucide:list" />
-                                            </button>
-
-
-                                            {/* LISTA NUMERADA */}
-
-                                            <button
-                                                type="button"
-                                                title="Lista numerada"
-                                                onMouseDown={(e) => {
-
-                                                    e.preventDefault();
-
-                                                    execDescriptionCommand(
-                                                        "insertOrderedList"
-                                                    );
-
-                                                }}
-                                            >
-                                                <Icon icon="lucide:list-ordered" />
-                                            </button>
-
-
-                                            <div className="adm_products-description-toolbar-divider" />
-
-
-                                            {/* PARÁGRAFO */}
-
-                                            <button
-                                                type="button"
-                                                title="Parágrafo"
-                                                onMouseDown={(e) => {
-
-                                                    e.preventDefault();
-
-                                                    execDescriptionCommand(
-                                                        "formatBlock",
-                                                        "p"
-                                                    );
-
-                                                }}
-                                            >
-                                                <Icon icon="lucide:pilcrow" />
-                                            </button>
-
-                                        </div>
-
-                                        <div
-                                            ref={descriptionEditorRef}
-                                            className="adm_products-description-editor-content"
-                                            contentEditable
-                                            suppressContentEditableWarning
-                                            data-placeholder="Digite a descrição do produto..."
-                                            onInput={handleDescriptionInput}
-                                        />
-
-                                        <div className="adm_products-description-counter">
-                                            {descriptionLength}/{DESCRIPTION_MAX_LENGTH}
-                                        </div>
-
-                                    </div>
-
-                                </div>
-
-                                <div className="adm_products-modal-input-group">
-                                    <label htmlFor="input3">Preço do Produto</label>
-                                    <div className="adm_products-price-input-container">
-                                        <input
-                                            type="text"
-                                            id="input3"
-                                            className="adm_products-modal-input adm_products-price-input"
-                                            placeholder="Digite o preço do produto aqui..."
-                                            value={price}
-                                            onChange={handlePriceChange}
-                                        />
-                                        <div className="adm_products-currency-wrapper">
-                                            <select
-                                                className="adm_products-currency-select"
-                                                value={currency}
-                                                onChange={handleCurrencyChange}
-                                            >
-                                                <option value="BRL">BRL</option>
-                                                <option value="USD">USD</option>
-                                                <option value="EUR">EUR</option>
-                                                <option value="GBP">GBP</option>
-                                                <option value="JPY">JPY</option>
-                                            </select>
-                                            <Icon icon="iconamoon:arrow-down-2-duotone" width="24" height="24" className="adm_products-currency-icon" />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="adm_products-modal-input-group">
-                                    <label htmlFor="duration">
-                                        Duração do Serviço
-                                        <span id="duration-value" className="adm_products-modal-range-value">0m</span>
-                                    </label>
-                                    <div className="adm_products-range-container">
-                                        <input
-                                            type="range"
-                                            id="duration"
-                                            className="adm_products-modal-range"
-                                            min="0"
-                                            max="300"
-                                            defaultValue={duration}
-                                        />
-                                        <div id="range-tooltip" className="adm_products-range-tooltip">0m</div>
-                                    </div>
-                                </div>
-
-                                <div className="adm_products-modal-buttons">
-                                    <button
-                                        className="adm_products-modal-btn secondary-btn"
-                                        onClick={prevStep}
-                                    >
-                                        Voltar
-                                    </button>
-
-                                    <button
-                                        className="adm_products-modal-btn primary-btn"
-                                        onClick={nextStep}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 5 && (
-                            <div
-                                className={`adm_products-modal-content first-step ${isAnimating
-                                    ? stepDirection === "next"
-                                        ? "slide-out-left"
-                                        : "slide-out-right"
-                                    : ""
-                                    } ${!isAnimating
-                                        ? stepDirection === "next"
-                                            ? "slide-in-right"
-                                            : "slide-in-left"
-                                        : ""
-                                    }`}
-                            >
-                                <h2 className="adm_products-modal-content-title">Categoria do Produto</h2>
-                                <p className="adm_products-modal-content-subtitle">Selecione as categorias do seu produto</p>
-
-                                <div className={`adm_products-order-grid-container ${isOtherSelected ? "other-content-active" : ""} ${isFading ? "other-content-fade-out" : "other-content-fade-in"}`}>
-                                    {isOtherSelected ? (
-                                        <div className="adm_products-other-content">
-                                            <button className="other-content-close-btn" onClick={handleCloseOther}>
-                                                <Icon icon="tabler:arrow-left" className="icon" />
-                                            </button>
-                                            <div className="selected-categories-container">
-                                                {selectedItems.map((id) => {
-                                                    // Busca a categoria nas categorias padrão e personalizadas
-                                                    const selectedCategory = defaultCategorys.find((item) => item.id === id) || customCategorys.find((item) => item.id === id);
-                                                    return (
-                                                        <div key={id} className="selected-category-item">
-                                                            <button className="remove-category-btn" onClick={() => handleRemoveCategory(id)}>
-                                                                <Icon icon="tabler:x" className="icon" />
-                                                            </button>
-                                                            {selectedCategory?.label}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                            <div className="adm_products-modal-input-group">
-                                                <label htmlFor="input1">Categoria</label>
-                                                <div className="input-with-button-container">
-                                                    <input
-                                                        type="text"
-                                                        id="input1"
-                                                        className="adm_products-modal-input"
-                                                        placeholder="Digite o nome da categoria aqui..."
-                                                        value={newCategory}
-                                                        onChange={(e) => setNewCategory(e.target.value)}
-                                                    />
-                                                    <button className="add-category-button" onClick={handleAddCategory}>
-                                                        <Icon icon="material-symbols:add" className="icon" />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        // Renderiza apenas as categorias padrão no grid
-                                        defaultCategorys.map((item) => (
-                                            <div
-                                                key={item.id}
-                                                className={`adm_products-order-grid-item ${selectedItems.includes(item.id) ? "selected" : ""
-                                                    }`}
-                                                onClick={() => handleItemClick(item.id)}
-                                            >
-                                                <Icon icon={item.icon} className="icon" />
-                                                <p>{item.label}</p>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-
-                                <div className="adm_products-modal-buttons">
-                                    <button
-                                        className="adm_products-modal-btn secondary-btn"
-                                        onClick={prevStep}
-                                    >
-                                        Voltar
-                                    </button>
-
-                                    <button
-                                        className="adm_products-modal-btn primary-btn"
-                                        onClick={nextStep}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 6 && (
-                            <div
-                                className={`adm_products-modal-content first-step ${isAnimating
-                                    ? stepDirection === "next"
-                                        ? "slide-out-left"
-                                        : "slide-out-right"
-                                    : ""
-                                    } ${!isAnimating
-                                        ? stepDirection === "next"
-                                            ? "slide-in-right"
-                                            : "slide-in-left"
-                                        : ""
-                                    }`}
-                            >
-                                <h2 className="adm_products-modal-content-title">Descontos e Promoções</h2>
-                                <p className="adm_products-modal-content-subtitle">Adicione descontos em seu produto para atrair mais visibilidade e engajamento.</p>
-
-                                <div className="promotion-question-container">
-                                    <div className="adm_products-modal-input-group">
-                                        <label htmlFor="inputFrom">De</label>
-                                        <div className="adm_products-price-input-container">
-                                            <input
-                                                type="text"
-                                                id="inputFrom"
-                                                className="adm_products-modal-input adm_products-price-input"
-                                                placeholder="ex: R$150,00"
-                                                value={priceFrom}
-                                                onChange={handlePriceFromChange}
-                                            />
-                                            <div className="adm_products-currency-wrapper">
-                                                <select
-                                                    className="adm_products-currency-select"
-                                                    value={currencyPromo}
-                                                    onChange={handleCurrencyPromoChange}
-                                                >
-                                                    <option value="BRL">BRL</option>
-                                                    <option value="USD">USD</option>
-                                                    <option value="EUR">EUR</option>
-                                                    <option value="GBP">GBP</option>
-                                                    <option value="JPY">JPY</option>
-                                                </select>
-                                                <Icon icon="iconamoon:arrow-down-2-duotone" width="24" height="24" className="adm_products-currency-icon" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="adm_products-modal-input-group">
-                                        <label htmlFor="inputTo">Por</label>
-                                        <div className="adm_products-price-input-container">
-                                            <input
-                                                type="text"
-                                                id="inputTo"
-                                                className="adm_products-modal-input adm_products-price-input"
-                                                placeholder="ex: R$50,00"
-                                                value={priceTo}
-                                                onChange={handlePriceToChange}
-                                            />
-                                            <div className="adm_products-currency-wrapper">
-                                                <select
-                                                    className="adm_products-currency-select"
-                                                    value={currencyPromo}
-                                                    onChange={(e) => setCurrencyPromo(e.target.value)}
-                                                >
-                                                    <option value="BRL">BRL</option>
-                                                    <option value="USD">USD</option>
-                                                    <option value="EUR">EUR</option>
-                                                    <option value="GBP">GBP</option>
-                                                    <option value="JPY">JPY</option>
-                                                </select>
-                                                <Icon icon="iconamoon:arrow-down-2-duotone" width="24" height="24" className="adm_products-currency-icon" />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-
-                                <div className="promotion-discount-message">
-                                    {calculateDiscount()}
-                                </div>
-
-                                <div className="adm_products-modal-buttons">
-                                    <button
-                                        className="adm_products-modal-btn secondary-btn"
-                                        onClick={prevStep}
-                                    >
-                                        Voltar
-                                    </button>
-
-                                    <button
-                                        className="adm_products-modal-btn primary-btn"
-                                        onClick={nextStep}
-                                    >
-                                        {isInputFilled ? "Continuar" : "Pular"} {/* Altera o texto do botão com base no estado */}
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {step === 7 && (
-                            <div
-                                className={`adm_products-modal-content first-step ${isAnimating
-                                    ? stepDirection === "next"
-                                        ? "slide-out-left"
-                                        : "slide-out-right"
-                                    : ""
-                                    } ${!isAnimating
-                                        ? stepDirection === "next"
-                                            ? "slide-in-right"
-                                            : "slide-in-left"
-                                        : ""
-                                    }`}
-                            >
-                                <h2 className="adm_products-modal-content-title">Configurações</h2>
-                                <p className="adm_products-modal-content-subtitle adm_products-modal-content-subtitle-config">Ajuste as configurações do seu produto.</p>
-
-                                <h1 className="adm_admins-title">Relacionar Usuários</h1>
-                                <div className="adm_admins-config-content">
-                                    <div className="adm_admins-config-content-container">
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="add-admin-config-button">
-                                                <Icon icon="mdi:plus" className="icon" />
-                                            </div>
-                                            <h1>Adicionar</h1>
-                                            <p>Usuários</p>
-                                        </div>
-                                        {members.map(member => (
-                                            <div
-                                                key={member.id}
-                                                className={`adm_admins-config-wrapper adm_admins-config-wrapper-circles-select-adm ${selectedAdmins.includes(member.id) ? 'active' : ''
-                                                    }`}
-                                                onClick={() => handleAdminClick(member.id)}
-                                            >
-                                                <div className="adm_admins-config-circle-container">
-                                                    <div className="adm_admins-config-circle">
-                                                        {member.avatar ? (
-                                                            <img src={member.avatar} alt={member.name} className="adm_admins-avatar" />
-                                                        ) : (
-                                                            member.name.charAt(0)
-                                                        )}
-                                                    </div>
-                                                    <div className={`selection-indicator ${selectedAdmins.includes(member.id) ? 'active' : ''}`}>
-                                                        <Icon icon="material-symbols:check" className="icon" />
-                                                    </div>
-                                                </div>
-                                                <div className="adm_admins-text-container">
-                                                    <h1>{member.name}</h1>
-                                                    <p>{capitalizeFirst(member.role)}</p>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <h1 className="adm_admins-title">Configurações</h1>
-                                <div className="adm_admins-config-carousel">
-                                    <div className="adm_admins-config-carousel-container">
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Privacidade</h1>
-                                                    <p>Deixe este produto privado</p>
-                                                    <div class="adm_admin_config-toggle-switch">
-                                                        <input
-                                                            class="adm_admin_config-toggle-input"
-                                                            type="checkbox"
-                                                            id="adm_admin_config-private-toggle"
-                                                            checked={isPrivate}
-                                                            onChange={(e) => setIsPrivate(e.target.checked)}
-                                                        />
-                                                        <label class="adm_admin_config-toggle-label" for="adm_admin_config-private-toggle"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Antecedência para Agendamento</h1>
-                                                    <p>Mínimo de horas/dias antes do agendamento.</p>
-                                                    <button className="adm_admins-config-time-button"
-                                                        onClick={openBookingAdvanceModal}
-                                                    >
-                                                        Definir
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Antecedência para Cancelamento</h1>
-                                                    <p>Tempo limite para cancelar sem penalidade</p>
-                                                    <button className="adm_admins-config-time-button" onClick={openCancellationAdvanceModal}>Definir</button>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Notificações</h1>
-                                                    <p>Avisos para clientes e administradores</p>
-                                                    <div class="adm_admin_config-toggle-switch">
-                                                        <input
-                                                            class="adm_admin_config-toggle-input"
-                                                            id="adm_admin_config-notification-toggle"
-                                                            type="checkbox"
-                                                            checked={notificationsEnabled}
-                                                            onChange={(e) => setNotificationsEnabled(e.target.checked)}
-                                                        />
-                                                        <label class="adm_admin_config-toggle-label" for="adm_admin_config-notification-toggle"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Preço Dinâmico</h1>
-                                                    <p>Valores diferentes por horário/dia.</p>
-                                                    <button
-                                                        className="adm_admins-config-time-button"
-                                                        onClick={openDynamicPriceModal}
-                                                    >
-                                                        Definir
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Pagamento Antecipado</h1>
-                                                    <p>Exige pagamento antes do agendamento.</p>
-                                                    <div class="adm_admin_config-toggle-switch">
-                                                        <input
-                                                            class="adm_admin_config-toggle-input"
-                                                            id="adm_admin_config-pay-toggle"
-                                                            type="checkbox"
-                                                            checked={prepaymentRequired}
-                                                            onChange={(e) => setPrepaymentRequired(e.target.checked)}
-                                                        />
-                                                        <label class="adm_admin_config-toggle-label" for="adm_admin_config-pay-toggle"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Reagendamento</h1>
-                                                    <p>Permite alterar data/hora após confirmação.</p>
-                                                    <div class="adm_admin_config-toggle-switch">
-                                                        <input
-                                                            class="adm_admin_config-toggle-input"
-                                                            id="adm_admin_config-alt-date-toggle"
-                                                            type="checkbox"
-                                                            checked={reschedulingAllowed}
-                                                            onChange={(e) => setReschedulingAllowed(e.target.checked)}
-                                                        />
-                                                        <label class="adm_admin_config-toggle-label" for="adm_admin_config-alt-date-toggle"></label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="adm_admins-config-wrapper">
-                                            <div className="adm_admins-config-square">
-                                                <div className="adm_admins-config-content">
-                                                    <h1>Taxa Extra</h1>
-                                                    <p>Cobrança adicional por horário ou tipo de serviço.</p>
-                                                    <button
-                                                        className="adm_admins-config-time-button"
-                                                        onClick={openExtraFeeModal}
-                                                    >
-                                                        Definir
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="adm_products-modal-buttons">
-                                    <button
-                                        className="adm_products-modal-btn secondary-btn"
-                                        onClick={prevStep}
-                                    >
-                                        Voltar
-                                    </button>
-
-                                    <button
-                                        className="adm_products-modal-btn primary-btn"
-                                        onClick={handleContinue}
-                                    >
-                                        Continuar
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-
-                        {isConfirmationModalOpen && (
-                            <div className={`adm_confirmation-modal-overlay ${isConfirmationModalOpen ? 'active' : ''} ${isConfirmationModalClosing ? 'closing' : ''}`}>
-                                <div className={`adm_confirmation-modal-content ${isConfirmationModalOpen && !isConfirmationModalClosing ? 'active' : ''} ${isConfirmationModalClosing ? 'closing' : ''}`}>
-                                    <Icon icon="mingcute:question-line" className="icon" />
-                                    <h2 className="adm_confirmation-modal-title">Confirmar Cadastro</h2>
-                                    <p className="adm_confirmation-modal-message">Deseja cadastrar este produto com as configurações selecionadas?</p>
-
-                                    <div className="adm_confirmation-modal-buttons">
-                                        <button
-                                            className="adm_confirmation-modal-btn secondary-btn"
-                                            onClick={closeConfirmationModal}
-                                            disabled={isAddingProduct}
-                                        >
-                                            Cancelar
-                                        </button>
-                                        <button
-                                            className={`adm_confirmation-modal-btn primary-btn ${isAddingProduct ? "loading" : ""
-                                                }`}
-                                            onClick={handleConfirmation}
-                                            disabled={isAddingProduct}
-                                        >
-                                            {isAddingProduct ? (
-                                                <>
-                                                    <span className="adm_confirmation-spinner"></span>
-                                                    Criando...
-                                                </>
-                                            ) : (
-                                                "Confirmar"
-                                            )}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {isBookingAdvanceModalOpen && (
-                            <div className={`booking-advance-config-modal-overlay ${isBookingAdvanceModalClosing ? 'closing' : ''}`}>
-                                <div className={`booking-advance-config-modal-content ${isBookingAdvanceModalClosing ? 'closing' : ''}`}>
-                                    <div>
-                                        <h2>Antecedência para Agendamento</h2>
-                                        <p>Escolha o tempo mínimo necessário antes de reservar:</p>
-                                    </div>
-
-                                    <div className="booking-advance-config-time-input">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            placeholder="DD"
-                                            className="booking-advance-config-input"
-                                            value={bookingAdvanceDays}
-                                            onChange={handleDaysChange}
-                                        />
-                                        :
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="23"
-                                            placeholder="HH"
-                                            className="booking-advance-config-input"
-                                            value={bookingAdvanceHours}
-                                            onChange={handleHoursChange}
-                                        />
-                                        :
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="59"
-                                            placeholder="MM"
-                                            className="booking-advance-config-input"
-                                            value={bookingAdvanceMinutes}
-                                            onChange={handleMinutesChange}
-                                        />
-                                    </div>
-                                    <div className="booking-advance-config-modal-wrapper-buttons">
-                                        <button
-                                            className="booking-advance-config-modal-close"
-                                            onClick={closeBookingAdvanceModal}
-                                        >
-                                            Fechar
-                                        </button>
-                                        <button
-                                            className="booking-advance-config-modal-set"
-                                            onClick={() => {
-                                                // Normaliza os valores antes de salvar
-                                                const normalized = normalizeTimeInput(
-                                                    bookingAdvanceDays,
-                                                    bookingAdvanceHours,
-                                                    bookingAdvanceMinutes
-                                                );
-
-                                                setProductInfo(prev => ({
-                                                    ...prev,
-                                                    bookingAdvance: {
-                                                        days: normalized.days,
-                                                        hours: normalized.hours,
-                                                        minutes: normalized.minutes
-                                                    }
-                                                }));
-                                                closeBookingAdvanceModal();
-                                            }}
-                                        >
-                                            Definir
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {isCancellationAdvanceModalOpen && (
-                            <div className={`cancellation-advance-config-modal-overlay ${isCancellationAdvanceModalClosing ? 'closing' : ''}`}>
-                                <div className={`cancellation-advance-config-modal-content ${isCancellationAdvanceModalClosing ? 'closing' : ''}`}>
-                                    <div>
-                                        <h2>Antecedência para Cancelamento</h2>
-                                        <p>Escolha o tempo mínimo necessário antes de cancelar:</p>
-                                    </div>
-
-                                    <div className="cancellation-advance-config-time-input">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="365"
-                                            placeholder="DD"
-                                            className="cancellation-advance-config-input"
-                                            value={cancellationAdvanceDays}
-                                            onChange={handleCancellationDaysChange}
-                                        />
-                                        :
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="23"
-                                            placeholder="HH"
-                                            className="cancellation-advance-config-input"
-                                            value={cancellationAdvanceHours}
-                                            onChange={handleCancellationHoursChange}
-                                        />
-                                        :
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="59"
-                                            placeholder="MM"
-                                            className="cancellation-advance-config-input"
-                                            value={cancellationAdvanceMinutes}
-                                            onChange={handleCancellationMinutesChange}
-                                        />
-                                    </div>
-                                    <div className="cancellation-advance-config-modal-wrapper-buttons">
-                                        <button
-                                            className="cancellation-advance-config-modal-close"
-                                            onClick={closeCancellationAdvanceModal}
-                                        >
-                                            Fechar
-                                        </button>
-                                        <button
-                                            className="cancellation-advance-config-modal-set"
-                                            onClick={() => {
-                                                // Normaliza os valores antes de salvar
-                                                const normalized = normalizeTimeInput(
-                                                    cancellationAdvanceDays,
-                                                    cancellationAdvanceHours,
-                                                    cancellationAdvanceMinutes
-                                                );
-
-                                                // Atualiza o productInfo com os valores normalizados
-                                                setProductInfo(prev => ({
-                                                    ...prev,
-                                                    cancellationAdvance: {
-                                                        days: normalized.days,
-                                                        hours: normalized.hours,
-                                                        minutes: normalized.minutes
-                                                    }
-                                                }));
-                                                closeCancellationAdvanceModal();
-                                            }}
-                                        >
-                                            Definir
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {isDynamicPriceModalOpen && (
-                            <div className={`cancellation-advance-config-modal-overlay ${isDynamicPriceModalClosing ? 'closing' : ''}`}>
-                                <div className={`cancellation-advance-config-modal-content dynamic-price-modal ${isDynamicPriceModalClosing ? 'closing' : ''}`}>
-                                    <div>
-                                        <h2>Preço Dinâmico</h2>
-                                        <p>Defina valores diferentes por dia da semana:</p>
-                                    </div>
-
-                                    {/* Dias da semana */}
-                                    <div className="days-of-week-container">
-                                        {['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map((day, index) => (
-                                            <div
-                                                key={index}
-                                                className={`day-box ${selectedDay === index ? 'selected' : ''}`}
-                                                onClick={() => setSelectedDay(index)}
-                                            >
-                                                {day}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Configuração de horários para o dia selecionado */}
-                                    {selectedDay !== null && (
-                                        <div className="time-slots-container">
-                                            <h3>Horários para {['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'][selectedDay]}</h3>
-
-                                            {timeSlots[selectedDay]?.map((slot, slotIndex) => (
-                                                <div key={slotIndex} className="time-slot">
-                                                    <input
-                                                        type="time"
-                                                        value={slot.startTime}
-                                                        onChange={(e) => handleTimeSlotChange(selectedDay, slotIndex, 'startTime', e.target.value)}
-                                                    />
-                                                    <span>às</span>
-                                                    <input
-                                                        type="time"
-                                                        value={slot.endTime}
-                                                        onChange={(e) => handleTimeSlotChange(selectedDay, slotIndex, 'endTime', e.target.value)}
-                                                    />
-                                                    <input
-                                                        type="number"
-                                                        placeholder="Valor (R$)"
-                                                        value={slot.price}
-                                                        onChange={(e) => handleTimeSlotChange(selectedDay, slotIndex, 'price', e.target.value)}
-                                                        min="0"
-                                                        step="0.01"
-                                                    />
-                                                    <button
-                                                        className="remove-slot"
-                                                        onClick={() => handleRemoveTimeSlot(selectedDay, slotIndex)}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </div>
-                                            ))}
-
-                                            <button
-                                                className="add-time-slot"
-                                                onClick={() => handleAddTimeSlot(selectedDay)}
-                                            >
-                                                + Adicionar horário
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    <div className="cancellation-advance-config-modal-wrapper-buttons">
-                                        <button
-                                            className="cancellation-advance-config-modal-close"
-                                            onClick={closeDynamicPriceModal}
-                                        >
-                                            Fechar
-                                        </button>
-                                        <button
-                                            className="cancellation-advance-config-modal-set"
-                                            onClick={handleSaveDynamicPrices}
-                                        >
-                                            Salvar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {isExtraFeeModalOpen && (
-                            <div className={`cancellation-advance-config-modal-overlay ${isExtraFeeModalClosing ? 'closing' : ''}`}>
-                                <div className={`cancellation-advance-config-modal-content extra-fee-modal ${isExtraFeeModalClosing ? 'closing' : ''}`}>
-                                    <div>
-                                        <h2>Taxa Extra</h2>
-                                        <p>Defina cobranças adicionais por horário ou tipo de serviço:</p>
-                                    </div>
-
-                                    {/* Abas para selecionar o tipo de taxa */}
-                                    <div className="fee-type-tabs">
-                                        <button
-                                            className={`tab-button ${activeFeeTab === 'time' ? 'active' : ''}`}
-                                            onClick={() => setActiveFeeTab('time')}
-                                        >
-                                            Por Horário
-                                        </button>
-                                        <button
-                                            className={`tab-button ${activeFeeTab === 'service' ? 'active' : ''}`}
-                                            onClick={() => setActiveFeeTab('service')}
-                                        >
-                                            Por Serviço
-                                        </button>
-                                    </div>
-
-                                    <div className={`tab-content ${activeFeeTab === 'time' ? 'active' : ''}`}>
-                                        {activeFeeTab === 'time' && (
-                                            <div className="time-based-fee">
-                                                <div className="days-of-week-container">
-                                                    {['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'].map((day, index) => (
-                                                        <div
-                                                            key={index}
-                                                            className={`day-box ${selectedFeeDay === index ? 'selected' : ''}`}
-                                                            onClick={() => setSelectedFeeDay(index)}
-                                                        >
-                                                            {day}
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                {selectedFeeDay !== null && (
-                                                    <div className="time-fee-container">
-                                                        <h3>Taxas por horário - {['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'][selectedFeeDay]}</h3>
-
-                                                        {timeFees[selectedFeeDay]?.map((fee, feeIndex) => (
-                                                            <div key={feeIndex} className="fee-slot">
-                                                                {/* Linha superior com inputs de tempo */}
-                                                                <div className="fee-time-row">
-                                                                    <input
-                                                                        type="time"
-                                                                        value={fee.startTime}
-                                                                        onChange={(e) => handleTimeFeeChange(selectedFeeDay, feeIndex, 'startTime', e.target.value)}
-                                                                        className="time-input"
-                                                                    />
-                                                                    <span className="time-separator">às</span>
-                                                                    <input
-                                                                        type="time"
-                                                                        value={fee.endTime}
-                                                                        onChange={(e) => handleTimeFeeChange(selectedFeeDay, feeIndex, 'endTime', e.target.value)}
-                                                                        className="time-input"
-                                                                    />
-                                                                </div>
-
-                                                                {/* Linha inferior com select e valor */}
-                                                                <div className="fee-value-row">
-                                                                    <select
-                                                                        value={fee.type}
-                                                                        onChange={(e) => handleTimeFeeChange(selectedFeeDay, feeIndex, 'type', e.target.value)}
-                                                                        className="fee-type-select"
-                                                                    >
-                                                                        <option value="fixed">Valor Fixo</option>
-                                                                        <option value="percentage">Porcentagem</option>
-                                                                    </select>
-
-                                                                    <input
-                                                                        type="number"
-                                                                        placeholder={fee.type === 'fixed' ? 'Valor (R$)' : '%'}
-                                                                        value={fee.value}
-                                                                        onChange={(e) => handleTimeFeeChange(selectedFeeDay, feeIndex, 'value', e.target.value)}
-                                                                        className="fee-value-input"
-                                                                    />
-
-                                                                    <button
-                                                                        className="remove-slot"
-                                                                        onClick={() => handleRemoveTimeFee(selectedFeeDay, feeIndex)}
-                                                                    >
-                                                                        ×
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-
-                                                        <button
-                                                            className="add-time-slot"
-                                                            onClick={() => handleAddTimeFee(selectedFeeDay)}
-                                                        >
-                                                            + Adicionar Taxa
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                    </div>
-
-                                    <div className={`tab-content ${activeFeeTab === 'service' ? 'active' : ''}`}>
-
-                                        {activeFeeTab === 'service' && (
-                                            <div className="service-based-fee">
-                                                <div className="service-fee-list">
-                                                    {serviceFees.map((service, index) => (
-                                                        <div key={index} className="service-fee-item">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Nome do serviço"
-                                                                value={service.name}
-                                                                onChange={(e) => handleServiceFeeChange(index, 'name', e.target.value)}
-                                                            />
-                                                            <select
-                                                                value={service.type}
-                                                                onChange={(e) => handleServiceFeeChange(index, 'type', e.target.value)}
-                                                            >
-                                                                <option value="fixed">Valor Fixo</option>
-                                                                <option value="percentage">Porcentagem</option>
-                                                            </select>
-                                                            <input
-                                                                type="number"
-                                                                placeholder={service.type === 'fixed' ? 'Valor (R$)' : '%'}
-                                                                value={service.value}
-                                                                onChange={(e) => handleServiceFeeChange(index, 'value', e.target.value)}
-                                                            />
-                                                            <button
-                                                                className="remove-slot"
-                                                                onClick={() => handleRemoveServiceFee(index)}
-                                                            >
-                                                                ×
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-
-                                                <button
-                                                    className="add-time-slot"
-                                                    onClick={handleAddServiceFee}
-                                                >
-                                                    + Adicionar Serviço
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="cancellation-advance-config-modal-wrapper-buttons">
-                                        <button
-                                            className="cancellation-advance-config-modal-close"
-                                            onClick={closeExtraFeeModal}
-                                        >
-                                            Fechar
-                                        </button>
-                                        <button
-                                            className="cancellation-advance-config-modal-set"
-                                            onClick={handleSaveExtraFees}
-                                        >
-                                            Salvar
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )
-            }
+            <ProductCreationModal
+                isOpen={isModalOpen}
+                isClosing={isClosing}
+                closeModal={closeModal}
+                wizard={{
+                    DESCRIPTION_MAX_LENGTH,
+                    DURATION_MAX_MINUTES,
+                    activeFeeTab,
+                    autoRenew,
+                    billingCycle,
+                    bookingAdvanceDays,
+                    bookingAdvanceHours,
+                    bookingAdvanceMinutes,
+                    calculateDiscount,
+                    cancellationAdvanceDays,
+                    cancellationAdvanceHours,
+                    cancellationAdvanceMinutes,
+                    capitalizeFirst,
+                    carouselItems,
+                    closeBookingAdvanceModal,
+                    closeCancellationAdvanceModal,
+                    closeConfirmationModal,
+                    closeDynamicPriceModal,
+                    closeExtraFeeModal,
+                    currency,
+                    currencyPromo,
+                    customCategorys,
+                    defaultCategorys,
+                    descriptionEditorRef,
+                    descriptionLength,
+                    duration,
+                    execDescriptionCommand,
+                    handleAddCategory,
+                    handleAddServiceFee,
+                    handleAddTimeFee,
+                    handleAddTimeSlot,
+                    handleAdminClick,
+                    handleButtonSelect,
+                    handleCancellationDaysChange,
+                    handleCancellationHoursChange,
+                    handleCancellationMinutesChange,
+                    handleCloseOther,
+                    handleConfirmation,
+                    handleContinue,
+                    handleCurrencyChange,
+                    handleCurrencyPromoChange,
+                    handleDaysChange,
+                    handleDescriptionInput,
+                    handleDurationChange,
+                    handleHoursChange,
+                    handleImageUpload,
+                    handleItemClick,
+                    handleMinutesChange,
+                    handlePriceChange,
+                    handlePriceFromChange,
+                    handlePriceToChange,
+                    handleRemoveCategory,
+                    handleRemoveItem,
+                    handleRemoveServiceFee,
+                    handleRemoveTimeFee,
+                    handleRemoveTimeSlot,
+                    handleSaveDynamicPrices,
+                    handleSaveExtraFees,
+                    handleServiceFeeChange,
+                    handleTimeFeeChange,
+                    handleTimeSlotChange,
+                    isAddingProduct,
+                    isAnimating,
+                    isBookingAdvanceModalClosing,
+                    isBookingAdvanceModalOpen,
+                    isCancellationAdvanceModalClosing,
+                    isCancellationAdvanceModalOpen,
+                    isConfirmationModalClosing,
+                    isConfirmationModalOpen,
+                    isDynamicPriceModalClosing,
+                    isDynamicPriceModalOpen,
+                    isExtraFeeModalClosing,
+                    isExtraFeeModalOpen,
+                    isFading,
+                    isInputFilled,
+                    isOtherSelected,
+                    isPrivate,
+                    loyaltyMonths,
+                    members,
+                    newCategory,
+                    nextStep,
+                    normalizeTimeInput,
+                    notificationsEnabled,
+                    openBookingAdvanceModal,
+                    openCancellationAdvanceModal,
+                    openDynamicPriceModal,
+                    openExtraFeeModal,
+                    prepaymentRequired,
+                    prevStep,
+                    price,
+                    priceFrom,
+                    priceTo,
+                    productName,
+                    productType,
+                    reschedulingAllowed,
+                    selectedAdmins,
+                    selectedDay,
+                    selectedFeeDay,
+                    selectedItems,
+                    serviceFees,
+                    sessionsPerCycle,
+                    setActiveFeeTab,
+                    setAutoRenew,
+                    setBillingCycle,
+                    setCurrencyPromo,
+                    setIsPrivate,
+                    setLoyaltyMonths,
+                    setNewCategory,
+                    setNotificationsEnabled,
+                    setPrepaymentRequired,
+                    setProductInfo,
+                    setProductName,
+                    setProductType,
+                    setReschedulingAllowed,
+                    setSelectedDay,
+                    setSelectedFeeDay,
+                    setSessionsPerCycle,
+                    setSubscriptionCancellationNoticeDays,
+                    setTrialDays,
+                    setUnlimitedSessions,
+                    step,
+                    stepDirection,
+                    subscriptionCancellationNoticeDays,
+                    timeFees,
+                    timeSlots,
+                    trialDays,
+                    unlimitedSessions,
+                }}
+            />
             <Toast
                 show={showToast}
                 type={toastType}

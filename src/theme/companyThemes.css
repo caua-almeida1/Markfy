@@ -1,0 +1,285 @@
+/* =========================================================
+   TEMAS DE EMPRESA — GERADO A PARTIR DE companyThemes.js
+
+   NÃO EDITE À MÃO. As cores vivem em
+   src/theme/companyThemes.js (que também alimenta o
+   seletor da tela de Identidade Visual); este arquivo é a
+   tradução delas para CSS.
+
+   ESPECIFICIDADE — por que os seletores são assim
+   -----------------------------------------------
+
+   Os tokens globais do index.css vêm de :root (0-1-0), de
+   :root[data-theme="dark"] (0-2-0) e de
+   :root:not([data-theme=light]):not([data-theme=dark]) (0-3-0).
+
+   Para vencer os três sem depender da ordem de import — que
+   foi justamente o problema dos :root duplicados — cada
+   bloco aqui carrega um atributo a mais do que o bloco
+   global que precisa sobrescrever.
+========================================================= */
+
+
+/* ---------------------------------------------------------
+   Markfy — O azul original da plataforma.
+--------------------------------------------------------- */
+
+:root[data-company-theme="markfy"] {
+    --mkf-ui-primary: #092af3;
+    --mkf-ui-primary-hover: #0b33ff;
+    --mkf-ui-primary-light: #e9edff;
+    --mkf-ui-primary-lighter: #f5f7ff;
+    --mkf-ui-background: #f8f9fb;
+    --mkf-ui-surface-soft: #f4f5f7;
+    --mkf-link-color: #4a6bdf;
+}
+
+:root[data-theme="dark"][data-company-theme="markfy"],
+:root.dark-mode[data-company-theme="markfy"] {
+    --mkf-ui-primary: #4160ff;
+    --mkf-ui-primary-hover: #5570ff;
+    --mkf-ui-primary-light: #1e2547;
+    --mkf-ui-primary-lighter: #171a2e;
+    --mkf-ui-background: #111214;
+    --mkf-ui-surface-soft: #222329;
+    --mkf-link-color: #8fa3ff;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="markfy"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #4160ff;
+        --mkf-ui-primary-hover: #5570ff;
+        --mkf-ui-primary-light: #1e2547;
+        --mkf-ui-primary-lighter: #171a2e;
+        --mkf-ui-background: #111214;
+        --mkf-ui-surface-soft: #222329;
+        --mkf-link-color: #8fa3ff;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Grafite — Cinza sóbrio, sem cor dominante.
+--------------------------------------------------------- */
+
+:root[data-company-theme="grafite"] {
+    --mkf-ui-primary: #3f4149;
+    --mkf-ui-primary-hover: #2f3138;
+    --mkf-ui-primary-light: #e7e8ea;
+    --mkf-ui-primary-lighter: #f4f4f6;
+    --mkf-ui-background: #f7f7f8;
+    --mkf-ui-surface-soft: #f1f1f3;
+    --mkf-link-color: #52555f;
+}
+
+:root[data-theme="dark"][data-company-theme="grafite"],
+:root.dark-mode[data-company-theme="grafite"] {
+    --mkf-ui-primary: #b9bcc6;
+    --mkf-ui-primary-hover: #cfd2da;
+    --mkf-ui-primary-light: #2b2d34;
+    --mkf-ui-primary-lighter: #202127;
+    --mkf-ui-background: #121316;
+    --mkf-ui-surface-soft: #212328;
+    --mkf-link-color: #c9ccd4;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="grafite"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #b9bcc6;
+        --mkf-ui-primary-hover: #cfd2da;
+        --mkf-ui-primary-light: #2b2d34;
+        --mkf-ui-primary-lighter: #202127;
+        --mkf-ui-background: #121316;
+        --mkf-ui-surface-soft: #212328;
+        --mkf-link-color: #c9ccd4;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Oceano — Azul-petróleo calmo, com ar de cuidado.
+--------------------------------------------------------- */
+
+:root[data-company-theme="oceano"] {
+    --mkf-ui-primary: #0e7490;
+    --mkf-ui-primary-hover: #0b5e75;
+    --mkf-ui-primary-light: #dbf1f6;
+    --mkf-ui-primary-lighter: #f0f9fb;
+    --mkf-ui-background: #f4fafb;
+    --mkf-ui-surface-soft: #eaf5f8;
+    --mkf-link-color: #0e7490;
+}
+
+:root[data-theme="dark"][data-company-theme="oceano"],
+:root.dark-mode[data-company-theme="oceano"] {
+    --mkf-ui-primary: #3fb6cf;
+    --mkf-ui-primary-hover: #5ac6dc;
+    --mkf-ui-primary-light: #123038;
+    --mkf-ui-primary-lighter: #0e2429;
+    --mkf-ui-background: #0f1416;
+    --mkf-ui-surface-soft: #1a2326;
+    --mkf-link-color: #6fcfe3;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="oceano"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #3fb6cf;
+        --mkf-ui-primary-hover: #5ac6dc;
+        --mkf-ui-primary-light: #123038;
+        --mkf-ui-primary-lighter: #0e2429;
+        --mkf-ui-background: #0f1416;
+        --mkf-ui-surface-soft: #1a2326;
+        --mkf-link-color: #6fcfe3;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Rosé — Rosa suave, delicado sem ser infantil.
+--------------------------------------------------------- */
+
+:root[data-company-theme="rose"] {
+    --mkf-ui-primary: #be5a78;
+    --mkf-ui-primary-hover: #a84765;
+    --mkf-ui-primary-light: #fbe6ec;
+    --mkf-ui-primary-lighter: #fdf4f7;
+    --mkf-ui-background: #fdf7f9;
+    --mkf-ui-surface-soft: #faeef2;
+    --mkf-link-color: #b04f6d;
+}
+
+:root[data-theme="dark"][data-company-theme="rose"],
+:root.dark-mode[data-company-theme="rose"] {
+    --mkf-ui-primary: #e894ac;
+    --mkf-ui-primary-hover: #f0a8bd;
+    --mkf-ui-primary-light: #3a2029;
+    --mkf-ui-primary-lighter: #2b1820;
+    --mkf-ui-background: #161114;
+    --mkf-ui-surface-soft: #241a1e;
+    --mkf-link-color: #f0a8bd;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="rose"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #e894ac;
+        --mkf-ui-primary-hover: #f0a8bd;
+        --mkf-ui-primary-light: #3a2029;
+        --mkf-ui-primary-lighter: #2b1820;
+        --mkf-ui-background: #161114;
+        --mkf-ui-surface-soft: #241a1e;
+        --mkf-link-color: #f0a8bd;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Areia — Tom terroso e quente, discreto.
+--------------------------------------------------------- */
+
+:root[data-company-theme="areia"] {
+    --mkf-ui-primary: #a07d4f;
+    --mkf-ui-primary-hover: #8a6a40;
+    --mkf-ui-primary-light: #f3e9d8;
+    --mkf-ui-primary-lighter: #faf5ec;
+    --mkf-ui-background: #fbf8f2;
+    --mkf-ui-surface-soft: #f5efe3;
+    --mkf-link-color: #8a6a40;
+}
+
+:root[data-theme="dark"][data-company-theme="areia"],
+:root.dark-mode[data-company-theme="areia"] {
+    --mkf-ui-primary: #d4b483;
+    --mkf-ui-primary-hover: #e2c699;
+    --mkf-ui-primary-light: #352c1d;
+    --mkf-ui-primary-lighter: #272016;
+    --mkf-ui-background: #151310;
+    --mkf-ui-surface-soft: #231f18;
+    --mkf-link-color: #e2c699;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="areia"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #d4b483;
+        --mkf-ui-primary-hover: #e2c699;
+        --mkf-ui-primary-light: #352c1d;
+        --mkf-ui-primary-lighter: #272016;
+        --mkf-ui-background: #151310;
+        --mkf-ui-surface-soft: #231f18;
+        --mkf-link-color: #e2c699;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Noturno — Escuro sempre, para quem quer a página assim de dia e de noite.
+--------------------------------------------------------- */
+
+/* Escuro por definição: emite a paleta escura INTEIRA,
+   e não só o acento, porque precisa valer mesmo com o
+   visitante no tema claro. */
+:root[data-company-theme="noturno"] {
+    color-scheme: dark;
+    --mkf-ui-white: #1a1b1f;
+    --mkf-ui-surface: #1a1b1f;
+    --mkf-ui-background-secondary: #17181b;
+    --mkf-ui-background-tertiary: #1f2024;
+    --mkf-ui-gray-50: #1c1d21;
+    --mkf-ui-gray-100: #222329;
+    --mkf-ui-gray-200: #2a2b31;
+    --mkf-ui-gray-300: #34353c;
+    --mkf-ui-gray-400: #414249;
+    --mkf-ui-gray-500: #5a5c65;
+    --mkf-ui-border: #303137;
+    --mkf-ui-border-light: #26272c;
+    --mkf-ui-border-dark: #43454d;
+    --mkf-ui-border-strong: #3b3d45;
+    --mkf-text-primary: #f7f7f8;
+    --mkf-text-secondary: #c4c5ca;
+    --mkf-text-tertiary: #9799a2;
+    --mkf-text-light: #73757e;
+    --mkf-text-disabled: #5b5d66;
+    --mkf-success: #4ade80;
+    --mkf-success-light: #16351f;
+    --mkf-success-text: #86efac;
+    --mkf-warning: #fbbf24;
+    --mkf-warning-light: #3a2c0c;
+    --mkf-warning-text: #fcd34d;
+    --mkf-warning-text-strong: #fde68a;
+    --mkf-error: #f87171;
+    --mkf-error-light: #3b1a1a;
+    --mkf-error-text: #fca5a5;
+    --mkf-info: #60a5fa;
+    --mkf-info-light: #16273f;
+    --mkf-info-text: #93c5fd;
+    --mkf-ui-shadow: rgba(0, 0, 0, 0.5);
+    --mkf-ui-shadow-medium: rgba(0, 0, 0, 0.6);
+    --mkf-ui-shadow-strong: rgba(0, 0, 0, 0.7);
+    --mkf-shadow-sm: 0 4px 16px rgba(0, 0, 0, 0.22);
+    --mkf-shadow-md: 0 12px 35px rgba(0, 0, 0, 0.28);
+    --mkf-shadow-lg: 0 25px 70px rgba(0, 0, 0, 0.4);
+    --mkf-ui-pro-gradient: linear-gradient(90deg, #e8e8e8 0%, #a9a9a9 100%);
+    --second-lighter-color: #2a2b31;
+    --dark-color: #111214;
+    --second-dark-color: #17181b;
+    --button-dark-color: #222329;
+    --light-dark-color: #9799a2;
+    --second-light-dark-color: #73757e;
+    --mkf-ui-primary: #8b7bff;
+    --mkf-ui-primary-hover: #9d8fff;
+    --mkf-ui-primary-light: #211d3a;
+    --mkf-ui-primary-lighter: #191628;
+    --mkf-ui-background: #101017;
+    --mkf-ui-surface-soft: #1e1d2b;
+    --mkf-link-color: #a99dff;
+}
+

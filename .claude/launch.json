@@ -1,0 +1,24 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "markfy-dev",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "react-scripts",
+        "start"
+      ],
+      "port": 3000
+    },
+    {
+      "name": "markfy-https",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "-e",
+        "process.env.HTTPS='true';process.env.PORT='3443';process.env.BROWSER='none';require('react-scripts/scripts/start.js')"
+      ],
+      "port": 3443,
+      "url": "https://localhost:3443"
+    }
+  ]
+}

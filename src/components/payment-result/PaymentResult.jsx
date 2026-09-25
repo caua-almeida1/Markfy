@@ -259,13 +259,45 @@ const PaymentResult = () => {
 
         }
 
-        window.dispatchEvent(
-            new Event(
-                "markfy:go-to-reservations"
-            )
-        );
+        /*
+         * Ir para a aba de reservas DA EMPRESA.
+         *
+         * Antes isto disparava um evento e mandava para "/".
+         * Mas "/" é a landing page: o centralUser, que é quem
+         * escuta o evento, nem chega a montar. O botão levava
+         * o cliente que acabou de pagar para a página de
+         * vendas do Markfy, e o agendamento dele ficava a
+         * navegações de distância.
+         *
+         * A URL é a fonte de verdade da aba, então basta
+         * montá-la com o handle da empresa do pagamento.
+         */
+        let handle =
+            paymentData?.companyHandle || "";
 
-        window.location.href = "/";
+        if (!handle) {
+
+            try {
+
+                handle =
+                    JSON.parse(
+                        localStorage.getItem(
+                            "markfy-pending-payment"
+                        ) || "{}"
+                    ).companyHandle || "";
+
+            } catch {
+
+                handle = "";
+
+            }
+
+        }
+
+        window.location.href =
+            handle
+                ? `/central-user/${handle}?tab=reservas`
+                : "/";
     };
 
     const handleClose = () => {

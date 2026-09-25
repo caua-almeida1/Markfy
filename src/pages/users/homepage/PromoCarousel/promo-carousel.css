@@ -1,0 +1,405 @@
+/* =========================================================
+   BANNERS DE PROMOÇÃO
+
+   Peças largas, uma por vez, com a imagem sangrando no
+   fundo e o texto sobre um degradê que sai da cor da loja.
+
+   A cor vem de --mkf-ui-primary e não de um valor fixo, para
+   o banner acompanhar o tema de cada empresa. `color-mix`
+   escurece a primária o suficiente para o texto branco ter
+   contraste sem precisar de uma paleta separada.
+   ========================================================= */
+
+.promo-carousel {
+    width: 100%;
+    margin: 0 0 32px;
+}
+
+
+/* ---------- Cabeçalho ---------- */
+
+.promo-carousel-heading {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+
+    margin-bottom: 14px;
+}
+
+.promo-carousel-heading > div > span {
+    display: block;
+
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.promo-carousel-heading h2 {
+    margin: 3px 0 0;
+
+    font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+    font-weight: 600;
+    letter-spacing: -.025em;
+    color: var(--mkf-text-primary);
+}
+
+.promo-carousel-nav {
+    display: flex;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.promo-carousel-nav button {
+    display: grid;
+    place-items: center;
+
+    width: 38px;
+    height: 38px;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 50%;
+    background: var(--mkf-ui-surface, #fff);
+    color: var(--mkf-text-primary);
+
+    font-size: 17px;
+    cursor: pointer;
+
+    transition: border-color .16s ease, opacity .16s ease;
+}
+
+.promo-carousel-nav button:hover:not(:disabled) {
+    border-color: var(--mkf-ui-primary, #092af3);
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.promo-carousel-nav button:disabled {
+    opacity: .3;
+    cursor: default;
+}
+
+
+/* ---------- Trilho ---------- */
+
+.promo-carousel-track {
+    display: flex;
+    gap: 16px;
+
+    overflow-x: auto;
+    /* Um banner por vez: parar no meio de dois cortaria a
+       manchete, que é o conteúdo principal da peça. */
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+
+    scrollbar-width: none;
+}
+
+.promo-carousel-track::-webkit-scrollbar {
+    display: none;
+}
+
+
+/* ---------- Banner ---------- */
+
+.promo-banner {
+    position: relative;
+    isolation: isolate;
+
+    display: flex;
+    align-items: center;
+
+    flex: 0 0 100%;
+    min-height: 230px;
+
+    overflow: hidden;
+    border-radius: 22px;
+
+    scroll-snap-align: start;
+
+    /* Base escura derivada da cor da loja. */
+    background:
+        color-mix(in srgb, var(--mkf-ui-primary, #092af3) 32%, #0b1020);
+}
+
+.promo-banner-bg {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+}
+
+.promo-banner-bg img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+
+    /* A imagem é ambiente, não o assunto: fica deslocada
+       para a direita, longe do texto. */
+    object-position: 75% center;
+}
+
+/*
+ * O degradê que segura o texto.
+ *
+ * Sem ele a manchete branca cai em cima de qualquer foto e
+ * fica ilegível em metade dos produtos — e não dá para
+ * escolher a foto por cima de quem cadastra.
+ */
+.promo-banner-scrim {
+    position: absolute;
+    inset: 0;
+
+    background: linear-gradient(
+        100deg,
+        color-mix(in srgb, var(--mkf-ui-primary, #092af3) 55%, #05070f) 0%,
+        color-mix(in srgb, var(--mkf-ui-primary, #092af3) 40%, #05070f) 42%,
+        rgba(5, 7, 15, .55) 68%,
+        rgba(5, 7, 15, .2) 100%
+    );
+}
+
+
+/* ---------- Conteúdo ---------- */
+
+.promo-banner-content {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 7px;
+
+    max-width: 58%;
+    padding: 26px 28px;
+}
+
+.promo-banner-eyebrow {
+    padding: 4px 10px;
+
+    border-radius: 100px;
+    background: rgba(255, 255, 255, .16);
+    color: #fff;
+
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+
+    backdrop-filter: blur(4px);
+}
+
+.promo-banner-title {
+    margin: 4px 0 0;
+
+    font-size: clamp(1.35rem, 3.2vw, 1.95rem);
+    font-weight: 700;
+    line-height: 1.12;
+    letter-spacing: -.035em;
+    color: #fff;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.promo-banner-text {
+    margin: 0;
+
+    font-size: .9rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, .8);
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.promo-banner-price {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+
+    margin-top: 6px;
+}
+
+.promo-banner-price s {
+    font-size: .9rem;
+    color: rgba(255, 255, 255, .55);
+}
+
+.promo-banner-price strong {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+}
+
+.promo-banner-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-height: 42px;
+    margin-top: 12px;
+    padding: 0 20px;
+
+    border: 0;
+    border-radius: 100px;
+    background: #fff;
+    color: #0b1020;
+
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    transition: transform .16s ease;
+}
+
+.promo-banner-cta:hover {
+    transform: translateX(3px);
+}
+
+
+/* ---------- Selo de desconto ---------- */
+
+.promo-banner-off {
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    transform: translateY(-50%);
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+
+    color: #fff;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, .45);
+}
+
+.promo-banner-off span {
+    font-size: .8rem;
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    opacity: .85;
+}
+
+.promo-banner-off strong {
+    font-size: clamp(2.4rem, 6vw, 3.6rem);
+    font-weight: 800;
+    letter-spacing: -.05em;
+}
+
+
+/* ---------- Pontos ---------- */
+
+.promo-carousel-dots {
+    display: flex;
+    justify-content: center;
+    gap: 7px;
+
+    margin-top: 14px;
+}
+
+.promo-carousel-dots button {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+
+    border: 0;
+    border-radius: 100px;
+    background: var(--mkf-ui-border, #d3d8e6);
+
+    cursor: pointer;
+
+    transition: width .2s ease, background-color .2s ease;
+}
+
+.promo-carousel-dots button.is-active {
+    width: 22px;
+    background: var(--mkf-ui-primary, #092af3);
+}
+
+
+/* ---------- Celular ---------- */
+
+@media (max-width: 680px) {
+
+    .promo-banner {
+        min-height: 265px;
+        align-items: flex-end;
+    }
+
+    .promo-banner-content {
+        /* No estreito o texto ocupa a largura toda e o selo
+           some: os dois lado a lado ficariam ilegíveis. */
+        max-width: 100%;
+        padding: 20px;
+    }
+
+    .promo-banner-scrim {
+        background: linear-gradient(
+            15deg,
+            color-mix(in srgb, var(--mkf-ui-primary, #092af3) 55%, #05070f) 12%,
+            rgba(5, 7, 15, .6) 62%,
+            rgba(5, 7, 15, .25) 100%
+        );
+    }
+
+    .promo-banner-off {
+        top: 18px;
+        right: 18px;
+        transform: none;
+    }
+
+    .promo-banner-off strong {
+        font-size: 2rem;
+    }
+
+    .promo-carousel-nav {
+        display: none;
+    }
+
+}
+
+
+/* ---------- Sem color-mix ---------- */
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+
+    .promo-banner {
+        background: #0b1020;
+    }
+
+    .promo-banner-scrim {
+        background: linear-gradient(
+            100deg,
+            rgba(9, 42, 243, .82) 0%,
+            rgba(5, 7, 15, .72) 55%,
+            rgba(5, 7, 15, .2) 100%
+        );
+    }
+
+}
+
+
+/* ---------- Movimento reduzido ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+
+    .promo-carousel-track {
+        scroll-behavior: auto;
+    }
+
+    .promo-banner-cta,
+    .promo-carousel-dots button {
+        transition: none;
+    }
+
+    .promo-banner-cta:hover {
+        transform: none;
+    }
+
+}

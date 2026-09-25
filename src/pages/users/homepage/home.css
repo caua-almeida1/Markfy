@@ -5,74 +5,10 @@
    Catálogo de produtos / serviços
 ========================================================= */
 
-:root {
-    --mkf-ui-primary: #092af3;
-    --mkf-ui-primary-hover: #0622d4;
-
-    --mkf-ui-background: #f8f9fb;
-    --mkf-ui-surface: #ffffff;
-    --mkf-ui-surface-soft: #f4f5f7;
-
-    --mkf-ui-border: #e8e9ed;
-    --mkf-ui-border-strong: #dedfe4;
-
-    --mkf-text-primary: #17181c;
-    --mkf-text-secondary: #5f626b;
-    --mkf-text-tertiary: #858891;
-    --mkf-text-light: #a2a4ab;
-
-    --mkf-ui-white: #ffffff;
-
-    --mkf-shadow-sm:
-        0 4px 16px rgba(0, 0, 0, 0.045);
-
-    --mkf-shadow-md:
-        0 12px 35px rgba(0, 0, 0, 0.07);
-
-    --mkf-shadow-lg:
-        0 25px 70px rgba(0, 0, 0, 0.12);
-
-    --mkf-radius-sm: 10px;
-    --mkf-radius-md: 16px;
-    --mkf-radius-lg: 22px;
-    --mkf-radius-xl: 28px;
-
-    --mkf-content-width: 1180px;
-}
-
-
-/* =========================================================
-   DARK MODE
-========================================================= */
-
-.dark-mode {
-    --mkf-ui-primary: #4160ff;
-    --mkf-ui-primary-hover: #5570ff;
-
-    --mkf-ui-background: #111214;
-    --mkf-ui-surface: #1a1b1f;
-    --mkf-ui-surface-soft: #222329;
-
-    --mkf-ui-border: #303137;
-    --mkf-ui-border-strong: #3b3d45;
-
-    --mkf-text-primary: #f7f7f8;
-    --mkf-text-secondary: #c4c5ca;
-    --mkf-text-tertiary: #9799a2;
-    --mkf-text-light: #73757e;
-
-    --mkf-ui-white: #1a1b1f;
-
-    --mkf-shadow-sm:
-        0 4px 16px rgba(0, 0, 0, 0.22);
-
-    --mkf-shadow-md:
-        0 12px 35px rgba(0, 0, 0, 0.28);
-
-    --mkf-shadow-lg:
-        0 25px 70px rgba(0, 0, 0, 0.4);
-}
-
+/* Os tokens de cor agora vivem só em src/index.css.
+   Este arquivo redeclarava os mesmos nomes com valores
+   diferentes e vencia por ordem de import, o que
+   impedia o tema escuro de funcionar. */
 
 /* =========================================================
    RESET
@@ -148,6 +84,414 @@ a {
     border-radius: 999px;
 }
 
+
+/* =========================================================
+   INITIAL PAGE SKELETON
+========================================================= */
+
+.home-page-skeleton {
+    width: 100%;
+    min-height: 100dvh;
+    padding: 24px;
+    background: var(--mkf-ui-white);
+    overflow: hidden;
+}
+
+
+.home-skeleton-header {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding: 8px 0 28px;
+}
+
+
+.home-skeleton-company {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+
+.home-skeleton-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+}
+
+
+.home-skeleton-company-text {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+
+.home-skeleton-search {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+}
+
+
+.home-skeleton-line,
+.home-skeleton-circle,
+.home-skeleton-search,
+.home-skeleton-title,
+.home-skeleton-description,
+.home-skeleton-heading-small,
+.home-skeleton-heading-large,
+.home-skeleton-category,
+.home-skeleton-product-image,
+.home-skeleton-product-title,
+.home-skeleton-product-description,
+.home-skeleton-price,
+.home-skeleton-button {
+    background: linear-gradient(
+            90deg,
+            #e9e9e9 25%,
+            var(--mkf-ui-gray-100) 50%,
+            #e9e9e9 75%
+        );
+
+    background-size: 200% 100%;
+
+    animation:
+        home-skeleton-loading 1.4s ease-in-out infinite;
+}
+
+
+.home-skeleton-line--small {
+    width: 70px;
+    height: 8px;
+    border-radius: 6px;
+}
+
+
+.home-skeleton-line--company {
+    width: 130px;
+    height: 14px;
+    border-radius: 6px;
+}
+
+
+.home-skeleton-hero {
+    width: 100%;
+    max-width: 1200px;
+    margin: 30px auto 60px;
+}
+
+
+.home-skeleton-line--eyebrow {
+    width: 130px;
+    height: 9px;
+    border-radius: 6px;
+    margin-bottom: 18px;
+}
+
+
+.home-skeleton-title {
+    width: min(520px, 80%);
+    height: 38px;
+    border-radius: 9px;
+    margin-bottom: 10px;
+}
+
+
+.home-skeleton-title--short {
+    width: min(360px, 60%);
+}
+
+
+.home-skeleton-description {
+    width: min(460px, 75%);
+    height: 12px;
+    border-radius: 6px;
+    margin-top: 18px;
+}
+
+
+.home-skeleton-description--short {
+    width: min(330px, 55%);
+    margin-top: 8px;
+}
+
+
+.home-skeleton-section {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto 55px;
+}
+
+
+.home-skeleton-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    margin-bottom: 20px;
+}
+
+
+.home-skeleton-heading-small {
+    width: 70px;
+    height: 8px;
+    border-radius: 5px;
+}
+
+
+.home-skeleton-heading-large {
+    width: 190px;
+    height: 22px;
+    border-radius: 7px;
+}
+
+
+.home-skeleton-categories {
+    display: flex;
+    gap: 10px;
+    overflow: hidden;
+}
+
+
+.home-skeleton-categories > div {
+    flex: 0 0 90px;
+    height: 38px;
+    border-radius: 999px;
+
+    background: linear-gradient(
+            90deg,
+            #e9e9e9 25%,
+            var(--mkf-ui-gray-100) 50%,
+            #e9e9e9 75%
+        );
+
+    background-size: 200% 100%;
+
+    animation:
+        home-skeleton-loading 1.4s ease-in-out infinite;
+}
+
+
+.home-skeleton-products {
+    display: grid;
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 20px;
+}
+
+
+.home-skeleton-product {
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 20px;
+    background: var(--mkf-ui-white);
+}
+
+
+.home-skeleton-product-image {
+    width: 100%;
+    height: 230px;
+    border-radius: 18px;
+}
+
+
+.home-skeleton-product-content {
+    padding: 15px 4px;
+}
+
+
+.home-skeleton-product-title {
+    width: 65%;
+    height: 18px;
+    border-radius: 6px;
+    margin-bottom: 14px;
+}
+
+
+.home-skeleton-product-description {
+    width: 90%;
+    height: 10px;
+    border-radius: 5px;
+    margin-bottom: 7px;
+}
+
+
+.home-skeleton-product-description.short {
+    width: 60%;
+}
+
+
+.home-skeleton-product-bottom {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-top: 20px;
+}
+
+
+.home-skeleton-price {
+    width: 75px;
+    height: 18px;
+    border-radius: 6px;
+}
+
+
+.home-skeleton-button {
+    width: 90px;
+    height: 36px;
+    border-radius: 10px;
+}
+
+
+@keyframes home-skeleton-loading {
+
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+
+}
+
+
+/* =========================================================
+   NOT FOUND
+========================================================= */
+
+.home-not-found {
+    width: 100%;
+    min-height: 100dvh;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+
+    padding: 32px;
+
+    text-align: center;
+    background: var(--mkf-ui-white);
+}
+
+
+.home-not-found-icon {
+    width: 82px;
+    height: 82px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    margin-bottom: 24px;
+
+    border-radius: 24px;
+
+    background: var(--mkf-ui-gray-100);
+}
+
+
+.home-not-found-icon svg {
+    font-size: 42px;
+    color: #777;
+}
+
+
+.home-not-found h1 {
+    margin: 0;
+
+    font-size: clamp(
+        1.5rem,
+        3vw,
+        2.2rem
+    );
+
+    font-weight: 700;
+}
+
+
+.home-not-found p {
+    max-width: 420px;
+
+    margin: 12px 0 24px;
+
+    color: #777;
+
+    line-height: 1.6;
+}
+
+
+.home-not-found button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    border: none;
+    border-radius: 12px;
+
+    padding: 13px 18px;
+
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+
+    font-weight: 600;
+    cursor: pointer;
+
+    transition:
+        transform .2s ease,
+        opacity .2s ease;
+}
+
+
+.home-not-found button:hover {
+    transform: translateY(-2px);
+}
+
+
+.home-not-found button:active {
+    transform: scale(.97);
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+
+    .home-page-skeleton {
+        padding: 18px;
+    }
+
+
+    .home-skeleton-products {
+        grid-template-columns: 1fr;
+    }
+
+
+    .home-skeleton-product-image {
+        height: 210px;
+    }
+
+
+    .home-skeleton-title {
+        height: 30px;
+    }
+
+
+    .home-skeleton-title--short {
+        width: 70%;
+    }
+
+}
 
 /* =========================================================
    HOME
@@ -589,8 +933,7 @@ a {
     background:
         var(--mkf-ui-primary);
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 
     border-color:
         var(--mkf-ui-primary);
@@ -807,7 +1150,7 @@ a {
     background:
         rgba(0, 0, 0, 0.46);
 
-    color: #ffffff;
+    color: var(--mkf-on-primary);
 
     font-size: 8px;
 
@@ -976,8 +1319,7 @@ a {
     background:
         var(--mkf-ui-primary);
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 
     font-size: 9px;
 
@@ -1820,8 +2162,7 @@ a {
     background:
         var(--mkf-ui-primary);
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 }
 
 
@@ -2078,8 +2419,7 @@ a {
     background:
         #25d366;
 
-    color:
-        #ffffff;
+    color: var(--mkf-on-primary);
 
     font-size: 20px;
 }
@@ -2837,7 +3177,7 @@ nav li.active .nav-button::after {
 }
 
 nav li.active .nav-button {
-    color: white;
+    color: var(--mkf-on-primary);
 }
 
 * {
@@ -3029,6 +3369,425 @@ nav li.active .nav-button {
         height: 27px;
     }
 }
+
+/* =========================================================
+   ASSINATURAS — PLANOS DE MENSALIDADE
+
+   Seção própria, separada do catálogo, para deixar claro
+   que estes produtos têm cobrança recorrente.
+========================================================= */
+
+.home-subscriptions {
+    width: 100%;
+
+    margin-top: 44px;
+}
+
+.home-subscriptions-note {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 9px;
+
+    margin-bottom: 16px;
+
+    padding: 12px 14px;
+
+    border:
+        1px solid rgba(9, 42, 243, 0.14);
+
+    border-radius: 13px;
+
+    background:
+        rgba(9, 42, 243, 0.05);
+}
+
+.home-subscriptions-note svg {
+    width: 16px;
+    height: 16px;
+
+    flex-shrink: 0;
+
+    margin-top: 1px;
+
+    color:
+        var(--mkf-ui-primary);
+}
+
+.home-subscriptions-note p {
+    margin: 0;
+
+    color:
+        var(--mkf-text-secondary);
+
+    font-size: 11px;
+
+    line-height: 1.5;
+}
+
+.home-subscriptions-list {
+    width: 100%;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 18px;
+}
+
+
+/* ---------- Card ---------- */
+
+.home-subscription-card {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    padding: 18px;
+
+    border:
+        1px solid var(--mkf-ui-border);
+
+    border-radius:
+        var(--mkf-radius-lg);
+
+    background:
+        var(--mkf-ui-surface);
+
+    cursor: pointer;
+
+    transition:
+        transform 0.22s ease,
+        border-color 0.22s ease,
+        box-shadow 0.22s ease;
+}
+
+.home-subscription-card:hover {
+    transform:
+        translateY(-3px);
+
+    border-color:
+        rgba(9, 42, 243, 0.2);
+
+    box-shadow:
+        var(--mkf-shadow-md);
+}
+
+.home-subscription-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 10px;
+
+    margin-bottom: 14px;
+}
+
+.home-subscription-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 38px;
+    height: 38px;
+
+    border-radius: 11px;
+
+    background:
+        rgba(9, 42, 243, 0.08);
+
+    color:
+        var(--mkf-ui-primary);
+}
+
+.home-subscription-icon svg {
+    width: 21px;
+    height: 21px;
+}
+
+.home-subscription-badge {
+    padding: 5px 10px;
+
+    border-radius: 999px;
+
+    background:
+        var(--mkf-ui-primary);
+
+    color: var(--mkf-on-primary);
+
+    font-size: 8px;
+
+    line-height: 1;
+
+    font-weight: 650;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.06em;
+
+    white-space: nowrap;
+}
+
+.home-subscription-card h3 {
+    margin: 0;
+
+    color:
+        var(--mkf-text-primary);
+
+    font-size: 14px;
+
+    line-height: 1.3;
+
+    font-weight: 650;
+
+    letter-spacing: -0.01em;
+}
+
+.home-subscription-sessions {
+    margin: 4px 0 0;
+
+    color:
+        var(--mkf-text-tertiary);
+
+    font-size: 10px;
+
+    line-height: 1.4;
+}
+
+
+/* ---------- Preço ---------- */
+
+.home-subscription-price {
+    display: flex;
+    align-items: baseline;
+
+    gap: 4px;
+
+    margin-top: 14px;
+}
+
+.home-subscription-price strong {
+    color:
+        var(--mkf-ui-primary);
+
+    font-size: 22px;
+
+    line-height: 1;
+
+    font-weight: 700;
+
+    letter-spacing: -0.02em;
+}
+
+.home-subscription-price span {
+    color:
+        var(--mkf-text-tertiary);
+
+    font-size: 11px;
+
+    font-weight: 600;
+}
+
+.home-subscription-trial {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+
+    gap: 5px;
+
+    margin-top: 9px;
+
+    padding: 5px 9px;
+
+    border-radius: 8px;
+
+    background:
+        var(--mkf-success-light);
+
+    color: var(--mkf-success-text);
+
+    font-size: 9px;
+
+    line-height: 1;
+
+    font-weight: 650;
+}
+
+.home-subscription-trial svg {
+    width: 13px;
+    height: 13px;
+}
+
+
+/* ---------- Detalhes ---------- */
+
+.home-subscription-details {
+    display: flex;
+    flex-direction: column;
+
+    gap: 10px;
+
+    margin: 16px 0 0;
+
+    padding: 14px 0 0;
+
+    border-top:
+        1px solid var(--mkf-ui-border);
+
+    list-style: none;
+}
+
+.home-subscription-details li {
+    display: flex;
+    align-items: flex-start;
+
+    gap: 9px;
+}
+
+.home-subscription-details li svg {
+    width: 15px;
+    height: 15px;
+
+    flex-shrink: 0;
+
+    margin-top: 1px;
+
+    color:
+        var(--mkf-ui-primary);
+}
+
+.home-subscription-details li>div {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    gap: 1px;
+}
+
+.home-subscription-details li span {
+    color:
+        var(--mkf-text-light);
+
+    font-size: 8px;
+
+    line-height: 1.2;
+
+    font-weight: 600;
+
+    text-transform: uppercase;
+
+    letter-spacing: 0.06em;
+}
+
+.home-subscription-details li strong {
+    color:
+        var(--mkf-text-secondary);
+
+    font-size: 10px;
+
+    line-height: 1.4;
+
+    font-weight: 500;
+}
+
+
+/* ---------- Ação ---------- */
+
+.home-subscription-cta {
+    width: 100%;
+
+    min-height: 38px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    gap: 5px;
+
+    margin-top: 16px;
+
+    border-radius: 11px;
+
+    background:
+        var(--mkf-ui-primary);
+
+    color: var(--mkf-on-primary);
+
+    font-size: 10px;
+
+    line-height: 1;
+
+    font-weight: 650;
+
+    cursor: pointer;
+
+    transition:
+        background 0.2s ease,
+        transform 0.2s ease;
+}
+
+.home-subscription-cta:hover {
+    background:
+        var(--mkf-ui-primary-hover);
+}
+
+.home-subscription-cta:active {
+    transform:
+        scale(0.97);
+}
+
+.home-subscription-cta svg {
+    width: 14px;
+    height: 14px;
+}
+
+
+/* ---------- Sufixo do ciclo (busca e destaques) ---------- */
+
+.home-product-cycle {
+    margin-left: 2px;
+
+    color:
+        var(--mkf-text-tertiary);
+
+    font-size: 10px;
+
+    font-style: normal;
+
+    font-weight: 600;
+}
+
+
+@media (max-width: 1000px) {
+
+    .home-subscriptions-list {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr));
+
+        gap: 15px;
+    }
+
+}
+
+
+@media (max-width: 600px) {
+
+    .home-subscriptions {
+        margin-top: 34px;
+    }
+
+    .home-subscriptions-list {
+        grid-template-columns:
+            minmax(0, 1fr);
+
+        gap: 12px;
+    }
+
+}
+
 
 .product-details-overlay {
     z-index: 1000 !important;

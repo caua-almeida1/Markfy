@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@iconify/react";
 
 import {
@@ -13,10 +12,12 @@ import {
 import {
     getStorage,
     ref as storageRef,
-    getDownloadURL
+    getDownloadURL,
+    listAll
 } from "firebase/storage";
 
 import "./company-info-modal.css";
+import Modal from "../../../components/modal/Modal";
 
 
 const WEEK_DAYS = [
@@ -209,6 +210,9 @@ const CompanyInfoModal = ({
 
     const [professionals, setProfessionals] = useState([]);
 
+    /* Fotos da empresa, lidas do Storage. */
+    const [storagePhotos, setStoragePhotos] = useState([]);
+
     const [professionalPhotos, setProfessionalPhotos] =
         useState({});
 
@@ -304,16 +308,40 @@ const CompanyInfoModal = ({
                 }
 
 
-                const usersRef =
-                    ref(db, "users");
+                /*
+                 * Lê apenas os uids dos profissionais
+                 * relacionados aos produtos.
+                 *
+                 * Ler o nó "users" inteiro numa rota pública
+                 * expõe nome e e-mail de toda a base.
+                 */
 
-                const usersSnap =
-                    await get(usersRef);
+                const usersEntries =
+                    await Promise.all(
+
+                        ids.map(async (id) => {
+
+                            const userSnap = await get(
+                                ref(db, `users/${id}`)
+                            );
+
+                            return [
+                                id,
+                                userSnap.exists()
+                                    ? userSnap.val()
+                                    : null
+                            ];
+
+                        })
+
+                    );
 
                 const usersData =
-                    usersSnap.exists()
-                        ? usersSnap.val()
-                        : {};
+                    Object.fromEntries(
+                        usersEntries.filter(
+                            ([, value]) => value
+                        )
+                    );
 
 
                 const storage =
@@ -537,16 +565,121 @@ const CompanyInfoModal = ({
         other: 3
     };
 
-    const companyPhotos = company?.photos
-        ? (
-            Array.isArray(company.photos)
-                ? company.photos.filter(
-                    photo => photo?.url
-                )
-                : Object.values(company.photos).filter(
-                    photo => photo?.url
-                )
-        ).sort((a, b) => {
+    /* =========================================
+       GALERIA — DO STORAGE
+
+       O que existe de verdade são os arquivos em
+       companys/{handle}/photos/. O nó do banco guarda uma
+       cópia da URL de download, e essa cópia envelhece: o
+       token da URL muda quando o arquivo é reenviado, some
+       quando alguém regenera o token pelo console, e fotos
+       apagadas pelo Storage continuam listadas. O resultado
+       na tela era imagem quebrada.
+
+       Agora quem manda é o Storage: listamos a pasta e
+       resolvemos cada URL na hora. O banco entra só para dar
+       a categoria de cada foto, casada pelo caminho do
+       arquivo — e se a listagem falhar, ele ainda serve de
+       queda para a galeria não sumir.
+       ========================================= */
+
+    useEffect(() => {
+
+        if (!isOpen || !companyHandle) {
+            setStoragePhotos([]);
+            return undefined;
+        }
+
+        let cancelado = false;
+
+        const carregar = async () => {
+
+            try {
+
+                const pasta = storageRef(
+                    getStorage(),
+                    `companys/${companyHandle}/photos`
+                );
+
+                const { items } = await listAll(pasta);
+
+                const arquivos = await Promise.all(
+                    items.map(async (item) => {
+
+                        try {
+
+                            return {
+                                path: item.fullPath,
+                                url: await getDownloadURL(item)
+                            };
+
+                        } catch {
+
+                            return null;
+
+                        }
+
+                    })
+                );
+
+                if (!cancelado) {
+                    setStoragePhotos(
+                        arquivos.filter(Boolean)
+                    );
+                }
+
+            } catch (error) {
+
+                console.warn(
+                    "Não foi possível listar as fotos:",
+                    error
+                );
+
+                if (!cancelado) {
+                    setStoragePhotos([]);
+                }
+
+            }
+
+        };
+
+        carregar();
+
+        return () => {
+            cancelado = true;
+        };
+
+    }, [isOpen, companyHandle]);
+
+
+    /* Metadados do banco, indexados pelo caminho do arquivo. */
+    const photoMeta = (() => {
+
+        const entradas = company?.photos
+            ? (
+                Array.isArray(company.photos)
+                    ? company.photos
+                    : Object.values(company.photos)
+            )
+            : [];
+
+        const porCaminho = {};
+
+        entradas.forEach((entrada) => {
+
+            if (entrada?.path) {
+                porCaminho[entrada.path] = entrada;
+            }
+
+        });
+
+        return porCaminho;
+
+    })();
+
+
+    const ordenarPorCategoria = (lista) =>
+        [...lista].sort((a, b) => {
 
             const orderA =
                 PHOTO_CATEGORY_ORDER[a.category] ?? 99;
@@ -556,8 +689,29 @@ const CompanyInfoModal = ({
 
             return orderA - orderB;
 
-        })
-        : [];
+        });
+
+
+    const companyPhotos = storagePhotos.length
+        ? ordenarPorCategoria(
+            storagePhotos.map((arquivo) => ({
+                ...(photoMeta[arquivo.path] || {}),
+                id: photoMeta[arquivo.path]?.id || arquivo.path,
+                path: arquivo.path,
+                url: arquivo.url
+            }))
+        )
+        : ordenarPorCategoria(
+            (
+                company?.photos
+                    ? (
+                        Array.isArray(company.photos)
+                            ? company.photos
+                            : Object.values(company.photos)
+                    )
+                    : []
+            ).filter(photo => photo?.url)
+        );
     /* ==========================================
    GALERIA
    ========================================== */
@@ -744,6 +898,34 @@ const CompanyInfoModal = ({
 
     };
 
+    /*
+     * Abre a página inicial da empresa — a mesma que o
+     * cliente veria pelo link dela. Vai com `tab=home`
+     * explícito para a aba e a URL nascerem coerentes.
+     */
+    const openCompanyHome = () => {
+
+        if (!companyHandle) {
+
+            console.warn(
+                "CompanyInfo: companyHandle não encontrado."
+            );
+
+            return;
+
+        }
+
+
+        navigate(
+            `/central-user/${companyHandle}?tab=home`
+        );
+
+
+        onClose();
+
+    };
+
+
     const openCompanyCatalog = () => {
 
         if (!companyHandle) {
@@ -771,63 +953,12 @@ const CompanyInfoModal = ({
 
     return createPortal(
 
-        <AnimatePresence>
-
-            {isOpen && (
-
-                <motion.div
-                    className="company-info-modal-overlay"
-
-                    initial={{
-                        opacity: 0
-                    }}
-
-                    animate={{
-                        opacity: 1
-                    }}
-
-                    exit={{
-                        opacity: 0
-                    }}
-
-                    transition={{
-                        duration: 0.22,
-                        ease: "easeOut"
-                    }}
-
-                    onClick={onClose}
-                >
-
-                    <motion.div
-                        className="company-info-modal"
-
-                        initial={{
-                            opacity: 0,
-                            y: 30,
-                            scale: 0.96
-                        }}
-
-                        animate={{
-                            opacity: 1,
-                            y: 0,
-                            scale: 1
-                        }}
-
-                        exit={{
-                            opacity: 0,
-                            y: 30,
-                            scale: 0.96
-                        }}
-
-                        transition={{
-                            duration: 0.25,
-                            ease: "easeOut"
-                        }}
-
-                        onClick={(e) =>
-                            e.stopPropagation()
-                        }
-                    >
+        <Modal
+                open={isOpen}
+                onClose={onClose}
+                overlayClassName="company-info-modal-overlay"
+                className="company-info-modal"
+            >
 
                         {/* ================================= */}
                         {/* HEADER */}
@@ -952,19 +1083,16 @@ const CompanyInfoModal = ({
 
                                                     return (
 
-                                                        <motion.div
+                                                        <div
                                                             className={`company-info-gallery-item ${index === 0
                                                                 ? "featured"
                                                                 : ""
-                                                                }`}
+                                                                } mkf-fade-enter`}
                                                             key={
                                                                 photo.id ||
                                                                 photo.url ||
                                                                 index
                                                             }
-                                                            whileTap={{
-                                                                scale: .97
-                                                            }}
                                                             onClick={() =>
                                                                 openPhotoViewer(index)
                                                             }
@@ -1002,7 +1130,7 @@ const CompanyInfoModal = ({
 
                                                             </div>
 
-                                                        </motion.div>
+                                                        </div>
 
                                                     );
 
@@ -1150,23 +1278,44 @@ const CompanyInfoModal = ({
                                             </div>
 
 
-                                            {/* VER CATÁLOGO */}
+                                            {/* AÇÕES DA EMPRESA */}
 
-                                            <button
-                                                type="button"
-                                                className="company-info-catalog-button"
-                                                onClick={openCompanyCatalog}
-                                            >
+                                            <div className="company-info-actions">
 
-                                                <span>
-                                                    Ver catálogo completo
-                                                </span>
+                                                <button
+                                                    type="button"
+                                                    className="company-info-visit-button"
+                                                    onClick={openCompanyHome}
+                                                >
 
-                                                <Icon
-                                                    icon="humbleicons:arrow-right"
-                                                />
+                                                    <Icon
+                                                        icon="solar:shop-2-outline"
+                                                    />
 
-                                            </button>
+                                                    <span>
+                                                        Visitar empresa
+                                                    </span>
+
+                                                </button>
+
+
+                                                <button
+                                                    type="button"
+                                                    className="company-info-catalog-button"
+                                                    onClick={openCompanyCatalog}
+                                                >
+
+                                                    <span>
+                                                        Ver catálogo completo
+                                                    </span>
+
+                                                    <Icon
+                                                        icon="humbleicons:arrow-right"
+                                                    />
+
+                                                </button>
+
+                                            </div>
 
                                         </section>
 
@@ -1574,426 +1723,7 @@ const CompanyInfoModal = ({
 
                         </div>
 
-                    </motion.div>
-
-                </motion.div>
-
-            )}
-
-            <AnimatePresence>
-                {selectedProfessional && (
-
-                    <motion.div
-                        className="professional-info-modal-overlay"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{
-                            duration: 0.22,
-                            ease: "easeOut"
-                        }}
-                        onClick={() => setSelectedProfessional(null)}
-                    >
-
-                        <motion.div
-                            className="professional-info-modal"
-                            role="dialog"
-                            aria-modal="true"
-                            aria-labelledby="professional-info-title"
-                            onClick={(e) =>
-                                e.stopPropagation()
-                            }
-                            initial={{
-                                opacity: 0,
-                                y: 25,
-                                scale: 0.96
-                            }}
-                            animate={{
-                                opacity: 1,
-                                y: 0,
-                                scale: 1
-                            }}
-                            exit={{
-                                opacity: 0,
-                                y: 25,
-                                scale: 0.96
-                            }}
-                            transition={{
-                                duration: 0.25,
-                                ease: [0.22, 1, 0.36, 1]
-                            }}
-                        >
-
-                            {/* HEADER */}
-
-                            <div className="professional-info-modal-header">
-
-                                <span>
-                                    Profissional
-                                </span>
-
-                                <button
-                                    type="button"
-                                    className="professional-info-modal-close"
-                                    onClick={() =>
-                                        setSelectedProfessional(null)
-                                    }
-                                    aria-label="Fechar informações"
-                                >
-                                    <Icon icon="mdi:close" />
-                                </button>
-
-                            </div>
-
-
-                            {/* PERFIL */}
-
-                            <div className="professional-info-profile">
-
-                                <div className="professional-info-avatar">
-
-                                    {professionalPhotos[
-                                        selectedProfessional.id
-                                    ] ? (
-
-                                        <img
-                                            src={
-                                                professionalPhotos[
-                                                selectedProfessional.id
-                                                ]
-                                            }
-                                            alt={
-                                                selectedProfessional.name
-                                            }
-                                        />
-
-                                    ) : (
-
-                                        <span>
-                                            {selectedProfessional.name
-                                                ?.charAt(0)
-                                                ?.toUpperCase() || "?"}
-                                        </span>
-
-                                    )}
-
-                                </div>
-
-
-                                <div className="professional-info-profile-text">
-
-                                    <h2 id="professional-info-title">
-                                        {selectedProfessional.name}
-                                    </h2>
-
-                                    <span>
-                                        Profissional
-                                    </span>
-
-                                </div>
-
-                            </div>
-
-
-                            {/* DESCRIÇÃO */}
-
-                            <div className="professional-info-description">
-
-                                <div className="professional-info-section-title">
-
-                                    <Icon
-                                        icon="solar:document-text-outline"
-                                    />
-
-                                    <h3>
-                                        Sobre
-                                    </h3>
-
-                                </div>
-
-
-                                {selectedProfessional.description?.trim() ? (
-
-                                    <p>
-                                        {selectedProfessional.description}
-                                    </p>
-
-                                ) : (
-
-                                    <p className="professional-info-description-empty">
-                                        Este profissional ainda não possui
-                                        uma descrição.
-                                    </p>
-
-                                )}
-
-                            </div>
-
-                        </motion.div>
-
-                    </motion.div>
-
-                )}
-            </AnimatePresence>
-
-            <AnimatePresence>
-
-                {selectedPhotoIndex !== null &&
-                    companyPhotos.length > 0 && (
-
-                        <motion.div
-                            className="company-info-photo-viewer"
-
-                            initial={{
-                                opacity: 0
-                            }}
-
-                            animate={{
-                                opacity: 1
-                            }}
-
-                            exit={{
-                                opacity: 0
-                            }}
-
-                            transition={{
-                                duration: .2
-                            }}
-
-                            onClick={
-                                closePhotoViewer
-                            }
-                        >
-
-                            {/* ================================
-                            TOPO
-                            ================================= */}
-
-                            <div
-                                className="company-info-photo-viewer-top"
-                                onClick={(e) =>
-                                    e.stopPropagation()
-                                }
-                            >
-
-                                <div className="company-info-photo-counter">
-
-                                    {selectedPhotoIndex + 1}
-
-                                    <span>
-                                        /
-                                    </span>
-
-                                    {companyPhotos.length}
-
-                                </div>
-
-
-                                <button
-                                    type="button"
-                                    className="company-info-photo-close"
-                                    onClick={
-                                        closePhotoViewer
-                                    }
-                                    aria-label="Fechar galeria"
-                                >
-
-                                    <Icon
-                                        icon="mdi:close"
-                                    />
-
-                                </button>
-
-                            </div>
-
-
-                            {/* ================================
-                            FOTO
-                            ================================= */}
-
-                            <div
-                                className="company-info-photo-viewer-stage"
-                                onClick={(e) =>
-                                    e.stopPropagation()
-                                }
-                            >
-
-                                <button
-                                    type="button"
-                                    className="company-info-photo-arrow previous"
-                                    onClick={
-                                        showPreviousPhoto
-                                    }
-                                    aria-label="Foto anterior"
-                                >
-
-                                    <Icon
-                                        icon="solar:alt-arrow-left-outline"
-                                    />
-
-                                </button>
-
-
-                                <AnimatePresence
-                                    mode="wait"
-                                    initial={false}
-                                >
-
-                                    <motion.div
-                                        key={
-                                            companyPhotos[
-                                                selectedPhotoIndex
-                                            ]?.id ||
-                                            selectedPhotoIndex
-                                        }
-
-                                        className="company-info-photo-viewer-image-wrapper"
-
-                                        initial={{
-                                            opacity: 0,
-                                            scale: .96
-                                        }}
-
-                                        animate={{
-                                            opacity: 1,
-                                            scale: 1
-                                        }}
-
-                                        exit={{
-                                            opacity: 0,
-                                            scale: .96
-                                        }}
-
-                                        transition={{
-                                            duration: .2,
-                                            ease: "easeOut"
-                                        }}
-                                    >
-
-                                        <img
-                                            src={
-                                                companyPhotos[
-                                                    selectedPhotoIndex
-                                                ]?.url
-                                            }
-
-                                            alt={
-                                                PHOTO_CATEGORIES.find(
-                                                    item =>
-                                                        item.id ===
-                                                        companyPhotos[
-                                                            selectedPhotoIndex
-                                                        ]?.category
-                                                )?.name ||
-                                                "Foto da empresa"
-                                            }
-                                        />
-
-                                    </motion.div>
-
-                                </AnimatePresence>
-
-
-                                <button
-                                    type="button"
-                                    className="company-info-photo-arrow next"
-                                    onClick={
-                                        showNextPhoto
-                                    }
-                                    aria-label="Próxima foto"
-                                >
-
-                                    <Icon
-                                        icon="solar:alt-arrow-right-outline"
-                                    />
-
-                                </button>
-
-                            </div>
-
-
-                            {/* ================================
-                            RODAPÉ
-                            ================================= */}
-
-                            <div
-                                className="company-info-photo-viewer-bottom"
-                                onClick={(e) =>
-                                    e.stopPropagation()
-                                }
-                            >
-
-                                <div className="company-info-photo-viewer-category">
-
-                                    <Icon
-                                        icon="solar:gallery-outline"
-                                    />
-
-                                    <span>
-                                        {
-                                            PHOTO_CATEGORIES.find(
-                                                item =>
-                                                    item.id ===
-                                                    companyPhotos[
-                                                        selectedPhotoIndex
-                                                    ]?.category
-                                            )?.name ||
-                                            "Foto do local"
-                                        }
-                                    </span>
-
-                                </div>
-
-
-                                <div className="company-info-photo-thumbnails">
-
-                                    {companyPhotos.map(
-                                        (photo, index) => (
-
-                                            <button
-                                                type="button"
-                                                key={
-                                                    photo.id ||
-                                                    photo.url ||
-                                                    index
-                                                }
-                                                className={
-                                                    `company-info-photo-thumbnail ${index ===
-                                                        selectedPhotoIndex
-                                                        ? "active"
-                                                        : ""
-                                                    }`
-                                                }
-                                                onClick={() =>
-                                                    setSelectedPhotoIndex(
-                                                        index
-                                                    )
-                                                }
-                                            >
-
-                                                <img
-                                                    src={
-                                                        photo.url
-                                                    }
-                                                    alt=""
-                                                />
-
-                                            </button>
-
-                                        )
-                                    )}
-
-                                </div>
-
-                            </div>
-
-                        </motion.div>
-
-                    )}
-
-            </AnimatePresence>
-
-        </AnimatePresence>,
+                    </Modal>,
 
         document.body
 
