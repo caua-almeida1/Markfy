@@ -1970,16 +1970,6 @@ body.no-scroll {
     opacity: 1;
     transform: scale(1) rotate(0deg);
 }
-
-@media (prefers-reduced-motion: reduce) {
-
-    .adm-selection-check {
-        transition: opacity 0.15s ease;
-        transform: scale(1);
-    }
-
-}
-
 /* No cartão de tipo de oferta o check ocupa o lugar da
    seta do rodapé, para não haver dois ícones no mesmo
    canto. */
@@ -6352,4 +6342,45 @@ input:checked + .pms-toggle-slider:before {
     .adm-product-type-card {
         padding: 12px;
     }
+}
+
+
+/* Criar combo, ao lado de cadastrar produto. Secundário de
+   propósito: cadastrar é a ação principal desta tela. */
+
+.adm_products-new-product-content-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+}
+
+.adm_products-combo-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-height: 44px;
+    padding: 0 18px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 100px;
+    background: var(--mkf-ui-surface);
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+
+    transition: border-color .16s ease, color .16s ease;
+}
+
+.adm_products-combo-btn:hover {
+    border-color: var(--mkf-ui-primary);
+    color: var(--mkf-ui-primary);
+}
+
+.adm_products-combo-btn svg {
+    font-size: 17px;
 }

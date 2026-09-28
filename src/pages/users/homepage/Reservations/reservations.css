@@ -3931,3 +3931,24 @@
     }
 
 }
+
+
+/* O aviso de nao estorno, destacado na confirmacao. */
+.reservations-cancel-sub-warning {
+    width: 100%;
+    padding: 11px 13px;
+
+    box-sizing: border-box;
+
+    border-radius: 11px;
+    background: var(--mkf-ui-warning-soft);
+
+    font-size: .87rem !important;
+    line-height: 1.45;
+    color: #8a6314 !important;
+    text-align: left;
+}
+
+.reservations-cancel-sub-warning strong {
+    color: #6d4e10;
+}

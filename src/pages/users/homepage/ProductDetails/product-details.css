@@ -4232,3 +4232,490 @@
     }
 
 }
+
+
+/* =========================================================
+   COMBO - O QUE VEM DENTRO
+   ========================================================= */
+
+.product-details-combo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    margin-bottom: 18px;
+    padding: 16px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 16px;
+    background: var(--mkf-ui-surface-hover);
+}
+
+.product-details-combo-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.product-details-combo-badge {
+    padding: 4px 10px;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+
+    font-size: .7rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.product-details-combo-head strong {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.product-details-combo-text {
+    margin: 0;
+
+    font-size: .88rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary);
+}
+
+.product-details-combo-items {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.product-details-combo-items li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    font-size: .92rem;
+    color: var(--mkf-text-primary);
+}
+
+.product-details-combo-items svg {
+    flex: 0 0 auto;
+    font-size: 17px;
+    color: var(--mkf-ui-primary);
+}
+
+.product-details-combo-items span {
+    flex: 1;
+    min-width: 0;
+}
+
+.product-details-combo-items small {
+    flex: 0 0 auto;
+
+    font-size: .8rem;
+    color: var(--mkf-text-secondary);
+}
+
+.product-details-combo-total {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    padding-top: 11px;
+    border-top: 1px solid var(--mkf-ui-border);
+
+    font-size: .88rem;
+    color: var(--mkf-text-secondary);
+}
+
+.product-details-combo-total svg {
+    font-size: 16px;
+    color: var(--mkf-ui-primary);
+}
+
+.product-details-combo-total strong {
+    color: var(--mkf-text-primary);
+}
+
+
+/* =========================================================
+   MAIS SERVICOS NO MESMO HORARIO
+
+   Comeca fechado, como um convite de uma linha. Aberto vira
+   lista. O fechado importa: a maioria vai agendar um servico
+   so, e uma lista sempre aberta empurraria o calendario para
+   baixo sem necessidade.
+   ========================================================= */
+
+.product-details-extras {
+    margin-bottom: 18px;
+}
+
+.product-details-extras-invite {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    width: 100%;
+    padding: 14px 16px;
+
+    border: 1px dashed var(--mkf-ui-border);
+    border-radius: 16px;
+    background: var(--mkf-ui-surface);
+
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    transition: border-color .16s ease, background-color .16s ease;
+}
+
+.product-details-extras-invite:hover {
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary-soft);
+}
+
+.product-details-extras-invite > svg:first-child {
+    flex: 0 0 auto;
+    font-size: 22px;
+    color: var(--mkf-ui-primary);
+}
+
+.product-details-extras-invite span {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.product-details-extras-invite strong {
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.product-details-extras-invite small {
+    font-size: .83rem;
+    color: var(--mkf-text-secondary);
+}
+
+
+/* ---------- Aberto ---------- */
+
+.product-details-extras-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    margin-bottom: 8px;
+}
+
+.product-details-extras-head span {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--mkf-ui-primary);
+}
+
+.product-details-extras-head h3 {
+    margin: 2px 0 0;
+
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.product-details-extras-head button {
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 auto;
+    width: 32px;
+    height: 32px;
+
+    border: 0;
+    border-radius: 50%;
+    background: var(--mkf-ui-surface-hover);
+    color: var(--mkf-text-secondary);
+
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.product-details-extras-hint {
+    margin: 0 0 12px;
+
+    font-size: .85rem;
+    line-height: 1.45;
+    color: var(--mkf-text-secondary);
+}
+
+.product-details-extras-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.product-details-extra {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+
+    width: 100%;
+    padding: 12px 14px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 13px;
+    background: var(--mkf-ui-surface);
+
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    transition: border-color .16s ease, background-color .16s ease;
+}
+
+.product-details-extra:hover:not(:disabled) {
+    border-color: var(--mkf-ui-primary);
+}
+
+.product-details-extra.is-selected {
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary-soft);
+}
+
+.product-details-extra:disabled {
+    opacity: .45;
+    cursor: default;
+}
+
+.product-details-extra-check {
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 22px;
+    width: 22px;
+    height: 22px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 6px;
+
+    font-size: 14px;
+}
+
+.product-details-extra.is-selected .product-details-extra-check {
+    border-color: transparent;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+}
+
+.product-details-extra-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.product-details-extra-text strong {
+    font-size: .92rem;
+    font-weight: 600;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.product-details-extra-text small {
+    font-size: .8rem;
+    color: var(--mkf-text-secondary);
+}
+
+.product-details-extra-price {
+    flex: 0 0 auto;
+
+    font-size: .92rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+
+/* ---------- Total ---------- */
+
+.product-details-extras-total {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+
+    margin-top: 12px;
+    padding: 13px 15px;
+
+    border-radius: 13px;
+    background: var(--mkf-ui-surface-hover);
+}
+
+.product-details-extras-total > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.product-details-extras-total span {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary);
+}
+
+.product-details-extras-total strong {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--mkf-text-primary);
+}
+
+
+/* Servicos emendados, no resumo da confirmacao. */
+
+.confirmation-extras-card {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+
+    margin-top: 12px;
+    padding: 14px 16px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 14px;
+    background: var(--mkf-ui-surface-hover);
+}
+
+.confirmation-extras-card ul {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.confirmation-extras-card li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    font-size: .9rem;
+    color: var(--mkf-text-primary);
+}
+
+.confirmation-extras-card li svg {
+    flex: 0 0 auto;
+    font-size: 16px;
+    color: var(--mkf-ui-primary);
+}
+
+.confirmation-extras-card li span {
+    flex: 1;
+    min-width: 0;
+}
+
+.confirmation-extras-card li small {
+    flex: 0 0 auto;
+    font-size: .84rem;
+    color: var(--mkf-text-secondary);
+}
+
+.confirmation-extras-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+
+    padding-top: 9px;
+    border-top: 1px solid var(--mkf-ui-border);
+
+    font-size: .85rem;
+    color: var(--mkf-text-secondary);
+}
+
+.confirmation-extras-total strong {
+    font-size: .95rem;
+    color: var(--mkf-text-primary);
+}
+
+
+/* O passo de extras ocupa o lugar do calendario ate ser
+   respondido, entao usa o mesmo respiro da secao de dias. */
+
+.product-details-extras-step {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    width: 100%;
+}
+
+.product-details-extras-actions {
+    display: flex;
+    gap: 10px;
+
+    margin-top: 4px;
+}
+
+.product-details-extras-skip {
+    min-height: 46px;
+    padding: 0 18px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 100px;
+    background: none;
+    color: var(--mkf-text-secondary);
+
+    font: inherit;
+    font-size: .9rem;
+    cursor: pointer;
+}
+
+.product-details-extras-next {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    flex: 1;
+    min-height: 46px;
+    padding: 0 20px;
+
+    border: 0;
+    border-radius: 100px;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+
+    font: inherit;
+    font-size: .92rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+@media (max-width: 560px) {
+
+    .product-details-extras-actions {
+        flex-direction: column-reverse;
+    }
+
+    .product-details-extras-skip {
+        width: 100%;
+    }
+
+}

@@ -55,7 +55,7 @@
     height: 72px;
 
     border-radius: 50%;
-    background: var(--mkf-ui-primary-soft, #eef1ff);
+    background: var(--mkf-ui-primary-soft);
     color: var(--mkf-ui-primary);
 
     font-size: 36px;
@@ -83,12 +83,14 @@
 
     padding: 20px;
 
-    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border: 1px solid var(--mkf-ui-border);
     border-radius: 20px;
-    background: var(--mkf-ui-surface, #fff);
+    background: var(--mkf-ui-surface);
 }
 
 .profile-avatar {
+    position: relative;
+
     display: grid;
     place-items: center;
 
@@ -98,10 +100,67 @@
 
     overflow: hidden;
     border-radius: 50%;
-    background: var(--mkf-ui-primary-soft, #eef1ff);
+    background: var(--mkf-ui-primary-soft);
     color: var(--mkf-ui-primary);
 
     font-size: 30px;
+    cursor: pointer;
+}
+
+/* O input some; quem recebe o clique é o rótulo inteiro. */
+.profile-avatar input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.profile-avatar-initial {
+    font-size: 26px;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--mkf-ui-primary);
+
+    /* A letra fica um pouco acima do centro óptico se não
+       compensar aqui. */
+    transform: translateY(1px);
+}
+
+/* Faixa de "trocar foto" na base do círculo. */
+.profile-avatar-edit {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+
+    display: grid;
+    place-items: center;
+
+    height: 22px;
+
+    background: rgba(0, 0, 0, .55);
+    color: #fff;
+
+    font-size: 13px;
+
+    opacity: 0;
+    transition: opacity .16s ease;
+
+    pointer-events: none;
+}
+
+.profile-avatar:hover .profile-avatar-edit,
+.profile-avatar:focus-within .profile-avatar-edit {
+    opacity: 1;
+}
+
+/* No toque não existe hover: a faixa fica sempre visível. */
+@media (hover: none) {
+
+    .profile-avatar-edit {
+        opacity: 1;
+    }
+
 }
 
 .profile-avatar img {
@@ -159,9 +218,9 @@
     width: 100%;
     padding: 14px 16px;
 
-    border: 1px solid var(--mkf-ui-warning-border, #f3ddb0);
+    border: 1px solid var(--mkf-ui-warning-border);
     border-radius: 16px;
-    background: var(--mkf-ui-warning-soft, #fff8e8);
+    background: var(--mkf-ui-warning-soft);
 
     font: inherit;
     color: inherit;
@@ -204,9 +263,9 @@
 
     padding: 20px;
 
-    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border: 1px solid var(--mkf-ui-border);
     border-radius: 20px;
-    background: var(--mkf-ui-surface, #fff);
+    background: var(--mkf-ui-surface);
 }
 
 .profile-section-title {
@@ -247,13 +306,21 @@
     place-items: center;
 
     flex: 0 0 48px;
+    width: 48px;
     height: 48px;
 
+    overflow: hidden;
     border-radius: 14px;
-    background: var(--mkf-ui-primary-soft, #eef1ff);
+    background: var(--mkf-ui-primary-soft);
     color: var(--mkf-ui-primary);
 
     font-size: 24px;
+}
+
+.profile-company-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .profile-company-main strong {
@@ -281,7 +348,7 @@
     padding: 14px 8px;
 
     border-radius: 14px;
-    background: var(--mkf-ui-surface-hover, #f7f8fc);
+    background: var(--mkf-ui-surface-hover);
 }
 
 .profile-stats strong {
@@ -304,7 +371,7 @@
     gap: 12px;
 
     padding: 12px 0;
-    border-bottom: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-bottom: 1px solid var(--mkf-ui-border);
 }
 
 .profile-row:last-of-type {
@@ -338,7 +405,7 @@
     width: 100%;
     padding: 8px 10px;
 
-    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border: 1px solid var(--mkf-ui-border);
     border-radius: 10px;
     background: var(--mkf-ui-background);
     color: var(--mkf-text-primary);
@@ -361,7 +428,7 @@
 
     border: 0;
     border-radius: 10px;
-    background: var(--mkf-ui-surface-hover, #f7f8fc);
+    background: var(--mkf-ui-surface-hover);
     color: var(--mkf-text-secondary);
 
     cursor: pointer;
@@ -376,7 +443,7 @@
     min-height: 36px;
     padding: 0 14px;
 
-    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border: 1px solid var(--mkf-ui-border);
     border-radius: 100px;
     background: none;
     color: var(--mkf-text-secondary);
@@ -424,7 +491,7 @@
 }
 
 .profile-button--ghost {
-    border-color: var(--mkf-ui-border, #e4e7ef);
+    border-color: var(--mkf-ui-border);
     background: none;
     color: var(--mkf-text-primary);
 }
@@ -438,7 +505,7 @@
     padding: 12px 0;
 
     border: 0;
-    border-bottom: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-bottom: 1px solid var(--mkf-ui-border);
     background: none;
 
     font: inherit;
@@ -457,7 +524,7 @@
 }
 
 .profile-link.is-danger {
-    color: var(--mkf-ui-danger, #c0392b);
+    color: var(--mkf-ui-danger);
 }
 
 
@@ -473,7 +540,7 @@
     padding: 28px 24px;
 
     border-radius: 24px;
-    background: var(--mkf-ui-surface, #fff);
+    background: var(--mkf-ui-surface);
 
     text-align: center;
 }
@@ -486,8 +553,8 @@
     height: 56px;
 
     border-radius: 50%;
-    background: var(--mkf-ui-danger-soft, #fdecea);
-    color: var(--mkf-ui-danger, #c0392b);
+    background: var(--mkf-ui-danger-soft);
+    color: var(--mkf-ui-danger);
 
     font-size: 26px;
 }
@@ -515,7 +582,7 @@
     flex: 1;
     min-height: 46px;
 
-    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border: 1px solid var(--mkf-ui-border);
     border-radius: 100px;
     background: none;
     color: var(--mkf-text-primary);
@@ -527,7 +594,7 @@
 
 .profile-logout-actions button.is-danger {
     border-color: transparent;
-    background: var(--mkf-ui-danger, #c0392b);
+    background: var(--mkf-ui-danger);
     color: #fff;
 }
 

@@ -422,6 +422,39 @@ const Checkout = () => {
                             </div>
 
 
+                            {/* Serviços emendados: quem vai pagar
+                                precisa ver pelo que está pagando —
+                                o valor somado sozinho não diz. */}
+                            {checkoutData.extraServices?.length > 0 && (
+
+                                <div className="checkout-extra-services">
+
+                                    <span className="checkout-extra-services-label">
+                                        Neste atendimento
+                                    </span>
+
+                                    <ul>
+
+                                        <li>
+                                            <Icon icon="solar:check-circle-bold" />
+                                            <span>{checkoutData.productName}</span>
+                                        </li>
+
+                                        {checkoutData.extraServices.map((item) => (
+                                            <li key={item.productId}>
+                                                <Icon icon="solar:check-circle-bold" />
+                                                <span>{item.name}</span>
+                                                <small>{item.value}</small>
+                                            </li>
+                                        ))}
+
+                                    </ul>
+
+                                </div>
+
+                            )}
+
+
                             <MercadoPagoPayment
 
                                 amount={amount}

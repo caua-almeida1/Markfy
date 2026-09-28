@@ -7,6 +7,7 @@ import { Icon } from "@iconify/react";
 import { getDatabase, ref, onValue } from "firebase/database";
 
 import ProductDetails from "../ProductDetails/ProductDetails";
+import PriceTag from "../../../../components/price-tag/PriceTag";
 import Thumb1 from "../../../../img/1.jpg";
 
 import {
@@ -1612,7 +1613,7 @@ const Catalog = () => {
                                         <div className="catalog-product-price">
 
                                             <strong>
-                                                {product.value}
+                                                <PriceTag product={product} />
                                             </strong>
 
                                         </div>
@@ -1840,7 +1841,7 @@ const Catalog = () => {
                                                 <div className="catalog-subscription-price">
 
                                                     <strong>
-                                                        {product.value}
+                                                        <PriceTag product={product} />
                                                     </strong>
 
                                                     <span>

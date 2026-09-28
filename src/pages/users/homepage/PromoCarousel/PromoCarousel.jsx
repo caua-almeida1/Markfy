@@ -1,35 +1,35 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo } from "react";
 
 import { Icon } from "@iconify/react";
 
 import { getPromotion } from "../../../../utils/price";
 
+import ProductThumb from "../../../../components/product-thumb/ProductThumb";
+
 import "./promo-carousel.css";
 
 
 /* =========================================================
-   BANNERS DE PROMOÇÃO
+   BANNERS DE OFERTA
 
-   Banner, não card de produto.
+   Duas peças pretas, lado a lado. Sem carrossel: o que está
+   na tela está na tela, e quem passa o olho vê as duas ao
+   mesmo tempo — um carrossel esconde metade e depende de a
+   pessoa interagir para revelar o resto.
 
-   A diferença é o que a peça faz: um card lista um item e
-   compete com os outros da grade; um banner é uma peça de
-   comunicação — manchete grande, uma linha de apoio, a
-   imagem sangrando no fundo e um botão. É o que faz a seção
-   parar o olho no meio de uma página que já é toda feita de
-   cards.
+   O FUNDO É SEMPRE PRETO, de propósito.
 
-   Por isso cada banner mostra UM produto grande, e não
-   cinco pequenos lado a lado. Até 5 banners no carrossel,
-   um de cada vez.
-
-   O tema da loja entra pela cor: o fundo sai de
-   `--mkf-ui-primary`, então o banner acompanha a identidade
-   de cada empresa em vez de ter cor própria.
+   Ele não acompanha o tema da loja. Uma vinheta escura é o
+   que faz a foto do produto recortar e o número do desconto
+   saltar; fundo colorido brigaria com a imagem e mudaria de
+   legibilidade a cada empresa. Do tema vêm só a cor do texto
+   de destaque e a do botão, que é onde a identidade aparece
+   sem atrapalhar a leitura.
    ========================================================= */
 
 
-const MAX_BANNERS = 5;
+/* Duas por vez, e ponto. */
+const MAX_BANNERS = 2;
 
 
 /*
@@ -55,7 +55,7 @@ const somenteTexto = (html) => {
 };
 
 
-const PromoBanner = ({ product, image, onOpen }) => {
+const PromoBanner = ({ product, images, onOpen }) => {
 
     const promocao = getPromotion(product);
 
@@ -64,24 +64,6 @@ const PromoBanner = ({ product, image, onOpen }) => {
     return (
         <article className="promo-banner">
 
-            {/* A imagem é fundo, não conteúdo: sangra até a
-                borda e recebe o degradê que segura o texto. */}
-            <div className="promo-banner-bg">
-
-                {image && (
-                    <img
-                        src={image}
-                        alt=""
-                        aria-hidden="true"
-                        loading="lazy"
-                    />
-                )}
-
-                <span className="promo-banner-scrim" />
-
-            </div>
-
-
             <div className="promo-banner-content">
 
                 <span className="promo-banner-eyebrow">
@@ -89,60 +71,69 @@ const PromoBanner = ({ product, image, onOpen }) => {
                 </span>
 
                 <h3 className="promo-banner-title">
-                    {product.name || "Produto"}
+                    {promocao
+                        ? `${promocao.percentual}% de desconto`
+                        : product.name}
                 </h3>
 
-                {apoio && (
+                {/* Os dois preços, lado a lado.
+
+                    "20% de desconto" sozinho não diz quanto
+                    custa; "de R$ 50 por R$ 40" responde a
+                    pergunta que a pessoa realmente tem. */}
+                {promocao ? (
+
                     <p className="promo-banner-text">
-                        {apoio}
+                        {product.name} — de{" "}
+                        <s>{promocao.normalLabel}</s>{" "}
+                        por{" "}
+                        <strong>{promocao.promocionalLabel}</strong>
                     </p>
+
+                ) : (
+
+                    <p className="promo-banner-text">
+                        {apoio || product.value || "Confira os detalhes"}
+                    </p>
+
                 )}
-
-                <div className="promo-banner-price">
-
-                    {promocao ? (
-                        <>
-                            <s>{promocao.normalLabel}</s>
-
-                            <strong>
-                                {promocao.promocionalLabel}
-                            </strong>
-                        </>
-                    ) : (
-                        <strong>
-                            {product.value || "Sob consulta"}
-                        </strong>
-                    )}
-
-                </div>
 
                 <button
                     type="button"
                     className="promo-banner-cta"
                     onClick={() => onOpen(product)}
                 >
-                    Agendar
+                    {promocao ? "Aproveitar" : "Ver detalhes"}
                     <Icon icon="humbleicons:arrow-right" />
                 </button>
 
             </div>
 
 
-            {/* O número grande é o chamariz da peça — é o que
-                se lê de longe, antes mesmo do nome. */}
-            {promocao && (
+            {/* A arte: número gigante atrás, foto na frente. */}
+            <div className="promo-banner-art">
 
-                <div className="promo-banner-off">
+                {promocao && (
+                    <span
+                        className="promo-banner-off"
+                        aria-hidden="true"
+                    >
+                        {promocao.percentual}
+                        <em>
+                            %
+                            <br />
+                            OFF
+                        </em>
+                    </span>
+                )}
 
-                    <span>até</span>
+                <ProductThumb
+                    className="promo-banner-photo"
+                    images={images}
+                    icon="solar:bag-smile-outline"
+                />
 
-                    <strong>{promocao.percentual}%</strong>
-
-                    <span>OFF</span>
-
-                </div>
-
-            )}
+            </div>
 
         </article>
     );
@@ -152,17 +143,12 @@ const PromoBanner = ({ product, image, onOpen }) => {
 
 const PromoCarousel = ({
     products = [],
-    getProductImage,
+    getProductImages,
     onOpenProduct
 }) => {
 
-    const trilhoRef = useRef(null);
-
-    const [indiceAtivo, setIndiceAtivo] = useState(0);
-
-
     /*
-     * Os melhores primeiro.
+     * As duas melhores ofertas.
      *
      * Ordena por desconto e só então corta, senão o corte
      * cairia na ordem em que os produtos vieram do banco e a
@@ -194,66 +180,6 @@ const PromoCarousel = ({
     }, [products]);
 
 
-    /* Qual banner está à vista, para acender o ponto certo. */
-    const aoRolar = () => {
-
-        const trilho = trilhoRef.current;
-
-        if (!trilho) return;
-
-        const largura =
-            trilho.querySelector(".promo-banner")?.offsetWidth || 1;
-
-        setIndiceAtivo(
-            Math.round(trilho.scrollLeft / (largura + 16))
-        );
-
-    };
-
-
-    useEffect(() => {
-
-        const trilho = trilhoRef.current;
-
-        if (!trilho) return undefined;
-
-        trilho.addEventListener("scroll", aoRolar, { passive: true });
-
-        return () =>
-            trilho.removeEventListener("scroll", aoRolar);
-
-    }, [destaques.length]);
-
-
-    const irPara = (indice) => {
-
-        const trilho = trilhoRef.current;
-
-        if (!trilho) return;
-
-        const largura =
-            trilho.querySelector(".promo-banner")?.offsetWidth || 0;
-
-        trilho.scrollTo({
-            left: indice * (largura + 16),
-            behavior: "smooth"
-        });
-
-    };
-
-
-    const deslizar = (direcao) => {
-
-        irPara(
-            Math.min(
-                Math.max(indiceAtivo + direcao, 0),
-                destaques.length - 1
-            )
-        );
-
-    };
-
-
     if (destaques.length === 0) {
         return null;
     }
@@ -268,85 +194,34 @@ const PromoCarousel = ({
 
             <div className="promo-carousel-heading">
 
-                <div>
-                    <span>
-                        {temOferta ? "Ofertas" : "Vitrine"}
-                    </span>
+                <span>
+                    {temOferta ? "Ofertas" : "Vitrine"}
+                </span>
 
-                    <h2>
-                        {temOferta
-                            ? "Aproveite enquanto dura"
-                            : "Em destaque"}
-                    </h2>
-                </div>
-
-                {destaques.length > 1 && (
-
-                    <div className="promo-carousel-nav">
-
-                        <button
-                            type="button"
-                            disabled={indiceAtivo === 0}
-                            onClick={() => deslizar(-1)}
-                            aria-label="Banner anterior"
-                        >
-                            <Icon icon="humbleicons:arrow-left" />
-                        </button>
-
-                        <button
-                            type="button"
-                            disabled={indiceAtivo >= destaques.length - 1}
-                            onClick={() => deslizar(1)}
-                            aria-label="Próximo banner"
-                        >
-                            <Icon icon="humbleicons:arrow-right" />
-                        </button>
-
-                    </div>
-
-                )}
+                <h2>
+                    {temOferta
+                        ? "Aproveite enquanto dura"
+                        : "Em destaque"}
+                </h2>
 
             </div>
 
 
             <div
-                className="promo-carousel-track"
-                ref={trilhoRef}
+                className={`promo-banner-grid ${destaques.length === 1 ? "is-single" : ""
+                    }`}
             >
 
                 {destaques.map((product) => (
                     <PromoBanner
                         key={product.id}
                         product={product}
-                        image={getProductImage?.(product)}
+                        images={getProductImages?.(product)}
                         onOpen={onOpenProduct}
                     />
                 ))}
 
             </div>
-
-
-            {destaques.length > 1 && (
-
-                <div className="promo-carousel-dots">
-
-                    {destaques.map((product, indice) => (
-
-                        <button
-                            key={product.id}
-                            type="button"
-                            className={
-                                indice === indiceAtivo ? "is-active" : ""
-                            }
-                            onClick={() => irPara(indice)}
-                            aria-label={`Ir para o banner ${indice + 1}`}
-                        />
-
-                    ))}
-
-                </div>
-
-            )}
 
         </section>
     );

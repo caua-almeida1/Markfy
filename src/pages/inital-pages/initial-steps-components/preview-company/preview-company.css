@@ -333,14 +333,6 @@
         opacity: 0;
     }
 }
-
-@media (prefers-reduced-motion: reduce) {
-    .preview-company-success-icon::after {
-        animation: none;
-        opacity: 0.25;
-    }
-}
-
 .company-link-box {
     width: 100%;
     text-align: left;

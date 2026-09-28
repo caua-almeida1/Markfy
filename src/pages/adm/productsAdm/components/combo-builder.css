@@ -1,0 +1,508 @@
+/* =========================================================
+   CRIAR COMBO
+
+   Cabeçalho fixo, corpo que rola, rodapé fixo. No celular a
+   folha sobe de baixo e ocupa quase a tela toda — quem faz
+   isso é o componente Modal; aqui só o conteúdo.
+   ========================================================= */
+
+.combo-builder {
+    display: flex;
+    flex-direction: column;
+
+    width: min(560px, 100%);
+    max-height: min(760px, calc(100dvh - 3rem));
+
+    box-sizing: border-box;
+
+    overflow: hidden;
+    border-radius: 22px;
+    background: var(--mkf-ui-surface);
+}
+
+
+/* ---------- Cabeçalho ---------- */
+
+.combo-builder-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+
+    flex: 0 0 auto;
+    padding: 22px 22px 16px;
+
+    border-bottom: 1px solid var(--mkf-ui-border);
+}
+
+.combo-builder-header > div > span {
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--mkf-ui-primary);
+}
+
+.combo-builder-header h2 {
+    margin: 3px 0 0;
+
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.combo-builder-header button {
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+
+    border: 0;
+    border-radius: 50%;
+    background: var(--mkf-ui-surface-hover);
+    color: var(--mkf-text-secondary);
+
+    font-size: 17px;
+    cursor: pointer;
+}
+
+
+/* ---------- Corpo ---------- */
+
+.combo-builder-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    flex: 1 1 auto;
+    padding: 20px 22px;
+
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.combo-builder-intro {
+    margin: 0;
+
+    font-size: .9rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary);
+}
+
+
+/* ---------- Busca ---------- */
+
+.combo-builder-search {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    padding: 0 13px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 12px;
+    background: var(--mkf-ui-background);
+}
+
+.combo-builder-search:focus-within {
+    border-color: var(--mkf-ui-primary);
+}
+
+.combo-builder-search svg {
+    flex: 0 0 auto;
+    font-size: 17px;
+    color: var(--mkf-text-secondary);
+}
+
+.combo-builder-search input {
+    flex: 1;
+    min-width: 0;
+    min-height: 44px;
+
+    border: 0;
+    background: none;
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    /* 16px, ou o Safari do iPhone dá zoom ao focar. */
+    font-size: 1rem;
+}
+
+.combo-builder-search input:focus {
+    outline: none;
+}
+
+
+/* ---------- Lista de produtos ---------- */
+
+.combo-builder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.combo-builder-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    width: 100%;
+    padding: 10px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 14px;
+    background: var(--mkf-ui-surface);
+
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    transition: border-color .16s ease, background-color .16s ease;
+}
+
+.combo-builder-item:hover {
+    border-color: var(--mkf-ui-primary);
+}
+
+.combo-builder-item.is-selected {
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary-soft);
+}
+
+.combo-builder-item-thumb {
+    flex: 0 0 46px;
+    width: 46px;
+    height: 46px;
+
+    overflow: hidden;
+    border-radius: 11px;
+}
+
+.combo-builder-item-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.combo-builder-item-text strong {
+    font-size: .94rem;
+    font-weight: 600;
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.combo-builder-item-text small {
+    font-size: .82rem;
+    color: var(--mkf-text-secondary);
+}
+
+.combo-builder-check {
+    display: grid;
+    place-items: center;
+
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 50%;
+
+    font-size: 14px;
+}
+
+.combo-builder-item.is-selected .combo-builder-check {
+    border-color: transparent;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+}
+
+
+/* ---------- Resumo ---------- */
+
+.combo-builder-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+
+    padding: 15px;
+
+    border-radius: 14px;
+    background: var(--mkf-ui-surface-hover);
+}
+
+.combo-builder-summary-facts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+}
+
+.combo-builder-summary-facts > div {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+
+.combo-builder-summary-facts span {
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary);
+}
+
+.combo-builder-summary-facts strong {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.combo-builder-label {
+    display: block;
+
+    margin-bottom: 7px;
+
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary);
+}
+
+.combo-builder-covers-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.combo-builder-cover {
+    width: 54px;
+    height: 54px;
+    padding: 0;
+
+    overflow: hidden;
+    border: 2px solid transparent;
+    border-radius: 12px;
+    background: none;
+
+    cursor: pointer;
+
+    /* A não escolhida fica apagada, para a seleção se ler
+       sem precisar de um check por cima da imagem. */
+    opacity: .45;
+    transition: opacity .16s ease, border-color .16s ease;
+}
+
+.combo-builder-cover.is-active {
+    border-color: var(--mkf-ui-primary);
+    opacity: 1;
+}
+
+
+/* ---------- Campos ---------- */
+
+.combo-builder-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.combo-builder-field label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--mkf-text-primary);
+}
+
+.combo-builder-optional {
+    margin-left: 7px;
+    padding: 2px 7px;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-surface-hover);
+    color: var(--mkf-text-secondary);
+
+    font-size: .66rem;
+    font-weight: 500;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+
+.combo-builder-field input,
+.combo-builder-field textarea {
+    width: 100%;
+    padding: 11px 13px;
+
+    box-sizing: border-box;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 11px;
+    background: var(--mkf-ui-background);
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    font-size: 1rem;
+    line-height: 1.45;
+
+    resize: vertical;
+}
+
+.combo-builder-field input:focus,
+.combo-builder-field textarea:focus {
+    outline: 2px solid var(--mkf-ui-primary);
+    outline-offset: 1px;
+}
+
+.combo-builder-field small {
+    font-size: .78rem;
+    line-height: 1.4;
+    color: var(--mkf-text-secondary);
+}
+
+
+/* ---------- Estados ---------- */
+
+.combo-builder-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 7px;
+
+    padding: 36px 20px;
+
+    border: 1px dashed var(--mkf-ui-border);
+    border-radius: 14px;
+
+    text-align: center;
+    color: var(--mkf-text-secondary);
+}
+
+.combo-builder-empty svg {
+    font-size: 26px;
+    color: var(--mkf-ui-primary);
+}
+
+.combo-builder-empty strong {
+    font-size: .95rem;
+    color: var(--mkf-text-primary);
+}
+
+.combo-builder-empty span {
+    max-width: 38ch;
+    font-size: .86rem;
+    line-height: 1.5;
+}
+
+.combo-builder-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+
+    padding: 11px 13px;
+
+    border-radius: 11px;
+    background: var(--mkf-ui-danger-soft);
+    color: var(--mkf-ui-danger);
+
+    font-size: .87rem;
+    line-height: 1.45;
+}
+
+.combo-builder-error svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    font-size: 16px;
+}
+
+
+/* ---------- Rodapé ---------- */
+
+.combo-builder-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    flex: 0 0 auto;
+    padding: 16px 22px;
+
+    border-top: 1px solid var(--mkf-ui-border);
+    background: var(--mkf-ui-surface);
+}
+
+.combo-builder-count {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    font-size: .82rem;
+    color: var(--mkf-text-secondary);
+}
+
+.combo-builder-count strong {
+    font-size: 1rem;
+    color: var(--mkf-text-primary);
+}
+
+.combo-builder-primary,
+.combo-builder-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    min-height: 44px;
+    padding: 0 20px;
+
+    border-radius: 100px;
+
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.combo-builder-primary {
+    border: 0;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+}
+
+.combo-builder-secondary {
+    border: 1px solid var(--mkf-ui-border);
+    background: none;
+    color: var(--mkf-text-secondary);
+}
+
+.combo-builder-primary:disabled,
+.combo-builder-secondary:disabled {
+    opacity: .5;
+    cursor: default;
+}
+
+
+/* ---------- Celular ---------- */
+
+@media (max-width: 680px) {
+
+    .combo-builder {
+        width: 100%;
+        max-height: 92dvh;
+        border-radius: 22px 22px 0 0;
+    }
+
+    .combo-builder-header,
+    .combo-builder-body,
+    .combo-builder-footer {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .combo-builder-summary-facts {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}

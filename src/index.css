@@ -50,6 +50,35 @@
     --mkf-ui-background-tertiary: #f0f0f0;
 
     --mkf-ui-surface: #ffffff;
+
+    /* ==================== SUPERFÍCIES DE APOIO ====================
+
+       Tokens que várias telas usavam sem existir.
+
+       Cada `var(--mkf-ui-surface-hover, #f7f8fc)` espalhado
+       pelo app caía no fallback — um cinza claro — INCLUSIVE
+       no tema escuro. Era por isso que os cartões de
+       agendamento, as comodidades da empresa e os blocos de
+       aviso apareciam brancos no escuro: o token nunca
+       existiu, e o valor de reserva era claro nos dois temas.
+
+       Definidos aqui, todas essas telas passam a trocar de
+       cor junto com o tema sem precisar de regra própria.
+    ============================================================== */
+
+    /* Fundo de linha destacada, campo suave, chip. */
+    --mkf-ui-surface-hover: #f4f6fb;
+
+    /* Fundo tingido com a primária — avatar, ícone em caixa. */
+    --mkf-ui-primary-soft: #eef1ff;
+
+    /* Perigo: texto e fundo. */
+    --mkf-ui-danger: #c0392b;
+    --mkf-ui-danger-soft: #fdecea;
+
+    /* Aviso: fundo e borda. */
+    --mkf-ui-warning-soft: #fff8e8;
+    --mkf-ui-warning-border: #f3ddb0;
     --mkf-ui-surface-soft: #f4f5f7;
 
     /* ==================== CINZAS ==================== */
@@ -259,6 +288,19 @@
     --mkf-ui-background-tertiary: #1f2024;
 
     --mkf-ui-surface: #1a1b1f;
+
+    /* Pares escuros dos tokens de apoio. O tingido da
+       primária é opaco e não translúcido: sobre superfícies
+       de tons diferentes, o alfa mudaria de cor a cada
+       lugar. */
+    --mkf-ui-surface-hover: #232429;
+    --mkf-ui-primary-soft: #1e2440;
+
+    --mkf-ui-danger: #f87171;
+    --mkf-ui-danger-soft: #34191a;
+
+    --mkf-ui-warning-soft: #322713;
+    --mkf-ui-warning-border: #4a3a1c;
     --mkf-ui-surface-soft: #222329;
 
     --mkf-ui-gray-50: #1c1d21;
@@ -277,6 +319,10 @@
     --mkf-ui-border-light: #26272c;
     --mkf-ui-border-dark: #43454d;
     --mkf-ui-border-strong: #3b3d45;
+
+    /* O botão primário continua azul no escuro, então o
+       conteúdo sobre ele continua branco. */
+    --mkf-on-primary: #ffffff;
 
     --mkf-text-primary: #f7f7f8;
     --mkf-text-secondary: #c4c5ca;
@@ -351,6 +397,15 @@
         --mkf-ui-background-tertiary: #1f2024;
 
         --mkf-ui-surface: #1a1b1f;
+
+        --mkf-ui-surface-hover: #232429;
+        --mkf-ui-primary-soft: #1e2440;
+
+        --mkf-ui-danger: #f87171;
+        --mkf-ui-danger-soft: #34191a;
+
+        --mkf-ui-warning-soft: #322713;
+        --mkf-ui-warning-border: #4a3a1c;
         --mkf-ui-surface-soft: #222329;
 
         --mkf-ui-gray-50: #1c1d21;

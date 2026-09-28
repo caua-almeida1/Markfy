@@ -13,6 +13,15 @@ import {
     update
 } from "firebase/database";
 
+import {
+    getDownloadURL,
+    getStorage,
+    ref as storageRef,
+    uploadBytes
+} from "firebase/storage";
+
+import { useCompanyLogo } from "../../../../firebase/companyLogo";
+
 import { Icon } from "@iconify/react";
 
 import {
@@ -99,6 +108,119 @@ const Profile = () => {
         profile?.profileImg ||
         user?.photoURL ||
         "";
+
+
+    /*
+     * A inicial de quem não tem foto.
+     *
+     * Um ícone genérico de "usuário" é igual para todo mundo
+     * — não diz de quem é a conta. A letra do nome diz, e é
+     * o que qualquer app faz nesse lugar.
+     */
+    const inicial =
+        (displayName || displayEmail || displayPhone || "?")
+            .trim()
+            .charAt(0)
+            .toUpperCase();
+
+
+    /* A logo real da empresa, e não um ícone de loja igual
+       para todas. */
+    const companyLogo =
+        useCompanyLogo(membership?.handle);
+
+
+    /* ---------------------------------------------------
+       TROCAR A FOTO
+    --------------------------------------------------- */
+
+    const [uploadingPhoto, setUploadingPhoto] =
+        useState(false);
+
+
+    const trocarFoto = async (event) => {
+
+        const arquivo = event.target.files?.[0];
+
+        /* Limpa o input para a mesma foto poder ser escolhida
+           de novo depois de um erro. */
+        event.target.value = "";
+
+        if (!arquivo || !user) {
+            return;
+        }
+
+        if (!arquivo.type.startsWith("image/")) {
+
+            notify(
+                "error",
+                "Arquivo inválido",
+                "Escolha uma imagem."
+            );
+
+            return;
+
+        }
+
+        /* 5 MB. Acima disso o upload demora o suficiente para
+           a pessoa achar que travou. */
+        if (arquivo.size > 5 * 1024 * 1024) {
+
+            notify(
+                "error",
+                "Imagem muito grande",
+                "Escolha uma imagem de até 5 MB."
+            );
+
+            return;
+
+        }
+
+        setUploadingPhoto(true);
+
+        try {
+
+            const destino = storageRef(
+                getStorage(),
+                `users/${user.uid}/profileImg`
+            );
+
+            await uploadBytes(destino, arquivo, {
+                contentType: arquivo.type
+            });
+
+            const url = await getDownloadURL(destino);
+
+            await update(
+                ref(getDatabase(), `users/${user.uid}`),
+                { profileImg: url }
+            );
+
+            await updateProfile(user, { photoURL: url });
+
+            notify(
+                "success",
+                "Foto atualizada",
+                "É assim que você aparece agora."
+            );
+
+        } catch (error) {
+
+            console.error("Erro ao enviar a foto:", error);
+
+            notify(
+                "error",
+                "Não deu para enviar",
+                "Tente de novo em instantes."
+            );
+
+        } finally {
+
+            setUploadingPhoto(false);
+
+        }
+
+    };
 
 
     useEffect(() => {
@@ -319,15 +441,37 @@ const Profile = () => {
 
             <header className="profile-header">
 
-                <div className="profile-avatar">
+                <label className="profile-avatar">
 
                     {photo ? (
                         <img src={photo} alt={displayName || "Você"} />
                     ) : (
-                        <Icon icon="solar:user-bold" />
+                        <span className="profile-avatar-initial">
+                            {inicial}
+                        </span>
                     )}
 
-                </div>
+                    {/* O input fica escondido atrás do rótulo:
+                        a área toda do avatar vira o alvo, que é
+                        maior e mais óbvio que um ícone solto. */}
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={trocarFoto}
+                        disabled={uploadingPhoto}
+                    />
+
+                    <span className="profile-avatar-edit">
+                        <Icon
+                            icon={
+                                uploadingPhoto
+                                    ? "svg-spinners:ring-resize"
+                                    : "solar:camera-outline"
+                            }
+                        />
+                    </span>
+
+                </label>
 
                 <div className="profile-identity">
 
@@ -400,7 +544,16 @@ const Profile = () => {
                     <div className="profile-company-main">
 
                         <div className="profile-company-icon">
-                            <Icon icon="solar:shop-2-outline" />
+
+                            {companyLogo ? (
+                                <img
+                                    src={companyLogo}
+                                    alt={membership.companyName}
+                                />
+                            ) : (
+                                <Icon icon="solar:shop-2-outline" />
+                            )}
+
                         </div>
 
                         <div>

@@ -6420,22 +6420,8 @@ body {
 /* =========================================================
    REDUCE MOTION
 ========================================================= */
-/* 
-@media (prefers-reduced-motion: reduce) {
-
-    .dashboard-page *,
-    .dashboard-page *::before,
-    .dashboard-page *::after {
-
-        transition:
-            none !important;
-
-        animation:
-            none !important;
-
-    }
-
-} */
+/*
+ */
 
 
 /* =========================================================

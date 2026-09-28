@@ -195,3 +195,48 @@ export const validatePromotionalPrice = (value, promotionalPrice) => {
     return null;
 
 };
+
+
+/* =========================================================
+   PREÇO EFETIVO
+
+   O que o cliente realmente paga: o promocional quando há
+   promoção válida, o normal quando não há.
+
+   Existe porque cada tela lia `product.value` direto. O
+   resultado era um catálogo anunciando desconto e cobrando
+   cheio — o card mostrava a promoção, o checkout mandava o
+   valor normal para o Mercado Pago.
+
+   Toda tela que exibe ou cobra preço passa por aqui.
+   ========================================================= */
+
+/** O número que vai ser cobrado. */
+export const getEffectivePrice = (product) => {
+
+    const promocao = getPromotion(product);
+
+    return promocao
+        ? promocao.promocional
+        : parsePrice(product?.value);
+
+};
+
+
+/** O mesmo, já formatado. */
+export const getEffectivePriceLabel = (product) => {
+
+    const promocao = getPromotion(product);
+
+    if (promocao) {
+        return promocao.promocionalLabel;
+    }
+
+    /* Sem promoção, devolve o texto como está gravado: pode
+       ser "Sob consulta" ou outra coisa que não é número, e
+       formatar isso viraria "R$ 0,00". */
+    const bruto = String(product?.value || "").trim();
+
+    return bruto || formatPrice(0);
+
+};

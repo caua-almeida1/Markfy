@@ -3,32 +3,29 @@ import { useEffect, useRef, useState } from "react";
 /* =========================================================
    Preferência de movimento reduzido do sistema.
    Toda animação não essencial consulta este hook antes de
-   rodar — o padrão é respeitar o usuário, não o efeito.
+   rodar. Hoje ele responde sempre que PODE animar.
 ========================================================= */
 
 export function useReducedMotion() {
-    const [reduced, setReduced] = useState(() => {
-        if (typeof window === "undefined") return false;
 
-        return window.matchMedia(
-            "(prefers-reduced-motion: reduce)"
-        ).matches;
-    });
+    /*
+     * Desligado por decisão de produto.
+     *
+     * Este hook lia `prefers-reduced-motion` e cortava as
+     * animações da landing. O efeito colateral era que num
+     * Windows com "Mostrar animações" desmarcado — que é o
+     * padrão em muita máquina — a página inteira ficava
+     * estática, e isso passava por bug.
+     *
+     * Devolvendo sempre false, as animações rodam para todo
+     * mundo. Quem quiser voltar a respeitar a preferência do
+     * sistema: basta reativar a leitura do matchMedia aqui,
+     * que o resto da landing já consulta este hook.
+     */
+    return false;
 
-    useEffect(() => {
-        const query = window.matchMedia(
-            "(prefers-reduced-motion: reduce)"
-        );
-
-        const onChange = (event) => setReduced(event.matches);
-
-        query.addEventListener("change", onChange);
-
-        return () => query.removeEventListener("change", onChange);
-    }, []);
-
-    return reduced;
 }
+
 
 /* =========================================================
    Revela um elemento quando ele entra na viewport.

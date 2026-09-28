@@ -21,10 +21,18 @@ import {
 import { useProductImages } from "../../../utils/productImages";
 
 import PromoCarousel from "./PromoCarousel/PromoCarousel";
+import ProductThumb from "../../../components/product-thumb/ProductThumb";
+import PriceTag from "../../../components/price-tag/PriceTag";
+
+import {
+    formatDurationLabel,
+    getComboItemCount,
+    getComboItems,
+    isComboProduct
+} from "../../../utils/combo";
 
 import { useCompanyLogo } from "../../../firebase/companyLogo";
 
-import Thumb1 from "../../../img/1.jpg";
 
 const HomePage = () => {
 
@@ -61,8 +69,27 @@ const HomePage = () => {
         products
     );
 
+    /*
+     * A primeira imagem do produto, ou null.
+     *
+     * Antes caía em `Thumb1` (img/1.jpg) — a foto de um
+     * produto que não é este. Como resolver as URLs do
+     * Storage leva alguns instantes, essa foto errada
+     * aparecia em toda visita antes da certa.
+     */
     const getProductImage = (product) =>
-        productImages[product?.id]?.[0] || Thumb1;
+        productImages[product?.id]?.[0] || null;
+
+
+    /*
+     * O array cru, para quem sabe lidar com os três estados.
+     *
+     * `undefined` quer dizer "ainda resolvendo"; um array
+     * vazio quer dizer "não tem foto". Quem recebe só a URL
+     * não consegue separar as duas coisas.
+     */
+    const getProductImages = (product) =>
+        productImages[product?.id];
 
     /* =========================================================
        UI
@@ -389,11 +416,27 @@ const HomePage = () => {
     }, [visibleProducts]);
 
 
+    /*
+     * Combos ganham seção própria, como as mensalidades.
+     *
+     * Na grade do catálogo eles competem com os serviços que
+     * os formam — e "Corte + Barba" ao lado de "Corte" e
+     * "Barba" só confunde. Numa seção à parte, a proposta
+     * fica clara: é um pacote.
+     */
+    const comboProducts = useMemo(() => {
+
+        return visibleProducts.filter(isComboProduct);
+
+    }, [visibleProducts]);
+
+
     const catalogProducts = useMemo(() => {
 
         return visibleProducts.filter(
             (product) =>
-                !isSubscriptionProduct(product)
+                !isSubscriptionProduct(product) &&
+                !isComboProduct(product)
         );
 
     }, [visibleProducts]);
@@ -595,9 +638,6 @@ const HomePage = () => {
         index
     ) => {
 
-        const image =
-            getProductImage(product);
-
         const category =
             product.categories?.[0] ||
             "Serviço";
@@ -619,37 +659,13 @@ const HomePage = () => {
 
                 <div className="home-product-card-image">
 
-                    {!loadedImages[product.id] && (
-                        <div className="home-product-skeleton" />
-                    )}
-
-                    <img
-                        src={image}
+                    {/* ProductThumb cuida dos três estados:
+                        skeleton enquanto as URLs do Storage não
+                        chegam, ícone quando o produto não tem
+                        foto, e a foto quando ela pinta. */}
+                    <ProductThumb
+                        images={getProductImages(product)}
                         alt={product.name}
-                        loading="lazy"
-                        onLoad={() =>
-                            handleImageLoad(
-                                product.id
-                            )
-                        }
-                        onError={(event) => {
-
-                            event.currentTarget.src =
-                                Thumb1;
-
-                            handleImageLoad(
-                                product.id
-                            );
-
-                        }}
-                        style={{
-                            opacity:
-                                loadedImages[
-                                    product.id
-                                ]
-                                    ? 1
-                                    : 0
-                        }}
                     />
 
                     <span className="home-product-category">
@@ -684,7 +700,7 @@ const HomePage = () => {
                         <div className="home-product-meta">
 
                             <strong>
-                                {product.value}
+                                <PriceTag product={product} />
                             </strong>
 
                             {product.duration && (
@@ -788,7 +804,7 @@ const HomePage = () => {
                 <div className="home-subscription-price">
 
                     <strong>
-                        {product.value}
+                        <PriceTag product={product} />
                     </strong>
 
                     <span>
@@ -1332,16 +1348,110 @@ const HomePage = () => {
                             mexe no valor recorrente, não numa compra.
                         ================================================= */}
 
-                        {/* {!showAllProducts && (
+                        {!showAllProducts && (
 
                             <PromoCarousel
                                 products={catalogProducts}
-                                getProductImage={getProductImage}
+                                getProductImages={getProductImages}
                                 onOpenProduct={setSelectedProduct}
                             />
 
                         )}
- */}
+
+
+                {/* =================================================
+                    COMBOS
+
+                    Entre as ofertas e as mensalidades: quem
+                    chegou aqui já viu o catálogo e está
+                    decidindo o quanto quer fazer. É onde um
+                    pacote tem chance de ser considerado.
+                ================================================= */}
+
+                {!showAllProducts && comboProducts.length > 0 && (
+
+                    <section className="home-combos">
+
+                        <div className="home-section-heading">
+
+                            <div>
+                                <span>Combos</span>
+
+                                <h2>Mais de um serviço, um preço só</h2>
+                            </div>
+
+                        </div>
+
+                        <div className="home-combos-list">
+
+                            {comboProducts.map((product) => {
+
+                                const itens = getComboItems(product);
+
+                                return (
+                                    <article
+                                        key={product.id}
+                                        className="home-combo-card"
+                                        onClick={() => openProduct(product)}
+                                    >
+
+                                        <div className="home-combo-thumb">
+
+                                            <ProductThumb
+                                                images={getProductImages(product)}
+                                                alt={product.name}
+                                            />
+
+                                            {/* O rótulo é a informação
+                                                principal do card: diz de
+                                                cara que ali tem mais de
+                                                um serviço. */}
+                                            <span className="home-combo-badge">
+                                                +{getComboItemCount(product)} produtos
+                                            </span>
+
+                                        </div>
+
+                                        <div className="home-combo-body">
+
+                                            <strong className="home-combo-name">
+                                                {product.name}
+                                            </strong>
+
+                                            <span className="home-combo-items">
+                                                {itens
+                                                    .map((item) => item.name)
+                                                    .join(" · ")}
+                                            </span>
+
+                                            <div className="home-combo-footer">
+
+                                                <span className="home-combo-price">
+                                                    <PriceTag product={product} />
+                                                </span>
+
+                                                {product.duration > 0 && (
+                                                    <span className="home-combo-duration">
+                                                        <Icon icon="solar:clock-circle-outline" />
+                                                        {formatDurationLabel(product.duration)}
+                                                    </span>
+                                                )}
+
+                                            </div>
+
+                                        </div>
+
+                                    </article>
+                                );
+
+                            })}
+
+                        </div>
+
+                    </section>
+
+                )}
+
 
                 {/* =================================================
                     ASSINATURAS
@@ -1464,7 +1574,7 @@ const HomePage = () => {
                                                             </strong>
 
                                                             <p>
-                                                                {product.value}
+                                                                <PriceTag product={product} />
 
                                                                 {isSubscriptionProduct(
                                                                     product
@@ -1705,7 +1815,7 @@ const HomePage = () => {
                                                         </strong>
 
                                                         <span>
-                                                            {product.value}
+                                                            <PriceTag product={product} />
 
                                                             {isSubscriptionProduct(
                                                                 product

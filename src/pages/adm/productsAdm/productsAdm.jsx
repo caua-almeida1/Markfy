@@ -36,6 +36,15 @@ import { useUserCompany } from "../../../contexts/companyContext/UserCompanyCont
 import Toast from "../../../components/toast/Toast";
 import ProductManagementSlider from "./components/ProductManagementModal"
 import ProductCreationModal from "./components/ProductCreationModal";
+import ComboBuilderModal from "./components/ComboBuilderModal";
+
+import {
+    buildComboItems,
+    COMBO_TYPE,
+    sumComboDuration
+} from "../../../utils/combo";
+
+import { loadProductImages } from "../../../utils/productImages";
 
 
 import {
@@ -49,6 +58,23 @@ import "./productsAdm.css";
 import Modal from "../../../components/modal/Modal";
 
 const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
+
+    /* =====================================================
+       COMBOS
+
+       Um combo é um produto com `type: "combo"`: nasce no
+       mesmo nó, aparece no mesmo catálogo e é agendado pelo
+       mesmo fluxo. O que ele guarda a mais são os itens que
+       o formam.
+    ===================================================== */
+
+    const [isComboModalOpen, setIsComboModalOpen] = useState(false);
+
+    const [creatingCombo, setCreatingCombo] = useState(false);
+
+    /* Imagens já resolvidas dos produtos, para o modal
+       mostrar as miniaturas sem buscar de novo. */
+    const [comboImages, setComboImages] = useState({});
     const { company, companyHandle } = useUserCompany();
     const [duration, setDuration] = useState(0);
     const [activeTab, setActiveTab] = useState("ativos");
@@ -1104,6 +1130,187 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     const [bookingAdvanceDays, setBookingAdvanceDays] = useState("");
     const [bookingAdvanceHours, setBookingAdvanceHours] = useState("");
     const [bookingAdvanceMinutes, setBookingAdvanceMinutes] = useState("");
+
+    /*
+     * Resolve as imagens dos produtos ao abrir o modal.
+     *
+     * O combo copia UMA imagem de um dos produtos, e a
+     * pessoa escolhe qual — para escolher, precisa ver.
+     */
+    useEffect(() => {
+
+        if (!isComboModalOpen || !company?.handle) {
+            return;
+        }
+
+        let cancelado = false;
+
+        Promise.all(
+            (products || []).map(async (product) => [
+                product.id,
+                await loadProductImages(company.handle, product.id)
+            ])
+        ).then((entradas) => {
+
+            if (!cancelado) {
+                setComboImages(Object.fromEntries(entradas));
+            }
+
+        });
+
+        return () => {
+            cancelado = true;
+        };
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isComboModalOpen, company?.handle]);
+
+
+    /*
+     * Cria o combo.
+     *
+     * A imagem escolhida é COPIADA para a pasta do combo no
+     * Storage — buscando o arquivo e reenviando, porque o SDK
+     * web não copia dentro do bucket. O RTDB não recebe
+     * imagem nenhuma: lá fica só o produto, e é isso que
+     * mantém o nó leve.
+     */
+    const handleCreateCombo = async ({
+        produtos,
+        name,
+        description,
+        includes,
+        price,
+        coverProductId
+    }) => {
+
+        const companyHandle = company?.handle;
+
+        if (!companyHandle) {
+            return;
+        }
+
+        setCreatingCombo(true);
+
+        try {
+
+            const db = getDatabase();
+
+            const comboId =
+                push(ref(db, `companys/${companyHandle}/products`)).key;
+
+            /* ---------- IMAGEM ---------- */
+
+            const origem =
+                comboImages[coverProductId]?.[0] ||
+                comboImages[produtos[0]?.id]?.[0] ||
+                null;
+
+            if (origem) {
+
+                try {
+
+                    const resposta = await fetch(origem);
+
+                    if (resposta.ok) {
+
+                        const blob = await resposta.blob();
+
+                        await uploadBytes(
+                            storageRef(
+                                getStorage(),
+                                `companys/${companyHandle}/products/${comboId}/images/image_0.jpg`
+                            ),
+                            blob,
+                            { contentType: blob.type || "image/jpeg" }
+                        );
+
+                    }
+
+                } catch (error) {
+
+                    /*
+                     * Ler do Storage pelo navegador depende de
+                     * CORS. Sem isso o combo nasce sem imagem —
+                     * o que é chato, mas não impede de vender.
+                     * Falhar a criação inteira por causa da
+                     * foto seria pior.
+                     */
+                    console.warn(
+                        "Não foi possível copiar a imagem do combo:",
+                        error
+                    );
+
+                }
+
+            }
+
+            /* ---------- PRODUTO ---------- */
+
+            const primeiro = produtos[0] || {};
+
+            await set(
+                ref(db, `companys/${companyHandle}/products/${comboId}`),
+                {
+                    name,
+                    status: "ativos",
+                    type: COMBO_TYPE,
+                    value: price,
+                    orders: 0,
+                    description: description || "",
+                    duration: sumComboDuration(produtos),
+                    categories: primeiro.categories || [],
+                    currency: primeiro.currency || "BRL",
+
+                    comboItems: buildComboItems(produtos),
+                    includes: includes || "",
+
+                    /* Herda as regras de agendamento do primeiro
+                       item: um combo não tem antecedência
+                       própria, e inventar zero aqui deixaria o
+                       pacote sem as travas que os serviços têm. */
+                    bookingAdvance: primeiro.bookingAdvance || {
+                        days: 0, hours: 0, minutes: 0
+                    },
+                    cancellationAdvance: primeiro.cancellationAdvance || {
+                        days: 0, hours: 0, minutes: 0
+                    },
+
+                    /* Quem atende o combo é quem atende o
+                       primeiro serviço; o admin ajusta depois
+                       em Gerenciar produto. */
+                    relatedUsers: primeiro.relatedUsers || [],
+
+                    createdAt: new Date().toISOString()
+                }
+            );
+
+            setIsComboModalOpen(false);
+
+            openToast(
+                "success",
+                "Combo criado",
+                `${name} já está no catálogo.`
+            );
+
+        } catch (error) {
+
+            console.error("Erro ao criar combo:", error);
+
+            openToast(
+                "error",
+                "Não deu para criar",
+                "Tente de novo em instantes."
+            );
+
+        } finally {
+
+            setCreatingCombo(false);
+
+        }
+
+    };
+
 
     const openBookingAdvanceModal = () => {
         setIsBookingAdvanceModalOpen(true);
@@ -3234,7 +3441,28 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                 >
                     Cadastrar Novo Produto
                 </button>
+
+                {/* Criar combo fica ao lado, e não dentro do
+                    cadastro: não é um tipo de produto novo para
+                    preencher do zero, é juntar o que já existe. */}
+                <button
+                    className="adm_products-combo-btn"
+                    onClick={() => setIsComboModalOpen(true)}
+                >
+                    <Icon icon="lucide:layers" />
+                    Criar combo
+                </button>
             </div>
+
+
+            <ComboBuilderModal
+                open={isComboModalOpen}
+                onClose={() => setIsComboModalOpen(false)}
+                products={products}
+                getProductImages={(product) => comboImages[product?.id]}
+                onCreate={handleCreateCombo}
+                creating={creatingCombo}
+            />
 
             <div className="adm_products-list">{loading ? (
                 <div className="adm_products-loading">

@@ -190,24 +190,3 @@
     }
 
 }
-
-
-/*
- * Movimento reduzido: sem deslizar nem escalar, só o
- * aparecer. O fechamento continua no mesmo tempo, porque
- * quem manda nele é o relógio do useExitTransition.
- */
-@media (prefers-reduced-motion: reduce) {
-
-    .mkf-modal-overlay[data-state],
-    .mkf-modal-panel[data-state] {
-        animation-name: mkfModalOverlayIn;
-        animation-duration: 0.01ms;
-    }
-
-    .mkf-modal-overlay[data-state="leaving"],
-    .mkf-modal-panel[data-state="leaving"] {
-        animation-name: mkfModalOverlayOut;
-    }
-
-}

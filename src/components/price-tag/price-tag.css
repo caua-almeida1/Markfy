@@ -1,0 +1,24 @@
+/* =========================================================
+   PREÇO DE PRODUTO
+   ========================================================= */
+
+.price-tag {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 7px;
+    flex-wrap: wrap;
+}
+
+.price-tag-old {
+    /* Menor e apagado: está ali como referência, não como
+       informação principal. */
+    font-size: .82em;
+    font-weight: 400;
+    color: var(--mkf-text-tertiary);
+    text-decoration: line-through;
+}
+
+.price-tag-now {
+    font-weight: inherit;
+    color: inherit;
+}

@@ -3040,21 +3040,8 @@ a {
    REDUÇÃO DE MOVIMENTO
 ========================================================= */
 
-/* @media (prefers-reduced-motion: reduce) {
-
-    html {
-        scroll-behavior: auto;
-    }
-
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-
-} */
+/*
+ */
 
 nav {
     position: fixed;
@@ -3795,4 +3782,147 @@ nav li.active .nav-button {
 
 .product-details {
     z-index: 1001 !important;
+}
+
+
+/* =========================================================
+   COMBOS
+
+   Cards mais largos que os do catálogo, com a imagem à
+   esquerda: o que importa aqui é a lista de serviços, não a
+   foto — ela é ilustrativa, já que um combo não tem uma
+   imagem "dele".
+   ========================================================= */
+
+.home-combos {
+    width: 100%;
+    margin-bottom: 32px;
+}
+
+.home-combos-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 12px;
+}
+
+.home-combo-card {
+    display: flex;
+    gap: 14px;
+
+    padding: 12px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 18px;
+    background: var(--mkf-ui-surface);
+
+    cursor: pointer;
+
+    transition: border-color .16s ease, transform .16s ease;
+}
+
+.home-combo-card:hover {
+    border-color: var(--mkf-ui-primary);
+    transform: translateY(-2px);
+}
+
+.home-combo-thumb {
+    position: relative;
+
+    flex: 0 0 96px;
+    width: 96px;
+    height: 96px;
+
+    overflow: hidden;
+    border-radius: 14px;
+}
+
+.home-combo-badge {
+    position: absolute;
+    left: 6px;
+    bottom: 6px;
+    z-index: 3;
+
+    padding: 3px 8px;
+
+    border-radius: 100px;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+
+    white-space: nowrap;
+}
+
+.home-combo-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+
+    padding: 2px 0;
+}
+
+.home-combo-name {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--mkf-text-primary);
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.home-combo-items {
+    font-size: .82rem;
+    line-height: 1.4;
+    color: var(--mkf-text-secondary);
+
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.home-combo-footer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    margin-top: auto;
+    padding-top: 6px;
+}
+
+.home-combo-price {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--mkf-text-primary);
+}
+
+.home-combo-duration {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+
+    font-size: .8rem;
+    color: var(--mkf-text-secondary);
+}
+
+
+@media (max-width: 560px) {
+
+    .home-combos-list {
+        grid-template-columns: 1fr;
+    }
+
+    .home-combo-thumb {
+        flex: 0 0 82px;
+        width: 82px;
+        height: 82px;
+    }
+
 }

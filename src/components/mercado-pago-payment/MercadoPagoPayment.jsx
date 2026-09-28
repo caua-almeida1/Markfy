@@ -1063,6 +1063,25 @@ const MercadoPagoPayment = ({
                                 </span>
                             </li>
 
+                            {/* Sem estorno.
+
+                                Precisa estar no aviso, e não só
+                                em algum termo: é a única parte
+                                que custa dinheiro a quem
+                                desistir no meio do ciclo. */}
+                            <li>
+                                <Icon icon="solar:shield-warning-outline" />
+                                <span>
+                                    <strong>
+                                        Valores já cobrados não são
+                                        estornados.
+                                    </strong>{" "}
+                                    Ao cancelar, você mantém o acesso
+                                    até o fim do ciclo pago, mas não
+                                    há devolução proporcional.
+                                </span>
+                            </li>
+
                             <li>
                                 <Icon icon="solar:bill-list-outline" />
                                 <span>
@@ -1085,7 +1104,9 @@ const MercadoPagoPayment = ({
 
                             <span>
                                 Entendi e autorizo a cobrança automática
-                                no meu cartão.
+                                no meu cartão, e que valores já cobrados
+                                não são estornados em caso de
+                                cancelamento.
                             </span>
 
                         </label>

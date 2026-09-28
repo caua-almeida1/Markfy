@@ -38,6 +38,22 @@ import {
 } from "../../../../utils/subscription";
 
 import {
+    formatPrice,
+    getEffectivePrice,
+    getEffectivePriceLabel,
+    parsePrice
+} from "../../../../utils/price";
+
+import PriceTag from "../../../../components/price-tag/PriceTag";
+
+import {
+    formatDurationLabel as formatComboDuration,
+    getComboItemCount,
+    getComboItems,
+    isComboProduct
+} from "../../../../utils/combo";
+
+import {
     getSubscriptionSummary,
     getUserSubscription,
     isSubscriptionUsable
@@ -149,6 +165,63 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     /* Recado do cliente para quem vai atender. */
     const [notes, setNotes] = useState("");
 
+
+    /* =====================================================
+       MAIS DE UM SERVIÇO NO MESMO HORÁRIO
+
+       A pessoa pode emendar serviços numa ida só. O que muda
+       é a DURAÇÃO: dois serviços ocupam a agenda do
+       profissional pelo tempo somado, então os horários
+       disponíveis são outros — não dá para escolher um slot
+       de 40min para 70min de atendimento.
+
+       Por isso a escolha dos extras vem ANTES do calendário:
+       os horários são gerados já com o tempo total.
+    ===================================================== */
+
+    /* Até 3 a mais do principal. */
+    const MAX_EXTRA_SERVICES = 3;
+
+    const [extraServices, setExtraServices] = useState([]);
+
+    /* Produtos que podem ser emendados neste atendimento. */
+    const [availableExtras, setAvailableExtras] = useState([]);
+
+    /* O passo de extras já foi mostrado e resolvido. */
+    const [extrasStepDone, setExtrasStepDone] = useState(false);
+
+
+    /*
+     * A duração que a agenda precisa reservar.
+     *
+     * É ela, e não `product.duration`, que manda na geração
+     * dos horários.
+     *
+     * Precisa ficar AQUI, logo depois do estado que a compõe,
+     * e não mais para baixo junto das outras derivações: o
+     * efeito que monta os horários a usa no array de
+     * dependências, e esse array é avaliado durante o render,
+     * na linha em que o useEffect aparece. Declarada depois,
+     * ela ainda está na zona morta do `const` e o componente
+     * quebra antes de pintar qualquer coisa.
+     */
+    const bookingDuration =
+        (Number(product?.duration) || 0) +
+        extraServices.reduce(
+            (total, item) => total + (Number(item.duration) || 0),
+            0
+        );
+
+
+    /* O valor total do atendimento, com os extras. */
+    const bookingPrice =
+        getEffectivePrice(product) +
+        extraServices.reduce(
+            (total, item) => total + getEffectivePrice(item),
+            0
+        );
+
+
     /* =====================================================
        MENSALIDADE
 
@@ -229,8 +302,27 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         productName:
                             product.name,
 
+                        /* Com serviços emendados, o valor do
+                           checkout é a soma — não o preço do
+                           serviço principal. */
+                        /* O preço promocional é o que vale.
+                           Mandar `product.value` aqui faria o
+                           catálogo anunciar desconto e o
+                           Mercado Pago cobrar cheio. */
                         productPrice:
-                            product.value,
+                            extraServices.length
+                                ? formatPrice(bookingPrice)
+                                : getEffectivePriceLabel(product),
+
+                        extraServices:
+                            extraServices.map((item) => ({
+                                productId: item.id,
+                                name: item.name,
+                                value: getEffectivePriceLabel(item),
+                                duration: Number(item.duration) || 0
+                            })),
+
+                        totalDuration: bookingDuration,
 
                         /* O checkout e o resumo do pedido
                            leem product.images; repassamos as
@@ -810,8 +902,12 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 // DURAÇÃO DO SERVIÇO
                 // ==========================================
 
+                /* Duração TOTAL: o serviço principal mais os
+                   extras que a pessoa emendou. Usar só
+                   product.duration ofereceria horários curtos
+                   demais para o atendimento combinado. */
                 const serviceDuration =
-                    Number(product.duration) || 0;
+                    bookingDuration;
 
 
                 // ==========================================
@@ -1363,7 +1459,11 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     }, [
         productDetailsSelectedProfessionalId,
         companyHandle,
-        product?.duration
+        product?.duration,
+
+        /* Emendar ou tirar um serviço muda o tempo total, e
+           com ele os horários que cabem. */
+        bookingDuration
     ]);
 
     const productDetailsCapFirst = (s = "") =>
@@ -2013,6 +2113,130 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         !isUserLoggedIn;
 
 
+    /*
+     * Serviços que podem ser emendados.
+     *
+     * Só os que o profissional escolhido atende: oferecer um
+     * serviço que ele não faz levaria a pessoa a montar um
+     * atendimento impossível e descobrir isso no fim.
+     *
+     * Mensalidade e combo ficam de fora — a primeira tem
+     * cobrança recorrente, o segundo já é um pacote.
+     */
+    useEffect(() => {
+
+        let cancelado = false;
+
+        const carregar = async () => {
+
+            if (
+                !companyHandle ||
+                !productDetailsSelectedProfessionalId ||
+                !product?.id
+            ) {
+                setAvailableExtras([]);
+                return;
+            }
+
+            try {
+
+                const snapshot = await get(
+                    ref(
+                        getDatabase(),
+                        `companys/${companyHandle}/products`
+                    )
+                );
+
+                if (cancelado) return;
+
+                const todos =
+                    Object.entries(snapshot.val() || {})
+                        .map(([id, item]) => ({ id, ...item }));
+
+                setAvailableExtras(
+                    todos.filter((item) => {
+
+                        if (item.id === product.id) return false;
+                        if (item.status === "arquivados") return false;
+                        if (item.type === "monthly") return false;
+                        if (item.type === "combo") return false;
+                        if (!(Number(item.duration) > 0)) return false;
+
+                        const equipe =
+                            Array.isArray(item.relatedUsers)
+                                ? item.relatedUsers
+                                : Object.values(item.relatedUsers || {});
+
+                        return equipe.some(
+                            (membro) =>
+                                (membro?.id || membro?.uid || membro) ===
+                                productDetailsSelectedProfessionalId
+                        );
+
+                    })
+                );
+
+            } catch (error) {
+
+                console.warn(
+                    "Não foi possível listar os serviços extras:",
+                    error
+                );
+
+                if (!cancelado) setAvailableExtras([]);
+
+            }
+
+        };
+
+        carregar();
+
+        return () => {
+            cancelado = true;
+        };
+
+    }, [
+        companyHandle,
+        productDetailsSelectedProfessionalId,
+        product?.id
+    ]);
+
+
+    /*
+     * Trocar de profissional recomeça o passo.
+     *
+     * Os serviços que podem ser emendados dependem de quem
+     * atende, então a resposta dada para um profissional não
+     * vale para outro — e os extras marcados podem nem ser
+     * oferecidos pelo novo.
+     */
+    useEffect(() => {
+
+        setExtrasStepDone(false);
+        setExtraServices([]);
+
+    }, [productDetailsSelectedProfessionalId]);
+
+
+    const alternarExtra = (servico) => {
+
+        setExtraServices((atual) => {
+
+            if (atual.some((item) => item.id === servico.id)) {
+                return atual.filter((item) => item.id !== servico.id);
+            }
+
+            if (atual.length >= MAX_EXTRA_SERVICES) {
+                return atual;
+            }
+
+            return [...atual, servico];
+
+        });
+
+    };
+
+
     /* Contagem do reenvio de SMS. */
     useEffect(() => {
 
@@ -2367,7 +2591,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
         return {
             productId: product.id,
             productName: product.name,
-            productPrice: product.value,
+            productPrice: getEffectivePriceLabel(product),
 
             professionalId:
                 productDetailsSelectedProfessionalId,
@@ -2394,6 +2618,25 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                todo agendamento é ruído no painel. */
             ...(notes.trim()
                 ? { notes: notes.trim() }
+                : {}
+            ),
+
+            /* Serviços emendados neste mesmo horário. O
+               painel mostra todos, e a duração reservada já
+               é a soma. */
+            ...(extraServices.length
+                ? {
+                    extraServices: extraServices.map((item) => ({
+                        productId: item.id,
+                        name: item.name,
+                        value: getEffectivePriceLabel(item),
+                        duration: Number(item.duration) || 0
+                    })),
+
+                    totalDuration: bookingDuration,
+
+                    productPrice: formatPrice(bookingPrice)
+                }
                 : {}
             ),
 
@@ -3598,6 +3841,85 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                 )}
 
 
+                                                {/* =========================================
+                                                    O QUE VEM NO COMBO
+
+                                                    Um pacote só se vende se a pessoa souber
+                                                    o que tem dentro. A lista fica no topo,
+                                                    com a duração de cada item — é o que
+                                                    responde "quanto tempo vou ficar aqui".
+                                                ========================================= */}
+
+                                                {isComboProduct(product) && (
+
+                                                    <div className="product-details-combo">
+
+                                                        <div className="product-details-combo-head">
+
+                                                            <span className="product-details-combo-badge">
+                                                                +{getComboItemCount(product)} produtos
+                                                            </span>
+
+                                                            <strong>
+                                                                Este combo inclui
+                                                            </strong>
+
+                                                        </div>
+
+                                                        {product.includes && (
+                                                            <p className="product-details-combo-text">
+                                                                {product.includes}
+                                                            </p>
+                                                        )}
+
+                                                        <ul className="product-details-combo-items">
+
+                                                            {getComboItems(product).map(
+                                                                (item, indice) => (
+
+                                                                    <li key={`${item.productId}-${indice}`}>
+
+                                                                        <Icon icon="solar:check-circle-bold" />
+
+                                                                        <span>
+                                                                            {item.name}
+                                                                        </span>
+
+                                                                        {item.duration > 0 && (
+                                                                            <small>
+                                                                                {formatComboDuration(item.duration)}
+                                                                            </small>
+                                                                        )}
+
+                                                                    </li>
+
+                                                                )
+                                                            )}
+
+                                                        </ul>
+
+                                                        {product.duration > 0 && (
+
+                                                            <div className="product-details-combo-total">
+
+                                                                <Icon icon="solar:clock-circle-outline" />
+
+                                                                <span>
+                                                                    Duração total:{" "}
+                                                                    <strong>
+                                                                        {formatComboDuration(product.duration)}
+                                                                    </strong>
+                                                                </span>
+
+                                                            </div>
+
+                                                        )}
+
+                                                    </div>
+
+                                                )}
+
+
                                                 {monthlyPlan && !activeSubscription && (
 
                                                     <div className="product-details-subscription">
@@ -3644,7 +3966,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                 </span>
 
                                                                 <strong>
-                                                                    {product.value}
+                                                                    <PriceTag product={product} />
 
                                                                     <em>
                                                                         {getPlanPriceSuffix(monthlyPlan)}
@@ -3909,8 +4231,168 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             )}
 
 
+                                                            {/* =========================================
+                                                                PASSO — MAIS SERVIÇOS
+
+                                                                Vem ANTES do calendário e ocupa o lugar
+                                                                dele até ser respondido.
+
+                                                                A ordem não é estética: a duração total
+                                                                decide quais horários cabem. Perguntando
+                                                                depois, a pessoa escolheria um horário
+                                                                que deixaria de existir ao somar o
+                                                                segundo serviço — e teria que voltar.
+                                                                Perguntando antes, o calendário já abre
+                                                                com os horários certos.
+                                                            ========================================= */}
+
                                                             {productDetailsSelectedProfessionalId &&
-                                                                !selectedDay && (
+                                                                !selectedDay &&
+                                                                !extrasStepDone &&
+                                                                !activeSubscription &&
+                                                                availableExtras.length > 0 && (
+
+                                                                    <div className="product-details-extras-step">
+
+                                                                        <div className="choose-day-heading">
+
+                                                                            <div>
+                                                                                <span>Opcional</span>
+
+                                                                                <h2>
+                                                                                    Quer aproveitar e fazer
+                                                                                    mais alguma coisa?
+                                                                                </h2>
+                                                                            </div>
+
+                                                                        </div>
+
+                                                                        <p className="product-details-extras-hint">
+                                                                            Emende até {MAX_EXTRA_SERVICES}{" "}
+                                                                            serviços no mesmo horário com{" "}
+                                                                            {relatedUsersWithInfo.find(
+                                                                                (u) =>
+                                                                                    u.id ===
+                                                                                    productDetailsSelectedProfessionalId
+                                                                            )?.name || "o profissional"}.
+                                                                            Os horários vão considerar o tempo
+                                                                            total.
+                                                                        </p>
+
+                                                                        <div className="product-details-extras-list">
+
+                                                                            {availableExtras.map((servico) => {
+
+                                                                                const marcado =
+                                                                                    extraServices.some(
+                                                                                        (item) => item.id === servico.id
+                                                                                    );
+
+                                                                                const cheio =
+                                                                                    !marcado &&
+                                                                                    extraServices.length >= MAX_EXTRA_SERVICES;
+
+                                                                                return (
+                                                                                    <button
+                                                                                        key={servico.id}
+                                                                                        type="button"
+                                                                                        disabled={cheio}
+                                                                                        className={`product-details-extra ${marcado ? "is-selected" : ""
+                                                                                            }`}
+                                                                                        onClick={() => alternarExtra(servico)}
+                                                                                    >
+
+                                                                                        <span className="product-details-extra-check">
+                                                                                            {marcado && (
+                                                                                                <Icon icon="solar:check-read-outline" />
+                                                                                            )}
+                                                                                        </span>
+
+                                                                                        <span className="product-details-extra-text">
+                                                                                            <strong>{servico.name}</strong>
+                                                                                            <small>
+                                                                                                {formatComboDuration(servico.duration)}
+                                                                                            </small>
+                                                                                        </span>
+
+                                                                                        <span className="product-details-extra-price">
+                                                                                            {servico.value}
+                                                                                        </span>
+
+                                                                                    </button>
+                                                                                );
+
+                                                                            })}
+
+                                                                        </div>
+
+                                                                        {extraServices.length > 0 && (
+
+                                                                            <div className="product-details-extras-total">
+
+                                                                                <div>
+                                                                                    <span>Tempo total</span>
+                                                                                    <strong>
+                                                                                        {formatComboDuration(bookingDuration)}
+                                                                                    </strong>
+                                                                                </div>
+
+                                                                                <div>
+                                                                                    <span>Valor total</span>
+                                                                                    <strong>
+                                                                                        {formatPrice(bookingPrice)}
+                                                                                    </strong>
+                                                                                </div>
+
+                                                                            </div>
+
+                                                                        )}
+
+                                                                        <div className="product-details-extras-actions">
+
+                                                                            <button
+                                                                                type="button"
+                                                                                className="product-details-extras-skip"
+                                                                                onClick={() => {
+
+                                                                                    /* Recusar limpa o que tiver
+                                                                                       sido marcado: seguir com
+                                                                                       extras depois de dizer não
+                                                                                       seria o contrário do pedido. */
+                                                                                    setExtraServices([]);
+                                                                                    setExtrasStepDone(true);
+
+                                                                                }}
+                                                                            >
+                                                                                Não, obrigado
+                                                                            </button>
+
+                                                                            <button
+                                                                                type="button"
+                                                                                className="product-details-extras-next"
+                                                                                onClick={() => setExtrasStepDone(true)}
+                                                                            >
+                                                                                {extraServices.length > 0
+                                                                                    ? `Ver horários para ${extraServices.length + 1} serviços`
+                                                                                    : "Ver horários"}
+
+                                                                                <Icon icon="solar:arrow-right-outline" />
+                                                                            </button>
+
+                                                                        </div>
+
+                                                                    </div>
+
+                                                                )}
+
+
+                                                            {productDetailsSelectedProfessionalId &&
+                                                                !selectedDay &&
+                                                                (
+                                                                    extrasStepDone ||
+                                                                    activeSubscription ||
+                                                                    availableExtras.length === 0
+                                                                ) && (
 
                                                                     <div className="product-details-available-days">
 
@@ -4202,10 +4684,18 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                     <p>
                                         {monthlyPlan
                                             ? "Mensalidade"
-                                            : "Preço Total"}
+                                            : extraServices.length > 0
+                                                ? `Total · ${extraServices.length + 1} serviços`
+                                                : "Preço Total"}
                                     </p>
                                     <span>
-                                        {product.value}
+                                        {/* Com serviços emendados o valor
+                                            somado é o que a pessoa vai
+                                            pagar; mostrar só o principal
+                                            seria um preço que não existe. */}
+                                        {extraServices.length > 0
+                                            ? formatPrice(bookingPrice)
+                                            : <PriceTag product={product} compact />}
 
                                         {monthlyPlan && (
                                             <em className="product-details-footer-cycle">
@@ -4253,6 +4743,11 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                             selectedDay &&
                                             selectedSlot
                                         ) {
+                                            /* Cada abertura recomeça no passo
+                                               de extras: herdar a decisão da
+                                               vez anterior pularia a pergunta
+                                               sem a pessoa ter respondido. */
+                                            setExtrasStepDone(false);
                                             setShowConfirmationModal(true);
                                             return;
                                         }
@@ -4392,7 +4887,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                             <span>
                                                                 <Icon icon="solar:tag-outline" />
-                                                                {product.value}
+                                                                {extraServices.length > 0
+                                                                    ? formatPrice(bookingPrice)
+                                                                    : <PriceTag product={product} compact />}
                                                             </span>
 
                                                         </div>
@@ -4400,6 +4897,51 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                     </div>
 
                                                 </div>
+
+
+                                                {/* Serviços emendados.
+
+                                                    O card acima mostra o valor
+                                                    somado; sem esta lista, a
+                                                    pessoa veria um preço maior que
+                                                    o do serviço que abriu, sem
+                                                    explicação. */}
+                                                {extraServices.length > 0 && (
+
+                                                    <div className="confirmation-extras-card">
+
+                                                        <span className="confirmation-section-label">
+                                                            Também neste horário
+                                                        </span>
+
+                                                        <ul>
+
+                                                            {extraServices.map((item) => (
+
+                                                                <li key={item.id}>
+
+                                                                    <Icon icon="solar:check-circle-bold" />
+
+                                                                    <span>{item.name}</span>
+
+                                                                    <small>{item.value}</small>
+
+                                                                </li>
+
+                                                            ))}
+
+                                                        </ul>
+
+                                                        <div className="confirmation-extras-total">
+                                                            <span>Tempo total</span>
+                                                            <strong>
+                                                                {formatComboDuration(bookingDuration)}
+                                                            </strong>
+                                                        </div>
+
+                                                    </div>
+
+                                                )}
 
                                                 {/* Informações do agendamento */}
 
@@ -4491,7 +5033,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                 <span>Valor</span>
 
                                                                 <strong>
-                                                                    {product.value}
+                                                                    <PriceTag product={product} />
                                                                 </strong>
                                                             </div>
 

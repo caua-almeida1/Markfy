@@ -2680,15 +2680,28 @@ const Reservations = () => {
 
                             ) : (
 
+                                <>
+
                                 <p>
-                                    As cobranças param e você não perde o que
-                                    já pagou: o acesso segue até o fim do ciclo
-                                    atual
+                                    As cobranças param e o acesso segue até o
+                                    fim do ciclo atual
                                     {regras.avisoDias > 0
                                         ? `, e o aviso prévio de ${regras.avisoDias} dias faz o encerramento valer a partir de ${regras.encerraEm.toLocaleDateString("pt-BR")}`
                                         : ""}
                                     .
                                 </p>
+
+                                {/* O que a pessoa precisa saber ANTES de
+                                    confirmar, não depois de ver a fatura. */}
+                                <p className="reservations-cancel-sub-warning">
+                                    <strong>
+                                        O valor já cobrado não será estornado.
+                                    </strong>{" "}
+                                    Não há devolução proporcional pelos dias
+                                    restantes do ciclo.
+                                </p>
+
+                                </>
 
                             )}
 

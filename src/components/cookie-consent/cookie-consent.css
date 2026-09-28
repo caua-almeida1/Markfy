@@ -553,15 +553,6 @@ body:has(.central-user) .mkf-consent-banner {
     overflow: hidden;
     padding: 0 14px 14px 37px;
 }
-
-@media (prefers-reduced-motion: reduce) {
-
-    .mkf-consent-category-body {
-        transition-duration: 0.01ms;
-    }
-
-}
-
 .mkf-consent-category-body p {
     margin: 0 0 10px;
 
@@ -791,18 +782,4 @@ body:has(.central-user) .mkf-consent-banner {
 .dark-mode .mkf-consent-category,
 .dark-mode .mkf-consent-btn--secondary {
     background: var(--mkf-ui-surface, #1a1b1f);
-}
-
-
-/* =========================================================
-   MOVIMENTO REDUZIDO
-========================================================= */
-
-@media (prefers-reduced-motion: reduce) {
-
-    .mkf-consent-switch > span::after,
-    .mkf-consent-category-chevron {
-        transition: none;
-    }
-
 }

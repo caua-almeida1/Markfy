@@ -1,4 +1,17 @@
 /* =========================================================
+   CORES DESTE MODAL
+
+   Os cinzas daqui eram hexadecimais fixos — claros, sempre.
+   No tema escuro o resultado era o que se via: texto preto
+   sobre fundo escuro, cartões de comodidade brancos e bordas
+   berrantes.
+
+   Agora tudo sai dos tokens do app (--mkf-text-*, --mkf-ui-*),
+   que já trocam com o tema. Nenhuma regra de dark mode
+   própria: o modal simplesmente acompanha o resto.
+   ========================================================= */
+
+/* =========================================================
    OVERLAY
    ========================================================= */
 
@@ -72,9 +85,11 @@
     border: 0;
     border-radius: 50%;
 
-    background: rgba(245, 246, 248, .95);
+    /* O rgba fixo era o último ponto claro do modal no tema
+       escuro: um círculo branco no canto. O token acompanha. */
+    background: var(--mkf-ui-surface-hover);
 
-    color: #777d88;
+    color: var(--mkf-text-secondary);
 
     cursor: pointer;
 
@@ -85,8 +100,8 @@
 }
 
 .company-info-modal-close:hover {
-    background: #eef0f3;
-    color: #30343b;
+    background: var(--mkf-ui-surface-hover);
+    color: var(--mkf-text-primary);
     transform: scale(1.04);
 }
 
@@ -134,7 +149,7 @@
 
     gap: .8rem;
 
-    color: #969ba5;
+    color: var(--mkf-text-tertiary);
 
     font-size: .8rem;
 }
@@ -152,7 +167,7 @@
 
     padding-bottom: 1.5rem;
 
-    border-bottom: 1px solid #edf0f3;
+    border-bottom: 1px solid var(--mkf-ui-border);
 }
 
 
@@ -170,7 +185,7 @@
 
     border-radius: 1rem;
 
-    background: #f3f4f6;
+    background: var(--mkf-ui-surface-hover);
 }
 
 
@@ -186,7 +201,7 @@
     font-size: 1.6rem;
     font-weight: 600;
 
-    color: #8a909a;
+    color: var(--mkf-text-tertiary);
 }
 
 
@@ -204,14 +219,14 @@
     font-size: 1.3rem;
     font-weight: 600;
 
-    color: #20242a;
+    color: var(--mkf-text-primary);
 }
 
 
 .company-info-identity-text span {
     font-size: .78rem;
 
-    color: #969ba5;
+    color: var(--mkf-text-tertiary);
 }
 
 
@@ -222,7 +237,7 @@
 .company-info-section {
     padding: 1.35rem 0;
 
-    border-bottom: 1px solid #edf0f3;
+    border-bottom: 1px solid var(--mkf-ui-border);
 }
 
 
@@ -250,7 +265,7 @@
 
     font-size: 1.05rem;
 
-    color: #8b919c;
+    color: var(--mkf-text-tertiary);
 }
 
 
@@ -260,7 +275,7 @@
     font-size: .82rem;
     font-weight: 600;
 
-    color: #3b4048;
+    color: var(--mkf-text-primary);
 }
 
 
@@ -274,7 +289,7 @@
     font-size: .78rem;
     line-height: 1.7;
 
-    color: #777d87;
+    color: var(--mkf-text-secondary);
 }
 
 /* =========================================================
@@ -314,7 +329,7 @@
 
     border-radius: .75rem;
 
-    background: #f3f4f6;
+    background: var(--mkf-ui-surface-hover);
 }
 
 
@@ -434,7 +449,7 @@
 
     border-radius: 50%;
 
-    background: #f0f1f3;
+    background: var(--mkf-ui-surface-hover);
 }
 
 
@@ -450,7 +465,7 @@
     font-size: .75rem;
     font-weight: 600;
 
-    color: #8a9099;
+    color: var(--mkf-text-tertiary);
 }
 
 
@@ -458,7 +473,7 @@
     font-size: .75rem;
     font-weight: 500;
 
-    color: #555b65;
+    color: var(--mkf-text-secondary);
 }
 
 
@@ -486,7 +501,7 @@
 .company-info-hours-row span {
     font-size: .75rem;
 
-    color: #777d87;
+    color: var(--mkf-text-secondary);
 }
 
 
@@ -494,12 +509,12 @@
     font-size: .75rem;
     font-weight: 500;
 
-    color: #555b65;
+    color: var(--mkf-text-secondary);
 }
 
 
 .company-info-hours-row strong.closed {
-    color: #a2a7af;
+    color: var(--mkf-text-tertiary);
 }
 
 
@@ -513,7 +528,7 @@
     font-size: .78rem;
     line-height: 1.6;
 
-    color: #777d87;
+    color: var(--mkf-text-secondary);
 }
 
 
@@ -540,9 +555,9 @@
 
     border-radius: .6rem;
 
-    background: #f5f6f8;
+    background: var(--mkf-ui-surface-hover);
 
-    color: #6f7580;
+    color: var(--mkf-text-secondary);
 
     text-decoration: none;
 
@@ -555,8 +570,8 @@
 
 
 .company-info-social:hover {
-    background: #eceef1;
-    color: #3e434b;
+    background: var(--mkf-ui-border);
+    color: var(--mkf-text-primary);
 }
 
 
@@ -591,7 +606,7 @@
 
     border-radius: .7rem;
 
-    background: #f6f7f9;
+    background: var(--mkf-ui-surface-hover);
 }
 
 
@@ -609,7 +624,7 @@
 
     background: var(--mkf-ui-white);
 
-    color: #777d87;
+    color: var(--mkf-text-secondary);
 }
 
 
@@ -627,7 +642,7 @@
 
     line-height: 1.3;
 
-    color: #555b65;
+    color: var(--mkf-text-secondary);
 }
 
 /* =========================================================
@@ -639,7 +654,7 @@
 
     font-size: .75rem;
 
-    color: #a0a5ad;
+    color: var(--mkf-text-tertiary);
 }
 
 /* =========================================================
@@ -1089,7 +1104,7 @@
 
 
 .professional-info-modal-header>span {
-    color: #969ba5;
+    color: var(--mkf-text-tertiary);
 
     font-size: .68rem;
     font-weight: 500;
@@ -1112,9 +1127,9 @@
     border: 0;
     border-radius: 50%;
 
-    background: #f5f6f8;
+    background: var(--mkf-ui-surface-hover);
 
-    color: #777d88;
+    color: var(--mkf-text-secondary);
 
     cursor: pointer;
 
@@ -1126,9 +1141,9 @@
 
 
 .professional-info-modal-close:hover {
-    background: #eef0f3;
+    background: var(--mkf-ui-surface-hover);
 
-    color: #30343b;
+    color: var(--mkf-text-primary);
 
     transform: scale(1.04);
 }
@@ -1167,7 +1182,7 @@
 
     border-radius: 50%;
 
-    background: #f0f1f3;
+    background: var(--mkf-ui-surface-hover);
 }
 
 
@@ -1182,7 +1197,7 @@
 
 
 .professional-info-avatar span {
-    color: #8a9099;
+    color: var(--mkf-text-tertiary);
 
     font-size: 1.35rem;
     font-weight: 600;
@@ -1202,7 +1217,7 @@
 .professional-info-profile-text h2 {
     margin: 0;
 
-    color: #20242a;
+    color: var(--mkf-text-primary);
 
     font-size: 1.2rem;
     font-weight: 600;
@@ -1212,7 +1227,7 @@
 
 
 .professional-info-profile-text span {
-    color: #969ba5;
+    color: var(--mkf-text-tertiary);
 
     font-size: .72rem;
 }
@@ -1227,7 +1242,7 @@
 
     padding-top: 1.1rem;
 
-    border-top: 1px solid #edf0f3;
+    border-top: 1px solid var(--mkf-ui-border);
 }
 
 
@@ -1242,7 +1257,7 @@
 
 
 .professional-info-section-title svg {
-    color: #8b919c;
+    color: var(--mkf-text-tertiary);
 
     font-size: 1rem;
 }
@@ -1251,7 +1266,7 @@
 .professional-info-section-title h3 {
     margin: 0;
 
-    color: #3b4048;
+    color: var(--mkf-text-primary);
 
     font-size: .8rem;
     font-weight: 600;
@@ -1261,7 +1276,7 @@
 .professional-info-description p {
     margin: 0;
 
-    color: #777d87;
+    color: var(--mkf-text-secondary);
 
     font-size: .76rem;
 
@@ -1274,7 +1289,7 @@
 
 
 .professional-info-description-empty {
-    color: #a0a5ad !important;
+    color: var(--mkf-text-tertiary) !important;
 }
 
 .company-info-professional {
@@ -1307,7 +1322,7 @@
 
 
 .company-info-professional:hover {
-    background: #f6f7f9;
+    background: var(--mkf-ui-surface-hover);
 }
 
 
@@ -1319,7 +1334,7 @@
 .company-info-professional-arrow {
     margin-left: .1rem;
 
-    color: #a5aab2;
+    color: var(--mkf-text-tertiary);
 
     font-size: .85rem;
 
@@ -1483,7 +1498,7 @@
     padding: 0;
 
     border:
-        1px solid #edf0f3;
+        1px solid var(--mkf-ui-border);
 
     border-radius: .8rem;
 
@@ -1507,7 +1522,7 @@
 .company-info-catalog-product:hover {
     transform: translateY(-2px);
 
-    border-color: #e0e3e8;
+    border-color: var(--mkf-ui-border);
 
     box-shadow:
         0 8px 20px rgba(0, 0, 0, .06);
@@ -1533,7 +1548,7 @@
 
     overflow: hidden;
 
-    background: #f3f4f6;
+    background: var(--mkf-ui-surface-hover);
 }
 
 
@@ -1567,7 +1582,7 @@
     align-items: center;
     justify-content: center;
 
-    color: #a0a5ad;
+    color: var(--mkf-text-tertiary);
 
     font-size: 1.5rem;
 }
@@ -1602,7 +1617,7 @@
 
     overflow: hidden;
 
-    color: #30343b;
+    color: var(--mkf-text-primary);
 
     font-size: .72rem;
     font-weight: 600;
@@ -1628,7 +1643,7 @@
 
     overflow: hidden;
 
-    color: #8a9099;
+    color: var(--mkf-text-tertiary);
 
     font-size: .62rem;
 
@@ -1941,7 +1956,7 @@
 
         border-radius: 999px;
 
-        background: #d9dce1;
+        background: var(--mkf-ui-border);
 
         z-index: 6;
     }
@@ -2101,31 +2116,6 @@
             opacity: 0;
             transform: translate3d(0, 100%, 0);
         }
-    }
-
-}
-
-
-/*
- * Quem pediu menos movimento recebe só o aparecer.
- *
- * Esta regra precisa vir DEPOIS das de cima: a do modal
- * comum não alcança um seletor mais específico como
- * `.mkf-modal-panel.company-info-modal`, então sem repetir
- * aqui o ajuste de acessibilidade se perderia justamente
- * neste modal.
- */
-@media (prefers-reduced-motion: reduce) {
-
-    .mkf-modal-panel.company-info-modal[data-state="entering"],
-    .mkf-modal-panel.company-info-modal[data-state="leaving"] {
-        animation-duration: .01ms;
-        animation-name: companyInfoFade;
-    }
-
-    @keyframes companyInfoFade {
-        from { opacity: 0; }
-        to { opacity: 1; }
     }
 
 }

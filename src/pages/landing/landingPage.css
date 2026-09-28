@@ -1982,54 +1982,6 @@ body.landing-active #root > div {
     .mk-rail__head { margin-bottom: 22px; }
     .mk-rail__line { margin-bottom: 22px; }
 }
-
-
-/* =========================================================
-   MOVIMENTO REDUZIDO
-
-   As cenas presas viram seções comuns: o trilho perde a
-   altura extra, o palco solta o pin e todo o conteúdo que
-   o scroll revelaria aparece de uma vez. A informação é a
-   mesma — só não há movimento.
-========================================================= */
-
-@media (prefers-reduced-motion: reduce) {
-    body.landing-active *,
-    body.landing-active *::before,
-    body.landing-active *::after {
-        animation-duration: 0.001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.001ms !important;
-        scroll-behavior: auto !important;
-    }
-
-    .mk-reveal {
-        opacity: 1;
-        transform: none;
-    }
-
-    .mk-marquee__track {
-        animation: none;
-        transform: none;
-    }
-
-    .mk-scene,
-    .mk-phone {
-        transform: none;
-    }
-
-    .mk-plane--grid,
-    .mk-plane--alert {
-        transform: none;
-    }
-
-    .mk-plane--alert {
-        opacity: 1;
-        position: static;
-        margin-top: 14px;
-    }
-}
-
 /* Mesmo desligamento, mas por atributo — o JS marca o
    trilho e assim as regras valem também quando a
    preferência muda no meio da sessão. */

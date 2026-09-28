@@ -1727,3 +1727,65 @@
     }
 
 }
+
+
+/* =========================================================
+   SERVICOS EMENDADOS NO MESMO ATENDIMENTO
+   ========================================================= */
+
+.checkout-extra-services {
+    margin-bottom: 18px;
+    padding: 15px 16px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 14px;
+    background: var(--mkf-ui-background-secondary);
+}
+
+.checkout-extra-services-label {
+    display: block;
+    margin-bottom: 9px;
+
+    font-size: .72rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--mkf-text-secondary);
+}
+
+.checkout-extra-services ul {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.checkout-extra-services li {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+
+    font-size: .9rem;
+    color: var(--mkf-text-primary);
+}
+
+.checkout-extra-services li svg {
+    flex: 0 0 auto;
+    font-size: 16px;
+    color: var(--mkf-ui-primary);
+}
+
+.checkout-extra-services li span {
+    flex: 1;
+    min-width: 0;
+}
+
+.checkout-extra-services li small {
+    flex: 0 0 auto;
+    font-size: .84rem;
+    color: var(--mkf-text-secondary);
+}

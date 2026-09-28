@@ -1590,26 +1590,3 @@
         left: 100%;
     }
 }
-
-
-/* ---------- Movimento reduzido ---------- */
-
-@media (prefers-reduced-motion: reduce) {
-
-    .central-adm-loading__mark img,
-    .central-adm-loading__pulse,
-    .central-adm-loading__bar span {
-        animation: none;
-    }
-
-    /* Sem movimento a barra vira um traço parado; ela deixa
-       de indicar qualquer coisa, então some. */
-    .central-adm-loading__bar {
-        display: none;
-    }
-
-    .central-adm-loading__pulse {
-        opacity: .18;
-    }
-
-}

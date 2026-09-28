@@ -1,0 +1,94 @@
+/* =========================================================
+   IMAGEM DE PRODUTO — SKELETON E VAZIO
+   ========================================================= */
+
+.product-thumb {
+    position: relative;
+
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+    background: var(--mkf-ui-surface-hover, #f1f3f9);
+}
+
+.product-thumb img {
+    position: relative;
+    z-index: 1;
+
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+    display: block;
+
+    transition: opacity .2s ease;
+}
+
+
+/* ---------- Skeleton ---------- */
+
+.product-thumb-skeleton {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+
+    background: var(--mkf-ui-surface-hover, #f1f3f9);
+
+    /* O brilho que atravessa é o que diferencia "carregando"
+       de "quebrado": um retângulo cinza parado parece erro. */
+    background-image: linear-gradient(
+        100deg,
+        transparent 20%,
+        rgba(255, 255, 255, .55) 50%,
+        transparent 80%
+    );
+    background-size: 220% 100%;
+    background-repeat: no-repeat;
+
+    animation: productThumbShimmer 1.25s ease-in-out infinite;
+}
+
+@keyframes productThumbShimmer {
+    from {
+        background-position: 180% 0;
+    }
+
+    to {
+        background-position: -80% 0;
+    }
+}
+
+
+/* ---------- Sem foto ---------- */
+
+.product-thumb-empty {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+
+    display: grid;
+    place-items: center;
+
+    color: var(--mkf-text-secondary, #9aa1b4);
+    font-size: clamp(22px, 18%, 40px);
+    opacity: .6;
+}
+
+
+/* ---------- Escuro ---------- */
+
+html[data-theme="dark"] .product-thumb,
+html[data-theme="dark"] .product-thumb-skeleton {
+    background-color: var(--mkf-ui-surface-hover, #23252b);
+}
+
+html[data-theme="dark"] .product-thumb-skeleton {
+    /* O brilho branco do tema claro estoura no escuro. */
+    background-image: linear-gradient(
+        100deg,
+        transparent 20%,
+        rgba(255, 255, 255, .09) 50%,
+        transparent 80%
+    );
+}

@@ -9,6 +9,75 @@ admin.initializeApp();
 
 const db = admin.database();
 
+
+/* =====================================================
+   CONVERTER PREÇO
+
+   Os preços são gravados como texto ("R$ 1.234,56"), que é
+   o formato que as telas mostram. `Number()` nesse texto dá
+   NaN — foi assim que a assinatura passou a recusar todo
+   plano com "O plano possui um valor inválido": ela lia
+   `Number(plan.price)` em vez de converter.
+
+   Esta função vivia dentro de createMercadoPagoPayment, onde
+   só ela enxergava. No escopo do módulo, todo endpoint que
+   lida com dinheiro usa a mesma conversão.
+===================================================== */
+
+function parseMoney(value) {
+
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : null;
+    }
+
+    if (typeof value !== "string") {
+        return null;
+    }
+
+    let normalized =
+        value
+            .trim()
+            .replace(/[^\d,.-]/g, "");
+
+    /* Com ponto E vírgula, o ponto é separador de milhar. */
+    if (
+        normalized.includes(",") &&
+        normalized.includes(".")
+    ) {
+
+        normalized =
+            normalized
+                .replace(/\./g, "")
+                .replace(",", ".");
+
+    } else if (
+        normalized.includes(",")
+    ) {
+
+        normalized =
+            normalized.replace(",", ".");
+    }
+
+    /*
+     * Texto sem dígito nenhum não é zero, é ausência.
+     *
+     * `Number("")` devolve 0, e com isso um preço vazio
+     * passaria como válido — pior, quebraria o encadeamento
+     * `parseMoney(plan.price) ?? parseMoney(product.value)`,
+     * já que 0 não aciona o `??`.
+     */
+    if (!normalized || !/\d/.test(normalized)) {
+        return null;
+    }
+
+    const amount = Number(normalized);
+
+    return Number.isFinite(amount)
+        ? amount
+        : null;
+
+}
+
 setGlobalOptions({
     maxInstances: 10
 });
@@ -1581,52 +1650,6 @@ exports.createMercadoPagoPayment = onRequest(
             }
 
 
-            /* =========================================
-               CONVERTER PREÇO
-            ========================================= */
-
-            function parseMoney(value) {
-
-                if (typeof value === "number") {
-                    return value;
-                }
-
-                if (typeof value !== "string") {
-                    return null;
-                }
-
-                let normalized =
-                    value
-                        .trim()
-                        .replace(/[^\d,.-]/g, "");
-
-                if (
-                    normalized.includes(",") &&
-                    normalized.includes(".")
-                ) {
-
-                    normalized =
-                        normalized
-                            .replace(/\./g, "")
-                            .replace(",", ".");
-
-                } else if (
-                    normalized.includes(",")
-                ) {
-
-                    normalized =
-                        normalized.replace(",", ".");
-                }
-
-                const amount =
-                    Number(normalized);
-
-                return Number.isFinite(amount)
-                    ? amount
-                    : null;
-            }
-
-
             const amount =
                 parseMoney(product.value);
 
@@ -2468,8 +2491,14 @@ exports.createMercadoPagoSubscription = onRequest(
 
             const plan = product.monthlyPlan || {};
 
+            /*
+             * `Number("R$ 1,00")` é NaN — era por isso que
+             * toda mensalidade era recusada aqui, por mais
+             * correto que estivesse o plano.
+             */
             const valor =
-                Number(plan.price ?? product.value ?? 0);
+                parseMoney(plan.price) ??
+                parseMoney(product.value);
 
             if (!(valor > 0)) {
                 return res.status(400).json({
