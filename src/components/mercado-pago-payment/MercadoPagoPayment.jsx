@@ -1,5 +1,7 @@
 import React, {
+    useCallback,
     useEffect,
+    useMemo,
     useRef,
     useState
 } from "react";
@@ -745,6 +747,70 @@ const MercadoPagoPayment = ({
     };
 
 
+    /* =====================================================
+       PROPS ESTÁVEIS DO PAYMENT BRICK
+
+       O <Payment> do sdk-react desmonta e recria o formulário
+       sempre que initialization, customization, onSubmit ou
+       onError mudam de referência. Sem memoizar, qualquer
+       setState do checkout apagava o que o cliente digitou
+       (nome do titular, CPF) e o Brick acusava "Dado obrigatório".
+    ===================================================== */
+
+    const isSubscription = Boolean(subscriptionPlan);
+
+    const brickInitialization = useMemo(() => ({
+
+        amount: Number(amount) || 0,
+
+        /* Pré-preenche o pagador com o que o
+           agendamento já coletou. */
+        payer: payerEmail
+            ? { email: payerEmail }
+            : undefined
+
+    }), [amount, payerEmail]);
+
+    const brickCustomization = useMemo(() => ({
+        paymentMethods:
+            isSubscription
+                ? {
+                    /* Só crédito: débito e Pix não
+                       sustentam cobrança recorrente. */
+                    creditCard: "all"
+                }
+                : {
+                    creditCard: "all",
+                    debitCard: "all",
+
+                    /* É por aqui que o Pix aparece. */
+                    bankTransfer: "all"
+                }
+    }), [isSubscription]);
+
+    const handleSubmitRef = useRef(handleSubmit);
+    handleSubmitRef.current = handleSubmit;
+
+    const handleBrickSubmit = useCallback(
+        (data) => handleSubmitRef.current(data),
+        []
+    );
+
+    const handleBrickError = useCallback((brickError) => {
+
+        console.error(
+            "Erro Payment Brick:",
+            brickError
+        );
+
+        setError(
+            "Não foi possível carregar ou processar o pagamento."
+        );
+
+        onErrorRef.current?.(brickError);
+    }, []);
+
+
     const copyPixCode = async () => {
 
         try {
@@ -1141,52 +1207,10 @@ const MercadoPagoPayment = ({
                 {(!subscriptionPlan || autoDebitAccepted) && (
 
                 <Payment
-
-                    initialization={{
-
-                        amount: Number(amount) || 0,
-
-                        /* Pré-preenche o pagador com o que o
-                           agendamento já coletou. */
-                        payer: payerEmail
-                            ? { email: payerEmail }
-                            : undefined
-
-                    }}
-
-                    customization={{
-                        paymentMethods:
-                            subscriptionPlan
-                                ? {
-                                    /* Só crédito: débito e Pix não
-                                       sustentam cobrança recorrente. */
-                                    creditCard: "all"
-                                }
-                                : {
-                                    creditCard: "all",
-                                    debitCard: "all",
-
-                                    /* É por aqui que o Pix aparece. */
-                                    bankTransfer: "all"
-                                }
-                    }}
-
-                    onSubmit={handleSubmit}
-
-                    onError={(brickError) => {
-
-                        console.error(
-                            "Erro Payment Brick:",
-                            brickError
-                        );
-
-                        setError(
-                            "Não foi possível carregar ou processar o pagamento."
-                        );
-
-                        onErrorRef.current?.(brickError);
-                    }}
-
+                    initialization={brickInitialization}
+                    customization={brickCustomization}
+                    onSubmit={handleBrickSubmit}
+                    onError={handleBrickError}
                 />
 
                 )}
