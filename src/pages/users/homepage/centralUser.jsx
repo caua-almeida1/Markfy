@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { Icon } from "@iconify/react";
 
-import TabBar from "../../../components/tabbar";
+import TabBar, { DEFAULT_USER_TABS } from "../../../components/tabbar";
 
 import HomePage from "../homepage";
 import Reservations from "./Reservations/reservartions";
@@ -11,13 +11,18 @@ import Catalog from "./Catalog/Catalog";
 import CompanyPage from "./CompanyPage/CompanyPage";
 import Explore from "./Explore/Explore";
 import Profile from "./Profile/Profile";
+import DiscoverHome from "../discover/DiscoverHome";
+import DiscoverReservations from "../discover/DiscoverReservations";
+
+import { recordRecentCompany } from "../../../utils/bookingHistory";
 
 import { useCompanyTheme } from "../../../theme/useCompanyTheme";
 
+import { PublicAccessGate } from "../../../plans/publicAccess";
 import "./centralUser.css";
 
 
-const CentralUser = () => {
+const CentralUserInner = () => {
 
     const location = useLocation();
 
@@ -30,6 +35,22 @@ const CentralUser = () => {
        vale também para os modais em portal. */
     useCompanyTheme(handle);
 
+    /*
+     * Sem empresa na URL (/central-user), a central vira a
+     * vitrine da Markfy Bookings: feed de empresas, reservas
+     * de todas as empresas, Explorar e Perfil. Não há
+     * "Catálogo" porque não há empresa escolhida.
+     */
+    const isDiscover = !handle;
+
+    useEffect(() => {
+
+        if (handle) {
+            recordRecentCompany(handle);
+        }
+
+    }, [handle]);
+
 
     /*
     ============================================================
@@ -37,13 +58,15 @@ const CentralUser = () => {
     ============================================================
     */
 
-    const tabs = [
-        "home",
-        "reservas",
-        "catalog",
-        "explorar",
-        "perfil"
-    ];
+    const tabBarTabs = isDiscover
+        ? DEFAULT_USER_TABS.filter(
+            (tab) => tab.id !== "catalog"
+        )
+        : DEFAULT_USER_TABS;
+
+    const tabs = tabBarTabs.map(
+        (tab) => tab.id
+    );
 
 
     /*
@@ -312,16 +335,28 @@ const CentralUser = () => {
 
             case "home":
 
-                return (
-                    <HomePage />
-                );
+                return isDiscover
+                    ? (
+                        <DiscoverHome
+                            onOpenTab={handleTabChange}
+                        />
+                    )
+                    : (
+                        <HomePage />
+                    );
 
 
             case "reservas":
 
-                return (
-                    <Reservations />
-                );
+                return isDiscover
+                    ? (
+                        <DiscoverReservations
+                            onOpenTab={handleTabChange}
+                        />
+                    )
+                    : (
+                        <Reservations />
+                    );
 
 
             case "catalog":
@@ -470,6 +505,10 @@ const CentralUser = () => {
 
 
             <TabBar
+                tabs={
+                    tabBarTabs
+                }
+
                 activeTab={
                     activeTab
                 }
@@ -485,5 +524,16 @@ const CentralUser = () => {
 
 };
 
+
+const CentralUser = () => {
+
+    const { handle } = useParams();
+
+    return (
+        <PublicAccessGate handle={handle}>
+            <CentralUserInner />
+        </PublicAccessGate>
+    );
+};
 
 export default CentralUser;

@@ -8,8 +8,8 @@
    FONT
 ========================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
-);
+/* Fonte única da rede: var(--mk-font), definida em
+   src/design-system/tokens.css (Poppins). */
 
 body {
     background-color: var(--mkf-ui-background-secondary);
@@ -45,11 +45,7 @@ body {
         var(--mkf-text-primary);
 
     font-family:
-        'Inter',
-        -apple-system,
-        BlinkMacSystemFont,
-        "Segoe UI",
-        sans-serif;
+        var(--mk-font);
 
     overflow-x: hidden;
 }
@@ -204,6 +200,63 @@ body {
 
     font-weight:
         var(--mkf-font-medium);
+}
+
+
+/* =========================================================
+   TROCAR EMPRESA
+
+   Só existe para quem participa de mais de uma empresa: o
+   bloco da empresa vira um botão que abre a seleção.
+========================================================= */
+
+.dashboard-topbar-company--switch {
+
+    margin: 0 0 0 -8px;
+
+    padding: 6px 10px 6px 8px;
+
+    border: 1px solid transparent;
+    border-radius: 14px;
+
+    background: transparent;
+
+    font: inherit;
+
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background .15s ease,
+        border-color .15s ease;
+}
+
+.dashboard-topbar-company--switch:hover {
+
+    background: var(--mkf-ui-gray-50);
+
+    border-color: var(--mkf-ui-border-light);
+}
+
+.dashboard-topbar-company--switch:focus-visible {
+
+    outline: 2px solid var(--mkf-ui-primary);
+    outline-offset: 2px;
+}
+
+.dashboard-topbar-company--switch .dashboard-company-info span {
+
+    color: var(--mkf-ui-primary);
+}
+
+.dashboard-topbar-company-switch-icon {
+
+    flex-shrink: 0;
+
+    color: var(--mkf-text-light);
+
+    font-size: 16px;
 }
 
 

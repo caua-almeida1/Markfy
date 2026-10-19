@@ -1,3 +1,4 @@
+import { useLicense } from "../../../plans/LicenseContext";
 import React, {
     useContext,
     useState,
@@ -85,6 +86,32 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     const [products, setProducts] = useState([]);
     const [isAddingProduct, setIsAddingProduct] = useState(false);
+
+    /* Limite de itens do plano da empresa. Só os ativos contam;
+       arquivar libera espaço. */
+    const license = useLicense();
+
+    const hasRoomForProduct = () => {
+
+        const limit = license.limit("maxProducts");
+        const activeCount = products.filter((item) => item.status === "ativos").length;
+
+        if (activeCount >= limit) {
+
+            alert(
+                `O plano atual da empresa permite até ${limit} item(ns) ativos no catálogo. ` +
+                "Arquive algum item ou peça ao administrador principal para mudar de plano em Perfil → Planos e Assinaturas."
+            );
+
+            return false;
+        }
+
+        return true;
+    };
+
+    const openCreation = () => {
+        if (hasRoomForProduct()) setIsModalOpen(true);
+    };
 
     /* =========================================================
        PESQUISA + FILTROS
@@ -348,7 +375,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     useEffect(() => {
         if (shouldOpenModal) {
             const timer = setTimeout(() => {
-                setIsModalOpen(true);
+                openCreation();
                 setOpenProductsModal(false); // Reseta o estado após abrir
             }, 500); // 0.5s delay
 
@@ -2658,67 +2685,22 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
 
                 /* =====================================================
-                   EMPRESAS
+                   EMPRESA SELECIONADA
+
+                   Vem do contexto. Antes a tela baixava todas as
+                   empresas e usava a primeira em que a pessoa
+                   era membro — quem participa de mais de uma
+                   via sempre os produtos da mesma.
                 ===================================================== */
 
-                const companysRef =
-                    ref(
-                        db,
-                        "companys"
-                    );
-
-
-                const snapshot =
-                    await get(
-                        companysRef
-                    );
-
-
-                if (!snapshot.exists()) {
-
-                    throw new Error(
-                        "Nenhuma empresa encontrada"
-                    );
-
-                }
-
-
-                const companies =
-                    snapshot.val();
-
-
-                let companyKey =
-                    null;
-
-
-                /* =====================================================
-                   DESCOBRIR EMPRESA DO USUÁRIO
-                ===================================================== */
-
-                for (
-                    const [key, value]
-                    of Object.entries(companies)
-                ) {
-
-                    if (
-                        value.members &&
-                        value.members[user.uid]
-                    ) {
-
-                        companyKey =
-                            key;
-
-                        break;
-
-                    }
-
-                }
+                const companyKey =
+                    companyHandle;
 
 
                 if (!companyKey) {
 
                     throw new Error(
-                        "Usuário não pertence a nenhuma empresa"
+                        "Nenhuma empresa selecionada"
                     );
 
                 }
@@ -2935,7 +2917,8 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
         };
 
 
-    }, []);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [companyHandle]);
 
     const handleArchiveProduct = async (product) => {
 
@@ -3437,7 +3420,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
             <div className="adm_products-new-product-content-actions">
                 <button
                     className="adm_products-new-product-btn"
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={openCreation}
                 >
                     Cadastrar Novo Produto
                 </button>
@@ -3447,7 +3430,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                     preencher do zero, é juntar o que já existe. */}
                 <button
                     className="adm_products-combo-btn"
-                    onClick={() => setIsComboModalOpen(true)}
+                    onClick={() => hasRoomForProduct() && setIsComboModalOpen(true)}
                 >
                     <Icon icon="lucide:layers" />
                     Criar combo
@@ -3627,7 +3610,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
                     </div>
                 ))
             ) : (
-                <p>Nenhum produto encontrado, <span onClick={() => setIsModalOpen(true)}>crie um novo produto!</span> </p>
+                <p>Nenhum produto encontrado, <span onClick={openCreation}>crie um novo produto!</span> </p>
             )}
             </div>
 

@@ -11,6 +11,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 import { useConsent } from "../../../contexts/consentContext/ConsentContext";
+import { useLicense } from "../../../plans/LicenseContext";
 import { useTheme } from "../../../theme/ThemeContext";
 
 import "./perfilAdm.css";
@@ -47,6 +48,7 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
 
 
     const navigate = useNavigate();
+    const license = useLicense();
 
     const [screenStack, setScreenStack] = useState(
         initialScreen === "home"
@@ -293,25 +295,44 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
                                     className="adm-perfil-arrow"
                                 />
                             </div>
-                            <div className="adm-perfil-pro">
+                            <div
+                                className={`adm-perfil-plan ${license.active ? "is-active" : "is-inactive"}`}
+                                style={license.plan ? { "--plan": license.plan.color } : undefined}
+                            >
 
-                                <div className="adm-perfil-pro-left">
-                                    <Icon icon="bi:stars" className="icon" />
-                                    <div className="adm-perfil-pro-text">
+                                <span className="adm-perfil-plan__orb">
+                                    <Icon icon={license.active ? "solar:cup-star-bold" : "solar:lock-keyhole-minimalistic-bold"} />
+                                </span>
 
-                                        <h3>Seja Markfy Premium</h3>
+                                <div className="adm-perfil-plan__text">
 
-                                        <p>
-                                            Desbloqueie recursos exclusivos e ferramentas para impulsionar seu negócio.
-                                        </p>
+                                    <small>Plano da empresa</small>
 
-                                    </div>
+                                    <h3>
+                                        {license.active && license.plan
+                                            ? `Markfy ${license.plan.name}`
+                                            : license.state === "expired"
+                                                ? "Plano vencido"
+                                                : license.state === "suspended"
+                                                    ? "Plano suspenso"
+                                                    : "Sem plano ativo"}
+                                    </h3>
+
+                                    <p>
+                                        {license.active
+                                            ? `${license.product === "both" ? "Bookings + Studio" : license.product === "studio" ? "Markfy Studio" : "Markfy Bookings"}${license.license?.expiresAt ? ` · até ${new Date(license.license.expiresAt).toLocaleDateString("pt-BR")}` : ""}`
+                                            : "Ative um plano para liberar o painel da empresa."}
+                                    </p>
 
                                 </div>
 
-                                <button className="adm-perfil-pro-btn">
+                                <button
+                                    type="button"
+                                    className="adm-perfil-plan__btn"
+                                    onClick={() => openScreen("subscriptions")}
+                                >
 
-                                    Upgrade
+                                    {license.active ? "Gerenciar" : "Ver planos"}
 
                                     <Icon icon="iconamoon:arrow-right-2" />
 

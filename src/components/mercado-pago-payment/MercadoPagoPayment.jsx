@@ -629,7 +629,8 @@ const MercadoPagoPayment = ({
                     new Error(
                         data.ownerAction
                             ? data.message
-                            : [
+                            : REJECTION_MESSAGES[data.statusDetail] ||
+                            [
                                 data.message,
                                 data.details &&
                                 data.details !== data.message

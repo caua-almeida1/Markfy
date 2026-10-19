@@ -16,7 +16,12 @@
     "  existente (Invite e cadastro) precisa virar Cloud Function",
     "  antes de aplicar a regra abaixo, senao essas telas quebram.",
     "- a consulta rasa de companys no contexto passa a falhar e cai",
-    "  automaticamente para companiesIndex, que e publico."
+    "  automaticamente para companiesIndex, que e publico.",
+    "",
+    "Markfy Studio (studioDrafts, studioSites, studioLeads, studioAnalytics):",
+    "- o rascunho e isolado por empresa; publicar exige papel diferente de 'professional';",
+    "- users/{uid}/bookedCompanies ja e coberto pela regra de users/$uid;",
+    "- imagens do Studio vao para o Storage em companys/{handle}/studio/ (revise as regras do Storage)."
   ],
   "rules": {
     ".read": false,
@@ -35,8 +40,23 @@
         ".write": "auth != null"
       }
     },
+    "licenses": {
+      "_comentario": [
+        "Plano de cada EMPRESA (nao da pessoa): licenses/{handle}.",
+        "Gravam so a conta master (tela Master Dev) e o backend",
+        "(Cloud Function que confirma o pagamento, via Admin SDK).",
+        "Nenhum membro da empresa, nem o administrador principal,",
+        "consegue escrever aqui pelo navegador. Membros so leem."
+      ],
+      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      ".write": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+      }
+    },
     "companys": {
-      ".read": false,
+      "_comentario_master": "A leitura do no inteiro e exclusiva da conta master (painel Master Dev).",
+      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
       ".write": false,
       "$handle": {
         ".read": true,
@@ -63,7 +83,7 @@
       }
     },
     "users": {
-      ".read": false,
+      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
       ".write": false,
       ".indexOn": [
         "email"
@@ -104,6 +124,102 @@
         ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
         ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
       }
+    },
+    "studioDrafts": {
+      "_comentario": [
+        "Rascunho do Markfy Studio. So membros da empresa leem;",
+        "so responsavel/administrador grava (profissional so visualiza)."
+      ],
+      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
+      }
+    },
+    "studioSites": {
+      "_comentario": [
+        "Pagina publicada pelo Studio: leitura publica (rota /s/{handle}) SOMENTE enquanto",
+        "a empresa tem plano ativo com Studio; escrita so por responsavel/administrador",
+        "da propria empresa, tambem exigindo plano ativo com Studio."
+      ],
+      "$handle": {
+        ".read": "root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
+      },
+      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'"
+    },
+    "studioLeads": {
+      "_comentario": [
+        "Contatos do formulario da pagina publica.",
+        "Visitante sem login so CRIA um contato novo com status 'new';",
+        "ler, mudar estado e excluir exige ser membro (estado/exclusao: editor)."
+      ],
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "$leadId": {
+          ".write": "(!data.exists() && newData.exists() && newData.child('status').val() === 'new') || (auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional')",
+          ".validate": "!newData.exists() || newData.hasChildren(['name', 'status', 'createdAt'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+          },
+          "phone": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 160"
+          },
+          "message": {
+            ".validate": "newData.isString() && newData.val().length <= 2000"
+          },
+          "status": {
+            ".validate": "newData.val() === 'new' || newData.val() === 'contacted' || newData.val() === 'done' || newData.val() === 'archived'"
+          },
+          "source": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "studioAnalytics": {
+      "_comentario": [
+        "Contadores diarios da pagina publicada.",
+        "Qualquer visitante so consegue SOMAR 1 a um evento conhecido do dia;",
+        "nao da para apagar, zerar nem inventar evento. Leitura: membros."
+      ],
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "$day": {
+          ".validate": "$day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+          "$event": {
+            ".write": "newData.exists()",
+            ".validate": "($event === 'view' || $event === 'booking_click' || $event === 'whatsapp_click' || $event === 'social_click' || $event === 'channel_click' || $event === 'lead') && newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
+          }
+        }
+      }
+    },
+    "planCatalog": {
+      "_comentario": "Catalogo de planos: leitura publica (tela de planos), escrita so da conta master.",
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'caua.master@markfy.com'"
+    },
+    "planOrders": {
+      "_comentario": "Pedidos de plano. Escrita so pelo backend (Admin SDK); a conta master le.",
+      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      ".write": false
+    },
+    "publicAccess": {
+      "_comentario": "Espelho publico minimo da licenca (bookings/studio/expiresAt). Leitura publica; escrita so da conta master e do backend.",
+      ".read": true,
+      ".write": "auth != null && auth.token.email === 'caua.master@markfy.com'"
     }
   }
 }

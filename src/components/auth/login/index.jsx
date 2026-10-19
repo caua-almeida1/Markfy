@@ -94,6 +94,18 @@ const AuthScreen = () => {
   const [searchParams] = useSearchParams();
 
   const inviteId = searchParams.get("invite");
+
+  /*
+   * Destino depois do login (?redirect=/studio, por exemplo).
+   * Só caminhos internos: "//site.com" ou URLs absolutas são
+   * ignorados, para o parâmetro não virar redirecionamento
+   * aberto.
+   */
+  const rawRedirect = searchParams.get("redirect") || "";
+  const redirectTo =
+    /^\/(?!\/)[\w\-/?=&.%]*$/.test(rawRedirect) && !rawRedirect.startsWith("/login")
+      ? rawRedirect
+      : null;
   const [inviteData, setInviteData] = useState(null);
 
   const [step, setStep] = useState('register');
@@ -596,6 +608,14 @@ const AuthScreen = () => {
      * USUÁRIO JÁ CONFIGURADO
      * ------------------------------------------------------------
      */
+
+    /* Veio de uma tela que pediu login (Home, Studio). */
+    if (redirectTo) {
+
+      navigate(redirectTo);
+
+      return;
+    }
 
     if (
       userData.userType === "admin" ||

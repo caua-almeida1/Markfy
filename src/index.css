@@ -753,7 +753,7 @@
  * necessárias: o tema vive no <html>.
  */
 body {
-    font-family: Poppins, sans-serif !important;
+    font-family: var(--mk-font, "Poppins", sans-serif) !important;
     margin: 0;
     width: 100%;
     min-height: 100vh;

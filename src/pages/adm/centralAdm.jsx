@@ -7,19 +7,31 @@ import Schedules from "./schedulesAdm/schedulesAdm";
 import PerfilAdm from "./perfilAdm/perfilAdm";
 
 import { useUserCompany } from "../../contexts/companyContext/UserCompanyContext"; // 🟢 importa o contexto
+import CompanyPicker from "../../components/company-picker/CompanyPicker";
 
 import markfyLogo from "../../img/logo-markfy.svg";
 
 import "./centralAdm.css";
 
 const CentralAdm = () => {
-    const { user, company, loading } = useUserCompany(); // 🟢 obtém dados do usuário logado e empresa
+    const {
+        company,
+        companies,
+        loading,
+        needsCompanySelection
+    } = useUserCompany(); // 🟢 obtém dados do usuário logado e empresa
     const tabs = ["home", "pedidos", "produtos", "horarios", "perfil"];
     const [activeTab, setActiveTab] = useState("home");
     const [prevTab, setPrevTab] = useState("home");
 
     const [openProductsModal, setOpenProductsModal] = useState(false);
     const [profileInitialScreen, setProfileInitialScreen] = useState("home");
+
+    /* Modal "Trocar empresa", só para quem tem mais de uma. */
+    const [isCompanyPickerOpen, setIsCompanyPickerOpen] = useState(false);
+
+    const canSwitchCompany = companies.length > 1;
+    const openCompanyPicker = () => setIsCompanyPickerOpen(true);
 
     useEffect(() => {
         const shouldReload = sessionStorage.getItem("forceAdminReload");
@@ -63,6 +75,46 @@ const CentralAdm = () => {
 
         }
 
+    }, []);
+
+    /*
+     * Abrir direto numa aba: ?tab=produtos, ?tab=horarios,
+     * ?tab=perfil&screen=settings-hours. Usado pelos atalhos
+     * do Markfy Studio ("Cadastrar serviços", "Definir
+     * horário"...). O parâmetro sai da URL depois de lido.
+     */
+    useEffect(() => {
+
+        const params =
+            new URLSearchParams(
+                window.location.search
+            );
+
+        const requested = params.get("tab");
+
+        if (!requested || !tabs.includes(requested)) {
+            return;
+        }
+
+        if (requested === "perfil") {
+            setProfileInitialScreen(
+                params.get("screen") || "home"
+            );
+        }
+
+        setActiveTab(requested);
+
+        params.delete("tab");
+        params.delete("screen");
+
+        window.history.replaceState(
+            {},
+            document.title,
+            window.location.pathname +
+            (params.toString() ? `?${params.toString()}` : "")
+        );
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleTabChange = (tab, options = {}) => {
@@ -142,6 +194,13 @@ const CentralAdm = () => {
 
             </div>
         );
+    }
+
+    /* Mais de uma empresa e nenhuma escolhida nesta sessão:
+       nada do painel carrega antes da escolha, para pedidos
+       e produtos nunca aparecerem da empresa errada. */
+    if (needsCompanySelection) {
+        return <CompanyPicker />;
     }
 
     if (!company) {
@@ -475,7 +534,13 @@ const CentralAdm = () => {
     const renderContent = () => {
         switch (activeTab) {
             case "home":
-                return <Dashboard setActiveTab={handleTabChange} company={company} />;
+                return (
+                    <Dashboard
+                        setActiveTab={handleTabChange}
+                        company={company}
+                        onSwitchCompany={canSwitchCompany ? openCompanyPicker : undefined}
+                    />
+                );
             case "pedidos":
                 return (
                     <Orders
@@ -500,7 +565,13 @@ const CentralAdm = () => {
                     />
                 );
             default:
-                return <Dashboard setActiveTab={handleTabChange} company={company} />;
+                return (
+                    <Dashboard
+                        setActiveTab={handleTabChange}
+                        company={company}
+                        onSwitchCompany={canSwitchCompany ? openCompanyPicker : undefined}
+                    />
+                );
         }
     };
 
@@ -511,8 +582,11 @@ const CentralAdm = () => {
                     a animação de entrada reinicia sozinha. Sem
                     animação de saída, nada fica preso esperando
                     ela terminar. */}
+                {/* O handle entra no `key`: trocar de empresa
+                    remonta a aba e ela relê tudo da nova empresa,
+                    sem sobrar estado da anterior. */}
                 <div
-                    key={activeTab}
+                    key={`${company.handle}:${activeTab}`}
                     className="mkf-view-enter"
                     data-direction={getDirection()}
                 >
@@ -521,6 +595,13 @@ const CentralAdm = () => {
             </div>
 
             <TabBarAdm activeTab={activeTab} setActiveTab={handleTabChange} />
+
+            {isCompanyPickerOpen && (
+                <CompanyPicker
+                    variant="modal"
+                    onClose={() => setIsCompanyPickerOpen(false)}
+                />
+            )}
         </div>
     );
 };

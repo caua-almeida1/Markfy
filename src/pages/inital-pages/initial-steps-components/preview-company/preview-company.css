@@ -387,3 +387,11 @@
     margin-right: 0.3rem;
 
 }
+
+.preview-company-success-plan {
+    margin: 4px 0 16px;
+    font-size: 14px;
+    line-height: 1.55;
+    opacity: 0.85;
+    text-align: center;
+}

@@ -8,6 +8,10 @@ import { getDatabase, ref, onValue, get, update } from "firebase/database";
 import { Icon } from '@iconify/react';
 import { getClientId } from "../../../../utils/clientID";
 import {
+    readBookingSource,
+    recordBookedCompany
+} from "../../../../utils/bookingHistory";
+import {
     formatPhoneBR,
     isValidPhoneBR,
     toE164BR
@@ -2864,12 +2868,26 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 ...(loggedUserId
                     ? { userId: loggedUserId }
                     : {}
+                ),
+
+                /* Veio de uma página do Markfy Studio: é
+                   assim que o Studio conta conversões. */
+                ...(readBookingSource(companyHandle)
+                    ? { source: readBookingSource(companyHandle) }
+                    : {}
                 )
             };
 
             await update(
                 newScheduleRef,
                 agendamentoComStatus
+            );
+
+            /* Deixa a central do usuário (sem empresa na URL)
+               encontrar esta reserva depois. */
+            recordBookedCompany(
+                companyHandle,
+                loggedUserId
             );
 
             // ==========================================

@@ -4,6 +4,7 @@ import { getAuth } from "firebase/auth";
 import { getDatabase, ref, update } from "firebase/database";
 
 import { useUserCompany } from "../../../../../../contexts/companyContext/UserCompanyContext";
+import { useLicense } from "../../../../../../plans/LicenseContext";
 import Toast from "../../../../../../components/toast/Toast";
 
 
@@ -15,7 +16,13 @@ const MERCADO_PAGO_OAUTH_START =
     "https://us-central1-markfy-96942.cloudfunctions.net/mercadoPagoOAuthStart";
 
 
+const CHECK_SUBSCRIPTIONS_URL =
+    "https://us-central1-markfy-96942.cloudfunctions.net/checkMercadoPagoSubscriptions";
+
+
 const CardConfigScreen = ({ onBack }) => {
+
+    const license = useLicense();
 
     const { company } = useUserCompany();
 
@@ -35,6 +42,14 @@ const CardConfigScreen = ({ onBack }) => {
 
     const [connectingMercadoPago, setConnectingMercadoPago] =
         useState(false);
+
+
+    const [checkingSubscriptions, setCheckingSubscriptions] =
+        useState(false);
+
+    /* { ready, mode, details } da última verificação. */
+    const [subscriptionCheck, setSubscriptionCheck] =
+        useState(null);
 
 
     /* =====================================================
@@ -193,6 +208,16 @@ const CardConfigScreen = ({ onBack }) => {
             return;
         }
 
+        if (!license.can("onlinePayments")) {
+
+            alert(
+                "Pagamentos online não estão incluídos no plano atual da empresa. " +
+                "O administrador principal pode mudar de plano em Perfil → Planos e Assinaturas."
+            );
+
+            return;
+        }
+
 
         try {
 
@@ -314,6 +339,79 @@ const CardConfigScreen = ({ onBack }) => {
         } finally {
 
             setConnectingMercadoPago(false);
+
+        }
+
+    };
+
+
+    /* =====================================================
+       VERIFICAR ASSINATURAS
+
+       A liberação é feita dentro do Mercado Pago, não aqui.
+       Este botão só descobre se a conta já pode receber
+       mensalidades, sem cobrar ninguém.
+    ===================================================== */
+
+    const handleCheckSubscriptions = async () => {
+
+        if (checkingSubscriptions) return;
+
+        try {
+
+            setCheckingSubscriptions(true);
+            setSubscriptionCheck(null);
+
+            const user = getAuth().currentUser;
+
+            if (!user) {
+                openToast(
+                    "error",
+                    "Sessão expirada",
+                    "Faça login novamente."
+                );
+                return;
+            }
+
+            const idToken = await user.getIdToken();
+
+            const response = await fetch(
+                CHECK_SUBSCRIPTIONS_URL,
+                {
+                    method: "POST",
+                    headers: {
+                        Authorization: `Bearer ${idToken}`
+                    }
+                }
+            );
+
+            const data = await response.json().catch(() => ({}));
+
+            if (!response.ok || !data.success) {
+                throw new Error(
+                    data.message ||
+                    "Não foi possível verificar agora."
+                );
+            }
+
+            setSubscriptionCheck(data);
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao verificar assinaturas:",
+                error
+            );
+
+            openToast(
+                "error",
+                "Não foi possível verificar",
+                error.message || "Tente novamente."
+            );
+
+        } finally {
+
+            setCheckingSubscriptions(false);
 
         }
 
@@ -519,6 +617,110 @@ const CardConfigScreen = ({ onBack }) => {
                         )}
 
                     </button>
+
+
+                    <button
+                        type="button"
+                        className="payment-method"
+                        disabled={
+                            !cardsEnabled ||
+                            !mercadoPagoConnected ||
+                            checkingSubscriptions
+                        }
+                        onClick={
+                            handleCheckSubscriptions
+                        }
+                    >
+
+                        <div className="payment-method-left">
+
+                            <div className="payment-method-icon">
+                                <Icon icon="solar:refresh-circle-outline" />
+                            </div>
+
+                            <div className="payment-method-content">
+
+                                <h3>
+                                    Verificar assinaturas
+                                </h3>
+
+                                <p>
+                                    {mercadoPagoConnected
+                                        ? "Testa se sua conta já pode receber mensalidades"
+                                        : "Conecte o Mercado Pago primeiro"
+                                    }
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                        {checkingSubscriptions ? (
+                            <Icon
+                                icon="svg-spinners:90-ring-with-bg"
+                                className="payment-method-arrow"
+                            />
+                        ) : (
+                            <Icon
+                                icon="iconamoon:arrow-right-2"
+                                className="payment-method-arrow"
+                            />
+                        )}
+
+                    </button>
+
+                    {subscriptionCheck && (
+
+                        <div
+                            className="payment-subscription-check"
+                            role="status"
+                        >
+
+                            {subscriptionCheck.ready ? (
+                                <p>
+                                    <strong>
+                                        Sua conta está pronta para receber mensalidades.
+                                    </strong>
+                                    {subscriptionCheck.mode === "test" && (
+                                        <>
+                                            {" "}Atenção: a conexão está em modo
+                                            teste, então só cartões de teste
+                                            funcionam. Para cobrar clientes de
+                                            verdade, reconecte com uma conta
+                                            real do Mercado Pago.
+                                        </>
+                                    )}
+                                </p>
+                            ) : (
+                                <p>
+                                    <strong>
+                                        O Mercado Pago ainda não liberou
+                                        assinaturas nesta conta.
+                                    </strong>
+                                    {" "}Entre na conta do Mercado Pago que você
+                                    conectou, confirme a validação de
+                                    identidade e os dados da conta e, se
+                                    necessário, fale com o suporte do
+                                    Mercado Pago pedindo a liberação de
+                                    "Assinaturas". Depois, verifique de novo.
+                                    {subscriptionCheck.details && (
+                                        <>
+                                            {" "}Resposta do Mercado Pago:{" "}
+                                            {subscriptionCheck.details}
+                                        </>
+                                    )}
+                                    {subscriptionCheck.mode === "test" && (
+                                        <>
+                                            {" "}A conexão atual está em modo
+                                            teste.
+                                        </>
+                                    )}
+                                </p>
+                            )}
+
+                        </div>
+
+                    )}
 
 
                 </div>

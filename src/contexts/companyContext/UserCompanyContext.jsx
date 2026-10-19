@@ -3,6 +3,7 @@ import {
     getDatabase,
     ref,
     get,
+    set,
     update,
     onValue
 } from "firebase/database";
@@ -86,6 +87,66 @@ const fetchShallowKeys = async (path, currentUser) => {
 
 };
 
+/*
+============================================================
+EMPRESA ESCOLHIDA NA SESSÃO
+============================================================
+
+Quem participa de mais de uma empresa escolhe uma ao entrar.
+A escolha vive no sessionStorage: sobrevive a um F5, mas um
+login novo pergunta de novo. O storage pode estar bloqueado
+(aba anônima, preview), então toda leitura e escrita é
+protegida — sem ele, a pessoa só escolhe de novo.
+============================================================
+*/
+
+const SELECTED_COMPANY_KEY = "markfy:selected-company";
+
+const readSelectedCompany = (uid) => {
+
+    try {
+
+        const saved = JSON.parse(
+            sessionStorage.getItem(SELECTED_COMPANY_KEY) || "null"
+        );
+
+        return saved?.uid === uid ? saved.handle : null;
+
+    } catch {
+
+        return null;
+
+    }
+
+};
+
+const writeSelectedCompany = (uid, handle) => {
+
+    try {
+
+        sessionStorage.setItem(
+            SELECTED_COMPANY_KEY,
+            JSON.stringify({ uid, handle })
+        );
+
+    } catch {
+        /* Sem storage: a escolha vale só até recarregar. */
+    }
+
+};
+
+const clearSelectedCompany = () => {
+
+    try {
+
+        sessionStorage.removeItem(SELECTED_COMPANY_KEY);
+
+    } catch {
+        /* Nada a limpar. */
+    }
+
+};
+
 export const UserCompanyProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [company, setCompany] = useState(null);
@@ -95,6 +156,17 @@ export const UserCompanyProvider = ({ children }) => {
     const [loadingMembers, setLoadingMembers] = useState(true);
 
     const [companyHandle, setCompanyHandle] = useState(null);
+
+    /*
+     * Todas as empresas em que a pessoa é membro:
+     * [{ handle, name, role, roleLabel }].
+     *
+     * Com mais de uma, o painel só abre depois de ela
+     * escolher qual quer administrar (needsCompanySelection).
+     */
+
+    const [companies, setCompanies] = useState([]);
+    const [needsCompanySelection, setNeedsCompanySelection] = useState(false);
 
     /*
      * Campos leves do nó da empresa.
@@ -116,20 +188,17 @@ export const UserCompanyProvider = ({ children }) => {
 
     /*
      * ========================================================
-     * BUSCA LARGA (SOMENTE CONTAS ANTIGAS)
+     * BUSCA LARGA (SOMENTE CONTAS SEM ÍNDICE)
      * ========================================================
      *
-     * Usada apenas quando users/{uid}/companyHandle não existe.
-     *
-     * Percorre os handles obtidos com consulta rasa e lê
-     * somente companys/{handle}/members/{uid}, nunca o nó
-     * "companys" inteiro.
+     * Usada apenas quando users/{uid}/companies ainda não
+     * existe. Devolve os handles candidatos obtidos com
+     * consulta rasa — nunca o nó "companys" inteiro. Quem
+     * chama confere a associação de cada um.
      * ========================================================
      */
 
-    const findCompanyHandleByMembership = async (currentUser) => {
-
-        const db = getDatabase();
+    const listAllCompanyHandles = async (currentUser) => {
 
         let handles = await fetchShallowKeys(
             "companys",
@@ -146,109 +215,127 @@ export const UserCompanyProvider = ({ children }) => {
 
         }
 
-        for (const handle of handles) {
-
-            const memberSnapshot = await get(
-                ref(
-                    db,
-                    `companys/${handle}/members/${currentUser.uid}`
-                )
-            );
-
-            if (memberSnapshot.exists()) {
-
-                return handle;
-
-            }
-
-        }
-
-        return null;
+        return handles;
 
     };
 
     /*
      * ========================================================
-     * DESCOBRIR O HANDLE
+     * DESCOBRIR AS EMPRESAS DA PESSOA
      * ========================================================
      *
-     * Nunca lê o nó da empresa inteiro: só confere a
-     * associação em companys/{handle}/members/{uid}.
+     * Candidatos: o índice users/{uid}/companies somado ao
+     * users/{uid}/companyHandle. O companyHandle entra porque
+     * convite, criação de empresa e aprovação de pedido
+     * gravam só ele — assim uma empresa nova aparece mesmo
+     * com um índice antigo.
+     *
+     * Cada candidato é conferido em
+     * companys/{handle}/members/{uid}; quem saiu da empresa
+     * some da lista. O índice é regravado quando muda, para
+     * a próxima sessão já começar certa.
      * ========================================================
      */
 
-    const resolveCompanyHandle = async (currentUser) => {
+    const resolveMemberships = async (currentUser) => {
 
         const db = getDatabase();
 
+        const userPath = `users/${currentUser.uid}`;
+
+        const [indexSnapshot, handleSnapshot] = await Promise.all([
+            get(ref(db, `${userPath}/companies`)),
+            get(ref(db, `${userPath}/companyHandle`))
+        ]);
+
+        const indexed =
+            indexSnapshot.exists()
+                ? Object.keys(indexSnapshot.val() || {})
+                : null;
+
+        let candidates = [
+            ...(indexed || []),
+            ...(handleSnapshot.exists() ? [handleSnapshot.val()] : [])
+        ];
+
         /*
-         * CAMINHO RÁPIDO: o handle já está no usuário.
+         * Conta sem índice: busca larga uma única vez.
          */
 
-        const handleSnapshot = await get(
-            ref(
-                db,
-                `users/${currentUser.uid}/companyHandle`
-            )
+        if (indexed === null) {
+
+            candidates = [
+                ...candidates,
+                ...await listAllCompanyHandles(currentUser)
+            ];
+
+        }
+
+        candidates = [...new Set(candidates.filter(Boolean))];
+
+        const checked = await Promise.all(
+            candidates.map(async (handle) => {
+
+                const [memberSnapshot, nameSnapshot] = await Promise.all([
+                    get(ref(db, `companys/${handle}/members/${currentUser.uid}`)),
+                    get(ref(db, `companys/${handle}/name`))
+                ]);
+
+                if (!memberSnapshot.exists()) return null;
+
+                const role = memberSnapshot.val()?.role || null;
+
+                return {
+                    handle,
+                    name: nameSnapshot.val() || handle,
+                    role,
+                    roleLabel:
+                        role === "master"
+                            ? "Administrador"
+                            : "Profissional"
+                };
+
+            })
         );
 
-        if (handleSnapshot.exists()) {
+        const memberships = checked
+            .filter(Boolean)
+            .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 
-            const handle = handleSnapshot.val();
+        /*
+         * Mantém o índice em dia. Falhar aqui não impede o
+         * login: na próxima sessão a conferência roda de novo.
+         */
 
-            const memberSnapshot = await get(
-                ref(
-                    db,
-                    `companys/${handle}/members/${currentUser.uid}`
-                )
-            );
+        const nextIndex = memberships.map(m => m.handle).sort();
 
-            /*
-             * Se o usuário não é mais membro, o handle está
-             * desatualizado e caímos na busca larga.
-             */
+        const indexChanged =
+            indexed === null ||
+            nextIndex.join(",") !== [...indexed].sort().join(",");
 
-            if (memberSnapshot.exists()) {
+        if (indexChanged) {
 
-                return handle;
+            try {
+
+                await set(
+                    ref(db, `${userPath}/companies`),
+                    nextIndex.length
+                        ? Object.fromEntries(nextIndex.map(h => [h, true]))
+                        : null
+                );
+
+            } catch (error) {
+
+                console.warn(
+                    "Não foi possível gravar o índice de empresas do usuário:",
+                    error
+                );
 
             }
 
         }
 
-        /*
-         * BUSCA LARGA (SOMENTE CONTAS ANTIGAS)
-         */
-
-        const foundHandle =
-            await findCompanyHandleByMembership(currentUser);
-
-        if (!foundHandle) return null;
-
-        /*
-         * Grava o handle no usuário para que as próximas
-         * sessões usem o caminho rápido.
-         */
-
-        try {
-
-            await update(
-                ref(db, `users/${currentUser.uid}`),
-                {
-                    companyHandle: foundHandle
-                }
-            );
-
-        } catch (error) {
-
-            console.warn(
-                "Não foi possível gravar o companyHandle do usuário:",
-                error
-            );
-
-        }
-
-        return foundHandle;
+        return memberships;
 
     };
 
@@ -265,19 +352,9 @@ export const UserCompanyProvider = ({ children }) => {
      * ========================================================
      */
 
-    const loadCompany = async (currentUser) => {
+    const loadCompanyData = async (currentUser, handle) => {
 
         const db = getDatabase();
-
-        const handle = await resolveCompanyHandle(currentUser);
-
-        if (!handle) {
-
-            clearCompany();
-
-            return;
-
-        }
 
         const keys = await fetchShallowKeys(
             `companys/${handle}`,
@@ -357,12 +434,146 @@ export const UserCompanyProvider = ({ children }) => {
 
     };
 
+    /*
+     * ========================================================
+     * QUAL EMPRESA ABRIR
+     * ========================================================
+     *
+     * Uma empresa só: abre direto.
+     *
+     * Mais de uma: abre a que a pessoa escolheu nesta sessão
+     * do navegador. Sem escolha (login novo), o painel fica
+     * parado na tela de seleção.
+     * ========================================================
+     */
+
+    const loadCompany = async (currentUser) => {
+
+        const memberships = await resolveMemberships(currentUser);
+
+        setCompanies(memberships);
+
+        let handle = null;
+
+        if (memberships.length === 1) {
+
+            handle = memberships[0].handle;
+
+        } else if (memberships.length > 1) {
+
+            const chosen = readSelectedCompany(currentUser.uid);
+
+            if (memberships.some(m => m.handle === chosen)) {
+
+                handle = chosen;
+
+            }
+
+        }
+
+        setNeedsCompanySelection(
+            memberships.length > 1 && !handle
+        );
+
+        if (!handle) {
+
+            clearCompany();
+
+            return;
+
+        }
+
+        await loadCompanyData(currentUser, handle);
+
+    };
+
     const refreshCompany = async () => {
         const auth = getAuth();
 
         if (!auth.currentUser) return;
 
         await loadCompany(auth.currentUser);
+    };
+
+    /*
+     * ========================================================
+     * TROCAR DE EMPRESA
+     * ========================================================
+     *
+     * Guarda a escolha na sessão, aponta
+     * users/{uid}/companyHandle para ela (é a "empresa
+     * atual" que o resto do app lê) e recarrega os dados.
+     *
+     * `loading` volta a true durante a troca: o painel
+     * desmonta e cada aba relê pedidos e produtos da nova
+     * empresa do zero, sem misturar com a anterior.
+     * ========================================================
+     */
+
+    const selectCompany = async (handle) => {
+
+        const currentUser = getAuth().currentUser;
+
+        if (
+            !currentUser ||
+            !companies.some(m => m.handle === handle)
+        ) {
+            return;
+        }
+
+        writeSelectedCompany(currentUser.uid, handle);
+
+        if (handle === companyHandle) {
+
+            setNeedsCompanySelection(false);
+
+            return;
+
+        }
+
+        setLoading(true);
+
+        clearCompany();
+
+        setNeedsCompanySelection(false);
+
+        try {
+
+            await update(
+                ref(getDatabase(), `users/${currentUser.uid}`),
+                { companyHandle: handle }
+            );
+
+        } catch (error) {
+
+            console.warn(
+                "Não foi possível gravar a empresa atual do usuário:",
+                error
+            );
+
+        }
+
+        try {
+
+            await loadCompanyData(currentUser, handle);
+
+        } catch (error) {
+
+            console.error(
+                "Erro ao carregar a empresa selecionada:",
+                error
+            );
+
+            clearCompany();
+
+            setNeedsCompanySelection(true);
+
+        } finally {
+
+            setLoading(false);
+
+        }
+
     };
 
     useEffect(() => {
@@ -376,14 +587,35 @@ export const UserCompanyProvider = ({ children }) => {
 
                 clearCompany();
 
+                setCompanies([]);
+                setNeedsCompanySelection(false);
+
+                /* O próximo login começa pela tela de seleção. */
+                clearSelectedCompany();
+
                 setLoading(false);
 
                 return;
             }
 
+            setLoading(true);
+
             setUser(currentUser);
 
-            await loadCompany(currentUser);
+            try {
+
+                await loadCompany(currentUser);
+
+            } catch (error) {
+
+                console.error(
+                    "Erro ao carregar as empresas do usuário:",
+                    error
+                );
+
+                clearCompany();
+
+            }
 
             setLoading(false);
         });
@@ -568,6 +800,8 @@ export const UserCompanyProvider = ({ children }) => {
 
         const db = getDatabase();
 
+        let cancelled = false;
+
         const membersRef = ref(
             db,
             `companys/${companyHandle}/members`
@@ -608,6 +842,10 @@ export const UserCompanyProvider = ({ children }) => {
 
                 );
 
+                /* Trocou de empresa enquanto os perfis
+                   carregavam: descarta a equipe antiga. */
+                if (cancelled) return;
+
                 setMembers(
                     loadedMembers.filter(Boolean)
                 );
@@ -617,7 +855,10 @@ export const UserCompanyProvider = ({ children }) => {
             }
         );
 
-        return () => unsubscribe();
+        return () => {
+            cancelled = true;
+            unsubscribe();
+        };
 
     }, [companyHandle]);
 
@@ -630,7 +871,10 @@ export const UserCompanyProvider = ({ children }) => {
                 members,
                 loading,
                 loadingMembers,
-                refreshCompany
+                refreshCompany,
+                companies,
+                needsCompanySelection,
+                selectCompany
             }}
         >
             {children}

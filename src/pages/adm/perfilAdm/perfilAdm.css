@@ -2234,6 +2234,17 @@ select {
     font-size: .85rem;
 }
 
+.payment-subscription-check {
+    padding: .85rem 1rem;
+    font-size: .85rem;
+    line-height: 1.45;
+    border-top: 1px solid rgba(128, 128, 128, .25);
+}
+
+.payment-subscription-check p {
+    margin: 0;
+}
+
 /* ================= CATEGORIAS ================= */
 
 .company-categories {
@@ -2918,4 +2929,72 @@ select {
         padding-right: .1rem;
     }
 
+}
+/* =========================================================
+   CARTÃO DO PLANO DA EMPRESA (perfil do administrador)
+   Linguagem Markfy: azul da marca, pílula, tokens do tema.
+========================================================= */
+
+.adm-perfil-plan {
+    --plan: var(--mkf-ui-primary, #092af3);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 14px 0;
+    padding: 16px;
+    background: linear-gradient(125deg, color-mix(in srgb, var(--plan) 16%, var(--mkf-ui-surface, #fff)), var(--mkf-ui-surface, #fff) 70%);
+    border: 1px solid color-mix(in srgb, var(--plan) 38%, transparent);
+    border-radius: 24px;
+    animation: adm-plan-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.adm-perfil-plan.is-inactive {
+    --plan: var(--mkf-ui-primary, #092af3);
+    border-style: dashed;
+}
+
+.adm-perfil-plan__orb {
+    flex: none;
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    font-size: 24px;
+    color: #fff;
+    background: var(--plan);
+    border-radius: 16px;
+    box-shadow: 0 10px 26px color-mix(in srgb, var(--plan) 45%, transparent);
+}
+
+.adm-perfil-plan__text { flex: 1; min-width: 0; }
+.adm-perfil-plan__text small { display: block; font-size: 11px; font-weight: 600; color: var(--mkf-text-tertiary, #858891); }
+.adm-perfil-plan__text h3 { margin: 0; font-size: 17px; font-weight: 800; letter-spacing: -0.03em; color: var(--mkf-text-primary, #17181c); }
+.adm-perfil-plan__text p { margin: 2px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--mkf-text-secondary, #5f626b); }
+
+.adm-perfil-plan__btn {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 40px;
+    padding: 0 16px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--plan);
+    border: 0;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s;
+}
+
+.adm-perfil-plan__btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px color-mix(in srgb, var(--plan) 45%, transparent); }
+
+@keyframes adm-plan-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 420px) {
+    .adm-perfil-plan { flex-wrap: wrap; }
+    .adm-perfil-plan__btn { width: 100%; justify-content: center; }
 }

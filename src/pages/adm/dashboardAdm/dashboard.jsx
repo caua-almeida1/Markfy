@@ -49,6 +49,7 @@ import {
 
 import { useCompanyLogo } from "../../../firebase/companyLogo";
 import Modal from "../../../components/modal/Modal";
+import { useLicense } from "../../../plans/LicenseContext";
 
 import {
     getSubscriptionSummary,
@@ -67,7 +68,8 @@ import useLastValue from "../../../hooks/useLastValue";
 
 const Dashboard = ({
     activeTab,
-    setActiveTab
+    setActiveTab,
+    onSwitchCompany
 }) => {
 
     /* =====================================================
@@ -247,9 +249,13 @@ const Dashboard = ({
         company
     } = useUserCompany();
 
+    const license = useLicense();
+
     /* A logo vem do Storage, via hook compartilhado
        (companys/{handle}/logo.png). */
     const companyLogo = useCompanyLogo(company?.handle);
+
+    const CompanyBlock = onSwitchCompany ? "button" : "div";
 
 
     /* =====================================================
@@ -1226,36 +1232,30 @@ const Dashboard = ({
            EMPRESAS
         =============================== */
 
-        const companiesRef =
-            ref(
-                db,
-                "companys"
+        /* Só a empresa escolhida no painel. Antes o
+           listener ficava no nó "companys" inteiro e
+           misturava os pedidos de todas as empresas da
+           pessoa — além de baixar o banco todo. */
+
+        const handle =
+            company?.handle;
+
+
+        if (!handle) {
+
+            setSaldoEstimado(
+                "R$ 0,00"
             );
 
+            setOrders([]);
 
-        const unsubscribe =
-            onValue(
-                companiesRef,
-                (snapshot) => {
+            return;
 
-                    if (
-                        !snapshot.exists()
-                    ) {
-
-                        setSaldoEstimado(
-                            "R$ 0,00"
-                        );
-
-                        setOrders([]);
-
-                        return;
-
-                    }
+        }
 
 
-                    const companiesData =
-                        snapshot.val();
-
+        const processCompanies =
+                (companiesData) => {
 
                     let totalValue = 0;
 
@@ -1597,29 +1597,91 @@ const Dashboard = ({
 
                     );
 
-                },
+                };
 
-                error => {
 
-                    console.error(
-                        "Erro ao ouvir empresas:",
-                        error
-                    );
+        const handleListenError =
+            error => {
 
-                    setSaldoEstimado(
-                        "R$ 0,00"
-                    );
+                console.error(
+                    "Erro ao ouvir a empresa:",
+                    error
+                );
 
-                    setOrders([]);
+                setSaldoEstimado(
+                    "R$ 0,00"
+                );
 
+                setOrders([]);
+
+            };
+
+
+        let latestSchedules = null;
+        let latestProducts = null;
+
+
+        const rebuild = () => {
+
+            /* Espera os dois nós chegarem para não
+               montar pedidos sem o produto. */
+            if (
+                latestSchedules === null ||
+                latestProducts === null
+            ) {
+                return;
+            }
+
+            processCompanies({
+                [handle]: {
+                    name: company?.name || "",
+                    schedules: latestSchedules,
+                    products: latestProducts
                 }
+            });
+
+        };
+
+
+        const unsubscribeSchedules =
+            onValue(
+                ref(db, `companys/${handle}/schedules`),
+                snapshot => {
+
+                    latestSchedules =
+                        snapshot.val() || {};
+
+                    rebuild();
+
+                },
+                handleListenError
             );
 
 
-        return () =>
-            unsubscribe();
+        const unsubscribeProducts =
+            onValue(
+                ref(db, `companys/${handle}/products`),
+                snapshot => {
 
-    }, []);
+                    latestProducts =
+                        snapshot.val() || {};
+
+                    rebuild();
+
+                },
+                handleListenError
+            );
+
+
+        return () => {
+
+            unsubscribeSchedules();
+            unsubscribeProducts();
+
+        };
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [company?.handle]);
 
 
     /* =====================================================
@@ -1629,73 +1691,36 @@ const Dashboard = ({
     const handleCompleteOrder =
         async order => {
 
-            const db =
-                getDatabase();
+            /* O pedido já sabe de qual empresa é; antes a
+               função baixava todas as empresas para achá-lo. */
+            const handle =
+                order?.companyHandle ||
+                company?.handle;
 
-            const companyRef =
+
+            if (!handle || !order?.id) {
+                return;
+            }
+
+
+            await update(
+
                 ref(
-                    db,
-                    "companys"
-                );
+                    getDatabase(),
+                    `companys/${handle}/schedules/${order.id}`
+                ),
 
-            const snapshot =
-                await get(
-                    companyRef
-                );
-
-
-            if (
-                snapshot.exists()
-            ) {
-
-                const companies =
-                    snapshot.val();
-
-
-                for (
-                    const companyKey
-                    in companies
-                ) {
-
-                    const schedules =
-                        companies[
-                            companyKey
-                        ].schedules ||
-                        {};
-
-
-                    if (
-                        schedules[
-                        order.id
-                        ]
-                    ) {
-
-                        await update(
-
-                            ref(
-                                db,
-                                `companys/${companyKey}/schedules/${order.id}`
-                            ),
-
-                            {
-                                status:
-                                    "completed"
-                            }
-
-                        );
-
-
-                        setSelectedOrder(
-                            null
-                        );
-
-                        return;
-
-                    }
-
+                {
+                    status:
+                        "completed"
                 }
 
-            }
+            );
+
+
+            setSelectedOrder(
+                null
+            );
 
         };
 
@@ -1707,73 +1732,36 @@ const Dashboard = ({
     const handleCancelOrder =
         async order => {
 
-            const db =
-                getDatabase();
+            /* O pedido já sabe de qual empresa é; antes a
+               função baixava todas as empresas para achá-lo. */
+            const handle =
+                order?.companyHandle ||
+                company?.handle;
 
-            const companyRef =
+
+            if (!handle || !order?.id) {
+                return;
+            }
+
+
+            await update(
+
                 ref(
-                    db,
-                    "companys"
-                );
+                    getDatabase(),
+                    `companys/${handle}/schedules/${order.id}`
+                ),
 
-            const snapshot =
-                await get(
-                    companyRef
-                );
-
-
-            if (
-                snapshot.exists()
-            ) {
-
-                const companies =
-                    snapshot.val();
-
-
-                for (
-                    const companyKey
-                    in companies
-                ) {
-
-                    const schedules =
-                        companies[
-                            companyKey
-                        ].schedules ||
-                        {};
-
-
-                    if (
-                        schedules[
-                        order.id
-                        ]
-                    ) {
-
-                        await update(
-
-                            ref(
-                                db,
-                                `companys/${companyKey}/schedules/${order.id}`
-                            ),
-
-                            {
-                                status:
-                                    "cancelados"
-                            }
-
-                        );
-
-
-                        setSelectedOrder(
-                            null
-                        );
-
-                        return;
-
-                    }
-
+                {
+                    status:
+                        "cancelados"
                 }
 
-            }
+            );
+
+
+            setSelectedOrder(
+                null
+            );
 
         };
 
@@ -1786,6 +1774,21 @@ const Dashboard = ({
         async e => {
 
             e.preventDefault();
+
+
+            /* Limite de equipe do plano da empresa. */
+            const memberLimit = license.limit("maxMembers");
+
+            if (members.length >= memberLimit) {
+
+                alert(
+                    `O plano atual da empresa permite até ${memberLimit} pessoa(s) na equipe. ` +
+                    "Para convidar mais gente, o administrador principal precisa mudar de plano em Perfil → Planos e Assinaturas."
+                );
+
+                return;
+
+            }
 
 
             if (
@@ -1831,61 +1834,24 @@ const Dashboard = ({
                     auth.currentUser.uid;
 
 
-                const companiesSnapshot =
-                    await get(
-                        ref(
-                            db,
-                            "companys"
-                        )
+                /* O convite é da empresa aberta no painel,
+                   não da primeira empresa em que a pessoa
+                   aparece como membro. */
+
+                const companyName =
+                    company?.name ||
+                    "";
+
+                const companyHandle =
+                    company?.handle ||
+                    "";
+
+
+                if (!companyHandle) {
+
+                    throw new Error(
+                        "Nenhuma empresa selecionada."
                     );
-
-
-                let companyName =
-                    "";
-
-                let companyHandle =
-                    "";
-
-
-                if (
-                    companiesSnapshot.exists()
-                ) {
-
-                    const companies =
-                        companiesSnapshot.val();
-
-
-                    for (
-                        const companyKey
-                        in companies
-                    ) {
-
-                        const currentMembers =
-                            companies[
-                                companyKey
-                            ].members ||
-                            {};
-
-
-                        if (
-                            currentMembers[
-                            uid
-                            ]
-                        ) {
-
-                            companyName =
-                                companies[
-                                    companyKey
-                                ].name;
-
-                            companyHandle =
-                                companyKey;
-
-                            break;
-
-                        }
-
-                    }
 
                 }
 
@@ -2333,7 +2299,25 @@ const Dashboard = ({
         COMPANY
     ========================= */}
 
-                <div className="dashboard-topbar-company">
+                {/* Com mais de uma empresa, o bloco vira o botão
+                    de troca: é o primeiro lugar para onde se olha
+                    quando se quer saber "em qual empresa estou". */}
+
+                <CompanyBlock
+                    className={
+                        "dashboard-topbar-company" +
+                        (onSwitchCompany
+                            ? " dashboard-topbar-company--switch"
+                            : "")
+                    }
+                    {...(onSwitchCompany
+                        ? {
+                            type: "button",
+                            onClick: onSwitchCompany,
+                            "aria-label": `Empresa atual: ${company?.name || "Minha empresa"}. Trocar de empresa`
+                        }
+                        : {})}
+                >
 
                     <div className="dashboard-company-mark">
 
@@ -2363,12 +2347,21 @@ const Dashboard = ({
                         </strong>
 
                         <span>
-                            Painel administrativo
+                            {onSwitchCompany
+                                ? "Trocar empresa"
+                                : "Painel administrativo"}
                         </span>
 
                     </div>
 
-                </div>
+                    {onSwitchCompany && (
+                        <Icon
+                            icon="lucide:chevrons-up-down"
+                            className="dashboard-topbar-company-switch-icon"
+                        />
+                    )}
+
+                </CompanyBlock>
 
 
                 {/* =========================

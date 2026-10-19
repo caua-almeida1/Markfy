@@ -1,12 +1,9 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 
-const TabBar = ({
-  activeTab,
-  setActiveTab
-}) => {
-
-  const tabs = [
+/* Abas padrão da página de uma empresa. A central sem
+   empresa na URL passa as suas próprias via `tabs`. */
+export const DEFAULT_USER_TABS = [
     {
       id: "home",
       label: "Início",
@@ -32,7 +29,13 @@ const TabBar = ({
       label: "Perfil",
       icon: "tabler:user"
     }
-  ];
+];
+
+const TabBar = ({
+  activeTab,
+  setActiveTab,
+  tabs = DEFAULT_USER_TABS
+}) => {
 
 
   return (
@@ -54,7 +57,7 @@ const TabBar = ({
 
         <nav>
 
-          <ul>
+          <ul style={tabs.length < 5 ? { justifyContent: "center" } : undefined}>
 
             {tabs.map(
               (tab) => (
@@ -71,6 +74,7 @@ const TabBar = ({
                   <button
                     type="button"
                     className="nav-button"
+                    aria-current={activeTab === tab.id ? "page" : undefined}
                     onClick={() =>
                       setActiveTab(
                         tab.id

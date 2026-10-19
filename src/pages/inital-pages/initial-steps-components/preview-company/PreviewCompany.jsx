@@ -1,3 +1,4 @@
+import { useUserCompany } from "../../../../contexts/companyContext/UserCompanyContext";
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
@@ -142,12 +143,17 @@ function SuccessScreen({
         </div>
 
 
+        <p className="preview-company-success-plan">
+          Falta uma etapa: escolha o plano da sua empresa.
+          O painel é liberado assim que o plano estiver ativo.
+        </p>
+
         <button
           type="button"
           className="preview-company-success-btn"
           onClick={onClose}
         >
-          Ir Para sua Empresa
+          Escolher meu plano
         </button>
 
       </div>
@@ -173,6 +179,9 @@ export default function PreviewCompany() {
 
   const companyData =
     location.state;
+
+  const { refreshCompany } =
+    useUserCompany();
 
 
   const [loading, setLoading] =
@@ -831,11 +840,18 @@ export default function PreviewCompany() {
             companyData.handle
           }
 
-          onClose={() =>
-            navigate(
-              `/central-user/${companyData.handle}/catalog`
-            )
-          }
+          onClose={async () => {
+
+            /* A empresa é nova: o contexto precisa conhecê-la
+               antes da tela de planos abrir. */
+            try {
+              await refreshCompany();
+            } catch (err) {
+              console.warn("Não foi possível atualizar as empresas:", err);
+            }
+
+            navigate("/planos");
+          }}
 
         />
 

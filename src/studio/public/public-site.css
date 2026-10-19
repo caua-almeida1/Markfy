@@ -1,0 +1,56 @@
+.psite-state {
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 14px;
+    min-height: 100dvh;
+    padding: 24px;
+    text-align: center;
+    font-family: var(--mk-font);
+    background: var(--mkf-ui-background);
+    color: var(--mkf-text-primary);
+}
+
+.psite-state__logo {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+}
+
+.psite-state h1 {
+    margin: 0;
+    font-size: var(--mk-text-2xl);
+    letter-spacing: var(--mk-tracking-tight);
+}
+
+.psite-state p {
+    margin: 0;
+    max-width: 40ch;
+    color: var(--mkf-text-tertiary);
+}
+
+.psite-state__btn {
+    display: inline-flex;
+    align-items: center;
+    min-height: 46px;
+    margin-top: 8px;
+    padding: 0 20px;
+    border-radius: 12px;
+    background: var(--mkf-ui-primary);
+    color: #fff;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.psite-state__spinner {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2.5px solid var(--mkf-ui-gray-300);
+    border-top-color: var(--mkf-ui-primary);
+    animation: psiteSpin 0.8s linear infinite;
+}
+
+@keyframes psiteSpin {
+    to { transform: rotate(360deg); }
+}

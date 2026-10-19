@@ -1,0 +1,106 @@
+/* =========================================================
+   MARKFY — DESIGN SYSTEM DA REDE
+
+   As CORES continuam morando em src/index.css (é lá que
+   claro, escuro e "segue o sistema" já estão resolvidos).
+   Este arquivo completa o que faltava para Bookings, Home
+   e Studio falarem a mesma língua:
+
+     - tipografia (uma família só: Poppins, a que a Markfy
+       Bookings já usa no body);
+     - escala de espaçamento;
+     - raios por hierarquia;
+     - curvas e durações de movimento;
+     - foco visível e camadas (z-index).
+
+   Tudo com prefixo --mk-, para não colidir com os tokens
+   antigos (--mkf-*), que seguem valendo.
+========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap');
+
+:root {
+    /* ---------- TIPOGRAFIA ---------- */
+    --mk-font: "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    --mk-text-2xs: 0.6875rem;   /* 11 */
+    --mk-text-xs: 0.75rem;      /* 12 */
+    --mk-text-sm: 0.8125rem;    /* 13 */
+    --mk-text-md: 0.9375rem;    /* 15 */
+    --mk-text-lg: 1.0625rem;    /* 17 */
+    --mk-text-xl: 1.375rem;     /* 22 */
+    --mk-text-2xl: 1.75rem;     /* 28 */
+    --mk-text-3xl: 2.25rem;     /* 36 */
+    --mk-text-4xl: clamp(2.25rem, 1.6rem + 2.6vw, 3.5rem);
+    --mk-text-5xl: clamp(2.6rem, 1.8rem + 3.6vw, 4.5rem);
+
+    --mk-tracking-tight: -0.035em;
+    --mk-tracking-snug: -0.02em;
+
+    /* ---------- ESPAÇO (base 4) ---------- */
+    --mk-space-1: 4px;
+    --mk-space-2: 8px;
+    --mk-space-3: 12px;
+    --mk-space-4: 16px;
+    --mk-space-5: 20px;
+    --mk-space-6: 24px;
+    --mk-space-8: 32px;
+    --mk-space-10: 40px;
+    --mk-space-12: 48px;
+    --mk-space-16: 64px;
+    --mk-space-20: 80px;
+
+    /* ---------- RAIOS POR HIERARQUIA ----------
+       controle < peça < painel < palco. Raio único em tudo
+       achata a hierarquia. */
+    --mk-radius-xs: 8px;     /* chip, badge */
+    --mk-radius-sm: 12px;    /* input, botão */
+    --mk-radius-md: 18px;    /* bloco dentro de painel */
+    --mk-radius-lg: 26px;    /* painel */
+    --mk-radius-xl: 34px;    /* palco: hero, canvas */
+    --mk-radius-pill: 999px;
+
+    /* ---------- MOVIMENTO ---------- */
+    --mk-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --mk-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --mk-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    --mk-dur-1: 120ms;   /* hover, press */
+    --mk-dur-2: 200ms;   /* troca de estado */
+    --mk-dur-3: 320ms;   /* painel, sheet */
+    --mk-dur-4: 520ms;   /* transição de tela */
+
+    /* ---------- FOCO ---------- */
+    --mk-focus-ring: 0 0 0 3px color-mix(in srgb, var(--mkf-ui-primary) 38%, transparent);
+
+    /* ---------- CAMADAS ---------- */
+    --mk-z-sticky: 20;
+    --mk-z-nav: 60;
+    --mk-z-sheet: 900;
+    --mk-z-overlay: 1000;
+    --mk-z-toast: 1100;
+
+    /* ---------- LARGURAS ---------- */
+    --mk-width-content: 1180px;
+    --mk-width-wide: 1440px;
+    --mk-width-text: 640px;
+
+    /* ---------- APOIO ----------
+       Tons derivados que as telas novas usam. */
+    --mk-line: var(--mkf-ui-border);
+    --mk-line-strong: var(--mkf-ui-border-strong);
+    --mk-ink: var(--mkf-text-primary);
+    --mk-ink-2: var(--mkf-text-secondary);
+    --mk-ink-3: var(--mkf-text-tertiary);
+    --mk-paper: var(--mkf-ui-background);
+    --mk-surface: var(--mkf-ui-surface);
+    --mk-surface-2: var(--mkf-ui-surface-hover);
+    --mk-accent: var(--mkf-ui-primary);
+    --mk-accent-soft: var(--mkf-ui-primary-soft);
+}
+
+/* Telas novas não herdam o padding lateral do body
+   (ver index.css). Cada uma decide a própria margem. */
+body.mk-bleed {
+    padding: 0 !important;
+}

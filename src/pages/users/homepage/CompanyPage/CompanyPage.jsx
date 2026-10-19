@@ -9,9 +9,10 @@ import { useCompanyTheme } from "../../../../theme/useCompanyTheme";
 
 import Modal from "../../../../components/modal/Modal";
 
+import { PublicAccessGate } from "../../../../plans/publicAccess";
 import "./company-page.css";
 
-export default function CompanyPage() {
+function CompanyPageInner() {
   const { handle } = useParams();
   const navigate = useNavigate();
   const { currentUser, userLoggedIn } = useAuth(); // 🟢 dados do usuário autenticado
@@ -197,5 +198,17 @@ export default function CompanyPage() {
         </Modal>
       </div>
     </div>
+  );
+}
+
+
+export default function CompanyPage() {
+
+  const { handle } = useParams();
+
+  return (
+    <PublicAccessGate handle={handle}>
+      <CompanyPageInner />
+    </PublicAccessGate>
   );
 }

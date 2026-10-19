@@ -9,6 +9,7 @@ import {
 } from "firebase/database";
 
 import Toast from "../../../../../components/toast/Toast";
+import { useUserCompany } from "../../../../../contexts/companyContext/UserCompanyContext";
 
 import { getAuth } from "firebase/auth";
 
@@ -159,6 +160,10 @@ const AMENITIES = [
 
 const AmenitiesScreen = ({ user }) => {
 
+    /* A empresa aberta no painel manda: quem participa de
+       mais de uma edita as comodidades da selecionada. */
+    const { company: activeCompany } = useUserCompany();
+
     const [amenities, setAmenities] = useState({});
 
     const [initialAmenities, setInitialAmenities] = useState({});
@@ -211,6 +216,7 @@ const AmenitiesScreen = ({ user }) => {
                  */
 
                 const directHandle =
+                    activeCompany?.handle ||
                     user?.companyHandle ||
                     user?.company?.handle ||
                     user?.handle;
@@ -376,7 +382,7 @@ const AmenitiesScreen = ({ user }) => {
 
         loadCompany();
 
-    }, [user]);
+    }, [user, activeCompany?.handle]);
 
 
     /*

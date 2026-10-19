@@ -1,0 +1,566 @@
+/* =========================================================
+   PÁGINAS DO STUDIO — BLOCOS DE VENDA E PROCESSO
+
+   Como funciona, pacotes, vitrine de produtos, imóveis,
+   canais externos (iFood, Mercado Livre…) e rotas. Mesmas
+   variáveis --s-* de site.css.
+========================================================= */
+
+/* ---------- COMO FUNCIONA ---------- */
+
+.mks-steps {
+    display: grid;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mks-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.mks-step > div {
+    display: grid;
+    gap: 6px;
+}
+
+.mks-step__num {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--s-soft);
+    color: var(--s-accent);
+    font-family: var(--s-head);
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.mks-steps--row .mks-step {
+    flex-direction: column;
+    padding: 24px;
+    border: 1px solid var(--s-line);
+    border-radius: var(--s-radius);
+    background: var(--s-surface);
+}
+
+.mks-steps--timeline {
+    position: relative;
+    max-width: 760px;
+    gap: 28px;
+}
+
+.mks-steps--timeline::before {
+    content: "";
+    position: absolute;
+    top: 22px;
+    bottom: 22px;
+    left: 21px;
+    width: 2px;
+    background: linear-gradient(var(--s-accent), var(--s-line));
+}
+
+.mks-steps--timeline .mks-step__num {
+    position: relative;
+    background: var(--s-accent);
+    color: var(--s-on-accent);
+    box-shadow: 0 0 0 6px var(--s-bg);
+}
+
+@container site (min-width: 760px) {
+    .mks-steps--row {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+    }
+}
+
+/* ---------- PACOTES ---------- */
+
+.mks-packages {
+    display: grid;
+    gap: 18px;
+}
+
+.mks-package {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 28px;
+    border: 1px solid var(--s-line);
+    border-radius: calc(var(--s-radius) * 1.2);
+    background: var(--s-surface);
+}
+
+.mks-package header {
+    display: grid;
+    gap: 8px;
+}
+
+.mks-package__price {
+    font-family: var(--s-head);
+    font-size: calc(2rem * var(--s-head-scale));
+    font-weight: var(--s-head-weight);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mks-package ul {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    color: var(--s-muted);
+    font-size: 15px;
+}
+
+.mks-package li {
+    display: flex;
+    gap: 10px;
+}
+
+.mks-package li svg {
+    flex-shrink: 0;
+    margin-top: 3px;
+    color: var(--s-accent);
+}
+
+.mks-package .mks-btn {
+    margin-top: auto;
+}
+
+.mks-package.is-highlight {
+    border-color: var(--s-accent);
+    box-shadow: 0 0 0 1px var(--s-accent), 0 24px 50px color-mix(in srgb, var(--s-accent) 18%, transparent);
+}
+
+@container site (min-width: 760px) {
+    .mks-packages--cards {
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        align-items: stretch;
+    }
+
+    .mks-packages--cards .mks-package.is-highlight {
+        transform: translateY(-10px);
+    }
+
+    .mks-packages--stack {
+        max-width: 760px;
+    }
+
+    .mks-packages--stack .mks-package {
+        display: grid;
+        grid-template-columns: 1fr 1.2fr auto;
+        align-items: center;
+    }
+
+    .mks-packages--stack .mks-package .mks-btn {
+        margin-top: 0;
+    }
+}
+
+/* ---------- ETIQUETAS ---------- */
+
+.mks-tag {
+    display: inline-flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--s-surface) 92%, transparent);
+    color: var(--s-text);
+    font-size: 12px;
+    font-weight: 700;
+    backdrop-filter: blur(8px);
+}
+
+.mks-tag--accent,
+.mks-tag--solid {
+    background: var(--s-accent);
+    color: var(--s-on-accent);
+}
+
+.mks-tag--sold {
+    background: var(--s-text);
+    color: var(--s-bg);
+}
+
+/* ---------- VITRINE DE PRODUTOS ---------- */
+
+.mks-shop {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.mks-product {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.mks-product__media {
+    position: relative;
+    aspect-ratio: 4 / 5;
+    overflow: hidden;
+    border-radius: var(--s-radius);
+    background: var(--s-soft);
+}
+
+.mks-product__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mks-product:hover .mks-product__media img {
+    transform: scale(1.05);
+}
+
+.mks-product__tags {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.mks-product__body {
+    display: grid;
+    gap: 6px;
+    padding: 12px 2px 0;
+}
+
+.mks-product__name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.mks-product__foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 4px;
+}
+
+.mks-product__price {
+    display: grid;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+}
+
+.mks-product__price s {
+    color: var(--s-muted);
+    font-size: 13px;
+}
+
+.mks-product__price strong {
+    font-size: 18px;
+}
+
+.mks-product.is-sold .mks-product__media img {
+    filter: grayscale(1);
+    opacity: 0.55;
+}
+
+.mks-product.is-sold .mks-product__price strong {
+    color: var(--s-muted);
+    text-decoration: line-through;
+}
+
+@container site (min-width: 760px) {
+    .mks-shop {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 24px;
+    }
+}
+
+@container site (min-width: 1040px) {
+    .mks-shop {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+/* Cardápio (lista) */
+
+.mks-menu--catalog .mks-menu__thumb {
+    align-self: center;
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    border-radius: calc(var(--s-radius) * 0.6);
+    object-fit: cover;
+}
+
+.mks-menu__item.is-sold {
+    opacity: 0.55;
+}
+
+/* ---------- IMÓVEIS ---------- */
+
+.mks-filter {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: -12px 0 28px;
+}
+
+.mks-filter button {
+    min-height: 40px;
+    padding: 0 16px;
+    border: 1px solid var(--s-line-strong);
+    border-radius: 999px;
+    background: transparent;
+    color: var(--s-text);
+    font-family: var(--s-body);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.mks-filter button[aria-pressed="true"] {
+    border-color: var(--s-text);
+    background: var(--s-text);
+    color: var(--s-bg);
+}
+
+.mks-homes {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+    gap: 22px;
+}
+
+.mks-home {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--s-line);
+    border-radius: var(--s-radius);
+    background: var(--s-surface);
+}
+
+.mks-home__media {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: var(--s-soft);
+}
+
+.mks-home__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.mks-home__media .mks-tag {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+}
+
+.mks-home__body {
+    display: grid;
+    gap: 8px;
+    flex: 1;
+    align-content: start;
+    padding: 20px;
+}
+
+.mks-home__price {
+    font-family: var(--s-head);
+    font-size: calc(1.6rem * var(--s-head-scale));
+    font-weight: var(--s-head-weight);
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.mks-home__place {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--s-muted);
+    font-size: 14px;
+}
+
+.mks-home__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin: 6px 0 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--s-line);
+    list-style: none;
+    font-size: 14px;
+}
+
+.mks-home__facts li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mks-home__facts svg {
+    color: var(--s-accent);
+    font-size: 18px;
+}
+
+.mks-home__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+@container site (min-width: 860px) {
+    .mks-homes--wide {
+        grid-template-columns: 1fr;
+    }
+
+    .mks-homes--wide .mks-home {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+    }
+
+    .mks-homes--wide .mks-home__media {
+        aspect-ratio: auto;
+        min-height: 320px;
+    }
+
+    .mks-homes--wide .mks-home__body {
+        align-content: center;
+        padding: 36px;
+    }
+}
+
+/* ---------- PEÇA TAMBÉM POR ---------- */
+
+.mks-section--channels:has(.mks-channels-band) {
+    padding: 0;
+}
+
+.mks-channels-band {
+    padding: clamp(40px, 6cqi, 72px) 0;
+    background: var(--s-soft);
+}
+
+.mks-channels__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+    gap: 12px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mks-channels--buttons .mks-channels__list {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.mks-channel {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 60px;
+    padding: 10px 16px 10px 10px;
+    border-radius: var(--s-radius);
+    background: var(--ch);
+    color: var(--ch-ink) !important;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+}
+
+.mks-channel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px color-mix(in srgb, var(--ch) 40%, transparent);
+}
+
+.mks-channel__icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    border-radius: calc(var(--s-radius) * 0.7);
+    background: color-mix(in srgb, var(--ch-ink) 16%, transparent);
+    font-size: 22px;
+}
+
+.mks-channel__label {
+    flex: 1;
+}
+
+.mks-channel > svg:last-child {
+    opacity: 0.7;
+}
+
+/* ---------- ROTAS ---------- */
+
+.mks-routes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.mks-route {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    padding: 0 14px;
+    border: 1px solid var(--s-line-strong);
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: border-color 0.2s ease;
+}
+
+.mks-route:hover {
+    border-color: var(--s-accent);
+}
+
+/* ---------- BANNER: FOTO EM ARCO ---------- */
+
+.mks-hero--arch {
+    background:
+        radial-gradient(50% 60% at 15% 40%, color-mix(in srgb, var(--s-accent) 12%, transparent), transparent 70%);
+}
+
+.mks-hero--arch .mks-hero__media {
+    position: relative;
+    order: -1;
+    width: min(100%, 420px);
+    aspect-ratio: 3 / 4;
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: 999px 999px calc(var(--s-radius) * 1.4) calc(var(--s-radius) * 1.4);
+    background: var(--s-soft);
+    box-shadow: 0 0 0 10px var(--s-surface), 0 0 0 11px var(--s-line);
+}
+
+.mks-hero--arch .mks-hero__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@container site (min-width: 860px) {
+    .mks-hero--arch .mks-hero__inner {
+        grid-template-columns: 0.85fr 1.15fr;
+        align-items: center;
+        gap: 80px;
+    }
+}

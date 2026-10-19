@@ -1,0 +1,979 @@
+/* =========================================================
+   MARKFY STUDIO — TELAS
+========================================================= */
+
+.std-hint {
+    margin: 0;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+    line-height: 1.6;
+}
+
+.std-section-title {
+    margin: 0;
+    font-size: var(--mk-text-lg);
+    font-weight: 700;
+    letter-spacing: var(--mk-tracking-snug);
+}
+
+.std-value {
+    margin: 0;
+    color: var(--mk-ink-2);
+    font-size: var(--mk-text-sm);
+    line-height: 1.6;
+}
+
+.std-big {
+    font-size: var(--mk-text-3xl);
+    font-weight: 700;
+    letter-spacing: var(--mk-tracking-tight);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+}
+
+.std-big small {
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-sm);
+    font-weight: 500;
+    letter-spacing: 0;
+}
+
+.std-fieldset {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+/* ---------- HERO DA VISÃO GERAL ---------- */
+
+.std-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 28px;
+    align-items: center;
+    padding: clamp(20px, 2.6vw, 32px);
+    border: 1px solid var(--mk-line);
+    border-radius: var(--mk-radius-xl);
+    background:
+        radial-gradient(70% 90% at 100% 0%, color-mix(in srgb, var(--mk-accent) 14%, transparent), transparent 70%),
+        var(--mk-surface);
+    overflow: hidden;
+}
+
+.std-hero__text {
+    display: grid;
+    gap: 12px;
+    justify-items: start;
+}
+
+.std-hero__text h2 {
+    margin: 0;
+    font-size: var(--mk-text-3xl);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: var(--mk-tracking-tight);
+}
+
+.std-hero__text > p {
+    margin: 0;
+    max-width: 46ch;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-sm);
+    line-height: 1.6;
+}
+
+.std-hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.std-hero__preview {
+    position: relative;
+    height: 280px;
+    overflow: hidden;
+    border-radius: 18px;
+    box-shadow: 0 0 0 1px var(--mk-line), 0 22px 50px rgba(15, 18, 30, 0.12);
+    transform: perspective(1200px) rotateY(-6deg) rotateX(2deg);
+    transform-origin: left center;
+    transition: transform var(--mk-dur-4) var(--mk-ease-out);
+}
+
+.std-hero:hover .std-hero__preview {
+    transform: perspective(1200px) rotateY(-2deg);
+}
+
+.std-hero__blank {
+    display: grid;
+    gap: 10px;
+    height: 100%;
+    padding: 24px;
+    background: var(--mkf-ui-background);
+}
+
+.std-hero__blank span {
+    border-radius: 12px;
+    background: var(--mk-surface-2);
+}
+
+.std-hero__blank span:first-child {
+    background: var(--mk-accent-soft);
+}
+
+.std-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 100%;
+    padding: 4px 4px 4px 12px;
+    border: 1px solid var(--mk-line);
+    border-radius: 12px;
+    background: var(--mkf-ui-background);
+    font-size: var(--mk-text-sm);
+}
+
+.std-link a,
+.std-link > span {
+    overflow: hidden;
+    color: var(--mk-ink);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.std-link a:hover {
+    color: var(--mk-accent);
+}
+
+.std-link > svg {
+    flex-shrink: 0;
+    color: var(--mk-ink-3);
+}
+
+.std-link--block > span {
+    flex: 1;
+}
+
+/* ---------- MINIATURA ---------- */
+
+.std-thumb {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+}
+
+.std-thumb__page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: top left;
+}
+
+/* ---------- MODELOS ---------- */
+
+.std-datasum {
+    display: grid;
+    gap: 10px;
+}
+
+.std-datasum p {
+    margin: 0;
+    color: var(--mk-ink-2);
+    font-size: var(--mk-text-sm);
+}
+
+.std-datasum ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.std-datasum li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--mk-surface-2);
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+    font-weight: 500;
+}
+
+.std-datasum li.is-ok {
+    background: var(--mkf-success-light);
+    color: var(--mkf-success-text);
+}
+
+.std-tpls {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+    gap: 18px;
+}
+
+.std-tpl {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--mk-line);
+    border-radius: var(--mk-radius-lg);
+    background: var(--mk-surface);
+    transition: border-color var(--mk-dur-2) ease, box-shadow var(--mk-dur-3) var(--mk-ease-out);
+}
+
+.std-tpl:hover {
+    border-color: var(--mk-line-strong);
+    box-shadow: var(--mkf-shadow-md);
+}
+
+.std-tpl__preview {
+    position: relative;
+    height: 230px;
+    padding: 0;
+    overflow: hidden;
+    border: 0;
+    border-bottom: 1px solid var(--mk-line);
+    background: var(--mk-surface-2);
+    cursor: zoom-in;
+}
+
+.std-tpl__preview .std-thumb {
+    transition: transform 1.6s var(--mk-ease-out);
+}
+
+/* Ao passar o mouse, a prévia "rola" um pouco: mostra que
+   há uma página inteira ali, não só um banner. */
+.std-tpl__preview:hover .std-thumb {
+    transform: translateY(-12%);
+}
+
+.std-tpl__zoom {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(17, 18, 22, 0.78);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity var(--mk-dur-2) ease, transform var(--mk-dur-2) ease;
+}
+
+.std-tpl__preview:hover .std-tpl__zoom,
+.std-tpl__preview:focus-visible .std-tpl__zoom {
+    opacity: 1;
+    transform: none;
+}
+
+.std-tpl__body {
+    display: grid;
+    flex: 1;
+    gap: 8px;
+    align-content: start;
+    padding: 18px;
+}
+
+.std-tpl__body > p {
+    margin: 0;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+    line-height: 1.6;
+}
+
+.std-tpl__body .mk-btn {
+    margin-top: 6px;
+}
+
+.std-tpl__title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+
+.std-tpl__title h3 {
+    margin: 0;
+    font-size: var(--mk-text-lg);
+    font-weight: 700;
+    letter-spacing: var(--mk-tracking-snug);
+}
+
+.std-tpl__body .std-tpl__aud {
+    color: var(--mk-ink-2);
+    font-weight: 600;
+}
+
+.std-tpl__meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-2xs);
+    font-weight: 600;
+}
+
+.std-swatches {
+    display: inline-flex;
+}
+
+.std-swatches i {
+    width: 16px;
+    height: 16px;
+    margin-left: -4px;
+    border: 2px solid var(--mk-surface);
+    border-radius: 50%;
+}
+
+.std-swatches i:first-child {
+    margin-left: 0;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.std-tpl-big {
+    margin: 0 auto;
+    overflow: hidden;
+    border-radius: 14px;
+    box-shadow: 0 0 0 1px var(--mk-line);
+}
+
+.std-tpl-big--desktop {
+    height: min(60vh, 520px);
+}
+
+.std-tpl-big--mobile {
+    width: 300px;
+    height: min(60vh, 560px);
+    border-radius: 24px;
+}
+
+.std-sitecard__preview {
+    height: 380px;
+}
+
+.std-facts {
+    display: grid;
+    gap: 12px;
+    margin: 0;
+}
+
+.std-facts > div {
+    display: grid;
+    gap: 2px;
+}
+
+.std-facts dt {
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-2xs);
+    font-weight: 600;
+}
+
+.std-facts dd {
+    margin: 0;
+    overflow: hidden;
+    font-size: var(--mk-text-sm);
+    font-weight: 500;
+    text-overflow: ellipsis;
+}
+
+.std-facts a {
+    color: var(--mk-accent);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* ---------- BLOCO EM LINHA ---------- */
+
+.std-inline {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.std-inline__text {
+    display: grid;
+    flex: 1;
+    gap: 2px;
+}
+
+.std-inline__text strong {
+    font-size: var(--mk-text-sm);
+}
+
+.std-inline__text span {
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+    line-height: 1.5;
+}
+
+.std-row__badges {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.std-row__icon {
+    font-size: var(--mk-text-sm);
+    font-weight: 700;
+}
+
+.std-row__icon.is-new {
+    background: var(--mk-accent);
+    color: var(--mkf-on-primary);
+}
+
+/* ---------- CONTATOS ---------- */
+
+.std-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.std-filter {
+    display: flex;
+    gap: 6px;
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+}
+
+.std-filter__count {
+    opacity: 0.6;
+    font-variant-numeric: tabular-nums;
+}
+
+.std-search {
+    flex: 0 1 300px;
+}
+
+.std-lead {
+    display: grid;
+    gap: 20px;
+}
+
+.std-lead__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.std-lead__msg {
+    display: grid;
+    gap: 6px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--mkf-ui-background);
+}
+
+.std-lead__msg span {
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-2xs);
+    font-weight: 600;
+}
+
+.std-lead__msg p {
+    margin: 0;
+    font-size: var(--mk-text-sm);
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+
+.std-lead .mk-segmented {
+    flex-wrap: wrap;
+}
+
+/* ---------- ANALYTICS ---------- */
+
+.std-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.std-kpi {
+    display: grid;
+    gap: 6px;
+    align-content: start;
+    padding: 18px;
+    border: 1.5px solid var(--mk-line);
+    border-radius: var(--mk-radius-md);
+    background: var(--mk-surface);
+    color: var(--mk-ink);
+    text-align: left;
+    cursor: pointer;
+    transition: border-color var(--mk-dur-2) ease, box-shadow var(--mk-dur-2) ease;
+}
+
+.std-kpi:hover {
+    border-color: var(--mk-line-strong);
+}
+
+.std-kpi.is-active {
+    border-color: var(--mk-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mk-accent) 12%, transparent);
+}
+
+.std-kpi__explain {
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-2xs);
+    line-height: 1.5;
+}
+
+.std-delta {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-2xs);
+    font-weight: 600;
+}
+
+.std-delta--up {
+    color: var(--mkf-success-text);
+}
+
+.std-delta--down {
+    color: var(--mkf-error-text);
+}
+
+.std-chart {
+    position: relative;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    padding-left: 34px;
+}
+
+.std-chart__grid {
+    position: absolute;
+    inset: 0 0 22px 0;
+    pointer-events: none;
+}
+
+.std-chart__grid span {
+    position: absolute;
+    left: 34px;
+    right: 0;
+    border-top: 1px solid var(--mk-line);
+}
+
+.std-chart__grid em {
+    position: absolute;
+    left: -34px;
+    top: -8px;
+    width: 28px;
+    color: var(--mk-ink-3);
+    font-size: 10px;
+    font-style: normal;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.std-chart__bars {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    height: 100%;
+}
+
+.std-chart__col {
+    position: relative;
+    display: flex;
+    flex: 1;
+    align-items: flex-end;
+    height: 100%;
+    outline: none;
+}
+
+.std-chart__col::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 4px;
+}
+
+.std-chart__col.is-hover::before,
+.std-chart__col:focus-visible::before {
+    background: color-mix(in srgb, var(--mk-ink) 6%, transparent);
+}
+
+.std-chart__bar {
+    position: relative;
+    width: 100%;
+    max-width: 36px;
+    margin: 0 auto;
+    border-radius: 4px 4px 0 0;
+    background: var(--mk-accent);
+    transform-origin: bottom;
+    animation: stdGrow 0.6s var(--mk-ease-out) backwards;
+}
+
+@keyframes stdGrow {
+    from {
+        transform: scaleY(0);
+    }
+}
+
+.std-chart__col.is-hover .std-chart__bar {
+    filter: brightness(1.12);
+}
+
+.std-chart__tip {
+    position: absolute;
+    top: 0;
+    z-index: 5;
+    display: grid;
+    gap: 2px;
+    min-width: 110px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: var(--mk-ink);
+    color: var(--mk-surface);
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateY(-105%);
+    box-shadow: var(--mkf-shadow-md);
+}
+
+.std-chart__tip strong {
+    font-size: 15px;
+}
+
+.std-chart__axis {
+    display: flex;
+    justify-content: space-between;
+    padding-top: 8px;
+    color: var(--mk-ink-3);
+    font-size: 10px;
+}
+
+.std-table-wrap {
+    max-height: 360px;
+    overflow: auto;
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+}
+
+.std-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--mk-text-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.std-table th,
+.std-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--mk-line);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.std-table th:first-child {
+    text-align: left;
+}
+
+.std-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--mk-surface);
+    color: var(--mk-ink-3);
+    font-weight: 600;
+}
+
+.std-table tbody th {
+    font-weight: 500;
+}
+
+.std-explain h2 {
+    margin: 0;
+    font-size: var(--mk-text-md);
+}
+
+.std-explain ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding-left: 18px;
+    color: var(--mk-ink-2);
+    font-size: var(--mk-text-sm);
+    line-height: 1.6;
+}
+
+/* ---------- MINHA EMPRESA ---------- */
+
+.std-card {
+    scroll-margin-top: 80px;
+}
+
+.std-card__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--mk-line);
+}
+
+.std-card__footer--start {
+    justify-content: flex-start;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.std-logo {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.std-logo__img {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 88px;
+    height: 88px;
+    overflow: hidden;
+    border-radius: 22px;
+    background: var(--mk-surface-2);
+    color: var(--mk-ink-3);
+    font-size: 28px;
+}
+
+.std-logo__img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.std-logo__actions {
+    display: grid;
+    gap: 8px;
+    justify-items: start;
+}
+
+.std-socials {
+    display: grid;
+    gap: 10px;
+}
+
+.std-social {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.std-social > svg {
+    flex-shrink: 0;
+    font-size: 22px;
+    color: var(--mk-ink-2);
+}
+
+.std-social__base {
+    flex-shrink: 0;
+    width: 132px;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+}
+
+.std-hours {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--mk-text-sm);
+}
+
+.std-hours li {
+    display: flex;
+    justify-content: space-between;
+    color: var(--mk-ink-2);
+    font-variant-numeric: tabular-nums;
+}
+
+.std-perms {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.std-perms > div {
+    display: grid;
+    gap: 4px;
+    padding: 14px;
+    border-radius: 14px;
+    background: var(--mkf-ui-background);
+}
+
+.std-perms strong {
+    font-size: var(--mk-text-sm);
+}
+
+.std-perms span {
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+    line-height: 1.5;
+}
+
+/* ---------- CONFIGURAÇÕES ---------- */
+
+.std-serp {
+    display: grid;
+    gap: 4px;
+    padding: 16px;
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+    background: #fff;
+    font-family: Arial, sans-serif;
+}
+
+.std-serp__url {
+    color: #4d5156;
+    font-size: 12px;
+}
+
+.std-serp__title {
+    color: #1a0dab;
+    font-size: 18px;
+    line-height: 1.3;
+}
+
+.std-serp__desc {
+    color: #4d5156;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.std-share {
+    display: grid;
+    overflow: hidden;
+    border: 1px solid var(--mk-line);
+    border-radius: 14px;
+    background: var(--mk-surface);
+}
+
+.std-share__img {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1.91 / 1;
+    background: var(--mk-surface-2);
+    color: var(--mk-ink-3);
+    font-size: 30px;
+}
+
+.std-share__img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.std-share__text {
+    display: grid;
+    gap: 2px;
+    padding: 10px 14px;
+}
+
+.std-share__text strong {
+    font-size: var(--mk-text-sm);
+}
+
+.std-share__text span {
+    display: -webkit-box;
+    overflow: hidden;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+
+.std-danger {
+    border-color: color-mix(in srgb, var(--mkf-error) 30%, var(--mk-line));
+}
+
+/* ---------- RESPONSIVO ---------- */
+
+@media (max-width: 1100px) {
+    .std-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 860px) {
+    .std-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .std-hero__preview {
+        height: 200px;
+        transform: none;
+    }
+
+    .std-only-wide {
+        display: none;
+    }
+
+    .std-perms {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .std-inline {
+        flex-wrap: wrap;
+    }
+
+    .std-inline .mk-btn {
+        width: 100%;
+    }
+
+    .std-search {
+        flex-basis: 100%;
+    }
+
+    .std-social__base,
+    .std-row__badges {
+        display: none;
+    }
+
+    .std-sitecard__preview {
+        height: 240px;
+    }
+
+    .std-tpl-big--mobile {
+        width: 100%;
+    }
+}
+
+/* ---------- MAIS MODELOS ---------- */
+
+.std-tpls__more {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 8px 0 4px;
+    text-align: center;
+}
+
+.std-tpls__more .std-hint {
+    max-width: 60ch;
+}

@@ -1,0 +1,678 @@
+/* =========================================================
+   PRIMITIVAS DA REDE MARKFY
+
+   Botões, campos, chips, switches e estados. Usadas pela
+   Home, pela central do usuário sem empresa e pelo Studio.
+   Toda cor sai dos tokens, então claro/escuro é de graça.
+========================================================= */
+
+.mk-root {
+    font-family: var(--mk-font);
+    color: var(--mk-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.mk-root *,
+.mk-root *::before,
+.mk-root *::after {
+    box-sizing: border-box;
+}
+
+.mk-root :where(button, input, textarea, select) {
+    font-family: inherit;
+}
+
+.mk-root :where(a, button, input, textarea, select, [tabindex]):focus-visible {
+    outline: none;
+    box-shadow: var(--mk-focus-ring);
+}
+
+.mk-visually-hidden {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+/* ---------- TÍTULOS ---------- */
+
+.mk-title {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: var(--mk-tracking-tight);
+    line-height: 1.08;
+}
+
+.mk-title--xl { font-size: var(--mk-text-4xl); font-weight: 800; }
+.mk-title--lg { font-size: var(--mk-text-3xl); }
+.mk-title--md { font-size: var(--mk-text-2xl); }
+.mk-title--sm { font-size: var(--mk-text-xl); letter-spacing: var(--mk-tracking-snug); }
+
+.mk-lead {
+    margin: 0;
+    color: var(--mk-ink-2);
+    font-size: var(--mk-text-md);
+    line-height: 1.6;
+    max-width: 60ch;
+}
+
+.mk-muted {
+    color: var(--mk-ink-3);
+}
+
+/* ---------- BOTÕES ---------- */
+
+.mk-btn {
+    --btn-bg: var(--mk-surface-2);
+    --btn-fg: var(--mk-ink);
+    --btn-border: transparent;
+
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 1px solid var(--btn-border);
+    border-radius: var(--mk-radius-sm);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    font-size: var(--mk-text-sm);
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    text-decoration: none;
+    user-select: none;
+    transition:
+        transform var(--mk-dur-1) var(--mk-ease-out),
+        background-color var(--mk-dur-2) ease,
+        border-color var(--mk-dur-2) ease,
+        color var(--mk-dur-2) ease,
+        opacity var(--mk-dur-2) ease;
+}
+
+.mk-btn svg {
+    flex-shrink: 0;
+    font-size: 1.15em;
+}
+
+.mk-btn:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.mk-btn:disabled,
+.mk-btn[aria-disabled="true"] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.mk-btn--primary {
+    --btn-bg: var(--mkf-ui-primary);
+    --btn-fg: var(--mkf-on-primary);
+}
+
+.mk-btn--primary:hover:not(:disabled) {
+    --btn-bg: var(--mkf-ui-primary-hover);
+}
+
+.mk-btn--secondary:hover:not(:disabled) {
+    --btn-bg: var(--mkf-ui-gray-200);
+}
+
+.mk-btn--outline {
+    --btn-bg: transparent;
+    --btn-border: var(--mk-line-strong);
+}
+
+.mk-btn--outline:hover:not(:disabled) {
+    --btn-bg: var(--mk-surface-2);
+}
+
+.mk-btn--ghost {
+    --btn-bg: transparent;
+    --btn-fg: var(--mk-ink-2);
+}
+
+.mk-btn--ghost:hover:not(:disabled) {
+    --btn-bg: var(--mk-surface-2);
+    --btn-fg: var(--mk-ink);
+}
+
+.mk-btn--danger {
+    --btn-bg: var(--mkf-error-light);
+    --btn-fg: var(--mkf-error-text);
+}
+
+.mk-btn--sm {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: var(--mk-text-xs);
+    border-radius: 10px;
+}
+
+.mk-btn--lg {
+    min-height: 52px;
+    padding: 0 24px;
+    font-size: var(--mk-text-md);
+    border-radius: 14px;
+}
+
+.mk-btn--block {
+    width: 100%;
+}
+
+.mk-btn--icon {
+    width: 44px;
+    padding: 0;
+}
+
+.mk-btn--icon.mk-btn--sm {
+    width: 36px;
+}
+
+.mk-btn__spinner {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+}
+
+.mk-btn.is-loading > :not(.mk-btn__spinner) {
+    visibility: hidden;
+}
+
+/* ---------- SPINNER ---------- */
+
+.mk-spinner {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    animation: mkSpin 0.7s linear infinite;
+    opacity: 0.85;
+}
+
+@keyframes mkSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---------- CAMPOS ---------- */
+
+.mk-field {
+    display: grid;
+    gap: 6px;
+}
+
+.mk-field__label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: var(--mk-text-xs);
+    font-weight: 600;
+    color: var(--mk-ink-2);
+}
+
+.mk-field__count {
+    font-weight: 500;
+    color: var(--mk-ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.mk-field__hint {
+    margin: 0;
+    font-size: var(--mk-text-xs);
+    line-height: 1.5;
+    color: var(--mk-ink-3);
+}
+
+.mk-field__error {
+    margin: 0;
+    font-size: var(--mk-text-xs);
+    color: var(--mkf-error-text);
+}
+
+.mk-input,
+.mk-textarea,
+.mk-select {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid var(--mk-line);
+    border-radius: var(--mk-radius-sm);
+    background: var(--mk-surface);
+    color: var(--mk-ink);
+    font-size: var(--mk-text-sm);
+    line-height: 1.45;
+    transition:
+        border-color var(--mk-dur-2) ease,
+        box-shadow var(--mk-dur-2) ease,
+        background-color var(--mk-dur-2) ease;
+}
+
+.mk-input::placeholder,
+.mk-textarea::placeholder {
+    color: var(--mk-ink-3);
+}
+
+.mk-input:hover,
+.mk-textarea:hover,
+.mk-select:hover {
+    border-color: var(--mk-line-strong);
+}
+
+.mk-input:focus,
+.mk-textarea:focus,
+.mk-select:focus {
+    outline: none;
+    border-color: var(--mk-accent);
+    box-shadow: var(--mk-focus-ring);
+}
+
+.mk-input[aria-invalid="true"],
+.mk-textarea[aria-invalid="true"] {
+    border-color: var(--mkf-error);
+}
+
+.mk-textarea {
+    min-height: 96px;
+    resize: vertical;
+}
+
+.mk-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.mk-input-group > svg {
+    position: absolute;
+    left: 14px;
+    color: var(--mk-ink-3);
+    pointer-events: none;
+}
+
+.mk-input-group > .mk-input {
+    padding-left: 42px;
+}
+
+/* ---------- SWITCH ---------- */
+
+.mk-switch {
+    position: relative;
+    display: inline-flex;
+    flex-shrink: 0;
+    width: 44px;
+    height: 26px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--mk-radius-pill);
+    background: var(--mkf-ui-gray-300);
+    cursor: pointer;
+    transition: background-color var(--mk-dur-2) ease;
+}
+
+.mk-switch::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    transition: transform var(--mk-dur-2) var(--mk-ease-spring);
+}
+
+.mk-switch[aria-checked="true"] {
+    background: var(--mk-accent);
+}
+
+.mk-switch[aria-checked="true"]::after {
+    transform: translateX(18px);
+}
+
+.mk-switch:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ---------- SEGMENTADO ---------- */
+
+.mk-segmented {
+    position: relative;
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border-radius: 12px;
+    background: var(--mk-surface-2);
+}
+
+.mk-segmented__item {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    min-height: 34px;
+    min-width: 36px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-xs);
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--mk-dur-2) ease;
+}
+
+.mk-segmented__item[aria-pressed="true"],
+.mk-segmented__item[aria-selected="true"] {
+    color: var(--mk-ink);
+}
+
+.mk-segmented__thumb {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: 9px;
+    background: var(--mk-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* ---------- CHIP / BADGE ---------- */
+
+.mk-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--mk-line);
+    border-radius: var(--mk-radius-pill);
+    background: var(--mk-surface);
+    color: var(--mk-ink-2);
+    font-size: var(--mk-text-xs);
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+        background-color var(--mk-dur-2) ease,
+        border-color var(--mk-dur-2) ease,
+        color var(--mk-dur-2) ease,
+        transform var(--mk-dur-1) var(--mk-ease-out);
+}
+
+.mk-chip:hover {
+    border-color: var(--mk-line-strong);
+    color: var(--mk-ink);
+}
+
+.mk-chip:active {
+    transform: scale(0.96);
+}
+
+.mk-chip[aria-pressed="true"] {
+    border-color: var(--mk-ink);
+    background: var(--mk-ink);
+    color: var(--mk-surface);
+}
+
+.mk-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 24px;
+    padding: 0 9px;
+    border-radius: var(--mk-radius-xs);
+    background: var(--mk-surface-2);
+    color: var(--mk-ink-2);
+    font-size: var(--mk-text-2xs);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.mk-badge::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.9;
+}
+
+.mk-badge--plain::before { display: none; }
+.mk-badge--success { background: var(--mkf-success-light); color: var(--mkf-success-text); }
+.mk-badge--warning { background: var(--mkf-warning-light); color: var(--mkf-warning-text); }
+.mk-badge--danger { background: var(--mkf-error-light); color: var(--mkf-error-text); }
+.mk-badge--info { background: var(--mkf-ui-primary-soft); color: var(--mk-accent); }
+
+/* ---------- SKELETON ---------- */
+
+.mk-skeleton {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--mk-radius-sm);
+    background: var(--mk-surface-2);
+}
+
+.mk-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--mk-surface) 60%, transparent), transparent);
+    animation: mkShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes mkShimmer {
+    to { transform: translateX(100%); }
+}
+
+/* ---------- ESTADO VAZIO ---------- */
+
+.mk-empty {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.mk-empty__icon {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    margin-bottom: 4px;
+    border-radius: 16px;
+    background: var(--mk-accent-soft);
+    color: var(--mk-accent);
+    font-size: 24px;
+}
+
+.mk-empty h3 {
+    margin: 0;
+    font-size: var(--mk-text-lg);
+    font-weight: 700;
+    letter-spacing: var(--mk-tracking-snug);
+}
+
+.mk-empty p {
+    margin: 0;
+    max-width: 42ch;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-sm);
+    line-height: 1.6;
+}
+
+.mk-empty .mk-btn {
+    margin-top: 8px;
+}
+
+/* ---------- SHEET / DIÁLOGO ---------- */
+
+.mk-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: var(--mk-z-overlay);
+    background: rgba(10, 12, 20, 0.42);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+.mk-sheet {
+    position: fixed;
+    z-index: calc(var(--mk-z-overlay) + 1);
+    display: flex;
+    flex-direction: column;
+    background: var(--mk-surface);
+    color: var(--mk-ink);
+    box-shadow: var(--mkf-shadow-lg);
+    font-family: var(--mk-font);
+}
+
+.mk-sheet--right {
+    top: 12px;
+    right: 12px;
+    bottom: 12px;
+    width: min(460px, calc(100vw - 24px));
+    border-radius: var(--mk-radius-lg);
+}
+
+.mk-sheet--center {
+    top: 50%;
+    left: 50%;
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100dvh - 48px);
+    border-radius: var(--mk-radius-lg);
+}
+
+.mk-sheet__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 22px 12px;
+}
+
+.mk-sheet__header h2 {
+    margin: 0;
+    font-size: var(--mk-text-xl);
+    font-weight: 700;
+    letter-spacing: var(--mk-tracking-snug);
+}
+
+.mk-sheet__header p {
+    margin: 4px 0 0;
+    color: var(--mk-ink-3);
+    font-size: var(--mk-text-sm);
+    line-height: 1.5;
+}
+
+.mk-sheet__body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px 22px 22px;
+    overscroll-behavior: contain;
+}
+
+.mk-sheet__footer {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    padding: 14px 22px 18px;
+    border-top: 1px solid var(--mk-line);
+}
+
+.mk-sheet__grabber {
+    display: none;
+}
+
+@media (max-width: 720px) {
+    .mk-sheet--right,
+    .mk-sheet--center {
+        top: auto;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        max-height: 92dvh;
+        border-radius: var(--mk-radius-lg) var(--mk-radius-lg) 0 0;
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .mk-sheet__grabber {
+        display: block;
+        width: 40px;
+        height: 4px;
+        margin: 10px auto 0;
+        border-radius: 4px;
+        background: var(--mkf-ui-gray-300);
+    }
+
+    .mk-sheet__footer .mk-btn {
+        flex: 1;
+    }
+}
+
+/* ---------- PAINEL ---------- */
+
+.mk-panel {
+    border: 1px solid var(--mk-line);
+    border-radius: var(--mk-radius-lg);
+    background: var(--mk-surface);
+}
+
+.mk-divider {
+    height: 1px;
+    border: 0;
+    margin: 0;
+    background: var(--mk-line);
+}
+
+/* ---------- ENTRADAS (CSS, não JS) ----------
+   Mesma regra do index.css: entradas de tela por animação
+   CSS com `backwards`. Se a animação não rodar, o conteúdo
+   aparece do mesmo jeito; nada fica preso invisível
+   esperando um quadro de JavaScript. */
+
+.mk-enter {
+    animation: mkEnter var(--mk-dur-4) var(--mk-ease-out) backwards;
+    animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+.mk-enter-fade {
+    animation: mkEnterFade var(--mk-dur-2) ease backwards;
+}
+
+@keyframes mkEnter {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 14px, 0);
+    }
+}
+
+@keyframes mkEnterFade {
+    from {
+        opacity: 0;
+    }
+}
+
+/* O App envolve as rotas num flex de 100vh (App.js). Sem
+   isto, telas com min-height: 100dvh encolhem até a altura
+   da janela e o `position: sticky` de menus e topos para
+   de funcionar depois da primeira rolagem. */
+.mk-root {
+    flex-shrink: 0;
+}

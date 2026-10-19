@@ -43,6 +43,23 @@ import TermsOfUse from "./pages/legal/TermsOfUse";
 
 import TestSMS from "./pages/TESTE-SMS/testesms";
 
+import MarkfyHome from "./pages/home/MarkfyHome";
+import { LicenseProvider } from "./plans/LicenseContext";
+import LicenseGate from "./plans/LicenseGate";
+import PlansPage from "./plans/PlansPage";
+import RouteFallback from "./components/route-transition/RouteFallback";
+
+/*
+ * Markfy Studio e as páginas públicas criadas nele ficam em
+ * pedaços próprios do bundle: quem só agenda nunca baixa o
+ * editor.
+ */
+const StudioApp = lazy(() => import("./studio/StudioApp"));
+const PublicSite = lazy(() => import("./studio/public/PublicSite"));
+
+/* Painel do dono da plataforma: chunk próprio, só abre quem digita a rota. */
+const MarkfyMasterDev = lazy(() => import("./master/MarkfyMasterDev"));
+
 /*
  * ============================================================
  * FERRAMENTAS DE DESENVOLVIMENTO
@@ -94,6 +111,68 @@ function App() {
     {
       path: "/login",
       element: <Login />,
+    },
+
+    /* =====================================================
+       HOME DA REDE — escolha entre Bookings e Studio
+    ===================================================== */
+
+    {
+      path: "/home",
+      element: <MarkfyHome />,
+    },
+
+    {
+      path: "/home/:step",
+      element: <MarkfyHome />,
+    },
+
+    /* =====================================================
+       MARKFY STUDIO
+
+       A tela de entrada do Studio pede login sozinha (em
+       vez do PrivateRoute), para explicar o produto antes
+       de mandar a pessoa embora.
+    ===================================================== */
+
+    {
+      path: "/studio/*",
+      element: (
+        <Suspense fallback={<RouteFallback label="Abrindo o Markfy Studio" />}>
+          <StudioApp />
+        </Suspense>
+      ),
+    },
+
+    /* PLANOS DA EMPRESA — escolha e pagamento (só o administrador
+       principal assina; a tela explica isso para os demais). */
+    {
+      path: "/planos",
+      element: (
+        <PrivateRoute>
+          <PlansPage />
+        </PrivateRoute>
+      ),
+    },
+
+    /* MARKFY MASTER DEV — login próprio, não usa o PrivateRoute. */
+    {
+      path: "/markfy-master-dev",
+      element: (
+        <Suspense fallback={<RouteFallback />}>
+          <MarkfyMasterDev />
+        </Suspense>
+      ),
+    },
+
+    /* Página pública publicada pelo Studio. */
+    {
+      path: "/s/:handle",
+      element: (
+        <Suspense fallback={<RouteFallback />}>
+          <PublicSite />
+        </Suspense>
+      ),
     },
 
     {
@@ -154,7 +233,9 @@ function App() {
       path: "/central-adm",
       element: (
         <PrivateRoute>
-          <CentralAdm />
+          <LicenseGate product="bookings">
+            <CentralAdm />
+          </LicenseGate>
         </PrivateRoute>
       ),
     },
@@ -235,6 +316,7 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <UserCompanyProvider>
+         <LicenseProvider>
           {/* Envolve todas as rotas: o aviso de cookies aparece
               na landing, no login, no catálogo, no checkout e no
               painel, e qualquer tela consegue consultar o
@@ -244,6 +326,7 @@ function App() {
               {routesElement}
             </div>
           </ConsentProvider>
+         </LicenseProvider>
         </UserCompanyProvider>
       </AuthProvider>
     </ThemeProvider>

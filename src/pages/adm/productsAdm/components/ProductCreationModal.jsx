@@ -1,5 +1,6 @@
 import React from "react";
 import { Icon } from "@iconify/react";
+import { useLicense } from "../../../../plans/LicenseContext";
 
 import ThumbProduct from "../../../../img/adm-content/file (63).png";
 
@@ -50,6 +51,9 @@ const ProductCreationModal = ({
     closeModal,
     wizard
 }) => {
+
+    const license = useLicense();
+
     const {
         DESCRIPTION_MAX_LENGTH,
         DURATION_MAX_MINUTES,
@@ -355,6 +359,17 @@ const ProductCreationModal = ({
                                         : ""
                                     }`}
                                 onClick={() => {
+
+                                    if (!license.can("monthlyPlans")) {
+
+                                        alert(
+                                            "Mensalidades e assinaturas não estão incluídas no plano atual da empresa. " +
+                                            "O administrador principal pode mudar de plano em Perfil → Planos e Assinaturas."
+                                        );
+
+                                        return;
+                                    }
+
                                     handleButtonSelect(2);
                                     setProductType("monthly");
                                 }}
