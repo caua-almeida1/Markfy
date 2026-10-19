@@ -5,7 +5,11 @@ const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 
-admin.initializeApp();
+admin.initializeApp({
+    /* Explícito: sem isto o Admin SDK deduz a URL e, se errar, o banco
+       recusa a credencial e a função trava até estourar o timeout. */
+    databaseURL: "https://markfy-96942-default-rtdb.firebaseio.com"
+});
 
 const db = admin.database();
 
