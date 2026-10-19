@@ -19,6 +19,8 @@ import {
     watchMasterSession,
     signInMaster,
     signOutMaster,
+    needsPasswordChange,
+    changeMasterPassword,
     describeMasterError,
     loadNetwork,
     loadStorageImages,
@@ -46,7 +48,7 @@ const NOW = () => Date.now();
 
 /* Pré-visualização do layout sem login, só em desenvolvimento. */
 const MOCK_NETWORK = process.env.NODE_ENV === "development"
-    ? (/[?&]mock/.test(window.location.search) ? require("./mockNetwork").MOCK_NETWORK : null)
+    ? (/[?&]mock\b/.test(window.location.search) ? require("./mockNetwork").MOCK_NETWORK : null)
     : null;
 const MOCK = Boolean(MOCK_NETWORK);
 
@@ -253,6 +255,7 @@ function Meter({ rows, total }) {
 
 function Gate({ onUnlocked }) {
 
+    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [visible, setVisible] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -261,13 +264,13 @@ function Gate({ onUnlocked }) {
 
     const submit = async (event) => {
         event.preventDefault();
-        if (busy || !password) return;
+        if (busy || !password || !email.trim()) return;
 
         setBusy(true);
         setError("");
 
         try {
-            const user = await signInMaster(password);
+            const user = await signInMaster(email, password);
             onUnlocked(user);
         } catch (err) {
             setError(describeMasterError(err));
@@ -295,10 +298,16 @@ function Gate({ onUnlocked }) {
 
                 <label className="mm-field">
                     <span>Conta master</span>
-                    <div className="mm-input is-locked">
+                    <div className="mm-input">
                         <Icon icon="solar:letter-bold" />
-                        <input value={MASTER_EMAIL} readOnly tabIndex={-1} />
-                        <Icon icon="solar:lock-bold" className="mm-input__end" />
+                        <input
+                            type="email"
+                            value={email}
+                            onChange={(event) => setEmail(event.target.value)}
+                            placeholder="seu.nome.master@markfy.com"
+                            autoComplete="username"
+                            autoFocus
+                        />
                     </div>
                 </label>
 
@@ -312,7 +321,6 @@ function Gate({ onUnlocked }) {
                             onChange={(event) => setPassword(event.target.value)}
                             placeholder="Senha da conta master"
                             autoComplete="current-password"
-                            autoFocus
                         />
                         <button
                             type="button"
@@ -331,7 +339,7 @@ function Gate({ onUnlocked }) {
                     </p>
                 )}
 
-                <button className="mm-btn mm-btn--gold mm-btn--block" disabled={busy || !password}>
+                <button className="mm-btn mm-btn--gold mm-btn--block" disabled={busy || !password || !email.trim()}>
                     {busy ? <span className="mm-spin" /> : <Icon icon="solar:lock-unlocked-bold" />}
                     {busy ? "Verificando…" : "Entrar no painel"}
                 </button>
@@ -345,7 +353,7 @@ function Gate({ onUnlocked }) {
                     <ol className="mm-gate__steps">
                         <li>Abra o Firebase Console → <b>Authentication</b> → <b>Users</b>.</li>
                         <li>Clique em <b>Add user</b>.</li>
-                        <li>Use o e-mail acima e a senha que você definiu.</li>
+                        <li>Use o seu e-mail master e a senha definida para ele.</li>
                         <li>Volte aqui e entre.</li>
                     </ol>
                 )}
@@ -1999,6 +2007,100 @@ function Dashboard({ user, mock }) {
 
 
 /* =========================================================
+   TROCA DA SENHA PROVISÓRIA (primeiro acesso)
+========================================================= */
+
+function ChangePassword({ user, onDone }) {
+
+    const [current, setCurrent] = useState("");
+    const [next, setNext] = useState("");
+    const [confirm, setConfirm] = useState("");
+    const [visible, setVisible] = useState(false);
+    const [busy, setBusy] = useState(false);
+    const [error, setError] = useState("");
+
+    const submit = async (event) => {
+        event.preventDefault();
+        if (busy) return;
+
+        if (next.length < 8) return setError("A nova senha precisa ter pelo menos 8 caracteres.");
+        if (next !== confirm) return setError("A confirmação não confere com a nova senha.");
+
+        setBusy(true);
+        setError("");
+
+        try {
+            await changeMasterPassword(user.email, current, next);
+            onDone();
+        } catch (err) {
+            setError(describeMasterError(err));
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const field = (label, value, setter, placeholder, auto) => (
+        <label className="mm-field">
+            <span>{label}</span>
+            <div className="mm-input">
+                <Icon icon="solar:key-minimalistic-2-bold" />
+                <input
+                    type={visible ? "text" : "password"}
+                    value={value}
+                    onChange={(event) => setter(event.target.value)}
+                    placeholder={placeholder}
+                    autoComplete={auto}
+                />
+            </div>
+        </label>
+    );
+
+    return (
+        <div className="mm-gate">
+            <div className="mm-gate__glow" aria-hidden="true" />
+            <div className="mm-gate__grid" aria-hidden="true" />
+
+            <form className="mm-gate__card" onSubmit={submit}>
+                <div className="mm-gate__badge">
+                    <img className="mm-logo" src="/markfy/logo.svg" alt="Markfy" />
+                </div>
+
+                <p className="mm-eyebrow">Primeiro acesso</p>
+                <h1>Crie sua senha</h1>
+                <p className="mm-gate__lead">
+                    Você entrou com uma senha provisória. Escolha agora uma senha só sua para abrir o painel.
+                </p>
+
+                {field("Senha provisória", current, setCurrent, "A senha que você recebeu", "current-password")}
+                {field("Nova senha", next, setNext, "Pelo menos 8 caracteres", "new-password")}
+                {field("Repetir nova senha", confirm, setConfirm, "Digite de novo", "new-password")}
+
+                <button type="button" className="mm-gate__help" onClick={() => setVisible((v) => !v)}>
+                    <Icon icon={visible ? "solar:eye-closed-linear" : "solar:eye-linear"} />
+                    {visible ? "Ocultar senhas" : "Mostrar senhas"}
+                </button>
+
+                {error && (
+                    <p className="mm-error" role="alert">
+                        <Icon icon="solar:danger-triangle-bold" /> {error}
+                    </p>
+                )}
+
+                <button className="mm-btn mm-btn--gold mm-btn--block" disabled={busy || !current || !next || !confirm}>
+                    {busy ? <span className="mm-spin" /> : <Icon icon="solar:check-circle-bold" />}
+                    {busy ? "Salvando…" : "Salvar e entrar"}
+                </button>
+
+                <button type="button" className="mm-gate__help" onClick={signOutMaster}>
+                    <Icon icon="solar:logout-2-bold" /> Sair
+                </button>
+            </form>
+        </div>
+    );
+}
+
+
+/* =========================================================
    RAIZ
 ========================================================= */
 
@@ -2006,11 +2108,14 @@ export default function MarkfyMasterDev() {
 
     const [user, setUser] = useState(null);
     const [checking, setChecking] = useState(true);
+    const [mustChange, setMustChange] = useState(false);
 
     useEffect(() => {
         document.title = "Markfy Master Dev";
 
-        const stop = watchMasterSession((master) => {
+        const stop = watchMasterSession(async (master) => {
+            /* Só libera o painel depois de saber se falta trocar a senha. */
+            setMustChange(master ? await needsPasswordChange(master) : false);
             setUser(master);
             setChecking(false);
         });
@@ -2027,6 +2132,8 @@ export default function MarkfyMasterDev() {
 
             {checking ? (
                 <div className="mm-boot"><span className="mm-spin mm-spin--lg" /></div>
+            ) : user && mustChange ? (
+                <ChangePassword user={user} onDone={() => setMustChange(false)} />
             ) : user ? (
                 <Dashboard user={user} />
             ) : MOCK ? (

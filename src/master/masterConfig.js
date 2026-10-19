@@ -12,7 +12,22 @@
 
 export const MASTER_ROUTE = "/markfy-master-dev";
 
-export const MASTER_EMAIL = "caua.master@markfy.com";
+/* Contas que entram no painel. A SENHA nunca fica aqui: vive só no
+   Firebase Authentication.
+
+   forcePasswordChange: na primeira entrada a pessoa precisa trocar a
+   senha provisória por uma escolhida por ela. */
+export const MASTER_ACCOUNTS = [
+    { email: "caua.master@markfy.com", forcePasswordChange: false },
+    { email: "marcelo.master@markfy.com", forcePasswordChange: true }
+];
+
+export const MASTER_EMAIL = MASTER_ACCOUNTS[0].email;
+
+export const getMasterAccount = (email) =>
+    MASTER_ACCOUNTS.find(
+        (account) => account.email === String(email || "").trim().toLowerCase()
+    ) || null;
 
 
 /* ---------- PRODUTOS ----------

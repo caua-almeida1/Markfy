@@ -4,6 +4,7 @@ import {
     setPersistence,
     browserSessionPersistence,
     signInWithEmailAndPassword,
+    updatePassword,
     signOut,
     onAuthStateChanged
 } from "firebase/auth";
@@ -18,7 +19,7 @@ import {
 
 import { getStorage, ref as storageRef, getDownloadURL } from "firebase/storage";
 import { app as mainApp } from "../firebase/firebase";
-import { MASTER_EMAIL } from "./masterConfig";
+import { getMasterAccount } from "./masterConfig";
 import { DEFAULT_PLANS, buildCatalog, serializePlan } from "../plans/planDefaults";
 
 /* =========================================================
@@ -51,8 +52,7 @@ const masterDb = () => getDatabase(masterApp());
 
 const normalizeEmail = (email) => String(email || "").trim().toLowerCase();
 
-const isMasterUser = (user) =>
-    normalizeEmail(user?.email) === normalizeEmail(MASTER_EMAIL);
+const isMasterUser = (user) => Boolean(getMasterAccount(user?.email));
 
 
 /* ---------- SESSÃO ---------- */
@@ -62,15 +62,20 @@ export const watchMasterSession = (callback) =>
         callback(isMasterUser(user) ? user : null);
     });
 
-export const signInMaster = async (password) => {
+export const signInMaster = async (email, password) => {
 
     const auth = masterAuth();
+
+    /* E-mail fora da lista nem chega ao Firebase. */
+    if (!getMasterAccount(email)) {
+        throw Object.assign(new Error("not-master"), { code: "master/not-master" });
+    }
 
     await setPersistence(auth, browserSessionPersistence);
 
     const { user } = await signInWithEmailAndPassword(
         auth,
-        MASTER_EMAIL,
+        normalizeEmail(email),
         password
     );
 
@@ -84,6 +89,46 @@ export const signInMaster = async (password) => {
 
 export const signOutMaster = () => signOut(masterAuth());
 
+/* ---------- TROCA DA SENHA PROVISÓRIA ----------
+
+   Contas com forcePasswordChange só abrem o painel depois de
+   trocar a senha. A troca fica registrada em masterProfiles/{uid};
+   sem esse registro (ou se a leitura falhar) o painel não abre. */
+
+export const needsPasswordChange = async (user) => {
+
+    if (!getMasterAccount(user?.email)?.forcePasswordChange) return false;
+
+    try {
+        const snapshot = await get(ref(masterDb(), `masterProfiles/${user.uid}/passwordChangedAt`));
+        return !snapshot.exists();
+    } catch {
+        return true;
+    }
+};
+
+export const changeMasterPassword = async (email, currentPassword, newPassword) => {
+
+    /* Reautentica com a senha atual: confirma que é a própria pessoa. */
+    const { user } = await signInWithEmailAndPassword(masterAuth(), normalizeEmail(email), currentPassword);
+
+    if (!isMasterUser(user)) {
+        await signOut(masterAuth());
+        throw Object.assign(new Error("not-master"), { code: "master/not-master" });
+    }
+
+    if (newPassword === currentPassword) {
+        throw Object.assign(new Error("same-password"), { code: "master/same-password" });
+    }
+
+    await updatePassword(user, newPassword);
+
+    await set(ref(masterDb(), `masterProfiles/${user.uid}`), {
+        email: normalizeEmail(user.email),
+        passwordChangedAt: serverTimestamp()
+    });
+};
+
 export const describeMasterError = (error) => {
 
     switch (error?.code) {
@@ -94,6 +139,12 @@ export const describeMasterError = (error) => {
 
         case "auth/user-not-found":
             return "A conta master ainda não existe no Firebase Authentication. Crie-a no console (veja o passo a passo ao lado).";
+
+        case "auth/weak-password":
+            return "A nova senha é fraca demais. Use pelo menos 8 caracteres.";
+
+        case "master/same-password":
+            return "A nova senha precisa ser diferente da provisória.";
 
         case "auth/too-many-requests":
             return "Muitas tentativas. Espere alguns minutos.";

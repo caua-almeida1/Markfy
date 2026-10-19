@@ -4822,7 +4822,11 @@ exports.markfyPlanWebhook = onRequest(
                mesmo que o aviso chegue repetido. */
             const claim = await orderRef.transaction((order) => {
 
-                if (!order || order.status !== "pending") return;
+                /* Primeira chamada vem com null: devolver null faz o banco
+                   buscar o valor real e chamar de novo. */
+                if (order === null) return order;
+
+                if (order.status !== "pending") return;
 
                 if (
                     payment.currency_id !== "BRL" ||
@@ -4838,7 +4842,7 @@ exports.markfyPlanWebhook = onRequest(
                 });
             });
 
-            if (!claim.committed) {
+            if (!claim.committed || !claim.snapshot.exists()) {
                 return res.status(200).send("OK");
             }
 
@@ -4961,6 +4965,11 @@ const qrAuth = async (req, res) => {
 
 const qrToken = () => crypto.randomBytes(32).toString("base64url");
 
+/* Versão do código de QR. Muda o hash da função e força o deploy a
+   trocar a revisão em produção (um deploy que falhou no build deixa o
+   hash "novo" registrado e a CLI passa a pular a função). */
+const QR_BACKEND_VERSION = "2026-10-19-transacao-null-v2";
+
 const QR_LOGIN_TTL_MS = 90 * 1000;
 const QR_INVITE_TTLS = [15 * 60 * 1000, 60 * 60 * 1000, 24 * 60 * 60 * 1000];
 const QR_INVITE_ROLES = ["administrator", "professional"];
@@ -5013,18 +5022,25 @@ exports.redeemQrLogin = onRequest(async (req, res) => {
 
         const code = (req.body || {}).code;
 
+        console.log("redeemQrLogin", QR_BACKEND_VERSION, "codigo recebido:", typeof code === "string" ? code.length + " caracteres" : typeof code);
+
         if (typeof code !== "string" || !/^[A-Za-z0-9_-]{40,60}$/.test(code)) {
             return res.status(400).json({ success: false, message: "Código inválido." });
         }
 
         const claim = await db.ref("qrLogins/" + code).transaction((entry) => {
 
-            if (!entry || entry.used || Number(entry.expiresAt) < Date.now()) return;
+            /* O Realtime Database chama esta função primeiro com null (valor ainda
+               não conferido com o servidor). Devolver null faz ele buscar o valor
+               real e chamar de novo; abortar aqui recusaria um código válido. */
+            if (entry === null) return entry;
+
+            if (entry.used || Number(entry.expiresAt) < Date.now()) return;
 
             return Object.assign({}, entry, { used: true, usedAt: Date.now() });
         });
 
-        if (!claim.committed) {
+        if (!claim.committed || !claim.snapshot.exists()) {
             return res.status(410).json({
                 success: false,
                 message: "Este QR Code expirou ou já foi usado. Gere outro no aparelho conectado."
@@ -5209,12 +5225,17 @@ exports.joinCompanyByQr = onRequest(async (req, res) => {
 
         const claim = await db.ref("qrInvites/" + inviteId).transaction((entry) => {
 
-            if (!entry || entry.status !== "pending" || Number(entry.expiresAt) < Date.now()) return;
+            /* O Realtime Database chama esta função primeiro com null (valor ainda
+               não conferido com o servidor). Devolver null faz ele buscar o valor
+               real e chamar de novo; abortar aqui recusaria um código válido. */
+            if (entry === null) return entry;
+
+            if (entry.status !== "pending" || Number(entry.expiresAt) < Date.now()) return;
 
             return Object.assign({}, entry, { status: "used", usedBy: decoded.uid, usedAt: Date.now() });
         });
 
-        if (!claim.committed) {
+        if (!claim.committed || !claim.snapshot.exists()) {
             return res.status(410).json({ success: false, message: "Este convite expirou ou já foi usado." });
         }
 

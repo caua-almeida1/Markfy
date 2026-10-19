@@ -48,15 +48,15 @@
         "Nenhum membro da empresa, nem o administrador principal,",
         "consegue escrever aqui pelo navegador. Membros so leem."
       ],
-      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
-      ".write": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
+      ".write": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       "$handle": {
         ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
       }
     },
     "companys": {
       "_comentario_master": "A leitura do no inteiro e exclusiva da conta master (painel Master Dev).",
-      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       ".write": false,
       "$handle": {
         ".read": true,
@@ -83,7 +83,7 @@
       }
     },
     "users": {
-      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       ".write": false,
       ".indexOn": [
         "email"
@@ -130,7 +130,7 @@
         "Rascunho do Markfy Studio. So membros da empresa leem;",
         "so responsavel/administrador grava (profissional so visualiza)."
       ],
-      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       "$handle": {
         ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
         ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
@@ -146,7 +146,7 @@
         ".read": "root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)",
         ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
       },
-      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'"
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
     },
     "studioLeads": {
       "_comentario": [
@@ -209,17 +209,24 @@
     "planCatalog": {
       "_comentario": "Catalogo de planos: leitura publica (tela de planos), escrita so da conta master.",
       ".read": true,
-      ".write": "auth != null && auth.token.email === 'caua.master@markfy.com'"
+      ".write": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
     },
     "planOrders": {
       "_comentario": "Pedidos de plano. Escrita so pelo backend (Admin SDK); a conta master le.",
-      ".read": "auth != null && auth.token.email === 'caua.master@markfy.com'",
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       ".write": false
     },
     "publicAccess": {
       "_comentario": "Espelho publico minimo da licenca (bookings/studio/expiresAt). Leitura publica; escrita so da conta master e do backend.",
       ".read": true,
-      ".write": "auth != null && auth.token.email === 'caua.master@markfy.com'"
+      ".write": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
+    },
+    "masterProfiles": {
+      "_comentario": "Registro da troca da senha provisoria das contas master. Cada conta le e grava so o proprio no.",
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
+      }
     }
   }
 }
