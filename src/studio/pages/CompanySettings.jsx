@@ -10,6 +10,7 @@ import { updateCompanyIndex } from "../../firebase/companiesIndex";
 import { isValidPhoneBR, formatPhoneBR } from "../../utils/phoneBR";
 import { Badge, Button, Field, Spinner, useToast } from "../../design-system/components";
 import { PageHead } from "./shared";
+import { useLicense } from "../../plans/LicenseContext";
 
 /* =========================================================
    MINHA EMPRESA
@@ -77,6 +78,7 @@ const CompanySettings = () => {
     const notify = useToast();
 
     const { handle, company, companyState, bundle, reloadBundle, canEdit } = useStudio();
+    const license = useLicense();
 
     const logoInput = useRef(null);
     const [logoBusy, setLogoBusy] = useState(false);
@@ -181,6 +183,15 @@ const CompanySettings = () => {
                 title="Minha empresa"
                 description="Dados usados pela sua página, pela Markfy Bookings e pela busca de empresas. Atualize aqui uma vez e tudo acompanha."
             />
+
+            <button type="button" className="std-plan-link" onClick={() => navigate("/studio/plano")}>
+                <Icon icon="solar:cup-star-bold" aria-hidden="true" />
+                <span>
+                    <strong>{license.active && license.plan ? `Plano ${license.plan.name}` : "Sem plano ativo"}</strong>
+                    <small>Gerenciar plano e assinatura</small>
+                </span>
+                <Icon icon="solar:alt-arrow-right-linear" aria-hidden="true" />
+            </button>
 
             {!canEdit && <p className="std-hint">Seu acesso é de profissional: você pode ver estes dados, mas só o responsável altera.</p>}
 

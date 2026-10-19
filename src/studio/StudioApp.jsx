@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Icon } from "@iconify/react";
 
 import { useAuth } from "../contexts/authContext";
+import Team from "./pages/Team";
+import Plan from "./pages/Plan";
 import LicenseGate from "../plans/LicenseGate";
 import CompanyPicker from "../components/company-picker/CompanyPicker";
 import { Badge, Button, Sheet, ToastProvider, useBodyClass, cx } from "../design-system/components";
@@ -46,6 +48,8 @@ export const NAV = [
     { to: "/studio/agendamentos", label: "Agendamentos", icon: "solar:calendar-linear" },
     { to: "/studio/contatos", label: "Contatos", icon: "solar:inbox-linear", badge: "leads" },
     { to: "/studio/analytics", label: "Analytics", icon: "solar:chart-2-linear" },
+    { to: "/studio/equipe", label: "Equipe", icon: "solar:users-group-rounded-linear" },
+    { to: "/studio/plano", label: "Plano", icon: "solar:cup-star-linear" },
     { to: "/studio/empresa", label: "Minha empresa", icon: "solar:shop-2-linear" },
     { to: "/studio/configuracoes", label: "Configurações", icon: "solar:settings-linear" }
 ];
@@ -246,6 +250,11 @@ const Shell = ({ children }) => {
                 </div>
 
                 <div className="std-side__bottom">
+                    <button type="button" className="std-switch" onClick={() => navigate("/home")}>
+                        <Icon icon="solar:round-transfer-horizontal-bold" aria-hidden="true" />
+                        Trocar de plataforma
+                    </button>
+
                     <div className="std-status">
                         <Badge tone={meta.tone}>{meta.label}</Badge>
                         {(status === "published" || status === "changes") && (
@@ -338,6 +347,8 @@ const StudioGate = () => {
                                 <Route path="agendamentos" element={<Bookings />} />
                                 <Route path="contatos" element={<Contacts />} />
                                 <Route path="analytics" element={<Analytics />} />
+                                <Route path="equipe" element={<Team />} />
+                                <Route path="plano" element={<Plan />} />
                                 <Route path="empresa" element={<CompanySettings />} />
                                 <Route path="configuracoes" element={<Settings />} />
                                 <Route path="*" element={<Overview />} />

@@ -49,6 +49,7 @@ import {
 
 import { useCompanyLogo } from "../../../firebase/companyLogo";
 import Modal from "../../../components/modal/Modal";
+import TeamQrInvite from "../../../qr/TeamQrInvite";
 import { useLicense } from "../../../plans/LicenseContext";
 
 import {
@@ -222,6 +223,12 @@ const Dashboard = ({
         sendingInvite,
         setSendingInvite
     ] = useState(false);
+
+    /* "email" (formulário) ou "qr" (QR Code com a função já escolhida). */
+    const [
+        inviteMethod,
+        setInviteMethod
+    ] = useState("email");
 
     const [
         toast,
@@ -4374,6 +4381,31 @@ const Dashboard = ({
                             {adminRegisterMode ===
                                 "manual" ? (
 
+                                <>
+
+                                <div className="dashboard-invite-method" role="tablist" aria-label="Como convidar">
+                                    <button
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={inviteMethod === "email"}
+                                        className={inviteMethod === "email" ? "is-on" : ""}
+                                        onClick={() => setInviteMethod("email")}
+                                    >
+                                        <Icon icon="solar:letter-bold" /> E-mail
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="tab"
+                                        aria-selected={inviteMethod === "qr"}
+                                        className={inviteMethod === "qr" ? "is-on" : ""}
+                                        onClick={() => setInviteMethod("qr")}
+                                    >
+                                        <Icon icon="solar:qr-code-bold" /> QR Code
+                                    </button>
+                                </div>
+
+                                {inviteMethod === "qr" ? <TeamQrInvite /> : (
+
                                 <form
                                     className="dashboard-admin-form"
                                     onSubmit={
@@ -4482,6 +4514,10 @@ const Dashboard = ({
                                     </button>
 
                                 </form>
+
+                                )}
+
+                                </>
 
                             ) : (
 

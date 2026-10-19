@@ -125,7 +125,7 @@ export const DEFAULT_PLANS = {
     premium: {
         name: "Premium",
         tier: "Nível 4",
-        tagline: "Tudo liberado, sem limites de equipe ou catálogo.",
+        tagline: "Tudo liberado: equipe de até 50 pessoas e catálogo de até 500 itens.",
         price: 179.9,
         periodDays: 30,
         bundle: true,
@@ -133,7 +133,7 @@ export const DEFAULT_PLANS = {
         active: true,
         order: 4,
         color: "#c084fc",
-        limits: {},
+        limits: { maxMembers: 50, maxProducts: 500 },
         features: { onlinePayments: true, monthlyPlans: true, studioAnalytics: true }
     }
 };
@@ -142,6 +142,9 @@ export const DEFAULT_PLANS = {
 /* ---------- NORMALIZAÇÃO ---------- */
 
 const toNumberOrNull = (value) => {
+    /* Number(null) e Number("") dão 0: sem esta guarda, "ilimitado"
+       (campo ausente) virava "0 pessoas" / "0 itens". */
+    if (value === null || value === undefined || value === "") return null;
     const number = Number(value);
     return Number.isFinite(number) && number >= 0 ? number : null;
 };
@@ -159,7 +162,13 @@ export const normalizePlan = (id, raw) => {
     const limits = {};
 
     LIMITS.forEach((limit) => {
-        limits[limit.id] = toNumberOrNull(source.limits?.[limit.id]);
+        const value = toNumberOrNull(source.limits?.[limit.id]);
+
+        /* Limite 0 nunca é intencional (equipe de 0 pessoas?): é dado
+           ruim. Cai no valor padrão do plano, quando há um. */
+        limits[limit.id] = value === 0
+            ? (DEFAULT_PLANS[id]?.limits?.[limit.id] ?? null)
+            : value;
     });
 
     return {

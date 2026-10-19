@@ -11,6 +11,7 @@ import { getAuth, signOut } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
 
 import { useConsent } from "../../../contexts/consentContext/ConsentContext";
+import QrLoginCard from "../../../qr/QrLoginCard";
 import { useLicense } from "../../../plans/LicenseContext";
 import { useTheme } from "../../../theme/ThemeContext";
 
@@ -214,6 +215,13 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
                     <CardCreditScreen
                         onBack={goBack}
                     />
+                );
+
+            case "qr-login":
+                return (
+                    <div style={{ padding: "8px 16px 32px" }}>
+                        <QrLoginCard />
+                    </div>
                 );
 
             case "preferences":
@@ -462,6 +470,64 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
                             </div>
 
                             <div className="adm-perfil-info adm-perfil-company adm-perfil-section">
+
+                                <div
+                                    className="adm-perfil-row"
+                                    onClick={() => navigate("/home")}
+                                >
+
+                                    <div className="adm-perfil-row-left">
+
+                                        <Icon
+                                            icon="solar:round-transfer-horizontal-linear"
+                                            className="adm-perfil-row-icon"
+                                        />
+
+                                        <div className="adm-perfil-details">
+
+                                            <p className="adm-perfil-name">
+                                                Trocar de plataforma
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+                                    <Icon
+                                        icon="iconamoon:arrow-right-2"
+                                        className="adm-perfil-arrow"
+                                    />
+
+                                </div>
+
+                                <div
+                                    className="adm-perfil-row"
+                                    onClick={() => openScreen("qr-login")}
+                                >
+
+                                    <div className="adm-perfil-row-left">
+
+                                        <Icon
+                                            icon="solar:qr-code-linear"
+                                            className="adm-perfil-row-icon"
+                                        />
+
+                                        <div className="adm-perfil-details">
+
+                                            <p className="adm-perfil-name">
+                                                Entrar em outro aparelho
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+                                    <Icon
+                                        icon="iconamoon:arrow-right-2"
+                                        className="adm-perfil-arrow"
+                                    />
+
+                                </div>
 
                                 <div
                                     className="adm-perfil-row"

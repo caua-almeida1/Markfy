@@ -6941,3 +6941,38 @@ body {
     }
 
 }
+
+
+/* Alternância "E-mail | QR Code" no convite de equipe. */
+.dashboard-invite-method {
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 14px;
+    background: var(--mkf-ui-surface-hover, #f4f6fb);
+    border-radius: 99px;
+}
+
+.dashboard-invite-method button {
+    flex: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 38px;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--mkf-text-secondary, #5f626b);
+    background: none;
+    border: 0;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.dashboard-invite-method button.is-on {
+    color: #fff;
+    background: var(--mkf-ui-primary, #092af3);
+    box-shadow: 0 6px 18px color-mix(in srgb, var(--mkf-ui-primary, #092af3) 40%, transparent);
+}

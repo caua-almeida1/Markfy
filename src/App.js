@@ -44,6 +44,8 @@ import TermsOfUse from "./pages/legal/TermsOfUse";
 import TestSMS from "./pages/TESTE-SMS/testesms";
 
 import MarkfyHome from "./pages/home/MarkfyHome";
+import QrLoginPage from "./qr/QrLoginPage";
+import QrInvitePage from "./qr/QrInvitePage";
 import { LicenseProvider } from "./plans/LicenseContext";
 import LicenseGate from "./plans/LicenseGate";
 import PlansPage from "./plans/PlansPage";
@@ -142,6 +144,17 @@ function App() {
           <StudioApp />
         </Suspense>
       ),
+    },
+
+    /* QR CODE — entrar em outro aparelho e entrar na equipe. */
+    {
+      path: "/qr-login",
+      element: <QrLoginPage />,
+    },
+
+    {
+      path: "/entrar-equipe/:inviteId",
+      element: <QrInvitePage />,
     },
 
     /* PLANOS DA EMPRESA — escolha e pagamento (só o administrador

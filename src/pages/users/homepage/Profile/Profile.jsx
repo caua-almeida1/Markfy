@@ -35,6 +35,7 @@ import { useTheme } from "../../../../theme/ThemeContext";
 import Modal from "../../../../components/modal/Modal";
 import Toast from "../../../../components/toast/Toast";
 
+import QrLoginCard from "../../../../qr/QrLoginCard";
 import { useProfileData } from "./useProfileData";
 
 import "./Profile.css";
@@ -85,6 +86,8 @@ const Profile = () => {
 
     const [confirmingLogout, setConfirmingLogout] =
         useState(false);
+
+    const [showQr, setShowQr] = useState(false);
 
     const [toast, setToast] = useState(null);
 
@@ -814,6 +817,33 @@ const Profile = () => {
                     <span>Política de privacidade</span>
                     <Icon icon="solar:alt-arrow-right-outline" />
                 </button>
+
+                <button
+                    type="button"
+                    className="profile-link"
+                    onClick={() => navigate("/home")}
+                >
+                    <Icon icon="solar:round-transfer-horizontal-outline" />
+                    <span>Trocar de plataforma</span>
+                    <Icon icon="solar:alt-arrow-right-outline" />
+                </button>
+
+                <button
+                    type="button"
+                    className="profile-link"
+                    onClick={() => setShowQr((value) => !value)}
+                    aria-expanded={showQr}
+                >
+                    <Icon icon="solar:qr-code-outline" />
+                    <span>Entrar em outro aparelho</span>
+                    <Icon icon={showQr ? "solar:alt-arrow-up-outline" : "solar:alt-arrow-down-outline"} />
+                </button>
+
+                {showQr && (
+                    <div style={{ padding: "4px 0 12px" }}>
+                        <QrLoginCard />
+                    </div>
+                )}
 
                 <button
                     type="button"

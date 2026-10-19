@@ -4893,3 +4893,348 @@ exports.markfyPlanWebhook = onRequest(
         }
     }
 );
+
+
+/* =====================================================
+   QR CODE — LOGIN EM OUTRO APARELHO E ENTRADA NA EQUIPE
+
+   Nada daqui confia no navegador:
+
+   LOGIN POR QR
+     createQrLogin  quem já está logado gera um código de uso
+                    único, válido por 90 segundos (qrLogins/).
+     redeemQrLogin  o aparelho novo troca o código por um custom
+                    token do Firebase. O código é consumido numa
+                    transação: não vale duas vezes.
+
+   ENTRADA NA EQUIPE
+     createQrInvite    administrador gera um convite com a função
+                       já definida (qrInvites/), válido por tempo
+                       curto e de uso único.
+     getQrInvite       dados públicos mínimos para a tela de
+                       cadastro (empresa e função).
+     joinCompanyByQr   a pessoa (já com conta criada) entra na
+                       empresa. O backend confere convite, plano
+                       ativo da empresa e limite de equipe e só
+                       então grava o vínculo.
+===================================================== */
+
+const qrCors = (req, res) => {
+
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return true;
+    }
+
+    if (req.method !== "POST") {
+        res.status(405).json({ success: false, message: "Método não permitido." });
+        return true;
+    }
+
+    return false;
+};
+
+const qrAuth = async (req, res) => {
+
+    const authorization = req.headers.authorization || "";
+
+    if (!authorization.startsWith("Bearer ")) {
+        res.status(401).json({ success: false, message: "Usuário não autenticado." });
+        return null;
+    }
+
+    try {
+        return await admin.auth().verifyIdToken(authorization.replace("Bearer ", ""));
+    } catch (tokenError) {
+        res.status(401).json({ success: false, message: "Sessão inválida. Entre de novo." });
+        return null;
+    }
+};
+
+const qrToken = () => crypto.randomBytes(32).toString("base64url");
+
+const QR_LOGIN_TTL_MS = 90 * 1000;
+const QR_INVITE_TTLS = [15 * 60 * 1000, 60 * 60 * 1000, 24 * 60 * 60 * 1000];
+const QR_INVITE_ROLES = ["administrator", "professional"];
+
+exports.createQrLogin = onRequest(async (req, res) => {
+
+    try {
+
+        if (qrCors(req, res)) return;
+
+        const decoded = await qrAuth(req, res);
+        if (!decoded) return;
+
+        const code = qrToken();
+
+        /* Um código por pessoa: gerar outro invalida o anterior. */
+        const previous = (await db.ref("qrLoginByUser/" + decoded.uid).once("value")).val();
+
+        if (previous) {
+            await db.ref("qrLogins/" + previous).remove();
+        }
+
+        await db.ref("qrLogins/" + code).set({
+            uid: decoded.uid,
+            used: false,
+            expiresAt: Date.now() + QR_LOGIN_TTL_MS
+        });
+
+        await db.ref("qrLoginByUser/" + decoded.uid).set(code);
+
+        return res.status(200).json({
+            success: true,
+            code,
+            expiresAt: Date.now() + QR_LOGIN_TTL_MS
+        });
+
+    } catch (error) {
+
+        console.error("Erro createQrLogin:", error);
+
+        return res.status(500).json({ success: false, message: "Erro interno." });
+    }
+});
+
+exports.redeemQrLogin = onRequest(async (req, res) => {
+
+    try {
+
+        if (qrCors(req, res)) return;
+
+        const code = (req.body || {}).code;
+
+        if (typeof code !== "string" || !/^[A-Za-z0-9_-]{40,60}$/.test(code)) {
+            return res.status(400).json({ success: false, message: "Código inválido." });
+        }
+
+        const claim = await db.ref("qrLogins/" + code).transaction((entry) => {
+
+            if (!entry || entry.used || Number(entry.expiresAt) < Date.now()) return;
+
+            return Object.assign({}, entry, { used: true, usedAt: Date.now() });
+        });
+
+        if (!claim.committed) {
+            return res.status(410).json({
+                success: false,
+                message: "Este QR Code expirou ou já foi usado. Gere outro no aparelho conectado."
+            });
+        }
+
+        const uid = claim.snapshot.val().uid;
+
+        const record = await admin.auth().getUser(uid);
+
+        if (record.disabled) {
+            return res.status(403).json({ success: false, message: "Esta conta foi desativada." });
+        }
+
+        const customToken = await admin.auth().createCustomToken(uid);
+
+        /* Código gasto não precisa ficar guardado. */
+        await db.ref("qrLogins/" + code).remove();
+
+        const byUser = (await db.ref("qrLoginByUser/" + uid).once("value")).val();
+
+        if (byUser === code) {
+            await db.ref("qrLoginByUser/" + uid).remove();
+        }
+
+        return res.status(200).json({ success: true, customToken });
+
+    } catch (error) {
+
+        console.error("Erro redeemQrLogin:", error);
+
+        return res.status(500).json({ success: false, message: "Erro interno." });
+    }
+});
+
+exports.createQrInvite = onRequest(async (req, res) => {
+
+    try {
+
+        if (qrCors(req, res)) return;
+
+        const decoded = await qrAuth(req, res);
+        if (!decoded) return;
+
+        const { handle, role, ttlIndex } = req.body || {};
+
+        if (typeof handle !== "string" || !/^[a-z0-9._-]{1,60}$/i.test(handle)) {
+            return res.status(400).json({ success: false, message: "Empresa inválida." });
+        }
+
+        if (!QR_INVITE_ROLES.includes(role)) {
+            return res.status(400).json({ success: false, message: "Escolha a função da pessoa." });
+        }
+
+        const ttl = QR_INVITE_TTLS[Number(ttlIndex)] || QR_INVITE_TTLS[0];
+
+        const member = (await db.ref("companys/" + handle + "/members/" + decoded.uid).once("value")).val();
+
+        if (!member || (member.role !== "master" && member.role !== "administrator")) {
+            return res.status(403).json({
+                success: false,
+                message: "Só administradores podem convidar pessoas."
+            });
+        }
+
+        const companyName = (await db.ref("companys/" + handle + "/name").once("value")).val() || handle;
+
+        const inviteId = qrToken();
+        const expiresAt = Date.now() + ttl;
+
+        await db.ref("qrInvites/" + inviteId).set({
+            handle,
+            companyName,
+            role,
+            inviterUid: decoded.uid,
+            status: "pending",
+            createdAt: Date.now(),
+            expiresAt
+        });
+
+        return res.status(200).json({ success: true, inviteId, expiresAt });
+
+    } catch (error) {
+
+        console.error("Erro createQrInvite:", error);
+
+        return res.status(500).json({ success: false, message: "Erro interno." });
+    }
+});
+
+exports.getQrInvite = onRequest(async (req, res) => {
+
+    try {
+
+        if (qrCors(req, res)) return;
+
+        const inviteId = (req.body || {}).inviteId;
+
+        if (typeof inviteId !== "string" || !/^[A-Za-z0-9_-]{40,60}$/.test(inviteId)) {
+            return res.status(200).json({ success: true, valid: false });
+        }
+
+        const invite = (await db.ref("qrInvites/" + inviteId).once("value")).val();
+
+        if (!invite || invite.status !== "pending" || Number(invite.expiresAt) < Date.now()) {
+            return res.status(200).json({ success: true, valid: false });
+        }
+
+        return res.status(200).json({
+            success: true,
+            valid: true,
+            companyName: invite.companyName,
+            role: invite.role,
+            expiresAt: invite.expiresAt
+        });
+
+    } catch (error) {
+
+        console.error("Erro getQrInvite:", error);
+
+        return res.status(500).json({ success: false, message: "Erro interno." });
+    }
+});
+
+exports.joinCompanyByQr = onRequest(async (req, res) => {
+
+    try {
+
+        if (qrCors(req, res)) return;
+
+        const decoded = await qrAuth(req, res);
+        if (!decoded) return;
+
+        const inviteId = (req.body || {}).inviteId;
+
+        if (typeof inviteId !== "string" || !/^[A-Za-z0-9_-]{40,60}$/.test(inviteId)) {
+            return res.status(400).json({ success: false, message: "Convite inválido." });
+        }
+
+        const invite = (await db.ref("qrInvites/" + inviteId).once("value")).val();
+
+        if (!invite || invite.status !== "pending" || Number(invite.expiresAt) < Date.now()) {
+            return res.status(410).json({ success: false, message: "Este convite expirou ou já foi usado." });
+        }
+
+        const handle = invite.handle;
+
+        /* ---- a empresa precisa ter plano ativo, com vaga na equipe ---- */
+
+        const license = (await db.ref("licenses/" + handle).once("value")).val();
+
+        const active =
+            license &&
+            license.status === "active" &&
+            (!license.expiresAt || Number(license.expiresAt) > Date.now());
+
+        if (!active) {
+            return res.status(403).json({
+                success: false,
+                message: "A empresa está sem plano ativo e não pode receber novos membros."
+            });
+        }
+
+        const plan = (await db.ref("planCatalog/" + license.plan).once("value")).val() || {};
+        const maxMembers = plan.limits && plan.limits.maxMembers;
+
+        const members = (await db.ref("companys/" + handle + "/members").once("value")).val() || {};
+
+        if (members[decoded.uid]) {
+            await db.ref("qrInvites/" + inviteId).update({ status: "used", usedBy: decoded.uid, usedAt: Date.now() });
+            return res.status(200).json({ success: true, already: true, handle });
+        }
+
+        if (typeof maxMembers === "number" && Object.keys(members).length >= maxMembers) {
+            return res.status(403).json({
+                success: false,
+                message: "A equipe da empresa já atingiu o limite do plano. Peça ao administrador principal para mudar de plano."
+            });
+        }
+
+        /* ---- consome o convite: uso único ---- */
+
+        const claim = await db.ref("qrInvites/" + inviteId).transaction((entry) => {
+
+            if (!entry || entry.status !== "pending" || Number(entry.expiresAt) < Date.now()) return;
+
+            return Object.assign({}, entry, { status: "used", usedBy: decoded.uid, usedAt: Date.now() });
+        });
+
+        if (!claim.committed) {
+            return res.status(410).json({ success: false, message: "Este convite expirou ou já foi usado." });
+        }
+
+        await db.ref("companys/" + handle + "/members/" + decoded.uid).set({
+            role: invite.role,
+            joinedAt: Date.now(),
+            invitedBy: invite.inviterUid,
+            via: "qr"
+        });
+
+        await db.ref("users/" + decoded.uid).update({
+            companyHandle: handle,
+            userType: "admin",
+            initial: false
+        });
+
+        await db.ref("users/" + decoded.uid + "/companies/" + handle).set(true);
+
+        return res.status(200).json({ success: true, handle });
+
+    } catch (error) {
+
+        console.error("Erro joinCompanyByQr:", error);
+
+        return res.status(500).json({ success: false, message: "Erro interno." });
+    }
+});
