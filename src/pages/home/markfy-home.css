@@ -3,6 +3,7 @@
 ========================================================= */
 
 .mkh {
+    min-height: 100vh;
     min-height: 100dvh;
     display: flex;
     flex-direction: column;
@@ -85,7 +86,7 @@
 
 .mkh-products {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: clamp(14px, 2vw, 24px);
 }
 
@@ -581,7 +582,10 @@
 @media (prefers-reduced-motion: reduce) {
     .mkh-slot__done,
     .mkh-block--drop,
-    .mkh-cursor {
+    .mkh-cursor,
+    .mkh-dish__add,
+    .mkh-phone__bag,
+    .mkh-table {
         animation: none !important;
     }
 

@@ -1330,6 +1330,7 @@
 
 
     .central-adm-no-company__card {
+        min-height: 100vh;
         min-height: 100dvh;
 
         border: 0;
@@ -1454,6 +1455,7 @@
     gap: 22px;
 
     width: 100%;
+    min-height: 100vh;
     min-height: 100dvh;
     padding: 24px;
 

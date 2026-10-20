@@ -819,16 +819,31 @@ export const UserCompanyProvider = ({ children }) => {
 
                     Object.entries(membersData).map(async ([uid, member]) => {
 
-                        const userSnapshot = await get(
-                            ref(db, `users/${uid}`)
-                        );
+                        /* Perfil de outro membro pode ser negado pelas
+                           regras (ou falhar sem rede). Um perfil que não
+                           carrega não pode derrubar a equipe inteira:
+                           mostra o membro com o que a empresa já tem. */
+                        let profile = null;
 
-                        if (!userSnapshot.exists()) return null;
+                        try {
+                            const userSnapshot = await get(
+                                ref(db, `users/${uid}`)
+                            );
+
+                            if (!userSnapshot.exists()) return null;
+
+                            profile = userSnapshot.val();
+                        } catch {
+                            profile = {
+                                name: member.name || member.email || "Membro da equipe",
+                                email: member.email || ""
+                            };
+                        }
 
                         return {
                             uid,
 
-                            ...userSnapshot.val(),
+                            ...profile,
 
                             role: member.role,
 
@@ -852,6 +867,11 @@ export const UserCompanyProvider = ({ children }) => {
 
                 setLoadingMembers(false);
 
+            },
+            () => {
+                if (cancelled) return;
+                setMembers([]);
+                setLoadingMembers(false);
             }
         );
 

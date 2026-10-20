@@ -55,7 +55,7 @@ const TabBar = ({
 
       <div className="container">
 
-        <nav>
+        <nav className="mk-tabbar">
 
           <ul style={tabs.length < 5 ? { justifyContent: "center" } : undefined}>
 

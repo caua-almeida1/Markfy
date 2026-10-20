@@ -55,6 +55,7 @@
     position: fixed;
     inset: 0;
     width: 100vw;
+    height: 100vh;
     height: 100dvh;
     background: rgba(0, 0, 0, 0.5);
     backdrop-filter: blur(2px);
@@ -75,6 +76,7 @@
     background: var(--mkf-ui-white);
     border-radius: 1.5rem !important;
     width: min(75vw, 750px);
+    max-height: 90vh;
     max-height: 90dvh;
     overflow: hidden;
     box-shadow: 0 12px 40px rgba(0, 0, 0, .28);
@@ -322,6 +324,7 @@
     z-index: 999999;
 
     width: 100vw;
+    height: 100vh;
     height: 100dvh;
 
     display: flex;
@@ -2964,6 +2967,7 @@
     }
 
     .confirmation-modal {
+        max-height: 96vh;
         max-height: 96dvh;
     }
 
@@ -3046,6 +3050,7 @@
 
     .product-details-container {
         width: 100vw;
+        height: 100vh;
         height: 100dvh;
         max-width: none;
         max-height: none;
@@ -3102,6 +3107,7 @@
         width: 100%;
         max-width: 100%;
         height: auto;
+        max-height: 94vh;
         max-height: 94dvh;
         border-radius: 22px 22px 0 0;
         border-left: 0;

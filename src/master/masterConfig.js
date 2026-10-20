@@ -32,7 +32,9 @@ export const getMasterAccount = (email) =>
 
 /* ---------- PRODUTOS ----------
    A cor de cada produto é a mesma em toda a tela: azul =
-   Bookings, rosa = Studio, os dois = degradê, cinza = nada. */
+   Bookings, rosa = Studio, laranja = Menus, pacotes = roxo,
+   cinza = nada. Os valores são os mesmos gravados em
+   licenses/{handle}.product (ver src/menus/engine/licensing.js). */
 
 export const PRODUCTS = [
     {
@@ -60,14 +62,33 @@ export const PRODUCTS = [
         color: "#f472b6"
     },
     {
+        id: "menus",
+        label: "Markfy Menus",
+        short: "Menus",
+        hint: "Cardápio digital, pedidos, mesas e comandas.",
+        icon: "solar:chef-hat-bold",
+        color: "#fb923c"
+    },
+    {
         id: "both",
         label: "Bookings + Studio",
-        short: "Os dois",
-        hint: "Acesso completo à rede Markfy.",
+        short: "Bookings + Studio",
+        hint: "Pacote com os dois produtos (plano Pro).",
         icon: "solar:crown-star-bold",
         color: "#a78bfa"
+    },
+    {
+        id: "all",
+        label: "Bookings + Studio + Menus",
+        short: "Os três",
+        hint: "Acesso completo à rede Markfy (Premium).",
+        icon: "solar:crown-star-bold",
+        color: "#c084fc"
     }
 ];
+
+/* Produtos que um plano individual pode liberar. */
+export const SINGLE_PRODUCTS = PRODUCTS.filter((product) => ["bookings", "studio", "menus"].includes(product.id));
 
 export const getProduct = (id) =>
     PRODUCTS.find((product) => product.id === id) || PRODUCTS[0];

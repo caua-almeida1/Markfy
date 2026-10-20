@@ -1,4 +1,10 @@
 {
+  "database": {
+    "rules": "database.rules.json",
+    "predeploy": [
+      "node scripts/build-db-rules.js"
+    ]
+  },
   "hosting": {
     "public": "build",
     "ignore": [
@@ -24,6 +30,9 @@
         "firebase-debug.log",
         "firebase-debug.*.log",
         "*.local"
+      ],
+      "predeploy": [
+        "node scripts/sync-menus-engine.js"
       ]
     }
   ]

@@ -4550,6 +4550,8 @@
             100%;
 
         max-height:
+            calc(100vh - 20px);
+        max-height:
             calc(100dvh - 20px);
 
         border-radius:
@@ -4614,6 +4616,8 @@
     ===================================================== */
 
     .orders-filter-modal-new {
+        max-height:
+            calc(100vh - 20px);
         max-height:
             calc(100dvh - 20px);
     }
@@ -4696,6 +4700,8 @@
 
     .orders-details-modal {
         max-height:
+            calc(100vh - 20px);
+        max-height:
             calc(100dvh - 20px);
     }
 
@@ -4713,6 +4719,8 @@
     }
 
     .orders-details-body {
+        max-height:
+            calc(100vh - 190px);
         max-height:
             calc(100dvh - 190px);
 

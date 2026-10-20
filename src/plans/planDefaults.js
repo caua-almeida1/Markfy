@@ -22,15 +22,48 @@
 
    ATENÇÃO: os preços abaixo são marcadores. Ajuste-os na
    Master Dev antes de abrir a cobrança.
+
+   Produtos, pacotes, preço por produto e os recursos do
+   Markfy Menus vêm de src/menus/engine/licensing.js — a
+   MESMA regra que o backend usa para cobrar e liberar.
 ========================================================= */
+
+import {
+    bundleProductsOf,
+    bundleSavings as engineBundleSavings,
+    licenseProductFor,
+    MENUS_FEATURE_DEFAULTS,
+    MENUS_LIMIT_DEFAULTS,
+    planFeature,
+    planPriceFor,
+    productIncludes,
+    productsOf,
+    PRODUCT_IDS
+} from "../menus/engine/licensing.js";
+
+export { productsOf, licenseProductFor, PRODUCT_IDS };
 
 /* ---------- PRODUTOS ---------- */
 
 export const PRODUCT_LABELS = {
     bookings: "Markfy Bookings",
     studio: "Markfy Studio",
-    both: "Bookings + Studio"
+    menus: "Markfy Menus",
+    both: "Bookings + Studio",
+    all: "Bookings + Studio + Menus"
 };
+
+export const PRODUCT_SHORT = { bookings: "Bookings", studio: "Studio", menus: "Menus" };
+
+export const PRODUCT_ICONS = {
+    bookings: "solar:calendar-bold",
+    studio: "solar:pallete-2-bold",
+    menus: "solar:chef-hat-bold"
+};
+
+/** "Bookings + Studio + Menus" a partir de qualquer valor de licença. */
+export const productLabel = (product) =>
+    PRODUCT_LABELS[product] || productsOf(product).map((id) => PRODUCT_SHORT[id]).join(" + ") || "";
 
 /* ---------- RECURSOS (liga/desliga por plano) ----------
    Só entra aqui o que o app de fato bloqueia. */
@@ -53,8 +86,58 @@ export const FEATURES = [
         label: "Analytics do Studio",
         hint: "Visitas, cliques e conversão da página publicada.",
         product: "studio"
+    },
+    {
+        id: "menusOrdering",
+        label: "Pedidos pelo cardápio digital",
+        hint: "Retirada, entrega e pedidos pelo QR da mesa. Pedidos ilimitados.",
+        product: "menus"
+    },
+    {
+        id: "menusTables",
+        label: "Mesas e comandas",
+        hint: "Mapa do salão, comandas, divisão de conta e fechamento.",
+        product: "menus"
+    },
+    {
+        id: "menusPos",
+        label: "PDV, cozinha e painel de pedidos",
+        hint: "Balcão, tela da cozinha e quadro de pedidos por status.",
+        product: "menus"
+    },
+    {
+        id: "menusAdvancedDesign",
+        label: "Todos os modelos e personalização avançada",
+        hint: "Os 16 modelos, fontes, cores e disposição livres.",
+        product: "menus"
+    },
+    {
+        id: "menusStock",
+        label: "Controle de estoque",
+        hint: "Quantidade, estoque mínimo e baixa automática por pedido.",
+        product: "menus"
+    },
+    {
+        id: "menusReports",
+        label: "Relatórios avançados",
+        hint: "Produtos, horários, canais, pagamentos e exportação.",
+        product: "menus"
+    },
+    {
+        id: "menusIntegrations",
+        label: "Integrações com canais de venda",
+        hint: "Conectores com iFood, 99Food, Keeta e outros, à medida que forem liberados.",
+        product: "menus"
+    },
+    {
+        id: "menusCustomDomain",
+        label: "Domínio próprio",
+        hint: "Cardápio no endereço da sua marca (configuração assistida).",
+        product: "menus"
     }
 ];
+
+const MENUS_FEATURES = new Set(Object.keys(MENUS_FEATURE_DEFAULTS.premium));
 
 /* ---------- LIMITES (número, ou vazio = ilimitado) ---------- */
 
@@ -72,6 +155,13 @@ export const LIMITS = [
         hint: "Itens ativos no catálogo da empresa.",
         unit: "itens",
         product: "bookings"
+    },
+    {
+        id: "menusMaxTables",
+        label: "Mesas cadastradas",
+        hint: "Mesas na planta do Markfy Menus. Pedidos são sempre ilimitados.",
+        unit: "mesas",
+        product: "menus"
     }
 ];
 
@@ -92,7 +182,7 @@ export const DEFAULT_PLANS = {
         order: 1,
         color: "#fb923c",
         limits: { maxMembers: 2, maxProducts: 10 },
-        features: { onlinePayments: false, monthlyPlans: false, studioAnalytics: false }
+        features: { onlinePayments: false, monthlyPlans: false, studioAnalytics: false, ...MENUS_FEATURE_DEFAULTS.basic }
     },
     standard: {
         name: "Comum",
@@ -105,8 +195,8 @@ export const DEFAULT_PLANS = {
         active: true,
         order: 2,
         color: "#22d3ee",
-        limits: { maxMembers: 5, maxProducts: 40 },
-        features: { onlinePayments: true, monthlyPlans: false, studioAnalytics: false }
+        limits: { maxMembers: 5, maxProducts: 40, ...MENUS_LIMIT_DEFAULTS.standard },
+        features: { onlinePayments: true, monthlyPlans: false, studioAnalytics: false, ...MENUS_FEATURE_DEFAULTS.standard }
     },
     pro: {
         name: "Pro",
@@ -115,7 +205,8 @@ export const DEFAULT_PLANS = {
         price: 99.9,
         periodDays: 30,
         bundle: true,
-        highlight: true,
+        bundleProducts: ["bookings", "studio"],
+        highlight: false,
         active: true,
         order: 3,
         color: "#4160ff",
@@ -125,16 +216,17 @@ export const DEFAULT_PLANS = {
     premium: {
         name: "Premium",
         tier: "Nível 4",
-        tagline: "Tudo liberado: equipe de até 50 pessoas e catálogo de até 500 itens.",
+        tagline: "Studio, Bookings e Menus juntos, com tudo liberado.",
         price: 179.9,
         periodDays: 30,
         bundle: true,
-        highlight: false,
+        bundleProducts: ["bookings", "studio", "menus"],
+        highlight: true,
         active: true,
         order: 4,
         color: "#c084fc",
         limits: { maxMembers: 50, maxProducts: 500 },
-        features: { onlinePayments: true, monthlyPlans: true, studioAnalytics: true }
+        features: { onlinePayments: true, monthlyPlans: true, studioAnalytics: true, ...MENUS_FEATURE_DEFAULTS.premium }
     }
 };
 
@@ -156,7 +248,11 @@ export const normalizePlan = (id, raw) => {
     const features = {};
 
     FEATURES.forEach((feature) => {
-        features[feature.id] = source.features?.[feature.id] === true;
+        /* Recursos do Menus ausentes num catálogo publicado antes
+           dele valem o padrão do plano (mesma regra do backend). */
+        features[feature.id] = MENUS_FEATURES.has(feature.id)
+            ? planFeature(id, source, feature.id)
+            : source.features?.[feature.id] === true;
     });
 
     const limits = {};
@@ -179,6 +275,10 @@ export const normalizePlan = (id, raw) => {
         price: toNumberOrNull(source.price) ?? 0,
         periodDays: Math.max(1, Math.round(toNumberOrNull(source.periodDays) ?? 30)),
         bundle: source.bundle === true,
+        bundleProducts: source.bundle === true ? bundleProductsOf(id, source) : [],
+        productPrices: {
+            menus: toNumberOrNull(source.productPrices?.menus)
+        },
         highlight: source.highlight === true,
         active: source.active !== false,
         order: toNumberOrNull(source.order) ?? 99,
@@ -221,6 +321,10 @@ export const serializePlan = (plan) => {
         price: Math.round((toNumberOrNull(plan.price) ?? 0) * 100) / 100,
         periodDays: Math.max(1, Math.round(toNumberOrNull(plan.periodDays) ?? 30)),
         bundle: plan.bundle === true,
+        ...(plan.bundle === true ? { bundleProducts: bundleProductsOf(plan.id, plan) } : {}),
+        ...(toNumberOrNull(plan.productPrices?.menus)
+            ? { productPrices: { menus: Math.round(toNumberOrNull(plan.productPrices.menus) * 100) / 100 } }
+            : {}),
         highlight: plan.highlight === true,
         active: plan.active !== false,
         order: toNumberOrNull(plan.order) ?? 99,
@@ -253,5 +357,19 @@ export const licenseState = (license, now = Date.now()) => {
     return "active";
 };
 
-export const productAllows = (product, wanted) =>
-    product === "both" || product === wanted;
+export const productAllows = (product, wanted) => productIncludes(product, wanted);
+
+/** Produtos que um plano libera (pacote) ou pode liberar (individual). */
+export const planProducts = (plan) => (plan?.bundle ? bundleProductsOf(plan.id, plan) : PRODUCT_IDS);
+
+/** Preço do plano para o produto escolhido (individual) ou do pacote. */
+export const priceFor = (plan, product) => planPriceFor(plan, product);
+
+/** Economia real do pacote frente aos planos individuais do catálogo. */
+export const bundleSavings = (plan, catalog) => engineBundleSavings(plan?.id, plan, catalog);
+
+/** Recursos e limites que fazem sentido para um conjunto de produtos. */
+export const featuresFor = (products) => FEATURES.filter((feature) => products.includes(feature.product));
+
+export const limitsFor = (products) =>
+    LIMITS.filter((limit) => products.includes(limit.product) || limit.id === "maxMembers");

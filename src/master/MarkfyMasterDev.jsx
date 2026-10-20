@@ -4,6 +4,7 @@ import { Icon } from "@iconify/react";
 import {
     MASTER_EMAIL,
     PRODUCTS,
+    SINGLE_PRODUCTS,
     LICENSE_STATUS,
     ROLE_KINDS,
     getProduct
@@ -12,8 +13,13 @@ import {
     FEATURES,
     LIMITS,
     PLAN_COLORS,
+    PRODUCT_IDS,
     buildCatalog,
-    formatPrice
+    formatPrice,
+    licenseProductFor,
+    planProducts,
+    priceFor,
+    productLabel
 } from "../plans/planDefaults";
 import {
     watchMasterSession,
@@ -380,14 +386,14 @@ function LicenseEditor({ company, onSave }) {
     const license = company.license;
 
     const [planId, setPlanId] = useState(license?.plan || null);
-    const [product, setProduct] = useState(license?.product === "studio" ? "studio" : "bookings");
+    const [product, setProduct] = useState(PRODUCT_IDS.includes(license?.product) ? license.product : "bookings");
     const [status, setStatus] = useState(license?.status || "active");
     const [expires, setExpires] = useState(toDateInput(license?.expiresAt));
     const [note, setNote] = useState(license?.note || "");
     const [busy, setBusy] = useState(false);
 
     const plan = plans.find((item) => item.id === planId) || null;
-    const finalProduct = plan?.bundle ? "both" : product;
+    const finalProduct = plan ? licenseProductFor(plan.id, plan, product) || product : product;
 
     const dirty =
         planId !== (license?.plan || null) ||
@@ -443,7 +449,7 @@ function LicenseEditor({ company, onSave }) {
                         <Icon icon={item.bundle ? "solar:crown-star-bold" : "solar:ticket-bold"} />
                         <b>{item.name}</b>
                         <em>{item.tier}</em>
-                        <small>{item.bundle ? "Bookings + Studio" : "Um produto"} · {formatPrice(item.price)}{item.active ? "" : " · oculto"}</small>
+                        <small>{item.bundle ? productLabel(licenseProductFor(item.id, item)) : "Um produto"} · {formatPrice(item.price)}{item.active ? "" : " · oculto"}</small>
                     </button>
                 ))}
             </div>
@@ -452,7 +458,7 @@ function LicenseEditor({ company, onSave }) {
                 <>
                     <p className="mm-label">Produto liberado</p>
                     <div className="mm-tiles">
-                        {PRODUCTS.filter((item) => item.id === "bookings" || item.id === "studio").map((item) => (
+                        {SINGLE_PRODUCTS.map((item) => (
                             <button
                                 key={item.id}
                                 type="button"
@@ -470,7 +476,7 @@ function LicenseEditor({ company, onSave }) {
             )}
 
             {planId && plan?.bundle && (
-                <p className="mm-muted"><Icon icon="solar:crown-star-bold" /> Este plano libera Bookings e Studio juntos.</p>
+                <p className="mm-muted"><Icon icon="solar:crown-star-bold" /> Este plano libera {productLabel(finalProduct)} juntos.</p>
             )}
 
             {planId && (
@@ -708,7 +714,7 @@ function Overview({ people, companies, onOpen, onGoPeople }) {
 
     const stats = useMemo(() => {
 
-        const byProduct = { none: 0, bookings: 0, studio: 0, both: 0 };
+        const byProduct = { none: 0, bookings: 0, studio: 0, menus: 0, both: 0, all: 0 };
         const byPlan = { none: 0 };
         plans.forEach((plan) => { byPlan[plan.id] = 0; });
 
@@ -716,7 +722,7 @@ function Overview({ people, companies, onOpen, onGoPeople }) {
 
         people.forEach((person) => {
             const s = stateOf(person);
-            byProduct[s.product] += 1;
+            byProduct[s.product in byProduct ? s.product : "none"] += 1;
             byPlan[s.plan && s.plan in byPlan ? s.plan : "none"] += 1;
 
             if (person.kind === "owner") owners += 1;
@@ -995,7 +1001,7 @@ function People({ people, filters, setFilters, onOpen, onBulk, onCopy, onExport 
                         {plans.map((item) => <option key={item.id} value={item.id}>{item.name}{item.tier ? ` · ${item.tier}` : ""}</option>)}
                     </select>
                     <select value={bulkProduct} onChange={(e) => setBulkProduct(e.target.value)} aria-label="Produto (planos de um produto só)">
-                        {PRODUCTS.filter((item) => item.id === "bookings" || item.id === "studio").map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+                        {SINGLE_PRODUCTS.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
                     </select>
                     <button className="mm-btn mm-btn--gold mm-btn--sm" onClick={applyBulk} disabled={bulkPlan === "__pick"}>Aplicar</button>
                     <button className="mm-btn mm-btn--ghost mm-btn--sm" onClick={() => setSelected(new Set())}>Limpar</button>
@@ -1369,10 +1375,50 @@ function PlanDrawer({ plan, isNew, usedBy, existingIds, onClose, onSave, onDelet
 
                 <Toggle
                     checked={form.bundle}
-                    onChange={(value) => patch({ bundle: value })}
-                    title="Bookings + Studio juntos"
-                    hint="Ligado: o plano libera os dois produtos. Desligado: a empresa escolhe um."
+                    onChange={(value) => patch({ bundle: value, bundleProducts: value ? planProducts({ ...form, id, bundle: true }) : [] })}
+                    title="Pacote com produtos fixos"
+                    hint="Ligado: o plano libera os produtos marcados abaixo. Desligado: a empresa escolhe um produto."
                 />
+
+                {form.bundle ? (
+                    <div className="mm-tiles">
+                        {SINGLE_PRODUCTS.map((item) => {
+                            const list = planProducts({ ...form, id, bundle: true });
+                            const on = list.includes(item.id);
+                            const next = on ? list.filter((value) => value !== item.id) : [...list, item.id];
+                            const valid = Boolean(licenseProductFor(id, { bundle: true, bundleProducts: next }));
+                            return (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className={`mm-tile ${on ? "is-on" : ""}`}
+                                    style={{ "--c": item.color }}
+                                    disabled={!valid && !on}
+                                    onClick={() => valid && patch({ bundleProducts: next })}
+                                >
+                                    <Icon icon={item.icon} />
+                                    <b>{item.label}</b>
+                                    <small>{on ? "Incluído" : "Fora do pacote"}</small>
+                                </button>
+                            );
+                        })}
+                        <p className="mm-muted">Pacotes possíveis: Bookings + Studio, ou os três produtos.</p>
+                    </div>
+                ) : (
+                    <label>
+                        <p className="mm-label">Preço quando o produto escolhido é o Markfy Menus (R$)</p>
+                        <input
+                            className="mm-plain-input"
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={form.productPrices?.menus ?? ""}
+                            placeholder={String(priceFor({ ...form, productPrices: {} }, "menus"))}
+                            onChange={(e) => patch({ productPrices: { ...(form.productPrices || {}), menus: e.target.value === "" ? null : e.target.value } })}
+                        />
+                        <p className="mm-muted">Vazio: usa a regra comercial interna sobre o preço acima ({formatPrice(priceFor({ ...form, productPrices: {} }, "menus"))}). Só o valor final aparece para o cliente.</p>
+                    </label>
+                )}
             </section>
 
             <section className="mm-sec">
@@ -1530,8 +1576,8 @@ function Plans({ companies, published, onFilter, onSavePlan, onDeletePlan, onSee
                         <strong className="mm-plancard__count">{formatPrice(plan.price)}<small> /{plan.periodDays} dias</small></strong>
 
                         <div className="mm-plancard__split">
-                            <span style={{ "--c": plan.bundle ? getProduct("both").color : getProduct("bookings").color }}>
-                                {plan.bundle ? "Bookings + Studio" : "Um produto"}
+                            <span style={{ "--c": plan.bundle ? getProduct(licenseProductFor(plan.id, plan)).color : getProduct("bookings").color }}>
+                                {plan.bundle ? productLabel(licenseProductFor(plan.id, plan)) : "Um produto"}
                             </span>
                             <span>{usage[plan.id]} empresa{usage[plan.id] === 1 ? "" : "s"}</span>
                             {FEATURES.filter((f) => plan.features[f.id]).length > 0 && (
@@ -1788,7 +1834,7 @@ function Dashboard({ user, mock }) {
             try {
                 const saved = await saveLicense(handle, draft.plan ? {
                     plan: draft.plan,
-                    product: plan?.bundle ? "both" : draft.product,
+                    product: plan ? licenseProductFor(plan.id, plan, draft.product) || draft.product : draft.product,
                     status: company?.license?.status || "active",
                     expiresAt: company?.license?.expiresAt || null,
                     note: company?.license?.note || ""

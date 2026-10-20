@@ -4,6 +4,7 @@
 
 .create-company-wrapper {
     width: 100%;
+    min-height: 100vh;
     min-height: 100dvh;
 
     display: flex;
@@ -1203,6 +1204,7 @@
     width: 100%;
     max-width: 460px;
 
+    max-height: calc(100vh - 40px);
     max-height: calc(100dvh - 40px);
 
     padding: 28px;
@@ -1914,6 +1916,7 @@
 .create-company-crop-modal-content {
     width: min(100%, 560px);
 
+    max-height: calc(100vh - 48px);
     max-height: calc(100dvh - 48px);
 
     overflow-y: auto;
@@ -2753,6 +2756,7 @@
     }
 
     .create-company-crop-modal-content {
+        max-height: calc(100vh - 24px);
         max-height: calc(100dvh - 24px);
 
         padding: 22px 16px;
@@ -2761,6 +2765,7 @@
     }
 
     .create-company-logo-cropper-image {
+        max-height: 55vh;
         max-height: 55dvh;
     }
 
@@ -2807,6 +2812,7 @@
     }
 
     .create-company-logo-modal-content {
+        max-height: calc(100vh - 24px);
         max-height: calc(100dvh - 24px);
 
         padding: 22px 16px;

@@ -3340,21 +3340,7 @@ const Orders = ({ company, initialOrder }) => {
 
             <Modal
                 open={!!openOrderDetails}
-                onClose={(e) => {
-
-                            if (
-                                e.target.classList.contains(
-                                    "orders-details-overlay"
-                                )
-                            ) {
-
-                                setOpenOrderDetails(
-                                    null
-                                );
-
-                            }
-
-                        }}
+                onClose={() => setOpenOrderDetails(null)}
                 overlayClassName="orders-details-overlay"
                 className="orders-details-modal"
             >

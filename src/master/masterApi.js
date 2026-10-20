@@ -1,3 +1,4 @@
+import { publicAccessFor } from "../menus/engine/licensing.js";
 import { initializeApp, getApps, getApp } from "firebase/app";
 import {
     getAuth,
@@ -446,15 +447,9 @@ export const saveLicense = async (handle, license) => {
 
     await set(target, payload);
 
-    /* Espelho público mínimo: só diz se a empresa recebe clientes. */
-    const open = payload.status === "active" &&
-        (payload.product === "bookings" || payload.product === "both");
-
-    await set(publicTarget, {
-        bookings: open,
-        studio: payload.status === "active" && (payload.product === "studio" || payload.product === "both"),
-        expiresAt: payload.expiresAt || null
-    });
+    /* Espelho público mínimo: só diz o que a empresa pode
+       receber de clientes (mesma regra do backend). */
+    await set(publicTarget, publicAccessFor(payload));
 
     return { ...payload, updatedAt: Date.now() };
 };

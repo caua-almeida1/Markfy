@@ -4574,7 +4574,12 @@ exports.mercadoPagoWebhook = onRequest(
 const MARKFY_FUNCTIONS_URL =
     "https://us-central1-markfy-96942.cloudfunctions.net";
 
-const PLAN_PRODUCTS = ["bookings", "studio"];
+/* Produtos, pacotes e preço por produto vêm do motor
+   compartilhado do Menus (mesma regra da tela de planos). */
+const menus = require("./menus");
+const { licenseProductFor, planPriceFor, publicAccessFor } = menus.menusLicensing;
+
+exports.menusApi = menus.menusApi;
 
 const planCors = (req, res) => {
 
@@ -4661,7 +4666,16 @@ exports.createMarkfyPlanCheckout = onRequest(
                 return res.status(404).json({ success: false, message: "Esse plano não está disponível." });
             }
 
-            const price = Number(plan.price);
+            /* Plano em pacote libera os produtos dele; os demais
+               liberam só o produto escolhido (com o preço daquele
+               produto, que pode ser diferente do preço base). */
+            const finalProduct = licenseProductFor(planId, plan, product);
+
+            if (!finalProduct) {
+                return res.status(400).json({ success: false, message: "Escolha Bookings, Studio ou Menus." });
+            }
+
+            const price = planPriceFor(plan, finalProduct);
 
             if (!Number.isFinite(price) || price < 1) {
                 return res.status(400).json({
@@ -4671,14 +4685,6 @@ exports.createMarkfyPlanCheckout = onRequest(
             }
 
             const periodDays = Math.max(1, Math.round(Number(plan.periodDays) || 30));
-
-            /* Plano em pacote libera os dois produtos; os demais
-               liberam só o produto escolhido. */
-            const finalProduct = plan.bundle === true ? "both" : product;
-
-            if (finalProduct !== "both" && !PLAN_PRODUCTS.includes(finalProduct)) {
-                return res.status(400).json({ success: false, message: "Escolha Bookings ou Studio." });
-            }
 
             const accessToken = mercadoPagoMarkfyAccessToken.value();
 
@@ -4884,11 +4890,7 @@ exports.markfyPlanWebhook = onRequest(
             const finalLicense = (await db.ref("licenses/" + order.handle).once("value")).val();
 
             if (finalLicense) {
-                await db.ref("publicAccess/" + order.handle).set({
-                    bookings: finalLicense.status === "active" && (finalLicense.product === "bookings" || finalLicense.product === "both"),
-                    studio: finalLicense.status === "active" && (finalLicense.product === "studio" || finalLicense.product === "both"),
-                    expiresAt: finalLicense.expiresAt || null
-                });
+                await db.ref("publicAccess/" + order.handle).set(publicAccessFor(finalLicense));
             }
 
             return res.status(200).send("OK");

@@ -51,6 +51,11 @@ export default function PlansPage() {
                             Abrir Markfy Studio
                         </button>
                     )}
+                    {license.hasProduct("menus") && (
+                        <button type="button" className="pl-btn" style={{ "--pl": "#d9480f", padding: "0 26px" }} onClick={() => navigate("/menus")}>
+                            Abrir Markfy Menus
+                        </button>
+                    )}
                 </div>
             )}
         </>

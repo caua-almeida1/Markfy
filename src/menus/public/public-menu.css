@@ -1,0 +1,95 @@
+/* Página pública do cardápio: só o necessário fora do renderizador. */
+
+body.mpm-body {
+    margin: 0;
+    background: #fff;
+}
+
+.mpm-state {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 12px;
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding: 24px;
+    font-family: "Poppins", system-ui, sans-serif;
+    text-align: center;
+    color: #17181c;
+    background: #f8f9fb;
+}
+
+.mpm-state svg {
+    font-size: 44px;
+    color: #858891;
+}
+
+.mpm-state h1 {
+    margin: 0;
+    font-size: 24px;
+    letter-spacing: -0.03em;
+}
+
+.mpm-state p {
+    max-width: 40ch;
+    margin: 0;
+    color: #5f626b;
+    line-height: 1.6;
+}
+
+.mpm-state a {
+    color: #d9480f;
+    font-weight: 700;
+}
+
+.mpm-retry {
+    min-height: 44px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 999px;
+    background: #d9480f;
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.mpm-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #e8e9ed;
+    border-top-color: #d9480f;
+    border-radius: 50%;
+    animation: mpmSpin 0.8s linear infinite;
+}
+
+@keyframes mpmSpin {
+    to { transform: rotate(360deg); }
+}
+
+.mpm-track {
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+.mpm-track__inner {
+    display: grid;
+    gap: 16px;
+    max-width: 560px;
+    padding-top: 24px;
+    padding-bottom: 40px;
+}
+
+.mpm-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .mpm-spinner {
+        animation-duration: 2.4s;
+    }
+}

@@ -11,6 +11,7 @@
     flex-direction: column;
 
     width: min(560px, 100%);
+    max-height: min(760px, calc(100vh - 3rem));
     max-height: min(760px, calc(100dvh - 3rem));
 
     box-sizing: border-box;
@@ -490,6 +491,7 @@
 
     .combo-builder {
         width: 100%;
+        max-height: 92vh;
         max-height: 92dvh;
         border-radius: 22px 22px 0 0;
     }

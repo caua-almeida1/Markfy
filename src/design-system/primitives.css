@@ -33,7 +33,11 @@
     width: 1px;
     height: 1px;
     overflow: hidden;
+    margin: -1px;
+    padding: 0;
+    border: 0;
     clip: rect(0 0 0 0);
+    clip-path: inset(50%);
     white-space: nowrap;
 }
 
@@ -553,6 +557,7 @@
     top: 50%;
     left: 50%;
     width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 48px);
     max-height: calc(100dvh - 48px);
     border-radius: var(--mk-radius-lg);
 }
@@ -589,6 +594,7 @@
 
 .mk-sheet__footer {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     justify-content: flex-end;
     padding: 14px 22px 18px;
@@ -607,6 +613,7 @@
         right: 0;
         bottom: 0;
         width: 100%;
+        max-height: 92vh;
         max-height: 92dvh;
         border-radius: var(--mk-radius-lg) var(--mk-radius-lg) 0 0;
         padding-bottom: env(safe-area-inset-bottom);

@@ -326,12 +326,14 @@
 
     .invite-page {
         padding: 0;
+        min-height: 100vh;
         min-height: 100dvh;
         background: var(--mkf-ui-background);
     }
 
     .invite-card {
         width: 100%;
+        min-height: 100vh;
         min-height: 100dvh;
 
         display: flex;

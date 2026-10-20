@@ -8,10 +8,20 @@ import { useUserCompany } from "../contexts/companyContext/UserCompanyContext";
 import { useLicense } from "./LicenseContext";
 import {
     FEATURES,
-    LIMITS,
+    PRODUCT_ICONS,
+    PRODUCT_IDS,
     PRODUCT_LABELS,
+    PRODUCT_SHORT,
+    bundleSavings,
     describeLimit,
-    formatPrice
+    featuresFor,
+    formatPrice,
+    licenseProductFor,
+    limitsFor,
+    planProducts,
+    priceFor,
+    productLabel,
+    productsOf
 } from "./planDefaults";
 
 import markfyLogo from "../img/logo-markfy.svg";
@@ -21,8 +31,9 @@ import "./plans.css";
    TELA DE PLANOS
 
    Uma tela só, em três lugares:
-     - "blocked"   no lugar do painel (Bookings ou Studio)
-                   quando a empresa não tem plano ativo;
+     - "blocked"   no lugar do painel (Bookings, Studio ou
+                   Menus) quando a empresa não tem plano ativo
+                   com aquele produto;
      - "page"      rota /planos (inclusive logo depois de criar
                    a empresa);
      - "embedded"  dentro do perfil do administrador.
@@ -32,6 +43,9 @@ import "./plans.css";
    acontece no Mercado Pago da Markfy e quem libera o acesso
    é o backend, depois de confirmar o pagamento — esta tela
    nunca grava a licença.
+
+   Preço, pacote e economia saem das mesmas funções que o
+   backend usa para cobrar (src/menus/engine/licensing.js).
 ========================================================= */
 
 const FUNCTIONS_URL = "https://us-central1-markfy-96942.cloudfunctions.net";
@@ -42,6 +56,9 @@ const dateLabel = (millis) =>
         : "";
 
 const periodLabel = (days) => (days === 30 ? "/mês" : days === 365 ? "/ano" : `/${days} dias`);
+
+const listJoin = (items) =>
+    items.length <= 1 ? items.join("") : `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}`;
 
 const STATE_COPY = {
     none: {
@@ -58,9 +75,32 @@ const STATE_COPY = {
     }
 };
 
-function PlanCard({ plan, choice, current, canBuy, busy, onBuy, locked }) {
+/** O que deixa de valer ao trocar do plano atual para `plan` + `product`. */
+const lossesFor = (license, plan, product) => {
+    if (!license.active || !license.plan) return null;
 
-    const product = plan.bundle ? "both" : choice;
+    const nextProducts = productsOf(licenseProductFor(plan.id, plan, product));
+    const lostProducts = productsOf(license.product).filter((id) => !nextProducts.includes(id));
+
+    const lostFeatures = FEATURES.filter(
+        (feature) =>
+            productsOf(license.product).includes(feature.product) &&
+            nextProducts.includes(feature.product) &&
+            license.plan.features?.[feature.id] &&
+            !plan.features?.[feature.id]
+    );
+
+    if (!lostProducts.length && !lostFeatures.length) return null;
+
+    return { lostProducts, lostFeatures };
+};
+
+function PlanCard({ plan, choice, catalog, current, canBuy, busy, onBuy, locked }) {
+
+    const product = plan.bundle ? null : choice;
+    const products = plan.bundle ? planProducts(plan) : [choice];
+    const price = priceFor(plan, product);
+    const savings = plan.bundle ? bundleSavings(plan, catalog) : null;
 
     return (
         <article
@@ -76,24 +116,41 @@ function PlanCard({ plan, choice, current, canBuy, busy, onBuy, locked }) {
             </header>
 
             <div className="pl-card__price">
-                <strong>{formatPrice(plan.price)}</strong>
+                <strong>{formatPrice(price)}</strong>
                 <span>{periodLabel(plan.periodDays)}</span>
             </div>
 
+            {savings && savings.percent > 0 && (
+                <div className="pl-card__save">
+                    <strong>Economize {formatPrice(savings.saving)}{periodLabel(plan.periodDays)}</strong>
+                    <span>
+                        Assinando {listJoin(savings.parts.map((part) => `${PRODUCT_SHORT[part.product]} (${part.planName || "plano individual"})`))} separadamente,
+                        você pagaria {formatPrice(savings.separate)}. No {plan.name}: {savings.percent}% a menos.
+                    </span>
+                </div>
+            )}
+
             <div className={`pl-card__product ${plan.bundle ? "is-bundle" : ""}`}>
-                <Icon icon={plan.bundle ? "solar:crown-star-bold" : product === "studio" ? "solar:pallete-2-bold" : "solar:calendar-bold"} />
-                {plan.bundle ? "Bookings + Studio juntos" : PRODUCT_LABELS[product]}
+                <Icon icon={plan.bundle ? "solar:crown-star-bold" : PRODUCT_ICONS[choice]} />
+                {plan.bundle ? `${products.map((id) => PRODUCT_SHORT[id]).join(" + ")} juntos` : PRODUCT_LABELS[choice]}
             </div>
 
             <ul className="pl-card__list">
-                {LIMITS.map((limit) => (
+                {limitsFor(products).map((limit) => (
                     <li key={limit.id}>
                         <Icon icon="solar:check-circle-bold" />
                         {describeLimit(limit, plan.limits[limit.id])}
                     </li>
                 ))}
 
-                {FEATURES.map((feature) => (
+                {products.includes("menus") && (
+                    <li>
+                        <Icon icon="solar:check-circle-bold" />
+                        Cardápio digital com QR Code e pedidos ilimitados
+                    </li>
+                )}
+
+                {featuresFor(products).map((feature) => (
                     <li key={feature.id} className={plan.features[feature.id] ? "" : "is-off"}>
                         <Icon icon={plan.features[feature.id] ? "solar:check-circle-bold" : "solar:close-circle-linear"} />
                         {feature.label}
@@ -104,13 +161,13 @@ function PlanCard({ plan, choice, current, canBuy, busy, onBuy, locked }) {
             <button
                 type="button"
                 className="pl-btn"
-                disabled={!canBuy || busy || locked || plan.price < 1}
+                disabled={!canBuy || busy || locked || price < 1}
                 onClick={() => onBuy(plan, product)}
             >
                 {busy
                     ? <span className="pl-spin" />
                     : <Icon icon={current ? "solar:refresh-bold" : "solar:card-bold"} />}
-                {plan.price < 1
+                {price < 1
                     ? "Indisponível"
                     : current
                         ? "Renovar plano"
@@ -129,9 +186,14 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
     const [pickerOpen, setPickerOpen] = useState(false);
     const license = useLicense();
 
-    const [choice, setChoice] = useState(blockedProduct || "bookings");
+    const preferred = new URLSearchParams(location.search).get("produto");
+
+    const [choice, setChoice] = useState(
+        PRODUCT_IDS.includes(blockedProduct) ? blockedProduct : PRODUCT_IDS.includes(preferred) ? preferred : "bookings"
+    );
     const [busyPlan, setBusyPlan] = useState(null);
     const [error, setError] = useState("");
+    const [confirm, setConfirm] = useState(null);
 
     const checkout = variant === "page" ? new URLSearchParams(location.search).get("checkout") : null;
 
@@ -144,10 +206,11 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
     const suspended = license.state === "suspended";
     const canBuy = license.isOwner && !suspended && license.catalogPublished;
 
-    const buy = async (plan, product) => {
+    const startCheckout = async (plan, product) => {
 
         setError("");
         setBusyPlan(plan.id);
+        setConfirm(null);
 
         try {
 
@@ -179,11 +242,23 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
         }
     };
 
+    /* Downgrade: antes de pagar, mostra o que deixa de valer.
+       Nada é apagado — os dados ficam guardados e voltam a
+       aparecer se o recurso for contratado de novo. */
+    const buy = (plan, product) => {
+        const losses = lossesFor(license, plan, product);
+        if (losses) {
+            setConfirm({ plan, product, losses });
+            return;
+        }
+        startCheckout(plan, product);
+    };
+
     const blocked = variant === "blocked";
     const copy = STATE_COPY[license.state] || STATE_COPY.none;
     const companyName = company?.name || "Sua empresa";
 
-    const currentProductLabel = license.product ? PRODUCT_LABELS[license.product] : "";
+    const currentProductLabel = license.product ? productLabel(license.product) : "";
 
     return (
         <section className={`pl pl--${variant}`}>
@@ -201,7 +276,7 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
                                 <Icon icon="solar:shop-2-linear" /> Trocar de empresa
                             </button>
                         )}
-                        {blocked && (
+                        {(blocked || variant === "page") && (
                             <button type="button" className="pl-link" onClick={() => navigate("/home")}>
                                 <Icon icon="solar:arrow-left-linear" /> Voltar ao início
                             </button>
@@ -218,10 +293,16 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
                             <Icon icon="solar:lock-keyhole-minimalistic-bold" />
                             {blockedProduct ? PRODUCT_LABELS[blockedProduct] : "Painel"} bloqueado
                         </span>
-                        <h1>{companyName} {copy.title}</h1>
+                        <h1>
+                            {license.active && blockedProduct
+                                ? `O plano da ${companyName} não inclui o ${PRODUCT_LABELS[blockedProduct]}`
+                                : `${companyName} ${copy.title}`}
+                        </h1>
                         <p>
-                            {copy.text}
-                            {blockedProduct && license.state !== "suspended" && (
+                            {license.active && blockedProduct
+                                ? `Seu plano atual (${license.plan?.name || ""}${currentProductLabel ? ` · ${currentProductLabel}` : ""}) continua valendo. Para usar o ${PRODUCT_LABELS[blockedProduct]} também, escolha um plano que o inclua.`
+                                : copy.text}
+                            {!license.active && blockedProduct && license.state !== "suspended" && (
                                 <> Para usar o {PRODUCT_LABELS[blockedProduct]}, o plano precisa incluí-lo.</>
                             )}
                         </p>
@@ -233,7 +314,7 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
                         <p>
                             {variant === "page" && !license.active
                                 ? "Falta só esta etapa: com um plano ativo, o painel da empresa é liberado."
-                                : "O plano vale para a empresa toda, não para uma pessoa."}
+                                : "O plano vale para a empresa toda, não para uma pessoa. Contrate um produto ou reúna Studio, Bookings e Menus no Premium."}
                         </p>
                     </>
                 )}
@@ -290,9 +371,9 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
 
             {hasSingleProductPlans && (
                 <div className="pl-choice" role="radiogroup" aria-label="Produto do plano">
-                    <span>Os planos Básico e Comum liberam um produto. Qual você quer?</span>
+                    <span>Os planos individuais liberam um produto. Qual você quer?</span>
                     <div>
-                        {["bookings", "studio"].map((id) => (
+                        {PRODUCT_IDS.map((id) => (
                             <button
                                 key={id}
                                 type="button"
@@ -301,8 +382,8 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
                                 className={choice === id ? "is-on" : ""}
                                 onClick={() => setChoice(id)}
                             >
-                                <Icon icon={id === "bookings" ? "solar:calendar-bold" : "solar:pallete-2-bold"} />
-                                {PRODUCT_LABELS[id]}
+                                <Icon icon={PRODUCT_ICONS[id]} />
+                                {PRODUCT_SHORT[id]}
                             </button>
                         ))}
                     </div>
@@ -315,13 +396,14 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
                     const current =
                         license.active &&
                         license.license.plan === plan.id &&
-                        (plan.bundle || license.product === choice || license.product === "both");
+                        (plan.bundle || license.product === choice);
 
                     return (
                         <PlanCard
                             key={plan.id}
                             plan={plan}
                             choice={choice}
+                            catalog={visible}
                             current={current}
                             canBuy={canBuy}
                             locked={license.loading}
@@ -335,8 +417,38 @@ export default function PlansView({ variant = "page", blockedProduct = null }) {
             <p className="pl-foot">
                 <Icon icon="solar:shield-check-bold" />
                 Pagamento seguro pelo Mercado Pago. Cada pagamento libera o período do plano e não renova
-                sozinho; ao renovar o mesmo plano, o novo período soma ao que ainda restava.
+                sozinho; ao renovar o mesmo plano, o novo período soma ao que ainda restava. Trocar de plano
+                nunca apaga os dados da empresa.
             </p>
+
+            {confirm && (
+                <div className="pl-confirm" role="dialog" aria-modal="true" aria-labelledby="pl-confirm-title">
+                    <div className="pl-confirm__panel">
+                        <span className="pl-hero__badge is-lock"><Icon icon="solar:danger-triangle-bold" /> Antes de trocar</span>
+                        <h2 id="pl-confirm-title">O plano {confirm.plan.name} tem menos recursos que o atual</h2>
+                        <p>Ao trocar, deixa de valer:</p>
+                        <ul>
+                            {confirm.losses.lostProducts.map((id) => (
+                                <li key={id}><Icon icon={PRODUCT_ICONS[id]} /> Acesso ao {PRODUCT_LABELS[id]}</li>
+                            ))}
+                            {confirm.losses.lostFeatures.map((feature) => (
+                                <li key={feature.id}><Icon icon="solar:close-circle-linear" /> {feature.label}</li>
+                            ))}
+                        </ul>
+                        <p className="pl-confirm__safe">
+                            <Icon icon="solar:shield-check-bold" />
+                            Nenhum dado é apagado: cardápios, pedidos, mesas, páginas e agendamentos ficam guardados e
+                            voltam a aparecer se você contratar esses recursos de novo.
+                        </p>
+                        <div className="pl-confirm__actions">
+                            <button type="button" className="pl-link" onClick={() => setConfirm(null)}>Manter plano atual</button>
+                            <button type="button" className="pl-btn" style={{ "--pl": confirm.plan.color, padding: "0 22px" }} onClick={() => startCheckout(confirm.plan, confirm.product)}>
+                                Trocar mesmo assim
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {pickerOpen && <CompanyPicker variant="modal" onClose={() => setPickerOpen(false)} />}
         </section>

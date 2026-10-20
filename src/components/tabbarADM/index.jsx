@@ -13,7 +13,7 @@ const TabBarAdm = ({ activeTab, setActiveTab }) => {
   return (
     <div id="tabbar-adm" className="site">
       <div className="container">
-        <nav>
+        <nav className="mk-tabbar">
           <ul>
             {tabs.map((tab) => (
               <li

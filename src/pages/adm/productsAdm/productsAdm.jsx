@@ -184,8 +184,8 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     ];
 
     /* =========================================================
-   CATEGORIAS DISPONÍVEIS
-========================================================= */
+        CATEGORIAS DISPONÍVEIS
+    ========================================================= */
 
     const productCategories = [
         ...new Set(
@@ -201,7 +201,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
 
     /* =========================================================
-       CONTADOR DE FILTROS
+        CONTADOR DE FILTROS
     ========================================================= */
 
     const activeFiltersCount =
@@ -210,7 +210,7 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
 
     /* =========================================================
-       PRODUTOS FILTRADOS
+        PRODUTOS FILTRADOS
     ========================================================= */
 
     const filteredProducts = products
@@ -363,13 +363,11 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
     };
 
     const openToast = (type, title, message) => {
-
         setToastType(type);
         setToastTitle(title);
         setToastMessage(message);
 
         setShowToast(true);
-
     };
 
     useEffect(() => {

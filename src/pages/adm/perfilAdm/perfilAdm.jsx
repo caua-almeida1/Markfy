@@ -39,6 +39,7 @@ import IntegrationsScreen from "./screens/settings/IntegrationsScreen";
 import PixConfigScreen from "./screens/settings/payment/PixConfigScreen";
 import CardConfigScreen from "./screens/settings/payment/CardConfigScreen";
 import CardCreditScreen from "./screens/settings/payment/CardCreditScreen";
+import { productLabel } from "../../../plans/planDefaults";
 
 const PerfilAdm = ({ initialScreen = "home" }) => {
     const { openPreferences: openConsentPreferences } = useConsent();
@@ -328,7 +329,7 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
 
                                     <p>
                                         {license.active
-                                            ? `${license.product === "both" ? "Bookings + Studio" : license.product === "studio" ? "Markfy Studio" : "Markfy Bookings"}${license.license?.expiresAt ? ` · até ${new Date(license.license.expiresAt).toLocaleDateString("pt-BR")}` : ""}`
+                                            ? `${productLabel(license.product)}${license.license?.expiresAt ? ` · até ${new Date(license.license.expiresAt).toLocaleDateString("pt-BR")}` : ""}`
                                             : "Ative um plano para liberar o painel da empresa."}
                                     </p>
 

@@ -59,6 +59,11 @@ import RouteFallback from "./components/route-transition/RouteFallback";
 const StudioApp = lazy(() => import("./studio/StudioApp"));
 const PublicSite = lazy(() => import("./studio/public/PublicSite"));
 
+/* Markfy Menus: painel (com a demonstração) e cardápio público
+   também ficam em pedaços próprios. */
+const MenusApp = lazy(() => import("./menus/MenusApp"));
+const PublicMenu = lazy(() => import("./menus/public/PublicMenu"));
+
 /* Painel do dono da plataforma: chunk próprio, só abre quem digita a rota. */
 const MarkfyMasterDev = lazy(() => import("./master/MarkfyMasterDev"));
 
@@ -116,7 +121,7 @@ function App() {
     },
 
     /* =====================================================
-       HOME DA REDE — escolha entre Bookings e Studio
+       HOME DA REDE — Studio, Bookings e Menus
     ===================================================== */
 
     {
@@ -142,6 +147,41 @@ function App() {
       element: (
         <Suspense fallback={<RouteFallback label="Abrindo o Markfy Studio" />}>
           <StudioApp />
+        </Suspense>
+      ),
+    },
+
+    /* =====================================================
+       MARKFY MENUS
+
+       /menus/demo é aberta (restaurante fictício, em memória);
+       o painel pede login sozinho, como o Studio.
+    ===================================================== */
+
+    {
+      path: "/menus/*",
+      element: (
+        <Suspense fallback={<RouteFallback label="Abrindo o Markfy Menus" />}>
+          <MenusApp />
+        </Suspense>
+      ),
+    },
+
+    /* Cardápio público e acompanhamento do pedido. */
+    {
+      path: "/m/:slug",
+      element: (
+        <Suspense fallback={<RouteFallback />}>
+          <PublicMenu />
+        </Suspense>
+      ),
+    },
+
+    {
+      path: "/m/:slug/pedido/:orderId",
+      element: (
+        <Suspense fallback={<RouteFallback />}>
+          <PublicMenu />
         </Suspense>
       ),
     },

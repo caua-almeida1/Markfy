@@ -1835,6 +1835,7 @@
     ========================================== */
 
     .catalog-page {
+        min-height: 100vh;
         min-height: 100dvh;
 
         padding:
@@ -1988,6 +1989,7 @@
 
         width: 100%;
 
+        max-height: 82vh;
         max-height: 82dvh;
 
         overflow-x: hidden;

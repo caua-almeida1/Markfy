@@ -1,0 +1,1253 @@
+/* =========================================================
+   MONITOR DE RETIRADA
+   Tudo em px numa tela fixa de 1920×1080 (ou 1080×1920);
+   o Stage reduz por escala. Prefixo mdb- (menus display board).
+========================================================= */
+
+.mdb-stage {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.mdb-stage__canvas {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform-origin: center;
+}
+
+.mdb {
+    position: relative;
+    display: grid;
+    grid-template-rows: 132px minmax(0, 1fr) 84px;
+    padding: 0 56px;
+    overflow: hidden;
+    background:
+        radial-gradient(1100px 700px at 100% 0%, var(--d-bg-2), transparent 70%),
+        var(--d-bg);
+    color: var(--d-ink);
+    font-family: var(--d-font-b), system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+.mdb *,
+.mdb *::before,
+.mdb *::after {
+    box-sizing: border-box;
+}
+
+.mdb > header,
+.mdb > main,
+.mdb > footer {
+    position: relative;
+    z-index: 2;
+}
+
+.mdb-art {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* ---------- TOPO ---------- */
+
+.mdb-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 32px;
+}
+
+.mdb-brand {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-width: 0;
+    font-size: 30px;
+    font-weight: 600;
+}
+
+.mdb-brand > span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.mdb-logo {
+    flex: none;
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    object-fit: cover;
+    background: var(--d-panel);
+}
+
+.mdb-logo--text {
+    display: grid;
+    place-items: center;
+    background: var(--d-accent);
+    color: var(--d-accent-ink);
+    font-family: var(--d-font-h), system-ui, sans-serif;
+    font-size: 38px;
+    font-weight: 800;
+}
+
+.mdb-title {
+    display: grid;
+    justify-items: center;
+    gap: 6px;
+    text-align: center;
+}
+
+.mdb-title h1 {
+    margin: 0;
+    font-family: var(--d-font-h), system-ui, sans-serif;
+    font-size: 46px;
+    font-weight: 700;
+    line-height: 1.05;
+    letter-spacing: -0.01em;
+}
+
+.mdb-divider {
+    width: 300px;
+    height: 24px;
+}
+
+.mdb-clock {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 14px;
+    font-family: var(--d-font-h), system-ui, sans-serif;
+    font-size: 46px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.mdb-offline {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #ff3b30;
+    box-shadow: 0 0 0 6px rgba(255, 59, 48, 0.25);
+}
+
+/* ---------- PAINÉIS ---------- */
+
+.mdb-body {
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: 36px;
+    min-height: 0;
+    padding: 4px 0 18px;
+}
+
+.mdb-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    min-height: 0;
+    padding: 30px 34px;
+    overflow: hidden;
+    border: 2px solid var(--d-panel-line);
+    border-radius: var(--d-radius);
+    background: var(--d-panel);
+    color: var(--d-panel-ink, var(--d-ink));
+}
+
+.mdb-panel--ready {
+    background: var(--d-ready-panel);
+}
+
+.mdb-panel__head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0;
+    font-family: var(--d-font-h), system-ui, sans-serif;
+    font-size: 40px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+.mdb-panel__head em {
+    margin-left: auto;
+    padding: 4px 18px;
+    border-radius: 999px;
+    background: var(--d-chip);
+    color: var(--d-chip-ink);
+    font-family: var(--d-font-b), system-ui, sans-serif;
+    font-size: 26px;
+    font-style: normal;
+    font-weight: 700;
+}
+
+.mdb-badge {
+    flex: none;
+    width: 66px;
+    height: 66px;
+}
+
+.mdb-dots {
+    display: inline-flex;
+    gap: 7px;
+}
+
+.mdb-dots i {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--d-accent);
+    animation: mdbDot 1.4s ease-in-out infinite;
+}
+
+.mdb-dots i:nth-child(2) { animation-delay: 0.18s; }
+.mdb-dots i:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes mdbDot {
+    0%, 80%, 100% { opacity: 0.25; transform: scale(0.75); }
+    40% { opacity: 1; transform: scale(1); }
+}
+
+/* ---------- SENHAS ---------- */
+
+.mdb-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-content: start;
+    gap: 14px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.mdb-ticket {
+    display: grid;
+    align-content: center;
+    justify-items: center;
+    gap: 2px;
+    min-height: 104px;
+    padding: 12px 14px;
+    border-radius: calc(var(--d-radius) * 0.6);
+    background: var(--d-chip);
+    color: var(--d-chip-ink);
+    text-align: center;
+}
+
+.mdb-ticket b {
+    font-family: var(--d-font-h), system-ui, sans-serif;
+    font-size: 56px;
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}
+
+.mdb-ticket span {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 22px;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: 0.75;
+}
+
+.mdb-ticket.is-received {
+    opacity: 0.55;
+}
+
+.mdb-ticket.is-ready {
+    background: var(--d-ready-chip);
+    color: var(--d-ready-chip-ink);
+}
+
+.mdb-ticket.is-ready b {
+    font-size: 60px;
+}
+
+.mdb-ticket.is-fresh {
+    animation: mdbFlash 0.9s ease-in-out 4;
+}
+
+@keyframes mdbFlash {
+    50% { transform: scale(1.06); filter: brightness(1.25); }
+}
+
+.mdb-ticket--more {
+    border: 3px dashed currentColor;
+    background: transparent;
+    opacity: 0.7;
+}
+
+.mdb-ticket--more.is-ready {
+    background: transparent;
+    color: var(--d-panel-ink, var(--d-ink));
+}
+
+/* ---------- DESTAQUE (último pronto) ---------- */
+
+.mdb-spot {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 22px 32px 26px;
+    border-radius: var(--d-radius);
+    background: var(--d-accent);
+    color: var(--d-accent-ink);
+    text-align: center;
+    box-shadow: 0 24px 60px -18px var(--d-accent);
+    animation: mdbPop 0.7s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+
+.mdb-spot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 0 0 var(--d-accent);
+    animation: mdbRing 2.4s ease-out infinite;
+}
+
+.mdb-spot.is-fresh::after {
+    animation-duration: 1.2s;
+}
+
+.mdb-spot__label {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+.mdb-spot__code {
+    font-family: var(--d-font-h), system-ui, sans-serif;
+    font-size: 170px;
+    font-weight: 800;
+    line-height: 0.95;
+    font-variant-numeric: tabular-nums;
+}
+
+.mdb-spot__name {
+    font-size: 44px;
+    font-weight: 700;
+    line-height: 1.1;
+}
+
+@keyframes mdbPop {
+    from { opacity: 0; transform: scale(0.82) translateY(18px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes mdbRing {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--d-accent) 55%, transparent); }
+    100% { box-shadow: 0 0 0 34px transparent; }
+}
+
+.mdb-empty {
+    margin: auto 0;
+    padding: 30px 10px;
+    color: var(--d-muted);
+    font-size: 30px;
+    text-align: center;
+}
+
+.mdb-panel--ready .mdb-empty,
+.mdb-panel--preparing .mdb-empty {
+    color: inherit;
+    opacity: 0.6;
+}
+
+/* ---------- RODAPÉ ---------- */
+
+.mdb-foot {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 32px;
+}
+
+.mdb-ticker {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.mdb-ticker__track {
+    display: flex;
+    width: max-content;
+    animation: mdbTicker 38s linear infinite;
+}
+
+.mdb-ticker__track span {
+    padding-right: 160px;
+    color: var(--d-muted);
+    font-size: 28px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+@keyframes mdbTicker {
+    to { transform: translateX(-50%); }
+}
+
+.mdb-powered {
+    color: var(--d-muted);
+    font-family: "Poppins", system-ui, sans-serif;
+    font-size: 20px;
+    font-weight: 600;
+    opacity: 0.75;
+}
+
+.mdb-powered b {
+    color: var(--d-accent);
+}
+
+/* ---------- TV EM PÉ ---------- */
+
+.mdb.is-portrait {
+    grid-template-rows: 150px minmax(0, 1fr) 90px;
+    padding: 0 44px;
+}
+
+.mdb.is-portrait .mdb-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.mdb.is-portrait .mdb-title {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: none;
+}
+
+.mdb.is-portrait .mdb-body {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr);
+}
+
+.mdb.is-portrait .mdb-panel--ready {
+    order: -1;
+}
+
+.mdb.is-portrait .mdb-grid--preparing {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.mdb.is-portrait .mdb-spot__code {
+    font-size: 200px;
+}
+
+/* =========================================================
+   MODELOS
+========================================================= */
+
+/* ---------- MARKFY ---------- */
+
+.mdb--markfy::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.07) 1.5px, transparent 1.5px);
+    background-size: 34px 34px;
+    -webkit-mask-image: linear-gradient(180deg, #000, transparent 75%);
+    mask-image: linear-gradient(180deg, #000, transparent 75%);
+}
+
+.mdb-orb {
+    position: absolute;
+    z-index: 0;
+    border-radius: 50%;
+    background: var(--d-accent);
+    filter: blur(120px);
+    opacity: 0.28;
+}
+
+.mdb-orb--a { top: -260px; right: -160px; width: 720px; height: 720px; }
+.mdb-orb--b { bottom: -320px; left: 30%; width: 560px; height: 560px; opacity: 0.12; }
+
+.mdb-art--arcs {
+    bottom: 0;
+    left: 0;
+    width: 420px;
+    height: 420px;
+}
+
+.mdb--markfy .mdb-panel--ready {
+    border-color: color-mix(in srgb, var(--d-accent) 45%, transparent);
+}
+
+.mdb--markfy .mdb-swing {
+    transform-origin: 60px 16px;
+    animation: mdbSwing 3.2s ease-in-out infinite;
+}
+
+.mdb--markfy .mdb-ring-waves {
+    animation: mdbWaves 3.2s ease-in-out infinite;
+}
+
+@keyframes mdbSwing {
+    0%, 60%, 100% { transform: rotate(0); }
+    66% { transform: rotate(14deg); }
+    74% { transform: rotate(-12deg); }
+    82% { transform: rotate(8deg); }
+    90% { transform: rotate(-4deg); }
+}
+
+@keyframes mdbWaves {
+    0%, 60%, 100% { opacity: 0; }
+    70%, 88% { opacity: 1; }
+}
+
+/* ---------- DOCE FESTA ---------- */
+
+.mdb--festa {
+    background:
+        radial-gradient(900px 600px at 15% 0%, var(--d-bg-2), transparent 70%),
+        radial-gradient(800px 600px at 100% 100%, #c8141d, transparent 70%),
+        var(--d-bg);
+}
+
+.mdb--festa .mdb-title h1,
+.mdb--festa .mdb-clock {
+    font-weight: 800;
+    text-shadow: 0 4px 0 rgba(0, 0, 0, 0.12);
+}
+
+.mdb--festa .mdb-panel {
+    border: 0;
+    box-shadow: 0 14px 0 rgba(0, 0, 0, 0.1);
+}
+
+.mdb--festa .mdb-panel__head {
+    color: var(--d-accent);
+    font-size: 46px;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.mdb--festa .mdb-ticket b {
+    font-weight: 800;
+}
+
+.mdb--festa .mdb-spot {
+    border: 6px dashed rgba(255, 255, 255, 0.55);
+    background: var(--d-accent);
+}
+
+.mdb--festa .mdb-logo--text {
+    background: #ffd23f;
+    color: #3a1416;
+}
+
+.mdb--festa .mdb-powered,
+.mdb--festa .mdb-ticker__track span {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.mdb--festa .mdb-powered b {
+    color: #ffd23f;
+}
+
+.mdb-art--sprinkles {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.mdb-art--mascot {
+    z-index: 3;
+    top: 18px;
+    right: 260px;
+    width: 140px;
+    height: 190px;
+    filter: drop-shadow(0 10px 0 rgba(0, 0, 0, 0.12));
+    animation: mdbBob 3s ease-in-out infinite;
+}
+
+.mdb.is-portrait .mdb-art--mascot {
+    right: 230px;
+}
+
+.mdb-blink {
+    transform-origin: 110px 94px;
+    animation: mdbBlink 4.5s infinite;
+}
+
+@keyframes mdbBob {
+    50% { transform: translateY(-10px) rotate(-3deg); }
+}
+
+@keyframes mdbBlink {
+    0%, 94%, 100% { transform: scaleY(1); }
+    97% { transform: scaleY(0.1); }
+}
+
+/* ---------- LANCHONETE ---------- */
+
+.mdb--fast {
+    background: var(--d-bg);
+}
+
+.mdb-art--stripes {
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 20px;
+}
+
+.mdb--fast .mdb-head {
+    padding-top: 14px;
+}
+
+.mdb--fast .mdb-title h1,
+.mdb--fast .mdb-clock {
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+}
+
+.mdb--fast .mdb-panel {
+    padding-top: 0;
+    border-width: 3px;
+    box-shadow: 0 10px 30px -14px rgba(74, 26, 12, 0.35);
+}
+
+.mdb--fast .mdb-panel__head {
+    margin: 0 -34px;
+    padding: 20px 34px;
+    background: var(--d-prep-head);
+    color: #fff;
+    font-size: 44px;
+    font-weight: 900;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+}
+
+.mdb--fast .mdb-panel--ready .mdb-panel__head {
+    background: var(--d-ready-head);
+}
+
+.mdb--fast .mdb-panel__head em {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}
+
+.mdb--fast .mdb-dots i {
+    background: #fff;
+}
+
+.mdb--fast .mdb-ticket {
+    min-height: 90px;
+}
+
+.mdb--fast .mdb-ticket b {
+    font-size: 66px;
+    font-weight: 900;
+}
+
+.mdb--fast .mdb-ticket.is-ready b {
+    font-size: 70px;
+}
+
+.mdb--fast .mdb-spot {
+    margin-top: 6px;
+    border-radius: 22px;
+    box-shadow: 0 10px 0 color-mix(in srgb, var(--d-accent) 60%, #000);
+}
+
+.mdb--fast .mdb-spot__code {
+    font-weight: 900;
+}
+
+.mdb--fast .mdb-ticket--more.is-ready,
+.mdb--fast .mdb-ticket--more {
+    border-color: currentColor;
+}
+
+.mdb-art--burger {
+    z-index: 3;
+    top: 24px;
+    right: 250px;
+    width: 120px;
+    height: 102px;
+    animation: mdbBob 3.4s ease-in-out infinite;
+}
+
+.mdb-art--fries {
+    z-index: 3;
+    bottom: 8px;
+    left: 18px;
+    width: 70px;
+    height: 90px;
+}
+
+.mdb--fast .mdb-foot {
+    padding-left: 70px;
+}
+
+/* ---------- BISTRÔ ---------- */
+
+.mdb--bistro {
+    padding: 0 76px;
+    background:
+        radial-gradient(1000px 600px at 50% -10%, rgba(201, 164, 92, 0.14), transparent 70%),
+        var(--d-bg);
+}
+
+.mdb-frame {
+    position: absolute;
+    inset: 22px;
+    z-index: 1;
+    border: 1px solid rgba(201, 164, 92, 0.4);
+    border: 1px solid color-mix(in srgb, var(--d-accent) 40%, transparent);
+    pointer-events: none;
+}
+
+.mdb-art--corner {
+    width: 84px;
+    height: 84px;
+}
+
+/* Serifas finas usam algarismos "de texto" (o 3 desce da
+   linha); na TV todos os números ficam alinhados. */
+.mdb--bistro,
+.mdb--bistro .mdb-ticket b,
+.mdb--bistro .mdb-spot__code,
+.mdb--bistro .mdb-clock {
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.mdb-art--corner-tl { top: 12px; left: 12px; }
+.mdb-art--corner-br { right: 12px; bottom: 12px; transform: rotate(180deg); }
+
+.mdb--bistro .mdb-title h1 {
+    font-size: 42px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+}
+
+.mdb--bistro .mdb-brand {
+    font-family: var(--d-font-h), Georgia, serif;
+    font-size: 34px;
+    letter-spacing: 0.04em;
+}
+
+.mdb--bistro .mdb-clock {
+    font-weight: 500;
+}
+
+.mdb--bistro .mdb-panel {
+    border-width: 1px;
+}
+
+.mdb--bistro .mdb-panel__head {
+    color: var(--d-accent);
+    font-size: 38px;
+    font-weight: 600;
+    font-style: italic;
+    letter-spacing: 0.04em;
+}
+
+.mdb--bistro .mdb-panel__head em {
+    border: 1px solid var(--d-panel-line);
+    background: transparent;
+    color: var(--d-accent);
+}
+
+.mdb--bistro .mdb-ticket {
+    border-bottom: 1px solid var(--d-panel-line);
+    border-radius: 0;
+}
+
+.mdb--bistro .mdb-ticket b {
+    font-size: 64px;
+    font-weight: 600;
+}
+
+.mdb--bistro .mdb-ticket span {
+    font-weight: 400;
+    letter-spacing: 0.06em;
+}
+
+.mdb--bistro .mdb-spot {
+    border: 1px solid var(--d-accent);
+    outline: 1px solid color-mix(in srgb, var(--d-accent) 45%, transparent);
+    outline-offset: 8px;
+    background: transparent;
+    color: var(--d-ink);
+    box-shadow: none;
+}
+
+.mdb--bistro .mdb-spot__label {
+    color: var(--d-accent);
+    font-family: var(--d-font-h), Georgia, serif;
+    font-size: 34px;
+    font-style: italic;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: none;
+}
+
+.mdb--bistro .mdb-spot__code {
+    color: var(--d-accent);
+    font-weight: 600;
+}
+
+.mdb--bistro .mdb-spot__name {
+    font-weight: 400;
+    letter-spacing: 0.08em;
+}
+
+.mdb--bistro .mdb-badge {
+    width: 84px;
+    height: 58px;
+}
+
+.mdb--bistro .mdb-dots i {
+    width: 8px;
+    height: 8px;
+}
+
+/* ---------- BRASA ---------- */
+
+.mdb--brasa {
+    background:
+        radial-gradient(900px 500px at 50% 110%, rgba(255, 120, 40, 0.35), transparent 70%),
+        radial-gradient(1200px 800px at 50% 30%, transparent 40%, rgba(0, 0, 0, 0.55)),
+        var(--d-bg);
+}
+
+.mdb-planks {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background-image:
+        repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.28) 0 3px, transparent 3px 240px),
+        repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 2px, transparent 2px 11px),
+        linear-gradient(90deg, rgba(120, 70, 35, 0.25), rgba(60, 30, 15, 0.1) 30%, rgba(120, 70, 35, 0.22) 60%, rgba(60, 30, 15, 0.1));
+}
+
+.mdb--brasa .mdb-title h1 {
+    color: #fff5ee;
+    font-size: 70px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 6px var(--d-neon), 0 0 22px var(--d-neon), 0 0 46px var(--d-neon);
+    animation: mdbNeon 6s infinite;
+}
+
+@keyframes mdbNeon {
+    0%, 18%, 22%, 62%, 64%, 100% { opacity: 1; }
+    20%, 63% { opacity: 0.55; }
+}
+
+.mdb--brasa .mdb-clock,
+.mdb--brasa .mdb-brand {
+    font-family: var(--d-font-h), "Arial Narrow", sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+}
+
+.mdb--brasa .mdb-clock { font-size: 56px; }
+.mdb--brasa .mdb-brand { font-size: 38px; }
+
+.mdb--brasa .mdb-panel__head {
+    font-size: 50px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+}
+
+.mdb--brasa .mdb-panel--ready .mdb-panel__head {
+    color: var(--d-accent);
+}
+
+.mdb--brasa .mdb-ticket b {
+    font-size: 72px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+}
+
+.mdb--brasa .mdb-ticket.is-ready b {
+    font-size: 76px;
+}
+
+.mdb--brasa .mdb-spot {
+    background: linear-gradient(135deg, #ffd06b, var(--d-accent) 45%, #ff6a1f);
+    box-shadow: 0 0 60px -6px rgba(255, 140, 40, 0.65);
+}
+
+.mdb--brasa .mdb-spot__code {
+    font-size: 190px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+}
+
+.mdb--brasa .mdb-spot__label,
+.mdb--brasa .mdb-spot__name {
+    font-family: var(--d-font-b), "Arial Narrow", sans-serif;
+}
+
+.mdb-art--flames {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 66px;
+    opacity: 0.7;
+    filter: drop-shadow(0 -6px 14px rgba(255, 110, 30, 0.55));
+}
+
+.mdb-flame {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: mdbFlame 1.6s ease-in-out infinite alternate;
+}
+
+.mdb-flame--1 { animation-duration: 1.2s; animation-delay: -0.4s; }
+.mdb-flame--2 { animation-duration: 1.9s; animation-delay: -0.9s; }
+
+@keyframes mdbFlame {
+    from { transform: scaleY(0.8) skewX(-3deg); }
+    to { transform: scaleY(1.12) skewX(3deg); }
+}
+
+.mdb-embers {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+    height: 420px;
+    pointer-events: none;
+    background-image:
+        radial-gradient(3px 3px at 12% 80%, #ffb547, transparent),
+        radial-gradient(2px 2px at 30% 60%, #ff7a2f, transparent),
+        radial-gradient(3px 3px at 55% 90%, #ffd06b, transparent),
+        radial-gradient(2px 2px at 72% 70%, #ffb547, transparent),
+        radial-gradient(3px 3px at 88% 85%, #ff7a2f, transparent);
+    animation: mdbEmbers 7s linear infinite;
+}
+
+@keyframes mdbEmbers {
+    from { transform: translateY(0); opacity: 0.9; }
+    to { transform: translateY(-260px); opacity: 0; }
+}
+
+.mdb--brasa .mdb-badge {
+    width: 58px;
+    height: 58px;
+}
+
+.mdb--brasa .mdb-foot {
+    padding-bottom: 26px;
+    text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+}
+
+.mdb--brasa .mdb-ticker__track span {
+    color: #f3d6b8;
+}
+
+/* ---------- CAFETERIA ---------- */
+
+.mdb--cafe {
+    background:
+        radial-gradient(900px 600px at 0% 0%, rgba(255, 255, 255, 0.55), transparent 70%),
+        var(--d-bg);
+}
+
+.mdb-paper {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    opacity: 0.5;
+    background-image:
+        radial-gradient(rgba(107, 74, 47, 0.06) 1px, transparent 1px),
+        radial-gradient(rgba(107, 74, 47, 0.05) 1px, transparent 1px);
+    background-position: 0 0, 7px 11px;
+    background-size: 17px 17px, 23px 23px;
+}
+
+.mdb--cafe .mdb-title h1 {
+    font-size: 72px;
+    font-weight: 700;
+    line-height: 0.9;
+}
+
+.mdb--cafe .mdb-panel {
+    position: relative;
+    overflow: visible;
+    box-shadow: 0 18px 40px -26px rgba(59, 42, 30, 0.6);
+    transform: rotate(-0.4deg);
+}
+
+.mdb--cafe .mdb-panel--ready {
+    transform: rotate(0.4deg);
+}
+
+/* fita adesiva no topo de cada folha */
+.mdb--cafe .mdb-panel::before {
+    content: "";
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    width: 170px;
+    height: 38px;
+    background: color-mix(in srgb, var(--d-accent) 28%, rgba(255, 255, 255, 0.5));
+    transform: translateX(-50%) rotate(-3deg);
+    opacity: 0.85;
+}
+
+.mdb--cafe .mdb-panel__head {
+    font-size: 60px;
+    font-weight: 700;
+}
+
+.mdb--cafe .mdb-ticket b,
+.mdb--cafe .mdb-spot__code,
+.mdb--cafe .mdb-clock,
+.mdb--cafe .mdb-logo--text {
+    font-family: var(--d-font-b), system-ui, sans-serif;
+}
+
+.mdb--cafe .mdb-ticket b {
+    font-weight: 700;
+}
+
+.mdb--cafe .mdb-spot {
+    background: var(--d-ready-chip);
+    color: var(--d-ready-chip-ink);
+    box-shadow: 0 18px 40px -20px var(--d-ready-chip);
+}
+
+.mdb--cafe .mdb-spot::after {
+    animation-name: mdbRingCafe;
+}
+
+@keyframes mdbRingCafe {
+    0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--d-ready-chip) 50%, transparent); }
+    100% { box-shadow: 0 0 0 30px transparent; }
+}
+
+.mdb--cafe .mdb-spot__label {
+    font-family: var(--d-font-h), cursive;
+    font-size: 46px;
+    letter-spacing: 0;
+    text-transform: none;
+}
+
+.mdb--cafe .mdb-badge {
+    width: 76px;
+    height: 76px;
+}
+
+.mdb-steam path {
+    animation: mdbSteam 2.6s ease-in-out infinite;
+}
+
+.mdb-steam path:nth-child(2) { animation-delay: 0.5s; }
+.mdb-steam path:nth-child(3) { animation-delay: 1s; }
+
+@keyframes mdbSteam {
+    0% { opacity: 0; transform: translateY(8px); }
+    40% { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-8px); }
+}
+
+.mdb-art--beans {
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+}
+
+/* ---------- CLÁSSICO ---------- */
+
+.mdb--classico {
+    background: var(--d-bg);
+}
+
+.mdb--classico .mdb-head {
+    border-bottom: 3px solid var(--d-ink);
+    margin-bottom: 22px;
+}
+
+.mdb--classico .mdb-panel__head {
+    font-size: 38px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.mdb--classico .mdb-panel--ready .mdb-panel__head {
+    color: var(--d-accent);
+}
+
+.mdb--classico .mdb-ticket {
+    border: 2px solid var(--d-panel-line);
+}
+
+.mdb--classico .mdb-ticket.is-ready {
+    border-color: transparent;
+}
+
+.mdb--classico .mdb-ticket b {
+    font-size: 62px;
+    font-weight: 700;
+}
+
+.mdb--classico .mdb-spot {
+    box-shadow: none;
+}
+
+.mdb--classico .mdb-spot__code {
+    font-weight: 700;
+}
+
+/* ---------- MOVIMENTO REDUZIDO ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+    .mdb *,
+    .mdb *::before,
+    .mdb *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+    }
+
+    .mdb-ticker__track {
+        animation: none !important;
+    }
+}
+
+/* =========================================================
+   TELA DA TV (controles e "Iniciar")
+========================================================= */
+
+body.mdb-tv-body {
+    overflow: hidden;
+    background: #000;
+}
+
+.mdb-tv {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: #000;
+}
+
+.mdb-tv.is-idle {
+    cursor: none;
+}
+
+.mdb-tv__bar {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    left: 14px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.mdb-tv.is-idle .mdb-tv__bar {
+    opacity: 0;
+    transform: translateY(-12px);
+    pointer-events: none;
+}
+
+.mdb-tv__bar button,
+.mdb-tv__demo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 40px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(15, 15, 20, 0.72);
+    color: #fff;
+    font: 600 14px/1 "Poppins", system-ui, sans-serif;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+}
+
+.mdb-tv__bar button:last-child {
+    margin-left: auto;
+}
+
+.mdb-tv__demo {
+    background: rgba(28, 126, 214, 0.85);
+    cursor: default;
+}
+
+.mdb-tv__start {
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: rgba(8, 8, 12, 0.72);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-family: "Poppins", system-ui, sans-serif;
+    text-align: center;
+}
+
+.mdb-tv__start > div {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    max-width: 520px;
+}
+
+.mdb-tv__start-icon {
+    display: grid;
+    place-items: center;
+    width: 76px;
+    height: 76px;
+    border-radius: 24px;
+    background: #f2610f;
+    font-size: 40px;
+}
+
+.mdb-tv__start h1 {
+    margin: 0;
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 700;
+}
+
+.mdb-tv__start p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 16px;
+    line-height: 1.55;
+}
+
+.mdb-tv__go {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 58px;
+    margin-top: 8px;
+    padding: 0 32px;
+    border: 0;
+    border-radius: 999px;
+    background: #f2610f;
+    color: #fff;
+    font: 700 18px/1 "Poppins", system-ui, sans-serif;
+    cursor: pointer;
+    box-shadow: 0 16px 40px -12px rgba(242, 97, 15, 0.7);
+}
+
+.mdb-tv__go:focus-visible {
+    outline: 3px solid #fff;
+    outline-offset: 4px;
+}

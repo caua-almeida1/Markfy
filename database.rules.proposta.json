@@ -21,7 +21,14 @@
     "Markfy Studio (studioDrafts, studioSites, studioLeads, studioAnalytics):",
     "- o rascunho e isolado por empresa; publicar exige papel diferente de 'professional';",
     "- users/{uid}/bookedCompanies ja e coberto pela regra de users/$uid;",
-    "- imagens do Studio vao para o Storage em companys/{handle}/studio/ (revise as regras do Storage)."
+    "- imagens do Studio vao para o Storage em companys/{handle}/studio/ (revise as regras do Storage).",
+    "",
+    "Markfy Menus (menusCatalog, menusSettings, menusDrafts, menusSites, menusSlugs, menusFloor,",
+    "menusOps, menusTrack, menusLedger, menusAudit, menusStock, menusStockMoves, menusStaff, menusRate):",
+    "- operacao (mesas, comandas, pedidos, pagamentos, estoque, planta, publicacao) so pelo backend (menusApi);",
+    "- o navegador grava apenas catalogo, configuracoes, rascunho de aparencia e perfis da equipe, conforme o papel;",
+    "- licenca com product 'all' (Premium) libera Bookings, Studio e Menus; as regras do Studio ja aceitam 'all';",
+    "- imagens do Menus vao para o Storage em companys/{handle}/menus/."
   ],
   "rules": {
     ".read": false,
@@ -133,7 +140,7 @@
       ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       "$handle": {
         ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(studio|both|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
       }
     },
     "studioSites": {
@@ -143,8 +150,8 @@
         "da propria empresa, tambem exigindo plano ativo com Studio."
       ],
       "$handle": {
-        ".read": "root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)",
-        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && (root.child('licenses').child($handle).child('product').val() === 'studio' || root.child('licenses').child($handle).child('product').val() === 'both') && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
+        ".read": "root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(studio|both|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(studio|both|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
       },
       ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
     },
@@ -217,7 +224,7 @@
       ".write": false
     },
     "publicAccess": {
-      "_comentario": "Espelho publico minimo da licenca (bookings/studio/expiresAt). Leitura publica; escrita so da conta master e do backend.",
+      "_comentario": "Espelho publico minimo da licenca (bookings/studio/menus/expiresAt). Leitura publica; escrita so da conta master e do backend.",
       ".read": true,
       ".write": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
     },
@@ -227,6 +234,180 @@
         ".read": "auth != null && auth.uid === $uid",
         ".write": "auth != null && auth.uid === $uid && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
       }
+    },
+    "menusCatalog": {
+      "_comentario": [
+        "Cardapios, categorias, produtos e adicionais do Markfy Menus.",
+        "Leitura publica enquanto a licenca inclui o Menus (o cardapio publico le daqui);",
+        "membros sempre leem. Escrita: dono, administrador ou gerente (menusStaff).",
+        "A cozinha pode marcar produto como disponivel/indisponivel.",
+        "Preco e validado como inteiro em centavos."
+      ],
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))",
+        "products": {
+          "$productId": {
+            "priceCents": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000 && newData.val() % 1 === 0"
+            },
+            "promoPriceCents": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+            },
+            "available": {
+              ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'kitchen'",
+              ".validate": "newData.isBoolean()"
+            }
+          }
+        },
+        "menus": {
+          ".indexOn": [
+            "order"
+          ]
+        },
+        "categories": {
+          ".indexOn": [
+            "menuId",
+            "order"
+          ]
+        }
+      }
+    },
+    "menusSettings": {
+      "_comentario": [
+        "Dados publicos da operacao: perfil, contato, horarios, entrega, formas de pagamento e endereco publico.",
+        "Nada sigiloso deve morar aqui. Escrita: dono ou administrador."
+      ],
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator')"
+      }
+    },
+    "menusDrafts": {
+      "_comentario": "Rascunho da aparencia do cardapio. Membros leem; dono, administrador e gerente gravam. Publicar e no backend.",
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))"
+      }
+    },
+    "menusSites": {
+      "_comentario": "Aparencia PUBLICADA. So o backend (menusApi/design.publish) grava, depois de aplicar o plano.",
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "menusSlugs": {
+      "_comentario": "Endereco publico /m/{slug} -> handle. Leitura publica de uma chave por vez; so o backend grava.",
+      "$slug": {
+        ".read": true,
+        ".write": false
+      }
+    },
+    "menusFloor": {
+      "_comentario": "Planta: ambientes e mesas. Leitura publica (o QR da mesa mostra o nome dela). So o backend grava (limite de mesas do plano).",
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "menusOps": {
+      "_comentario": [
+        "Operacao: estado das mesas, comandas, pedidos, chamados, sequencias e chaves de idempotencia.",
+        "Membros leem (tempo real entre aparelhos). NINGUEM grava pelo navegador:",
+        "toda mudanca passa pela Cloud Function menusApi, com transacao e auditoria."
+      ],
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false,
+        "orders": {
+          ".indexOn": [
+            "createdAt",
+            "status",
+            "dayKey"
+          ]
+        },
+        "tabs": {
+          ".indexOn": [
+            "status",
+            "openedAt",
+            "closedAt"
+          ]
+        },
+        "calls": {
+          ".indexOn": [
+            "status"
+          ]
+        }
+      }
+    },
+    "menusTrack": {
+      "_comentario": "Acompanhamento publico do pedido, sem dados pessoais. Le-se so pelo id (impossivel listar). Grava o backend.",
+      "$handle": {
+        "$orderId": {
+          ".read": true,
+          ".write": false
+        }
+      }
+    },
+    "menusLedger": {
+      "_comentario": "Livro de recebimentos e estornos (caixa). Leitura: dono, administrador, gerente e caixa. Grava o backend.",
+      "$handle": {
+        ".read": "(auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))) || (auth != null && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'cashier')",
+        ".write": false,
+        ".indexOn": [
+          "at",
+          "dayKey"
+        ]
+      }
+    },
+    "menusAudit": {
+      "_comentario": [
+        "Registro de auditoria. O backend grava descontos, cancelamentos, estornos, reaberturas e transferencias.",
+        "O painel so ACRESCENTA registros de alteracao de preco e de permissao (nunca altera nem apaga)."
+      ],
+      "$handle": {
+        ".read": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))",
+        ".indexOn": [
+          "at"
+        ],
+        "$entryId": {
+          ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager')) && !data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['type', 'at', 'by']) && newData.child('by').val() === auth.uid && newData.child('type').isString() && newData.child('type').val().matches(/^(catalog|team)[.]/)"
+        }
+      }
+    },
+    "menusStock": {
+      "_comentario": "Estoque por produto. Membros leem; so o backend movimenta (baixa por pedido, entrada, perda, contagem).",
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "menusStockMoves": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false,
+        ".indexOn": [
+          "at",
+          "productId"
+        ]
+      }
+    },
+    "menusStaff": {
+      "_comentario": "Perfil de cada profissional no Menus (gerente, garcom, caixa, cozinha, entregador) e ajustes de permissao. Grava: dono ou administrador.",
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator')",
+          ".validate": "!newData.exists() || (newData.child('role').isString() && newData.child('role').val().matches(/^(manager|waiter|cashier|kitchen|delivery)$/))"
+        }
+      }
+    },
+    "menusRate": {
+      "_comentario": "Contadores do freio de pedidos publicos (backend).",
+      ".read": false,
+      ".write": false
     }
   }
 }

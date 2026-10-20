@@ -1,0 +1,297 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "companiesIndex": {
+      ".read": true,
+      "$handle": {
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+      }
+    },
+    "documentsIndex": {
+      ".read": false,
+      ".write": false,
+      "$document": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "licenses": {
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
+      ".write": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+      }
+    },
+    "companys": {
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
+      ".write": false,
+      "$handle": {
+        ".read": true,
+        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        "joinRequests": {
+          "$uid": {
+            ".read": "auth != null && (auth.uid === $uid || root.child('companys').child($handle).child('members').child(auth.uid).exists())",
+            ".write": "auth != null && (auth.uid === $uid || root.child('companys').child($handle).child('members').child(auth.uid).exists())",
+            ".validate": "!data.exists() || !newData.exists() || root.child('companys').child($handle).child('members').child(auth.uid).exists() || newData.child('status').val() === 'pending'"
+          }
+        }
+      }
+    },
+    "users": {
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
+      ".write": false,
+      ".indexOn": [
+        "email"
+      ],
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "companyHandle": {
+          ".write": "auth != null && (auth.uid === $uid || root.child('companys').child(newData.val()).child('joinRequests').child($uid).child('status').val() === 'approved')"
+        }
+      }
+    },
+    "invites": {
+      ".read": false,
+      ".write": false,
+      "$inviteId": {
+        ".read": true,
+        ".write": "auth != null"
+      }
+    },
+    "mercadoPagoConnections": {
+      ".read": false,
+      ".write": false,
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+      }
+    },
+    "studioDrafts": {
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(studio|both|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
+      }
+    },
+    "studioSites": {
+      "$handle": {
+        ".read": "root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(studio|both|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional' && root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(studio|both|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)"
+      },
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
+    },
+    "studioLeads": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "$leadId": {
+          ".write": "(!data.exists() && newData.exists() && newData.child('status').val() === 'new') || (auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists() && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() !== 'professional')",
+          ".validate": "!newData.exists() || newData.hasChildren(['name', 'status', 'createdAt'])",
+          "name": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 120"
+          },
+          "phone": {
+            ".validate": "newData.isString() && newData.val().length <= 40"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 160"
+          },
+          "message": {
+            ".validate": "newData.isString() && newData.val().length <= 2000"
+          },
+          "status": {
+            ".validate": "newData.val() === 'new' || newData.val() === 'contacted' || newData.val() === 'done' || newData.val() === 'archived'"
+          },
+          "source": {
+            ".validate": "newData.isString() && newData.val().length <= 20"
+          },
+          "createdAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber()"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
+    },
+    "studioAnalytics": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "$day": {
+          ".validate": "$day.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+          "$event": {
+            ".write": "newData.exists()",
+            ".validate": "($event === 'view' || $event === 'booking_click' || $event === 'whatsapp_click' || $event === 'social_click' || $event === 'channel_click' || $event === 'lead') && newData.isNumber() && ((!data.exists() && newData.val() === 1) || newData.val() === data.val() + 1)"
+          }
+        }
+      }
+    },
+    "planCatalog": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
+    },
+    "planOrders": {
+      ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
+      ".write": false
+    },
+    "publicAccess": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
+    },
+    "masterProfiles": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')"
+      }
+    },
+    "menusCatalog": {
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))",
+        "products": {
+          "$productId": {
+            "priceCents": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100000000 && newData.val() % 1 === 0"
+            },
+            "promoPriceCents": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() % 1 === 0"
+            },
+            "available": {
+              ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'kitchen'",
+              ".validate": "newData.isBoolean()"
+            }
+          }
+        },
+        "menus": {
+          ".indexOn": [
+            "order"
+          ]
+        },
+        "categories": {
+          ".indexOn": [
+            "menuId",
+            "order"
+          ]
+        }
+      }
+    },
+    "menusSettings": {
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator')"
+      }
+    },
+    "menusDrafts": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))"
+      }
+    },
+    "menusSites": {
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "menusSlugs": {
+      "$slug": {
+        ".read": true,
+        ".write": false
+      }
+    },
+    "menusFloor": {
+      "$handle": {
+        ".read": "(root.child('licenses').child($handle).child('status').val() === 'active' && root.child('licenses').child($handle).child('product').isString() && root.child('licenses').child($handle).child('product').val().matches(/^(menus|all)$/) && (root.child('licenses').child($handle).child('expiresAt').val() === null || root.child('licenses').child($handle).child('expiresAt').val() > now)) || auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "menusOps": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false,
+        "orders": {
+          ".indexOn": [
+            "createdAt",
+            "status",
+            "dayKey"
+          ]
+        },
+        "tabs": {
+          ".indexOn": [
+            "status",
+            "openedAt",
+            "closedAt"
+          ]
+        },
+        "calls": {
+          ".indexOn": [
+            "status"
+          ]
+        }
+      }
+    },
+    "menusTrack": {
+      "$handle": {
+        "$orderId": {
+          ".read": true,
+          ".write": false
+        }
+      }
+    },
+    "menusLedger": {
+      "$handle": {
+        ".read": "(auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))) || (auth != null && root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'cashier')",
+        ".write": false,
+        ".indexOn": [
+          "at",
+          "dayKey"
+        ]
+      }
+    },
+    "menusAudit": {
+      "$handle": {
+        ".read": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager'))",
+        ".indexOn": [
+          "at"
+        ],
+        "$entryId": {
+          ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator' || (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'professional' && root.child('menusStaff').child($handle).child(auth.uid).child('role').val() === 'manager')) && !data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['type', 'at', 'by']) && newData.child('by').val() === auth.uid && newData.child('type').isString() && newData.child('type').val().matches(/^(catalog|team)[.]/)"
+        }
+      }
+    },
+    "menusStock": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false
+      }
+    },
+    "menusStockMoves": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        ".write": false,
+        ".indexOn": [
+          "at",
+          "productId"
+        ]
+      }
+    },
+    "menusStaff": {
+      "$handle": {
+        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "$uid": {
+          ".write": "auth != null && (root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'master' || root.child('companys').child($handle).child('members').child(auth.uid).child('role').val() === 'administrator')",
+          ".validate": "!newData.exists() || (newData.child('role').isString() && newData.child('role').val().matches(/^(manager|waiter|cashier|kitchen|delivery)$/))"
+        }
+      }
+    },
+    "menusRate": {
+      ".read": false,
+      ".write": false
+    }
+  }
+}
