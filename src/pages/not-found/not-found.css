@@ -1,0 +1,114 @@
+.mk-not-found {
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    display: grid;
+    place-items: center;
+
+    padding: 24px 16px;
+
+    background: var(--mkf-ui-background, #f8f9fb);
+    color: var(--mkf-text-primary, #17181c);
+
+    font-family: var(--mk-font, "Poppins", system-ui, sans-serif);
+}
+
+.mk-not-found__card {
+    width: 100%;
+    max-width: 440px;
+
+    text-align: center;
+}
+
+.mk-not-found__logo {
+    display: block;
+
+    margin: 0 auto 18px;
+}
+
+.mk-not-found__code {
+    margin: 0;
+
+    font-size: clamp(3.5rem, 12vw, 5rem);
+    font-weight: 800;
+    letter-spacing: -0.06em;
+    line-height: 1;
+
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.mk-not-found h1 {
+    margin: 10px 0 10px;
+
+    font-size: var(--mk-text-2xl, 1.75rem);
+    font-weight: 800;
+    letter-spacing: var(--mk-tracking-tight, -0.035em);
+}
+
+.mk-not-found__text {
+    margin: 0 0 24px;
+
+    line-height: 1.6;
+
+    color: var(--mkf-text-secondary, #5f626b);
+}
+
+.mk-not-found__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+}
+
+.mk-not-found__primary,
+.mk-not-found__secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 46px;
+    padding: 0 24px;
+
+    border-radius: 99px;
+
+    font: inherit;
+    font-weight: 700;
+    text-decoration: none;
+
+    cursor: pointer;
+}
+
+.mk-not-found__primary {
+    border: 0;
+    background: var(--mkf-ui-primary, #092af3);
+    color: #fff;
+}
+
+.mk-not-found__secondary {
+    border: 1px solid var(--mkf-ui-border-dark, #d9d9d9);
+    background: transparent;
+    color: var(--mkf-text-primary, #17181c);
+}
+
+.mk-not-found__primary:focus-visible,
+.mk-not-found__secondary:focus-visible,
+.mk-not-found__links a:focus-visible {
+    outline: 3px solid var(--mkf-ui-primary, #092af3);
+    outline-offset: 3px;
+}
+
+.mk-not-found__links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 18px;
+
+    margin-top: 28px;
+}
+
+.mk-not-found__links a {
+    font-size: var(--mk-text-sm, 0.8125rem);
+    font-weight: 600;
+
+    color: var(--mkf-text-secondary, #5f626b);
+}

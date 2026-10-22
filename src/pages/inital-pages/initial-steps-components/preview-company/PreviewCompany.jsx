@@ -1,864 +1,460 @@
-import { useUserCompany } from "../../../../contexts/companyContext/UserCompanyContext";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-
-import {
-  getDatabase,
-  ref,
-  set,
-  update
-} from "firebase/database";
-
-import { getAuth } from "firebase/auth";
-
-import "./preview-company.css";
-
 import { Icon } from "@iconify/react";
+import { getAuth } from "firebase/auth";
+import { getDatabase, ref, get, set, update, serverTimestamp } from "firebase/database";
 
-import {
-  removeDraftImage
-} from "../create-company/utils/companyDraft";
+import "../create-company/new-company.css";
 
-import {
-  syncCompanyIndex,
-  setDocumentOwner
-} from "../../../../firebase/companiesIndex";
+import { useUserCompany } from "../../../../contexts/companyContext/UserCompanyContext";
+import { removeDraftImage, getDraftImage } from "../create-company/utils/companyDraft";
+import { draftKeyFor, EMPTY_COMPANY } from "../create-company/CreateCompany";
+import { getSegment } from "../create-company/companySegments";
+import { formatDocument, formatPhone, stepProblems, hasProblems } from "../create-company/companyValidation";
+import { syncCompanyIndex, setDocumentOwner, updateCompanyIndex } from "../../../../firebase/companiesIndex";
+import { uploadCompanyLogo } from "../../../../firebase/companyLogo";
+import { getCategoryLabel } from "../../../../utils/companyCategories";
+import { trackEvent } from "../../../../analytics/analytics";
 
-import {
-  uploadCompanyLogo
-} from "../../../../firebase/companyLogo";
+/* =========================================================
+   REVISAR E CONFIRMAR O CADASTRO
 
+   POR QUE DEMORAVA ~1 MINUTO
+   O cadastro antigo fazia tudo em fila, cada passo esperando
+   o anterior, sem limite de tempo: comprimir e subir a logo,
+   gravar a empresa, gravar o membro de novo, índice público,
+   índice de documento, usuário, rascunho. Qualquer passo lento
+   (rede do celular, upload) segurava a tela inteira.
 
-/* ============================================================
-   TELA DE SUCESSO
-   ============================================================ */
+   Agora:
+     1. confere o @ de novo (outra pessoa pode ter pegado);
+     2. grava a empresa numa gravação só (com o dono e as
+        categorias — que antes eram coletadas e NÃO salvas);
+     3. vínculo do usuário, índices e logo rodam em PARALELO,
+        cada um com limite de tempo; o que falhar não impede a
+        empresa de existir (o painel repara o índice depois);
+     4. o rascunho é limpo sem segurar a tela.
+========================================================= */
 
-function SuccessScreen({
-  companyName,
-  companyHandle,
-  onClose
-}) {
+const withTimeout = (promise, ms, label) =>
+    Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}: tempo esgotado`)), ms))
+    ]);
 
-  const url =
-    `${window.location.origin}/central-user/${companyHandle}`;
+const PHASES = {
+    checking: "Conferindo o @…",
+    saving: "Criando a empresa…",
+    finishing: "Finalizando…"
+};
 
-  const [copied, setCopied] = useState(false);
-
-
-  const copyToClipboard = async () => {
-
+const readDraft = (draftKey) => {
     try {
-
-      await navigator.clipboard.writeText(url);
-
-      setCopied(true);
-
-      setTimeout(() => {
-        setCopied(false);
-      }, 2000);
-
-    } catch (err) {
-
-      console.error(
-        "Erro ao copiar:",
-        err
-      );
-
+        return JSON.parse(localStorage.getItem(draftKey) || "null")?.data || null;
+    } catch {
+        return null;
     }
+};
 
-  };
-
-
-  return (
-
-    <div className="preview-company-success-screen">
-
-      <div className="preview-company-success-content">
-
-        <h1>
-          Vamos lá!
-        </h1>
-
-
-        <div className="preview-company-success-icon">
-
-          <Icon
-            icon="mingcute:check-fill"
-            className="icon"
-          />
-
-        </div>
-
-
-        <p>
-
-          Sua Empresa{" "}
-
-          <span>
-            {companyName}
-          </span>
-
-          {" "}foi cadastrada com sucesso!
-
-        </p>
-
-
-        <div className="company-link-box">
-
-          <p className="company-link-label">
-            O link da sua empresa para acesso dos seus clientes é:
-          </p>
-
-
-          <div className="company-link-wrapper">
-
-            <input
-              type="text"
-              value={url}
-              readOnly
-              className="company-link-input"
-            />
-
-
-            <button
-              type="button"
-              className="company-link-copy-btn"
-              onClick={copyToClipboard}
-            >
-
-              <Icon
-                icon="prime:copy"
-                className="icon"
-              />
-
-              {copied
-                ? "Copiado!"
-                : "Copiar"
-              }
-
-            </button>
-
-          </div>
-
-        </div>
-
-
-        <p className="preview-company-success-plan">
-          Falta uma etapa: escolha o plano da sua empresa.
-          O painel é liberado assim que o plano estiver ativo.
-        </p>
-
-        <button
-          type="button"
-          className="preview-company-success-btn"
-          onClick={onClose}
-        >
-          Escolher meu plano
-        </button>
-
-      </div>
-
+const Row = ({ label, value, empty = "Não informado" }) => (
+    <div className="ncr-row">
+        <dt>{label}</dt>
+        <dd className={value ? "" : "is-empty"}>{value || empty}</dd>
     </div>
+);
 
-  );
+/* Confete: peças geradas uma vez, com cor, ângulo e atraso
+   próprios; a animação é só CSS (sem dependência). */
+const CONFETTI = Array.from({ length: 28 }, (_, index) => ({
+    angle: (index / 28) * 360 + (index % 3) * 7,
+    distance: 90 + (index % 5) * 22,
+    delay: (index % 7) * 40,
+    color: ["#3d67fa", "#12b76a", "#f5b014", "#f04ea0", "#8b5cf6", "#22c3e6"][index % 6],
+    shape: index % 3
+}));
 
+function SuccessModal({ company, segment, onPlans, onClose }) {
+
+    const url = `${window.location.origin}/central-user/${company.handle}`;
+    const shortUrl = url.replace(/^https?:\/\//, "");
+    const [copied, setCopied] = useState(false);
+    const [leaving, setLeaving] = useState(false);
+    const dialogRef = useRef(null);
+
+    useEffect(() => {
+        dialogRef.current?.focus();
+        const onKey = (event) => event.key === "Escape" && onClose?.();
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [onClose]);
+
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(url);
+        } catch {
+            /* sem área de transferência */
+        }
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+    };
+
+    const share = async () => {
+        try {
+            await navigator.share({ title: company.name, text: `Agende com ${company.name} pela Markfy`, url });
+        } catch {
+            /* cancelado */
+        }
+    };
+
+    const whatsapp = `https://wa.me/?text=${encodeURIComponent(`Agende comigo pela Markfy: ${url}`)}`;
+    const canShare = typeof navigator.share === "function";
+
+    return (
+        <div className="ncs" role="dialog" aria-modal="true" aria-labelledby="ncs-title">
+            <div className="ncs__card" ref={dialogRef} tabIndex={-1}>
+
+                {onClose && (
+                    <button type="button" className="ncs__close" onClick={onClose} aria-label="Fechar">
+                        <Icon icon="solar:close-circle-linear" />
+                    </button>
+                )}
+
+                <div className="ncs__hero" aria-hidden="true">
+                    <div className="ncs__confetti">
+                        {CONFETTI.map((piece, index) => (
+                            <i
+                                key={index}
+                                className={`ncs__piece ncs__piece--${piece.shape}`}
+                                style={{
+                                    "--a": `${piece.angle}deg`,
+                                    "--d": `${piece.distance}px`,
+                                    "--delay": `${piece.delay}ms`,
+                                    "--c": piece.color
+                                }}
+                            />
+                        ))}
+                    </div>
+                    <span className="ncs__ring" />
+                    <span className="ncs__ring ncs__ring--2" />
+                    <div className="ncs__badge">
+                        <svg viewBox="0 0 52 52" className="ncs__check">
+                            <circle cx="26" cy="26" r="24" />
+                            <path d="M15 27 l7 7 l15 -16" />
+                        </svg>
+                    </div>
+                </div>
+
+                <h2 id="ncs-title">Empresa criada!</h2>
+                <p className="ncs__lead">
+                    <strong>{company.name}</strong> já tem uma página na Markfy. Compartilhe o link com seus clientes.
+                </p>
+
+                <div className="ncs__link">
+                    <span className="ncs__link-icon" aria-hidden="true"><Icon icon="solar:link-round-angle-bold" /></span>
+                    <span className="ncs__link-text" title={url}>{shortUrl}</span>
+                    <button type="button" className={`ncs__copy ${copied ? "is-done" : ""}`} onClick={copy}>
+                        <Icon icon={copied ? "solar:check-read-linear" : "solar:copy-linear"} aria-hidden="true" />
+                        {copied ? "Copiado" : "Copiar"}
+                    </button>
+                </div>
+
+                <ul className="ncs__list">
+                    {canShare && (
+                        <li>
+                            <button type="button" onClick={share}>
+                                <Icon icon="solar:share-linear" aria-hidden="true" />
+                                <span>Compartilhar link</span>
+                                <Icon icon="solar:alt-arrow-right-linear" className="ncs__chev" aria-hidden="true" />
+                            </button>
+                        </li>
+                    )}
+                    <li>
+                        <a href={whatsapp} target="_blank" rel="noopener noreferrer">
+                            <Icon icon="ic:baseline-whatsapp" aria-hidden="true" />
+                            <span>Enviar no WhatsApp</span>
+                            <Icon icon="solar:alt-arrow-right-linear" className="ncs__chev" aria-hidden="true" />
+                        </a>
+                    </li>
+                </ul>
+
+                <div className="ncs__next">
+                    <span className="ncs__next-tag">Próximo passo</span>
+                    <p>
+                        Escolha um plano para a página começar a receber agendamentos
+                        {segment?.services?.length ? <> e cadastre serviços como <b>{segment.services.slice(0, 2).join(" e ")}</b></> : null}.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    className="ncs__primary"
+                    disabled={leaving}
+                    onClick={async () => {
+                        setLeaving(true);
+                        await onPlans();
+                    }}
+                >
+                    {leaving ? <Icon icon="svg-spinners:ring-resize" aria-hidden="true" /> : null}
+                    {leaving ? "Abrindo…" : "Escolher meu plano"}
+                </button>
+
+                <a className="ncs__secondary" href={url} target="_blank" rel="noopener noreferrer">
+                    Ver minha página
+                </a>
+
+            </div>
+        </div>
+    );
 }
-
-
-/* ============================================================
-   PREVIEW COMPANY
-   ============================================================ */
 
 export default function PreviewCompany() {
 
-  const location =
-    useLocation();
+    const routerLocation = useLocation();
+    const navigate = useNavigate();
+    const { refreshCompany } = useUserCompany();
 
-  const navigate =
-    useNavigate();
+    const sessionId = routerLocation.pathname.split("/").pop();
+    const draftKey = routerLocation.state?.draftKey || draftKeyFor(sessionId);
 
-  const companyData =
-    location.state;
+    /* Recarregar a página perdia o state do router e mostrava
+       "dados não encontrados": agora vem do rascunho. */
+    const [company] = useState(() => routerLocation.state?.company || readDraft(draftKey));
+    const [logo, setLogo] = useState(routerLocation.state?.logo || null);
+    const [phase, setPhase] = useState(null);
+    const [error, setError] = useState("");
+    const [done, setDone] = useState(false);
+    const busy = useRef(false);
 
-  const { refreshCompany } =
-    useUserCompany();
+    useEffect(() => {
+        if (!logo) getDraftImage(draftKey).then((image) => image && setLogo(image)).catch(() => {});
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [draftKey]);
 
+    const data = useMemo(() => ({ ...EMPTY_COMPANY, ...(company || {}) }), [company]);
+    const segment = getSegment(data.segment);
+    const missing = hasProblems(stepProblems(0, data)) || hasProblems(stepProblems(1, data));
 
-  const [loading, setLoading] =
-    useState(false);
+    const edit = (editStep) => navigate(`/newcompany/${sessionId}`, { state: { editStep } });
 
-  const [successScreen, setSuccessScreen] =
-    useState(false);
+    const register = async () => {
 
-
-  /*
-   * ============================================================
-   * DADOS NÃO ENCONTRADOS
-   * ============================================================
-   */
-
-  if (!companyData) {
-
-    return (
-      <div className="preview-company-wrapper">
-
-        <div className="preview-company-container">
-
-          <h1>
-            Dados da empresa não encontrados.
-          </h1>
-
-          <button
-            type="button"
-            className="preview-btn preview-btn-back"
-            onClick={() => navigate(-1)}
-          >
-            Voltar
-          </button>
-
-        </div>
-
-      </div>
-    );
-
-  }
-
-
-  /*
-   * ============================================================
-   * DRAFT
-   * ============================================================
-   */
-
-  const draftId =
-    location.pathname
-      .split("/")
-      .pop();
-
-
-  const draftKey =
-    `markfy_create_company_draft_${draftId}`;
-
-
-  /*
-   * ============================================================
-   * LOCALIZAÇÃO
-   *
-   * Garante que mesmo que algum campo não exista,
-   * a estrutura enviada ao Firebase seja completa.
-   * ============================================================
-   */
-
-  const companyLocation = {
-
-    street:
-      companyData.location?.street ||
-      "",
-
-    number:
-      companyData.location?.number ||
-      "",
-
-    neighborhood:
-      companyData.location?.neighborhood ||
-      "",
-
-    city:
-      companyData.location?.city ||
-      "",
-
-    state:
-      companyData.location?.state ||
-      "",
-
-    zipCode:
-      companyData.location?.zipCode ||
-      "",
-
-    country:
-      companyData.location?.country ||
-      ""
-
-  };
-
-
-  /*
-   * ============================================================
-   * CADASTRAR EMPRESA
-   * ============================================================
-   */
-
-  const handleRegister = async () => {
-
-    setLoading(true);
-
-
-    try {
-
-      /*
-       * ========================================================
-       * AUTENTICAÇÃO
-       * ========================================================
-       */
-
-      const auth =
-        getAuth();
-
-
-      const user =
-        auth.currentUser;
-
-
-      if (!user) {
-
-        throw new Error(
-          "Usuário não autenticado."
-        );
-
-      }
-
-
-      /*
-       * ========================================================
-       * BANCO
-       * ========================================================
-       */
-
-      const db =
-        getDatabase();
-
-
-      /*
-       * ========================================================
-       * LOGO
-       * ========================================================
-       */
-
-      let logoURL = null;
-
-
-      if (companyData.logoPreview) {
+        if (busy.current || missing) return;
+        busy.current = true;
+        setError("");
 
         try {
+            const user = getAuth().currentUser;
+            if (!user) throw new Error("login");
 
-          /* Comprime e envia para companys/{handle}/logo.png.
-             Mesma função usada pela tela de marca, para os
-             dois caminhos gravarem igual. */
-          logoURL =
-            await uploadCompanyLogo(
-              companyData.handle,
-              companyData.logoPreview
+            const db = getDatabase();
+            const handle = data.handle;
+
+            setPhase("checking");
+            const taken = await withTimeout(get(ref(db, `companys/${handle}/name`)), 10000, "checagem");
+            if (taken.exists()) throw new Error("taken");
+
+            const location = { ...EMPTY_COMPANY.location, ...data.location };
+            const categories = data.categories.length ? data.categories : null;
+
+            setPhase("saving");
+            await withTimeout(
+                set(ref(db, `companys/${handle}`), {
+                    name: data.name.trim(),
+                    handle,
+                    document: data.document,
+                    email: data.email,
+                    phone: data.phone,
+                    description: data.description.trim(),
+                    categories,
+                    category: categories ? categories[0] : null,
+                    segment: data.segment || null,
+                    location,
+                    logoPreview: null,
+                    createdAt: serverTimestamp(),
+                    members: { [user.uid]: { role: "master" } }
+                }),
+                20000,
+                "empresa"
             );
 
+            setPhase("finishing");
 
-        } catch (err) {
+            const linkUser = withTimeout(
+                update(ref(db, `users/${user.uid}`), {
+                    userType: "admin",
+                    initial: false,
+                    companyHandle: handle,
+                    [`companies/${handle}`]: true
+                }),
+                10000,
+                "usuário"
+            );
 
-          console.warn(
-            "Não foi possível enviar a logo:",
-            err
-          );
+            const indexes = withTimeout(
+                Promise.all([
+                    syncCompanyIndex(handle, { handle, name: data.name.trim(), description: data.description.trim(), categories, location }),
+                    setDocumentOwner(data.document, handle)
+                ]),
+                10000,
+                "índices"
+            );
 
-          /*
-           * A logo não impede a criação da empresa.
-           */
+            const logoUpload = logo
+                ? withTimeout(
+                    uploadCompanyLogo(handle, logo).then((url) => url && updateCompanyIndex(handle, { logoUrl: url })),
+                    20000,
+                    "logo"
+                )
+                : Promise.resolve();
 
-          logoURL = null;
+            const [userResult, , logoResult] = await Promise.allSettled([linkUser, indexes, logoUpload]);
 
+            if (userResult.status === "rejected") console.warn("Vínculo do usuário:", userResult.reason?.message);
+            if (logoResult.status === "rejected") console.warn("Logo:", logoResult.reason?.message);
+
+            trackEvent("company_created", { company_handle: handle });
+
+            try {
+                localStorage.removeItem(draftKey);
+            } catch {
+                /* ignora */
+            }
+            removeDraftImage(draftKey).catch(() => {});
+
+            setDone(true);
+
+        } catch (failure) {
+
+            const message = failure?.message || "";
+
+            setError(
+                message === "taken" ? "Este @ acabou de ser usado por outra empresa. Volte e escolha outro."
+                    : message === "login" ? "Sua sessão expirou. Entre de novo para concluir."
+                        : /PERMISSION_DENIED|permission/i.test(message) ? "Não foi possível criar com este @. Escolha outro."
+                            : /tempo esgotado|network|offline/i.test(message) ? "A conexão está lenta e o cadastro não terminou. Tente de novo."
+                                : "Não foi possível cadastrar a empresa. Tente de novo."
+            );
+
+        } finally {
+            setPhase(null);
+            busy.current = false;
         }
+    };
 
-      }
+    const goToPlans = async () => {
+        /* Não deixa a atualização do contexto prender a tela. */
+        await withTimeout(refreshCompany(), 6000, "contexto").catch(() => {});
+        navigate("/planos");
+    };
 
-
-      /*
-       * ========================================================
-       * DADOS DA EMPRESA
-       * ========================================================
-       *
-       * AQUI ESTÁ A CORREÇÃO:
-       *
-       * location é salvo dentro da empresa.
-       * ========================================================
-       */
-
-      const companyRef =
-        ref(
-          db,
-          `companys/${companyData.handle}`
+    if (!company) {
+        return (
+            <main className="ncw ncr">
+                <section className="ncw-body">
+                    <h1>Não encontramos o cadastro</h1>
+                    <p className="ncw-lead">O rascunho deste aparelho expirou ou já foi concluído.</p>
+                    <button type="button" className="ncw-btn ncw-btn--primary" onClick={() => navigate("/initial-setup")}>
+                        Começar de novo
+                    </button>
+                </section>
+            </main>
         );
-
-
-      await set(
-        companyRef,
-        {
-
-          name:
-            companyData.name,
-
-          handle:
-            companyData.handle,
-
-          document:
-            companyData.document,
-
-          email:
-            companyData.email,
-
-          phone:
-            companyData.phone,
-
-          description:
-            companyData.description || "",
-
-          /*
-           * A logo NÃO entra aqui: ela vive no Storage, em
-           * companys/{handle}/logo.png, e quem precisa dela
-           * resolve pelo useCompanyLogo. O campo fica nulo
-           * de propósito.
-           */
-          logoPreview: null,
-
-          /*
-           * LOCALIZAÇÃO
-           */
-          location:
-            companyLocation
-
-        }
-      );
-
-
-      /*
-       * ========================================================
-       * MEMBRO MASTER
-       * ========================================================
-       *
-       * Vem antes dos índices: a regra de escrita do
-       * companiesIndex exige que o usuário já seja membro.
-       * ========================================================
-       */
-
-      await set(
-        ref(
-          db,
-          `companys/${companyData.handle}/members/${user.uid}`
-        ),
-        {
-          role: "master"
-        }
-      );
-
-
-      /*
-       * ========================================================
-       * ÍNDICES
-       * ========================================================
-       *
-       * companiesIndex/{handle} alimenta a tela Explorar sem
-       * que ela precise ler o nó "companys".
-       *
-       * documentsIndex/{documento} serve para detectar
-       * CPF/CNPJ duplicado sem varrer todas as empresas.
-       * ========================================================
-       */
-
-      await syncCompanyIndex(
-        companyData.handle,
-        {
-
-          handle:
-            companyData.handle,
-
-          name:
-            companyData.name,
-
-          description:
-            companyData.description || "",
-
-          logoPreview:
-            logoURL,
-
-          location:
-            companyLocation
-
-        }
-      );
-
-
-      await setDocumentOwner(
-        companyData.document,
-        companyData.handle
-      );
-
-
-      /*
-       * ========================================================
-       * ATUALIZA USUÁRIO
-       * ========================================================
-       *
-       * SOMENTE AGORA o usuário deixa de ser initial.
-       *
-       * O fluxo anterior já criou:
-       *
-       * initial: true
-       *
-       * no cadastro.
-       *
-       * Agora que a empresa foi criada:
-       *
-       * initial: false
-       * ========================================================
-       */
-
-      await update(
-        ref(
-          db,
-          `users/${user.uid}`
-        ),
-        {
-
-          userType:
-            "admin",
-
-          /*
-           * FINALIZOU O INITIAL SETUP
-           */
-          initial:
-            false,
-
-          companyHandle:
-            companyData.handle
-
-        }
-      );
-
-
-      /*
-       * ========================================================
-       * REMOVE RASCUNHO
-       * ========================================================
-       */
-
-      try {
-
-        localStorage.removeItem(
-          draftKey
-        );
-
-
-        await removeDraftImage(
-          draftKey
-        );
-
-
-      } catch (err) {
-
-        console.warn(
-          "Erro ao remover rascunho:",
-          err
-        );
-
-      }
-
-
-      /*
-       * ========================================================
-       * SUCESSO
-       * ========================================================
-       */
-
-      setSuccessScreen(
-        true
-      );
-
-
-    } catch (error) {
-
-      console.error(
-        "Erro ao cadastrar empresa:",
-        error
-      );
-
-
-      alert(
-        "Não foi possível cadastrar a empresa."
-      );
-
-
-    } finally {
-
-      setLoading(
-        false
-      );
-
     }
 
-  };
+    const address = [
+        [data.location.street, data.location.number].filter(Boolean).join(", "),
+        data.location.neighborhood,
+        [data.location.city, data.location.state].filter(Boolean).join(" - ")
+    ].filter(Boolean).join(" · ");
 
+    return (
+        <main className="ncw ncr">
 
-  /*
-   * ============================================================
-   * RENDER
-   * ============================================================
-   */
+            <header className="ncw-top">
+                <button type="button" className="ncw-icon-btn" onClick={() => edit(3)} aria-label="Voltar e editar">
+                    <Icon icon="solar:alt-arrow-left-linear" />
+                </button>
+                <div className="ncw-progress" aria-hidden="true">
+                    <span className="is-done" /><span className="is-done" /><span className="is-done" /><span className="is-current" />
+                </div>
+                <span className="ncw-icon-btn ncw-icon-btn--placeholder" aria-hidden="true" />
+            </header>
 
-  return (
+            <section className="ncw-body">
 
-    <div className="preview-company-wrapper">
+                <p className="ncw-eyebrow">Último passo</p>
+                <h1>Confira antes de criar</h1>
+                <p className="ncw-lead">Tudo pode ser alterado depois no painel, menos o @.</p>
 
-      {!successScreen && (
+                <div className="ncr-hero">
+                    <div className="ncr-hero__logo">
+                        {logo
+                            ? <img src={logo} alt={`Logo de ${data.name}`} width="72" height="72" />
+                            : <span aria-hidden="true">{data.name.slice(0, 1).toUpperCase() || "?"}</span>}
+                    </div>
+                    <div>
+                        <h2>{data.name || "Sem nome"}</h2>
+                        <p className="ncr-handle">@{data.handle}</p>
+                        {segment && <span className="ncr-badge"><Icon icon={segment.icon} aria-hidden="true" />{segment.name}</span>}
+                    </div>
+                </div>
 
-        <>
+                <section className="ncr-card">
+                    <header><h3>Seu negócio</h3><button type="button" className="ncw-link" onClick={() => edit(0)}>Editar</button></header>
+                    <dl>
+                        <Row label="Ramo" value={segment?.name} />
+                        <Row label="Nome" value={data.name} />
+                        <Row label="Página" value={data.handle ? `/central-user/${data.handle}` : ""} />
+                    </dl>
+                </section>
 
-          <div className="preview-company-container">
+                <section className="ncr-card">
+                    <header><h3>Contato</h3><button type="button" className="ncw-link" onClick={() => edit(1)}>Editar</button></header>
+                    <dl>
+                        <Row label="CPF/CNPJ" value={formatDocument(data.document)} />
+                        <Row label="E-mail" value={data.email} />
+                        <Row label="Telefone" value={formatPhone(data.phone)} />
+                    </dl>
+                </section>
 
-            <h1 className="preview-title">
-              Pré-visualização da Empresa
-            </h1>
+                <section className="ncr-card">
+                    <header><h3>Identidade</h3><button type="button" className="ncw-link" onClick={() => edit(2)}>Editar</button></header>
+                    <dl>
+                        <Row label="Descrição" value={data.description} />
+                        <Row label="Categorias" value={data.categories.map(getCategoryLabel).join(", ")} empty="Nenhuma (não aparece nos filtros do Explorar)" />
+                        <Row label="Logo" value={logo ? "Escolhida" : ""} empty="Sem logo (mostramos a inicial)" />
+                    </dl>
+                </section>
 
+                <section className="ncr-card">
+                    <header><h3>Endereço</h3><button type="button" className="ncw-link" onClick={() => edit(3)}>Editar</button></header>
+                    <dl>
+                        <Row label="Endereço" value={address} empty="Não informado (não aparece em “Perto de você”)" />
+                        <Row label="CEP" value={data.location.zipCode} />
+                    </dl>
+                </section>
 
-            {/* ==================================================
-                CABEÇALHO
-                ================================================== */}
-
-            <div className="preview-header">
-
-              {companyData.logoPreview && (
-
-                <img
-                  src={companyData.logoPreview}
-                  alt="Logo"
-                  className="preview-logo"
-                />
-
-              )}
-
-
-              <div className="preview-company-info">
-
-                <h2 className="preview-company-name">
-                  {companyData.name}
-                </h2>
-
-
-                <p className="preview-company-handle">
-                  @{companyData.handle}
-                </p>
-
-
-                {companyData.description && (
-
-                  <p className="preview-description">
-                    {companyData.description}
-                  </p>
-
+                {missing && (
+                    <p className="ncw-error" role="alert">Faltam dados obrigatórios. Use “Editar” em Seu negócio ou Contato.</p>
                 )}
 
-              </div>
-
-            </div>
-
-
-            {/* ==================================================
-                CONTATOS
-                ================================================== */}
-
-            <p className="preview-contact">
-              📧 {companyData.email}
-            </p>
-
-
-            <p className="preview-contact">
-              📞 {companyData.phone}
-            </p>
-
-
-            {/* ==================================================
-                LOCALIZAÇÃO
-                ================================================== */}
-
-            <div className="preview-location">
-
-              <h3>
-                Localização
-              </h3>
-
-
-              {companyLocation.street && (
-
-                <p>
-                  📍{" "}
-                  {companyLocation.street}
-
-                  {companyLocation.number
-                    ? `, ${companyLocation.number}`
-                    : ""
-                  }
-                </p>
-
-              )}
-
-
-              {companyLocation.neighborhood && (
-
-                <p>
-                  Bairro:{" "}
-                  {companyLocation.neighborhood}
-                </p>
-
-              )}
-
-
-              {(companyLocation.city ||
-                companyLocation.state) && (
-
-                  <p>
-
-                    {companyLocation.city}
-
-                    {companyLocation.city &&
-                      companyLocation.state
-                      ? " - "
-                      : ""
-                    }
-
-                    {companyLocation.state}
-
-                  </p>
-
-                )}
-
-
-              {companyLocation.zipCode && (
-
-                <p>
-                  CEP:{" "}
-                  {companyLocation.zipCode}
-                </p>
-
-              )}
-
-
-              {companyLocation.country && (
-
-                <p>
-                  País:{" "}
-                  {companyLocation.country}
-                </p>
-
-              )}
-
-            </div>
-
-
-            {/* ==================================================
-                GALERIA
-                ================================================== */}
-
-            <div className="preview-gallery">
-
-              <div className="gallery-item" />
-              <div className="gallery-item" />
-              <div className="gallery-item" />
-              <div className="gallery-item" />
-
-            </div>
-
-
-            {/* ==================================================
-                BOTÕES
-                ================================================== */}
-
-            <div className="preview-buttons">
-
-              <button
-                type="button"
-                className="preview-btn preview-btn-back"
-                onClick={() => navigate(-1)}
-              >
-                Voltar e Editar
-              </button>
-
-
-              <button
-                type="button"
-                className="preview-btn preview-btn-confirm"
-                onClick={handleRegister}
-                disabled={loading}
-              >
-
-                {loading
-                  ? "Cadastrando..."
-                  : "Cadastrar Empresa"
-                }
-
-              </button>
-
-            </div>
-
-          </div>
-
-
-          {/* ==================================================
-              LOADING
-              ================================================== */}
-
-          {loading && (
-
-            <div className="preview-company-loading-backdrop">
-
-              <div className="preview-company-loading-spinner">
-
-                <Icon
-                  icon="svg-spinners:ring-resize"
-                  className="icon"
-                />
-
-              </div>
-
-            </div>
-
-          )}
-
-        </>
-
-      )}
-
-
-      {/* ======================================================
-          SUCESSO
-          ====================================================== */}
-
-      {successScreen && (
-
-        <SuccessScreen
-
-          companyName={
-            companyData.name
-          }
-
-          companyHandle={
-            companyData.handle
-          }
-
-          onClose={async () => {
-
-            /* A empresa é nova: o contexto precisa conhecê-la
-               antes da tela de planos abrir. */
-            try {
-              await refreshCompany();
-            } catch (err) {
-              console.warn("Não foi possível atualizar as empresas:", err);
-            }
-
-            navigate("/planos");
-          }}
-
-        />
-
-      )}
-
-    </div>
-
-  );
-
+                {error && <p className="ncw-error ncr-error" role="alert">{error}</p>}
+
+            </section>
+
+            <footer className="ncw-bottom">
+                <button type="button" className="ncw-btn ncw-btn--ghost" onClick={() => edit(0)} disabled={Boolean(phase)}>
+                    Voltar e editar
+                </button>
+                <button type="button" className="ncw-btn ncw-btn--primary" onClick={register} disabled={Boolean(phase) || missing} aria-busy={Boolean(phase)}>
+                    {phase
+                        ? <><Icon icon="svg-spinners:ring-resize" aria-hidden="true" />{PHASES[phase]}</>
+                        : <>Criar empresa <Icon icon="solar:check-circle-linear" aria-hidden="true" /></>}
+                </button>
+            </footer>
+
+            {done && <SuccessModal company={data} segment={segment} onPlans={goToPlans} onClose={() => navigate("/home")} />}
+
+        </main>
+    );
 }

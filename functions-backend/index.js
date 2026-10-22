@@ -13,6 +13,71 @@ admin.initializeApp({
 
 const db = admin.database();
 
+const DATABASE_URL = "https://markfy-96942-default-rtdb.firebaseio.com";
+
+
+/* =====================================================
+   LEITURA PARCIAL DE companys
+
+   Webhooks e assinaturas precisavam "varrer as empresas" e
+   faziam isso com db.ref("companys").once("value"): cada
+   chamada baixava TODAS as empresas inteiras — agenda,
+   produtos (alguns com imagens base64 de mais de 1 MB),
+   pedidos. Download do Realtime Database é cobrado por byte,
+   e o Mercado Pago manda várias notificações por pagamento.
+
+   Agora: lista os handles com consulta rasa (só as chaves) e
+   lê, de cada empresa, só o filho que interessa. Se a
+   consulta rasa falhar, volta à leitura completa — mais
+   cara, mas nunca pior do que antes.
+===================================================== */
+
+async function listCompanyHandles() {
+
+    try {
+
+        const credential = admin.app().options.credential;
+        const { access_token: accessToken } = await credential.getAccessToken();
+
+        const response = await fetch(`${DATABASE_URL}/companys.json?shallow=true`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        return Object.keys((await response.json()) || {});
+
+    } catch (error) {
+
+        console.warn("Consulta rasa de companys indisponível; lendo completo:", error.message);
+
+        return Object.keys((await db.ref("companys").once("value")).val() || {});
+    }
+}
+
+/** { handle: { filho: valor } } só com os filhos pedidos. */
+async function loadCompaniesChildren(children) {
+
+    const handles = await listCompanyHandles();
+
+    const entries = await Promise.all(handles.map(async (handle) => {
+
+        const values = await Promise.all(
+            children.map((child) => db.ref(`companys/${handle}/${child}`).once("value"))
+        );
+
+        const company = {};
+
+        children.forEach((child, index) => {
+            if (values[index].exists()) company[child] = values[index].val();
+        });
+
+        return [handle, company];
+    }));
+
+    return Object.fromEntries(entries);
+}
+
 
 /* =====================================================
    CONVERTER PREÇO
@@ -602,58 +667,40 @@ exports.saveMercadoPagoCard = onRequest(
  */
 async function findUserCompany(uid) {
 
-    console.log("🔎 Procurando empresa para UID:", uid);
+    /*
+     * Primeiro as empresas que o próprio usuário aponta
+     * (companyHandle e o índice users/{uid}/companies); só
+     * se nenhuma servir, confere members/{uid} empresa a
+     * empresa — lendo apenas esse nó, nunca a empresa toda.
+     *
+     * Não registra nada sobre os membros no log: era dado
+     * pessoal indo para o Cloud Logging a cada chamada.
+     */
 
-    const snapshot =
-        await db.ref("companys").once("value");
+    const [currentHandle, indexed] = await Promise.all([
+        db.ref(`users/${uid}/companyHandle`).once("value").then((snap) => snap.val()),
+        db.ref(`users/${uid}/companies`).once("value").then((snap) => Object.keys(snap.val() || {}))
+    ]);
 
-    const companies =
-        snapshot.val() || {};
+    const tryHandles = async (handles) => {
 
-    for (const [handle, company] of Object.entries(companies)) {
+        for (const handle of handles) {
 
-        console.log("🏢 Empresa:", handle);
+            if (typeof handle !== "string" || !handle) continue;
 
-        if (!company?.members) {
-            console.log("⚠️ Sem members:", handle);
-            continue;
+            const member = (await db.ref(`companys/${handle}/members/${uid}`).once("value")).val();
+
+            if (member) return { handle, member };
         }
 
-        console.log(
-            "👥 UIDs cadastrados:",
-            Object.keys(company.members)
-        );
+        return null;
+    };
 
-        const member =
-            company.members[uid];
+    const direct = await tryHandles([...new Set([currentHandle, ...indexed])]);
 
-        if (!member) {
-            continue;
-        }
+    if (direct) return direct;
 
-        console.log(
-            "✅ EMPRESA ENCONTRADA:",
-            handle
-        );
-
-        console.log(
-            "👤 MEMBER:",
-            member
-        );
-
-        return {
-            handle,
-            company,
-            member
-        };
-    }
-
-    console.log(
-        "❌ NENHUMA EMPRESA ENCONTRADA PARA UID:",
-        uid
-    );
-
-    return null;
+    return tryHandles(await listCompanyHandles());
 }
 
 /**
@@ -3244,7 +3291,7 @@ exports.checkMercadoPagoSubscriptions = onRequest(
             const corpo = {
                 reason: "Verificação Markfy",
                 payer_email:
-                    decodedToken.email || "verificacao@markfy.app",
+                    decodedToken.email || "markfy.suporte@gmail.com" /* markfy.app é domínio de outra empresa */,
                 status: "pending",
                 auto_recurring: {
                     frequency: 1,
@@ -3510,8 +3557,7 @@ exports.getMercadoPagoPublicKey = onRequest(
 
 const acharAssinaturaPorPreapproval = async (preapprovalId) => {
 
-    const empresas =
-        (await db.ref("companys").once("value")).val() || {};
+    const empresas = await loadCompaniesChildren(["subscriptions"]);
 
     for (const [handle, empresa] of Object.entries(empresas)) {
 
@@ -3632,10 +3678,7 @@ const registrarCobrancaDeAssinatura = async (authorizedPaymentId) => {
      * Como a conexão é por empresa e ainda não sabemos qual,
      * tentamos cada uma até uma responder.
      */
-    const empresas =
-        (await db.ref("companys").once("value")).val() || {};
-
-    for (const handle of Object.keys(empresas)) {
+    for (const handle of await listCompanyHandles()) {
 
         const connection = await carregarConexao(handle);
 
@@ -3814,13 +3857,10 @@ exports.mercadoPagoWebhook = onRequest(
                BUSCAR PAYMENT ORDER
             ========================================= */
 
-            const companiesSnapshot =
-                await db
-                    .ref("companys")
-                    .once("value");
-
+            /* Só paymentOrders de cada empresa (ver
+               loadCompaniesChildren). */
             const companies =
-                companiesSnapshot.val() || {};
+                await loadCompaniesChildren(["paymentOrders"]);
 
             let paymentOrder = null;
             let companyHandle = null;
@@ -4580,6 +4620,9 @@ const menus = require("./menus");
 const { licenseProductFor, planPriceFor, publicAccessFor } = menus.menusLicensing;
 
 exports.menusApi = menus.menusApi;
+
+/* Agendamento pelo cliente final (ver bookings.js). */
+exports.bookingsApi = require("./bookings").bookingsApi;
 
 const planCors = (req, res) => {
 

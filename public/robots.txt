@@ -1,3 +1,33 @@
-# https://www.robotstxt.org/robotstxt.html
+# Markfy — robots.txt
+#
+# robots.txt NÃO protege dados: as áreas privadas exigem login
+# e as regras do banco. Aqui só dizemos aos robôs o que não vale
+# a pena rastrear. Páginas como /login e /register ficam
+# liberadas de propósito: elas têm <meta name="robots"
+# content="noindex">, e o robô precisa ler a página para ver isso.
+#
+# Robôs de busca e de IA (Googlebot, Bingbot, OAI-SearchBot do
+# ChatGPT, PerplexityBot etc.) seguem o grupo "*" abaixo. Para
+# NÃO permitir uso em TREINAMENTO de modelos sem afetar a busca,
+# acrescente grupos como:
+#
+#   User-agent: GPTBot
+#   Disallow: /
+#
+#   User-agent: Google-Extended
+#   Disallow: /
+#
+# (Decisão de negócio: hoje nada é bloqueado.)
+
 User-agent: *
-Disallow:
+Allow: /
+Disallow: /central-adm
+Disallow: /newcompany/
+Disallow: /checkout
+Disallow: /payment-result
+Disallow: /markfy-master-dev
+Disallow: /studio/
+Allow: /menus/demo
+Disallow: /menus/
+
+Sitemap: https://markfy.vercel.app/sitemap.xml

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 
 import SplashScreen from './componentes/spashscreen';
 import MarkfyLogo from "../../../img/logo-markfy.svg";
@@ -10,10 +10,7 @@ import {
   ref,
   set,
   get,
-  update,
-  query,
-  orderByChild,
-  equalTo
+  update
 } from 'firebase/database';
 
 import {
@@ -38,6 +35,7 @@ import {
   toE164BR
 } from '../../../utils/phoneBR';
 import { auth } from '../../../firebase/firebase';
+import { trackEvent } from '../../../analytics/analytics';
 
 import { Icon } from '@iconify/react';
 import './mainscreenregister.css';
@@ -50,6 +48,29 @@ const PUBLIC_KEY = "QlWjNn5vihbWi9uLf";
  * O Firebase devolve um código por erro; sem traduzir, tudo
  * vira "tente de novo" e a pessoa repete o mesmo engano.
  */
+const descreverErroDeCadastro = (error) => {
+
+  switch (error?.code) {
+
+    case 'auth/email-already-in-use':
+      return 'Este e-mail já tem conta. Entre com ele ou recupere a senha.';
+
+    case 'auth/invalid-email':
+      return 'E-mail inválido. Confira o endereço.';
+
+    case 'auth/weak-password':
+      return 'Senha fraca. Use pelo menos 6 caracteres.';
+
+    case 'auth/network-request-failed':
+      return 'Sem conexão. Verifique sua internet.';
+
+    default:
+      return null;
+
+  }
+
+};
+
 const descreverErroDeTelefone = (error) => {
 
   switch (error?.code) {
@@ -106,6 +127,24 @@ const AuthScreen = () => {
     /^\/(?!\/)[\w\-/?=&.%]*$/.test(rawRedirect) && !rawRedirect.startsWith("/login")
       ? rawRedirect
       : null;
+
+  /*
+   * Quem chegou pelo "Criar minha empresa" da landing vem com
+   * ?redirect=/newcompany/<id>. Conta nova (initial: true)
+   * normalmente vai para o /initial-setup; nesse caso ela já
+   * disse que tem um negócio, então segue direto para a
+   * criação da empresa (a revisão grava initial: false).
+   */
+  const goToSetup = (state) => {
+    if (redirectTo && redirectTo.startsWith("/newcompany/")) {
+      navigate(redirectTo);
+      return;
+    }
+
+    navigate("/initial-setup", { state });
+  };
+
+  const location = useLocation();
   const [inviteData, setInviteData] = useState(null);
 
   const [step, setStep] = useState('register');
@@ -113,7 +152,8 @@ const AuthScreen = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [rememberMe, setRememberMe] = useState(false);
-  const [isLogin, setIsLogin] = useState(!inviteId);
+  /* /register (link "Criar conta") já abre no modo cadastro. */
+  const [isLogin, setIsLogin] = useState(!inviteId && location.pathname !== "/register");
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -484,32 +524,13 @@ const AuthScreen = () => {
   };
 
   /*
-   * ============================================================
-   * HASH DA SENHA
-   * ============================================================
+   * A senha fica só no Firebase Authentication.
+   *
+   * O cadastro gravava um SHA-256 sem sal da senha em
+   * users/{uid}/password. Ninguém lia esse campo, e
+   * enquanto o banco esteve aberto qualquer pessoa podia
+   * baixar esses hashes e tentar quebrá-los offline.
    */
-
-  const hashPassword = async (password) => {
-    const encoder = new TextEncoder();
-
-    const data = encoder.encode(password);
-
-    const hashBuffer =
-      await window.crypto.subtle.digest(
-        'SHA-256',
-        data
-      );
-
-    const hashArray =
-      Array.from(new Uint8Array(hashBuffer));
-
-    const hashHex =
-      hashArray
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-
-    return hashHex;
-  };
 
   /*
    * ============================================================
@@ -562,12 +583,10 @@ const AuthScreen = () => {
         initial: true
       });
 
-      navigate("/initial-setup", {
-        state: {
-          name,
-          email,
-          id: uid
-        }
+      goToSetup({
+        name,
+        email,
+        id: uid
       });
 
       return;
@@ -592,12 +611,10 @@ const AuthScreen = () => {
         "[AUTH] Usuário ainda está no Initial Setup."
       );
 
-      navigate("/initial-setup", {
-        state: {
-          name: userData.name || name,
-          email: userData.email || email,
-          id: uid
-        }
+      goToSetup({
+        name: userData.name || name,
+        email: userData.email || email,
+        id: uid
       });
 
       return;
@@ -766,6 +783,8 @@ const AuthScreen = () => {
             formData.password
           );
 
+        trackEvent("login", { method: "email" });
+
         const user =
           userCredential.user;
 
@@ -824,65 +843,16 @@ const AuthScreen = () => {
 
       /*
        * ==========================================================
-       * VERIFICA SE EMAIL JÁ EXISTE
+       * E-MAIL JÁ CADASTRADO
        * ==========================================================
-       */
-
-      /*
-       * Consulta por e-mail em vez de baixar o nó "users"
-       * inteiro. Esta é uma rota pública: a leitura
-       * completa expunha nome e e-mail de toda a base.
        *
-       * Requer .indexOn: ["email"] em "users".
-       *
-       * equalTo diferencia maiúsculas, então testamos
-       * também o e-mail como foi digitado.
+       * Não consultamos mais users por e-mail: as regras do
+       * banco fecham esse nó (a consulta expunha quem tem
+       * conta) e, negada, ela derrubava todo cadastro com
+       * "Email ou senha incorreta". Quem confere duplicidade é
+       * o Firebase Authentication, que devolve
+       * auth/email-already-in-use na criação da conta.
        */
-
-      const typedEmail =
-        formData.email;
-
-      const lowercasedEmail =
-        typedEmail.toLowerCase();
-
-      const emailInUse = async (email) => {
-
-        const snapshot =
-          await get(
-            query(
-              ref(realtimeDb, "users"),
-              orderByChild("email"),
-              equalTo(email)
-            )
-          );
-
-        return snapshot.exists();
-
-      };
-
-      let emailExists =
-        await emailInUse(lowercasedEmail);
-
-      if (
-        !emailExists &&
-        typedEmail !== lowercasedEmail
-      ) {
-
-        emailExists =
-          await emailInUse(typedEmail);
-
-      }
-
-      if (emailExists) {
-
-        setFormError(
-          "Email já cadastrado."
-        );
-
-        setIsLoading(false);
-
-        return;
-      }
 
       /*
        * ==========================================================
@@ -901,13 +871,11 @@ const AuthScreen = () => {
               formData.password
             );
 
+          trackEvent("sign_up", { method: "invite" });
+
           const user =
             userCredential.user;
 
-          const hashedPassword =
-            await hashPassword(
-              formData.password
-            );
 
           /*
            * Usuário de convite é admin.
@@ -925,7 +893,6 @@ const AuthScreen = () => {
               uid: user.uid,
               name: formData.name,
               email: formData.email,
-              password: hashedPassword,
               provider: "markfy",
 
               userType: "admin",
@@ -950,6 +917,7 @@ const AuthScreen = () => {
           );
 
           setFormError(
+            descreverErroDeCadastro(err) ||
             "Erro ao criar a conta."
           );
 
@@ -1109,19 +1077,10 @@ const AuthScreen = () => {
           formData.password
         );
 
+      trackEvent("sign_up", { method: "email" });
+
       const user =
         userCredential.user;
-
-      /*
-       * ----------------------------------------------------------
-       * HASH DA SENHA
-       * ----------------------------------------------------------
-       */
-
-      const hashedPassword =
-        await hashPassword(
-          formData.password
-        );
 
       /*
        * ----------------------------------------------------------
@@ -1150,8 +1109,6 @@ const AuthScreen = () => {
           name: formData.name,
 
           email: formData.email,
-
-          password: hashedPassword,
 
           provider: 'markfy',
 
@@ -1191,12 +1148,10 @@ const AuthScreen = () => {
        * ----------------------------------------------------------
        */
 
-      navigate("/initial-setup", {
-        state: {
-          name: formData.name,
-          email: formData.email,
-          id: user.uid
-        }
+      goToSetup({
+        name: formData.name,
+        email: formData.email,
+        id: user.uid
       });
 
     } catch (error) {
@@ -1214,6 +1169,7 @@ const AuthScreen = () => {
        */
 
       setFormError(
+        descreverErroDeCadastro(error) ||
         "Erro ao criar o usuário. Tente novamente."
       );
 
@@ -1239,6 +1195,8 @@ const AuthScreen = () => {
 
     const user = result.user;
 
+    trackEvent("login", { method: "google" });
+
       const userRef =
         ref(
           realtimeDb,
@@ -1262,8 +1220,14 @@ const AuthScreen = () => {
        * preserva o valor atual.
        */
 
+      /* password: hash de senha que cadastros antigos gravavam.
+         Não serve para nada (a senha é do Firebase Auth) e não
+         deve continuar no banco: some na próxima gravação. */
+      const { password: _legacyPasswordHash, ...existingWithoutPassword } =
+        existingData;
+
       const userData = {
-        ...existingData,
+        ...existingWithoutPassword,
 
         uid: user.uid,
 

@@ -1,5 +1,6 @@
 import React from "react";
 import "./order-summary.css";
+import imageNotFound from "../../img/adm-content/image-not-found.svg";
 
 const OrderSummary = ({
     agendamento,
@@ -58,7 +59,7 @@ const OrderSummary = ({
                                 src={
                                     product.images?.[0] ||
                                     product.image ||
-                                    "https://via.placeholder.com/100"
+                                    imageNotFound
                                 }
                                 alt={product.name}
                                 className="order-summary-product-image"

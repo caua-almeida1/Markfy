@@ -40,7 +40,7 @@
    01. FONTES E VARIÁVEIS
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+/* Fontes: carregadas uma vez só no public/index.html (preconnect + 1 requisição). */
 
 /* Os tokens de cor agora vivem só em src/index.css.
    Este arquivo redeclarava os mesmos nomes com valores

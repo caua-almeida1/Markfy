@@ -31,6 +31,8 @@ import {
     isValidCompanyTheme
 } from "../../../../../theme/companyThemes";
 
+const THEMES_PREVIEW_COUNT = 4;
+
 const MAX_PHOTOS = 12;
 
 const PHOTO_CATEGORIES = [
@@ -72,6 +74,9 @@ const BrandingScreen = () => {
 
     const [initialCompanyTheme, setInitialCompanyTheme] =
         useState(DEFAULT_COMPANY_THEME);
+
+    const [showAllThemes, setShowAllThemes] =
+        useState(false);
 
     const [photos, setPhotos] = useState([]);
     const [initialPhotos, setInitialPhotos] = useState([]);
@@ -922,7 +927,11 @@ const BrandingScreen = () => {
 
                 <div className="branding-themes-grid">
 
-                    {COMPANY_THEMES.map((option) => {
+                    {COMPANY_THEMES.filter((option, index) =>
+                        showAllThemes ||
+                        index < THEMES_PREVIEW_COUNT ||
+                        option.id === companyTheme
+                    ).map((option) => {
 
                         const isSelected =
                             companyTheme === option.id;
@@ -1010,6 +1019,31 @@ const BrandingScreen = () => {
                     })}
 
                 </div>
+
+                {COMPANY_THEMES.length > THEMES_PREVIEW_COUNT && (
+
+                    <button
+                        type="button"
+                        className="branding-themes-more"
+                        onClick={() =>
+                            setShowAllThemes((v) => !v)
+                        }
+                        aria-expanded={showAllThemes}
+                    >
+
+                        {showAllThemes ? "Ver menos" : "Ver mais"}
+
+                        <Icon
+                            icon={
+                                showAllThemes
+                                    ? "material-symbols:keyboard-arrow-up-rounded"
+                                    : "material-symbols:keyboard-arrow-down-rounded"
+                            }
+                        />
+
+                    </button>
+
+                )}
 
 
                 <p className="branding-themes-note">

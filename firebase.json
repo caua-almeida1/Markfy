@@ -5,6 +5,9 @@
       "node scripts/build-db-rules.js"
     ]
   },
+  "storage": {
+    "rules": "storage.rules"
+  },
   "hosting": {
     "public": "build",
     "ignore": [
@@ -29,7 +32,8 @@
         ".git",
         "firebase-debug.log",
         "firebase-debug.*.log",
-        "*.local"
+        "*.local",
+        "__tests__"
       ],
       "predeploy": [
         "node scripts/sync-menus-engine.js"

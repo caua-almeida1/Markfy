@@ -1,0 +1,68 @@
+rules_version = '2';
+
+/* =========================================================
+   REGRAS DO FIREBASE STORAGE
+
+   Antes (publicado até 2026-10-21): `allow read, write: if true`
+   em tudo — qualquer pessoa, sem login, podia apagar ou trocar
+   a logo, as fotos e as imagens de produto de qualquer empresa,
+   e subir arquivos de qualquer tipo e tamanho (custo).
+
+   LIMITAÇÃO IMPORTANTE
+
+   Regras do Storage não leem o Realtime Database, então não
+   dá para conferir aqui "é membro desta empresa". O que estas
+   regras garantem:
+
+     - leitura pública só das imagens que as páginas públicas
+       mostram (logo, fotos, produtos, Studio, Menus, foto de
+       perfil);
+     - escrita só com login, só imagem, com limite de tamanho;
+     - foto de perfil só pelo próprio dono;
+     - todo o resto fechado.
+
+   Próximo passo recomendado: custom claims de empresa (uma
+   Cloud Function grava { companies: { handle: papel } } no token
+   quando members muda) e trocar `signedIn()` por
+   `isMember(handle)` nos caminhos de empresa.
+
+   Caminhos usados pelo app (conferidos no código):
+     companys/{handle}/logo.png
+     companys/{handle}/photos/{id}.jpg
+     companys/{handle}/products/{productId}/images/{arquivo}
+     companys/{handle}/studio/{id}.jpg
+     companys/{handle}/menus/{pasta}/{id}.jpg
+     users/{uid}/profileImg
+========================================================= */
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    /* Imagem de até `mb` megabytes. Exclusão não tem
+       request.resource, então passa direto. */
+    function isImageUpTo(mb) {
+      return request.resource == null
+        || (request.resource.size < mb * 1024 * 1024
+            && request.resource.contentType.matches('image/.*'));
+    }
+
+    match /companys/{handle}/{allPaths=**} {
+      allow read: if true;
+      allow write: if signedIn() && isImageUpTo(10);
+    }
+
+    match /users/{uid}/{allPaths=**} {
+      allow read: if true;
+      allow write: if signedIn() && request.auth.uid == uid && isImageUpTo(5);
+    }
+
+    /* Qualquer outro caminho: fechado. */
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

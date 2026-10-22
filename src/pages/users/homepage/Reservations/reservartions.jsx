@@ -10,8 +10,7 @@ import { Icon } from "@iconify/react";
 import {
     getDatabase,
     ref,
-    get,
-    update
+    get
 } from "firebase/database";
 
 import { useNavigate, useParams } from "react-router-dom";
@@ -25,8 +24,13 @@ import { getClientId } from "../../../../utils/clientID";
 import {
     getSubscriptionSummary,
     isSubscriptionUsable,
-    watchCompanySubscriptions
+    watchMySubscriptions
 } from "../../../../utils/subscriptionRuntime";
+
+import {
+    cancelMyBooking,
+    fetchMyBookings
+} from "../../../../firebase/bookingsApi";
 
 import "./reservations.css";
 
@@ -71,11 +75,12 @@ const Reservations = () => {
             return undefined;
         }
 
-        const unsubscribe = watchCompanySubscriptions(
+        const unsubscribe = watchMySubscriptions(
             handle,
-            (todas) =>
+            accountUid,
+            (minhas) =>
                 setSubscriptions(
-                    todas.filter(
+                    minhas.filter(
                         item =>
                             item.uid === accountUid &&
                             isSubscriptionUsable(item)
@@ -254,8 +259,6 @@ const Reservations = () => {
 
                 const clientId = getClientId();
 
-                const db = getDatabase();
-
                 if (!handle) {
 
                     setReservations([]);
@@ -263,32 +266,19 @@ const Reservations = () => {
                     return;
                 }
 
-                const schedulesRef = ref(
-                    db,
-                    `companys/${handle}/schedules`
-                );
-
-                const snapshot =
-                    await get(schedulesRef);
-
-                if (!snapshot.exists()) {
-
-                    setReservations([]);
-
-                    return;
-                }
-
-                const schedules =
-                    snapshot.val();
+                /*
+                 * A agenda da empresa é privada (tem nome e
+                 * telefone de todos os clientes). O backend
+                 * devolve só as reservas desta conta e deste
+                 * aparelho.
+                 */
+                const schedules = await fetchMyBookings({
+                    handles: [handle],
+                    clientId
+                });
 
                 const firebaseReservations =
-                    Object.entries(schedules)
-                        .map(
-                            ([id, reservation]) => ({
-                                id,
-                                ...reservation
-                            })
-                        )
+                    schedules
                         /*
                          * Meus agendamentos = os desta conta
                          * OU os deste aparelho.
@@ -1348,35 +1338,19 @@ const Reservations = () => {
 
             try {
 
-                const db =
-                    getDatabase();
-
                 const reservation =
                     selectedReservation;
 
-                const reservationRef =
-                    ref(
-                        db,
-                        `companys/${handle}/schedules/${reservation.id}`
-                    );
-
-                const reservationSnapshot =
-                    await get(
-                        reservationRef
-                    );
-
-                if (
-                    !reservationSnapshot.exists()
-                ) {
-
-                    throw new Error(
-                        "Esta reserva não foi encontrada."
-                    );
-
-                }
-
+                /*
+                 * A reserva vem da lista (já filtrada pelo
+                 * backend para esta conta/aparelho). As
+                 * conferências abaixo só deixam a mensagem
+                 * mais clara; quem decide de verdade é o
+                 * backend (bookingsApi/cancel), que repete
+                 * dono, status e antecedência.
+                 */
                 const currentReservation =
-                    reservationSnapshot.val();
+                    reservation;
 
                 if (
                     currentReservation.status !==
@@ -1433,27 +1407,25 @@ const Reservations = () => {
                     currentReservation.productId
                 ) {
 
-                    const productRef =
-                        ref(
-                            db,
-                            `companys/${handle}/products/${currentReservation.productId}`
-                        );
+                    /* Só o campo do prazo: o produto inteiro
+                       pode ter imagens antigas em base64. */
+                    try {
 
-                    const productSnapshot =
-                        await get(
-                            productRef
-                        );
-
-                    if (
-                        productSnapshot.exists()
-                    ) {
-
-                        const product =
-                            productSnapshot.val();
+                        const advanceSnapshot =
+                            await get(
+                                ref(
+                                    getDatabase(),
+                                    `companys/${handle}/products/${currentReservation.productId}/cancellationAdvance`
+                                )
+                            );
 
                         cancellationAdvance =
-                            product.cancellationAdvance ||
+                            advanceSnapshot.val() ||
                             null;
+
+                    } catch {
+
+                        cancellationAdvance = null;
 
                     }
 
@@ -1487,17 +1459,12 @@ const Reservations = () => {
 
                 }
 
-                const cancelledAt =
-                    new Date().toISOString();
-
-                await update(
-                    reservationRef,
-                    {
-                        status: "cancelados",
-                        cancelledAt,
-                        cancelledBy: "client"
-                    }
-                );
+                const { cancelledAt } =
+                    await cancelMyBooking(
+                        handle,
+                        reservation.id,
+                        getClientId()
+                    );
 
                 setReservations(
                     (prev) =>

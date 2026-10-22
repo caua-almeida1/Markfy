@@ -1,12 +1,10 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import { getAuth } from "firebase/auth";
-import { getDatabase, onValue, ref } from "firebase/database";
 import { Icon } from "@iconify/react";
 
-import { fetchCompaniesFromSource }
-    from "../../../firebase/companiesIndex";
+import { useCompaniesIndex }
+    from "../../../firebase/useCompaniesIndex";
 
 import {
     CATEGORY_GROUPS,
@@ -42,8 +40,9 @@ const ClientExplore = () => {
 
     const navigate = useNavigate();
 
-    const [companies, setCompanies] = useState([]);
-    const [loading, setLoading] = useState(true);
+    /* Mesma lista (e mesmo critério de elegibilidade) do
+       Explorar e da central do usuário. */
+    const { companies, loading } = useCompaniesIndex();
 
     const [selectedGroup, setSelectedGroup] = useState(null);
     const [search, setSearch] = useState("");
@@ -51,103 +50,6 @@ const ClientExplore = () => {
     /* Empresa cujo modal de informações está aberto. */
     const [infoCompany, setInfoCompany] = useState(null);
 
-
-    useEffect(() => {
-
-        let cancelado = false;
-
-        /*
-         * Índice vazio não significa "não há empresas".
-         *
-         * companiesIndex só ganha entrada quando a empresa é
-         * criada ou editada depois que o índice passou a
-         * existir — as antigas nunca entraram nele. Quando
-         * vem vazio, montamos as mesmas entradas a partir de
-         * companys/, lendo só os campos do card. É a mesma
-         * queda que a tela Explorar do app usa.
-         */
-        const carregarDaFonte = async () => {
-
-            let token = null;
-
-            try {
-
-                token =
-                    await getAuth().currentUser?.getIdToken();
-
-            } catch {
-
-                token = null;
-
-            }
-
-            try {
-
-                const fallback =
-                    await fetchCompaniesFromSource(token);
-
-                if (!cancelado) {
-                    setCompanies(fallback);
-                }
-
-            } catch (error) {
-
-                console.error(
-                    "Erro ao carregar empresas:",
-                    error
-                );
-
-            } finally {
-
-                if (!cancelado) setLoading(false);
-
-            }
-
-        };
-
-        const unsubscribe = onValue(
-            ref(getDatabase(), "companiesIndex"),
-            (snapshot) => {
-
-                if (cancelado) return;
-
-                const dados = snapshot.val() || {};
-
-                const lista =
-                    Object.entries(dados).map(
-                        ([handle, company]) => ({
-                            handle,
-                            ...company
-                        })
-                    );
-
-                if (lista.length === 0) {
-                    carregarDaFonte();
-                    return;
-                }
-
-                setCompanies(lista);
-                setLoading(false);
-
-            },
-            (error) => {
-
-                console.error(
-                    "Erro ao ler o índice de empresas:",
-                    error
-                );
-
-                carregarDaFonte();
-
-            }
-        );
-
-        return () => {
-            cancelado = true;
-            unsubscribe();
-        };
-
-    }, []);
 
 
     /* Quantas empresas cada grupo tem — um grupo vazio não

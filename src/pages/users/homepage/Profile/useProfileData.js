@@ -12,6 +12,7 @@ import {
 } from "firebase/database";
 
 import { getClientId } from "../../../../utils/clientID";
+import { fetchMyBookings } from "../../../../firebase/bookingsApi";
 
 
 /* =========================================================
@@ -249,18 +250,14 @@ export const useProfileData = (companyHandle) => {
 
         try {
 
-            const snapshot = await get(
-                ref(
-                    getDatabase(),
-                    `companys/${companyHandle}/schedules`
-                )
-            );
-
-            const todos =
-                Object.entries(snapshot.val() || {})
-                    .map(([id, value]) => ({ id, ...value }));
-
             const clientId = getClientId();
+
+            /* A agenda da empresa é privada: o backend devolve
+               só os agendamentos desta conta/deste aparelho. */
+            const todos = await fetchMyBookings({
+                handles: [companyHandle],
+                clientId
+            });
 
             const meus = todos.filter(
                 (item) =>

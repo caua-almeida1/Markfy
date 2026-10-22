@@ -5,9 +5,11 @@ import { Icon } from "@iconify/react";
 
 import {
     cancelJoinRequest,
+    linkMyCompany,
     REQUEST_STATUS,
     watchCompanyHandle,
-    watchJoinRequest
+    watchJoinRequest,
+    watchMyMembership
 } from "../../../utils/joinRequests";
 
 import "./join-request-waiting.css";
@@ -84,9 +86,30 @@ const JoinRequestWaiting = ({
             }
         );
 
+        /*
+         * Aprovação = minha entrada apareceu em members. Quem
+         * aprova não pode mais gravar no MEU users/{uid} (as
+         * regras fecharam isso), então eu mesmo gravo o vínculo;
+         * o observador acima vê o companyHandle e abre o painel.
+         */
+        const pararDeOuvirMembro = watchMyMembership(
+            handle,
+            uid,
+            (membro) => {
+
+                if (!membro) return;
+
+                linkMyCompany(uid, handle).catch((error) => {
+                    console.error("Não foi possível gravar o vínculo com a empresa:", error);
+                });
+
+            }
+        );
+
         return () => {
             pararDeOuvirPedido();
             pararDeOuvirVinculo();
+            pararDeOuvirMembro();
         };
 
     }, [handle, uid]);

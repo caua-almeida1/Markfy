@@ -1,5 +1,7 @@
 import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
+
+import { usePageMeta } from "../../hooks/usePageMeta";
 import { Icon } from "@iconify/react";
 
 import "./legal.css";
@@ -126,6 +128,10 @@ const LegalPage = ({
 }) => {
 
     const navigate = useNavigate();
+
+    const { pathname } = useLocation();
+
+    usePageMeta({ title, description: subtitle, path: pathname });
 
 
     /* As telas do app travam html/body em height:100%.

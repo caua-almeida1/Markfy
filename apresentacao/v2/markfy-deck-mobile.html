@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Markfy — Apresentação (mobile)</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,800&family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/iconify-icon@2.1.0/dist/iconify-icon.min.js"></script>
+<style>
+@page { size: 1080px 1920px; margin: 0; }
+:root{
+  --blue:#092af3; --blue-lift:#3b5bff; --blue-deep:#0518a8; --blue-soft:#eef1ff;
+  --signal:#00e5a0; --ink:#060818; --paper-alt:#f4f6fc;
+  --text:#10121a; --muted:#5c6278; --line:#e4e8f2;
+  --orange:#fb923c; --cyan:#22d3ee; --violet:#c084fc; --green:#34d399;
+  --d:"Bricolage Grotesque","Inter",sans-serif; --p:"Poppins",sans-serif; --i:"Inter",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:#d9dce6}
+body{font-family:var(--i);color:var(--text);-webkit-font-smoothing:antialiased;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+iconify-icon{display:inline-block;width:1em;height:1em;vertical-align:-0.125em}
+.slide{width:1080px;height:1920px;position:relative;overflow:hidden;background:var(--paper-alt);padding:120px 72px 170px;page-break-after:always;break-after:page;margin:0 auto;display:flex;flex-direction:column}
+@media screen{.slide{margin:0 auto 40px;box-shadow:0 20px 60px rgba(10,18,50,.2)}}
+.dark{background:var(--ink);color:#fff}
+.bluebg{background:var(--blue);color:#fff}
+.white{background:#fff}
+h1,h2,h3{font-family:var(--d);font-weight:600;letter-spacing:-0.03em;line-height:1.02}
+h1{font-size:150px} h2{font-size:96px} h3{font-size:46px;letter-spacing:-0.02em}
+p.lead{font-size:36px;line-height:1.42;color:var(--muted);margin-top:28px}
+.dark p.lead,.bluebg p.lead{color:rgba(255,255,255,.72)}
+.kicker{display:inline-flex;align-items:center;gap:14px;font-weight:600;font-size:26px;letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin-bottom:30px}
+.kicker::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--signal);box-shadow:0 0 0 7px rgba(0,229,160,.18)}
+.dark .kicker,.bluebg .kicker{color:#fff}
+.foot{position:absolute;left:72px;right:72px;bottom:64px;display:flex;align-items:center;justify-content:space-between;font-size:24px;color:var(--muted);font-weight:500}
+.dark .foot,.bluebg .foot{color:rgba(255,255,255,.55)}
+.foot .brand{display:flex;align-items:center;gap:12px;font-family:var(--d);font-weight:800;font-size:28px;letter-spacing:-.03em;color:var(--text)}
+.dark .foot .brand,.bluebg .foot .brand{color:#fff}
+.foot .brand svg{width:36px;height:36px}
+.glow{position:absolute;border-radius:50%;filter:blur(120px);opacity:.55;pointer-events:none}
+.grid-bg{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.05) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse at 60% 40%,#000 20%,transparent 70%)}
+.pill{display:inline-flex;align-items:center;gap:12px;padding:16px 30px;border-radius:100px;font-weight:600;font-size:28px}
+.pill.solid{background:var(--blue);color:#fff}
+.pill.light{background:#fff;color:var(--blue-deep)}
+.pill.outline{border:2px solid rgba(255,255,255,.3);color:#fff}
+.pill.ghost{background:var(--blue-soft);color:var(--blue)}
+.tag{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:100px;font-size:22px;font-weight:600;background:var(--blue-soft);color:var(--blue)}
+.card{background:#fff;border:1px solid var(--line);border-radius:30px;box-shadow:0 18px 50px rgba(10,18,50,.07)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.fill{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center}
+.win{background:#fff;border-radius:22px;overflow:hidden;box-shadow:0 40px 100px rgba(6,8,24,.28);border:1px solid rgba(255,255,255,.1)}
+.win .bar{height:44px;background:#eef0f6;display:flex;align-items:center;gap:8px;padding:0 18px;font-size:15px;color:var(--muted)}
+.win .bar i{width:12px;height:12px;border-radius:50%;display:block}
+.win .bar i:nth-child(1){background:#ff5f57}.win .bar i:nth-child(2){background:#febc2e}.win .bar i:nth-child(3){background:#28c840}
+.win .bar span{margin-left:18px;background:#fff;border-radius:8px;padding:5px 16px;flex:0 1 460px}
+.win img{display:block;width:100%}
+.phone{width:340px;height:700px;border-radius:52px;background:#0b0d18;padding:12px;box-shadow:0 40px 90px rgba(6,8,24,.35)}
+.phone .scr{width:100%;height:100%;border-radius:42px;background:#fff;overflow:hidden;position:relative;font-family:var(--p)}
+.phone .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:110px;height:30px;border-radius:20px;background:#0b0d18;z-index:3}
+.app{font-family:var(--p)}
+.nb{font-family:var(--d);font-weight:800;font-size:30px;width:68px;height:68px;border-radius:20px;display:grid;place-items:center;background:var(--blue);color:#fff;flex:none}
+.li{display:flex;gap:20px;align-items:center;font-size:32px}
+.li iconify-icon{font-size:42px;flex:none}
+.feat{padding:28px;border-radius:26px;font-size:28px;line-height:1.3}
+.feat iconify-icon{font-size:44px;display:block;margin-bottom:12px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="mk" viewBox="0 0 626 626"><rect width="626" height="626" rx="100" fill="#092AF3"/><path fill="#fff" d="M379.792 185.75C383.648 185.75 387.347 187.282 390.074 190.009C392.801 192.736 394.333 196.435 394.333 200.292V203.833C394.333 209.908 399.258 214.833 405.333 214.833H423.417C430.754 214.831 437.821 217.602 443.201 222.591C448.582 227.58 451.877 234.419 452.427 241.735L452.5 243.917V392.25C452.5 398.325 447.558 403.25 441.483 403.25C422.46 403.25 415.019 403.25 408.748 403.25C402.673 403.25 397.75 408.172 397.75 414.247C397.75 420.85 397.75 428.638 397.75 436.5C397.75 442.575 392.825 447.5 386.75 447.5H219.833C212.496 447.502 205.429 444.731 200.049 439.742C194.668 434.753 191.373 427.915 190.823 420.598L190.75 418.417V243.917C190.748 236.579 193.519 229.512 198.508 224.132C203.497 218.752 210.335 215.456 217.652 214.906L219.833 214.833H237.917C243.992 214.833 248.917 209.908 248.917 203.833V200.292C248.917 196.435 250.449 192.736 253.176 190.009C255.903 187.282 259.602 185.75 263.458 185.75C267.315 185.75 271.014 187.282 273.741 190.009C276.468 192.736 278 196.435 278 200.292V203.833C278 209.908 282.925 214.833 289 214.833H354.25C360.325 214.833 365.25 209.908 365.25 203.833V200.292C365.25 196.435 366.782 192.736 369.509 190.009C372.236 187.282 375.935 185.75 379.792 185.75ZM362.691 278.511L308.78 332.422C304.486 336.716 297.523 336.718 293.227 332.424L280.428 319.635C277.686 316.986 274.013 315.521 270.2 315.554C266.387 315.587 262.74 317.116 260.044 319.812C257.347 322.508 255.818 326.156 255.785 329.968C255.752 333.781 257.218 337.454 259.866 340.197L290.608 370.953C291.972 372.318 293.591 373.401 295.374 374.14C297.157 374.879 299.068 375.259 300.998 375.259C302.927 375.259 304.838 374.879 306.621 374.14C308.404 373.401 310.024 372.318 311.388 370.953L383.253 299.073C384.641 297.732 385.749 296.127 386.511 294.353C387.274 292.579 387.675 290.671 387.691 288.74C387.708 286.809 387.34 284.894 386.609 283.107C385.878 281.32 384.798 279.696 383.433 278.331C382.067 276.966 380.444 275.886 378.657 275.155C376.87 274.424 374.955 274.056 373.024 274.072C371.093 274.089 369.185 274.49 367.411 275.252C365.637 276.015 364.032 277.122 362.691 278.511Z"/></symbol>
+  </defs>
+</svg>
+
+<!-- 01 CAPA -->
+<section class="slide dark">
+  <div class="glow" style="width:900px;height:900px;background:var(--blue);right:-400px;top:-200px;opacity:.75"></div>
+  <div class="glow" style="width:600px;height:600px;background:var(--signal);left:-200px;bottom:-300px;opacity:.22"></div>
+  <div class="grid-bg"></div>
+  <div class="fill" style="position:relative">
+    <div style="display:flex;align-items:center;gap:24px;margin-bottom:80px">
+      <svg width="120" height="120"><use href="#mk"/></svg>
+      <span style="font-family:var(--d);font-weight:800;font-size:80px;letter-spacing:-.04em">Markfy</span>
+    </div>
+    <h1 style="font-size:138px">A agenda que trabalha enquanto você <span style="color:var(--blue-lift)">atende.</span></h1>
+    <p class="lead" style="font-size:40px;margin-top:44px">Uma rede, três produtos: <b style="color:#fff">Bookings</b>, <b style="color:#fff">Studio</b> e <b style="color:#fff">Menus</b>. Agendar, aparecer e vender — no mesmo lugar.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:16px;margin-top:60px">
+      <span class="pill solid"><iconify-icon icon="solar:calendar-mark-bold-duotone"></iconify-icon>Bookings</span>
+      <span class="pill outline"><iconify-icon icon="solar:pallete-2-bold-duotone"></iconify-icon>Studio</span>
+      <span class="pill outline"><iconify-icon icon="solar:chef-hat-bold-duotone"></iconify-icon>Menus</span>
+    </div>
+  </div>
+  <div class="foot"><span>Apresentação do produto · 2026</span><span>01</span></div>
+</section>
+
+<!-- 02 O QUE É -->
+<section class="slide">
+  <span class="kicker">O que é a Markfy</span>
+  <h2>Uma empresa cadastrada. Três jeitos de crescer.</h2>
+  <p class="lead">Nome, logo, horários, equipe e catálogo são cadastrados <b>uma vez</b> e servem para todos os produtos.</p>
+  <div class="fill" style="gap:26px">
+    <div class="card" style="padding:40px;display:flex;gap:32px;align-items:center">
+      <div class="nb" style="width:100px;height:100px;font-size:52px;border-radius:28px"><iconify-icon icon="solar:calendar-mark-bold-duotone"></iconify-icon></div>
+      <div><h3>Markfy Bookings</h3><p style="font-size:28px;color:var(--muted);margin-top:10px;line-height:1.4">Agendamento online, Pix e cartão e painel da equipe.</p></div>
+    </div>
+    <div class="card" style="padding:40px;display:flex;gap:32px;align-items:center">
+      <div class="nb" style="width:100px;height:100px;font-size:52px;border-radius:28px;background:var(--violet)"><iconify-icon icon="solar:pallete-2-bold-duotone"></iconify-icon></div>
+      <div><h3>Markfy Studio</h3><p style="font-size:28px;color:var(--muted);margin-top:10px;line-height:1.4">Páginas profissionais sem código, link próprio e analytics.</p></div>
+    </div>
+    <div class="card" style="padding:40px;display:flex;gap:32px;align-items:center">
+      <div class="nb" style="width:100px;height:100px;font-size:52px;border-radius:28px;background:var(--orange)"><iconify-icon icon="solar:chef-hat-bold-duotone"></iconify-icon></div>
+      <div><h3>Markfy Menus</h3><p style="font-size:28px;color:var(--muted);margin-top:10px;line-height:1.4">Cardápio com QR, pedidos, mesas, cozinha, PDV e estoque.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>02</span></div>
+</section>
+
+<!-- 03 LOGO -->
+<section class="slide bluebg">
+  <div class="glow" style="width:800px;height:800px;background:#3b5bff;left:-300px;bottom:-300px;opacity:.6"></div>
+  <div style="position:relative">
+    <span class="kicker">Identidade visual · Marca</span>
+    <h2>Um calendário que já diz “feito”.</h2>
+    <p class="lead">As argolas e a folha são <b style="color:#fff">a agenda</b>; o check é <b style="color:#fff">a confirmação</b>. A dobra no canto lembra a página virando — o próximo cliente.</p>
+  </div>
+  <div class="fill" style="position:relative;gap:24px">
+    <div style="background:#fff;border-radius:40px;height:400px;display:grid;place-items:center;position:relative">
+      <div style="display:flex;align-items:center;gap:26px"><svg width="150" height="150"><use href="#mk"/></svg><span style="font-family:var(--d);font-weight:800;font-size:112px;letter-spacing:-.045em;color:var(--ink)">Markfy</span></div>
+      <span style="position:absolute;left:30px;top:26px;font-size:20px;color:var(--muted);font-weight:600;letter-spacing:.1em">ASSINATURA PRINCIPAL</span>
+    </div>
+    <div class="g2">
+      <div style="background:var(--ink);border-radius:34px;height:260px;display:grid;place-items:center;position:relative"><div style="display:flex;align-items:center;gap:14px"><svg width="70" height="70"><use href="#mk"/></svg><span style="font-family:var(--d);font-weight:800;font-size:50px;letter-spacing:-.04em">Markfy</span></div><span style="position:absolute;left:24px;top:20px;font-size:17px;color:rgba(255,255,255,.5);font-weight:600;letter-spacing:.1em">FUNDO ESCURO</span></div>
+      <div style="background:rgba(255,255,255,.1);border:2px dashed rgba(255,255,255,.35);border-radius:34px;height:260px;display:grid;place-items:center;position:relative"><svg width="120" height="120"><use href="#mk"/></svg><span style="position:absolute;left:24px;top:20px;font-size:17px;color:rgba(255,255,255,.6);font-weight:600;letter-spacing:.1em">ÍCONE · APP</span></div>
+    </div>
+    <div class="g3" style="margin-top:20px;font-size:26px;color:rgba(255,255,255,.75)">
+      <div><b style="display:block;font-family:var(--d);font-size:60px;color:#fff">16%</b>raio do quadrado</div>
+      <div><b style="display:block;font-family:var(--d);font-size:60px;color:#fff">1 cor</b>azul Markfy</div>
+      <div><b style="display:block;font-family:var(--d);font-size:60px;color:#fff">800</b>peso do nome</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>03</span></div>
+</section>
+
+<!-- 04 CORES -->
+<section class="slide white">
+  <span class="kicker">Identidade visual · Cores</span>
+  <h2>Azul que confia. Verde que confirma.</h2>
+  <div class="fill" style="gap:20px">
+    <div style="background:var(--blue);border-radius:34px;padding:40px;color:#fff;height:330px;display:flex;flex-direction:column;justify-content:flex-end"><b style="font-family:var(--d);font-size:64px;letter-spacing:-.03em">Azul Markfy</b><span style="font-size:28px;opacity:.85;margin-top:8px">#092AF3 · primária, botões, marca</span></div>
+    <div class="g3">
+      <div style="background:var(--blue-lift);border-radius:28px;padding:26px;color:#fff;height:230px;display:flex;flex-direction:column;justify-content:flex-end"><b style="font-family:var(--d);font-size:32px">Azul claro</b><span style="font-size:21px;opacity:.85">#3B5BFF</span></div>
+      <div style="background:var(--blue-deep);border-radius:28px;padding:26px;color:#fff;height:230px;display:flex;flex-direction:column;justify-content:flex-end"><b style="font-family:var(--d);font-size:32px">Profundo</b><span style="font-size:21px;opacity:.85">#0518A8</span></div>
+      <div style="background:var(--ink);border-radius:28px;padding:26px;color:#fff;height:230px;display:flex;flex-direction:column;justify-content:flex-end"><b style="font-family:var(--d);font-size:32px">Tinta</b><span style="font-size:21px;opacity:.7">#060818</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px">
+      <div style="height:170px;border-radius:24px;background:var(--signal);padding:18px;display:flex;flex-direction:column;justify-content:flex-end;color:var(--ink)"><b style="font-size:24px">Sinal</b><small style="font-size:18px">#00E5A0</small></div>
+      <div style="height:170px;border-radius:24px;background:var(--paper-alt);border:1px solid var(--line);padding:18px;display:flex;flex-direction:column;justify-content:flex-end"><b style="font-size:24px">Papel</b><small style="font-size:18px;color:var(--muted)">#F4F6FC</small></div>
+      <div style="height:170px;border-radius:24px;background:var(--blue-soft);padding:18px;display:flex;flex-direction:column;justify-content:flex-end;color:var(--blue)"><b style="font-size:24px">Suave</b><small style="font-size:18px">#EEF1FF</small></div>
+      <div style="height:170px;border-radius:24px;background:#111214;padding:18px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff"><b style="font-size:24px">Escuro</b><small style="font-size:18px;opacity:.7">#111214</small></div>
+      <div style="height:170px;border-radius:24px;background:var(--orange);padding:18px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff"><b style="font-size:24px">Básico</b><small style="font-size:18px">#FB923C</small></div>
+      <div style="height:170px;border-radius:24px;background:var(--cyan);padding:18px;display:flex;flex-direction:column;justify-content:flex-end;color:var(--ink)"><b style="font-size:24px">Comum</b><small style="font-size:18px">#22D3EE</small></div>
+      <div style="height:170px;border-radius:24px;background:#4160ff;padding:18px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff"><b style="font-size:24px">Pro</b><small style="font-size:18px">#4160FF</small></div>
+      <div style="height:170px;border-radius:24px;background:var(--violet);padding:18px;display:flex;flex-direction:column;justify-content:flex-end;color:#fff"><b style="font-size:24px">Premium</b><small style="font-size:18px">#C084FC</small></div>
+    </div>
+    <p style="font-size:26px;color:var(--muted);line-height:1.45;margin-top:10px">Cada plano tem sua cor. Claro, escuro e “seguir o sistema” nascem certos no primeiro paint.</p>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>04</span></div>
+</section>
+
+<!-- 05 TIPOGRAFIA -->
+<section class="slide">
+  <span class="kicker">Identidade visual · Tipografia</span>
+  <h2>Três vozes, uma conversa.</h2>
+  <div class="fill" style="gap:24px">
+    <div class="card" style="padding:40px;background:var(--ink);color:#fff;border:0;display:flex;gap:36px;align-items:center">
+      <div style="font-family:var(--d);font-weight:800;font-size:200px;letter-spacing:-.05em;line-height:1">Aa</div>
+      <div><span class="tag" style="background:rgba(255,255,255,.1);color:#fff">Títulos · marca</span><b style="font-family:var(--d);font-size:46px;letter-spacing:-.03em;display:block;margin-top:14px">Bricolage Grotesque</b><p style="font-size:24px;color:rgba(255,255,255,.65);margin-top:8px;line-height:1.4">500 · 600 · 800 — personalidade nos títulos e no nome.</p></div>
+    </div>
+    <div class="card" style="padding:40px;display:flex;gap:36px;align-items:center">
+      <div style="font-family:var(--p);font-weight:600;font-size:180px;letter-spacing:-.04em;line-height:1.1;color:var(--blue)">Aa</div>
+      <div><span class="tag">Aplicativo · interface</span><b style="font-family:var(--p);font-size:44px;display:block;margin-top:14px">Poppins</b><p style="font-size:24px;color:var(--muted);margin-top:8px;line-height:1.4">400 → 800. A fonte do design system em toda a rede.</p></div>
+    </div>
+    <div class="card" style="padding:40px;display:flex;gap:36px;align-items:center">
+      <div style="font-family:var(--i);font-weight:600;font-size:180px;letter-spacing:-.04em;line-height:1.1">Aa</div>
+      <div><span class="tag">Leitura · landing</span><b style="font-family:var(--i);font-size:44px;display:block;margin-top:14px">Inter</b><p style="font-size:24px;color:var(--muted);margin-top:8px;line-height:1.4">400 · 500 · 600. Textos longos, legíveis em qualquer tela.</p></div>
+    </div>
+    <div style="display:flex;align-items:baseline;gap:30px;font-family:var(--p);margin-top:16px">
+      <span style="font-size:72px;font-weight:700;letter-spacing:-.035em">56</span><span style="font-size:50px;font-weight:600">36</span><span style="font-size:38px;font-weight:600">28</span><span style="font-size:30px">22</span><span style="font-size:24px;color:var(--muted)">17</span><span style="font-size:20px;color:var(--muted)">15</span><span style="font-size:17px;color:var(--muted)">13</span>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>05</span></div>
+</section>
+
+<!-- 06 LINGUAGEM -->
+<section class="slide white">
+  <span class="kicker">Identidade visual · Linguagem</span>
+  <h2>Raios por hierarquia, movimento com propósito.</h2>
+  <div class="fill" style="gap:24px">
+    <div class="card" style="padding:40px">
+      <b style="font-size:30px">Raio cresce com a importância</b>
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-top:34px">
+        <div style="text-align:center"><div style="width:90px;height:60px;border-radius:8px;background:var(--blue-soft);border:2px solid var(--blue)"></div><small style="font-size:20px;color:var(--muted);display:block;margin-top:12px">8 chip</small></div>
+        <div style="text-align:center"><div style="width:120px;height:80px;border-radius:12px;background:var(--blue-soft);border:2px solid var(--blue)"></div><small style="font-size:20px;color:var(--muted);display:block;margin-top:12px">12 botão</small></div>
+        <div style="text-align:center"><div style="width:150px;height:110px;border-radius:18px;background:var(--blue-soft);border:2px solid var(--blue)"></div><small style="font-size:20px;color:var(--muted);display:block;margin-top:12px">18 bloco</small></div>
+        <div style="text-align:center"><div style="width:190px;height:150px;border-radius:34px;background:var(--blue)"></div><small style="font-size:20px;color:var(--muted);display:block;margin-top:12px">34 palco</small></div>
+      </div>
+    </div>
+    <div class="card" style="padding:40px">
+      <b style="font-size:30px">Componentes</b>
+      <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:26px">
+        <span class="pill solid">Agendar agora <iconify-icon icon="solar:arrow-right-linear"></iconify-icon></span>
+        <span class="pill ghost"><iconify-icon icon="solar:play-circle-linear"></iconify-icon>Ver demo</span>
+      </div>
+      <div style="display:flex;gap:12px;margin-top:20px">
+        <span class="tag" style="background:#dcfce7;color:#15803d">Premium ativo</span><span class="tag" style="background:#fef3c7;color:#b45309">Pendente</span><span class="tag" style="background:#fee2e2;color:#b91c1c">Suspenso</span>
+      </div>
+      <div style="display:flex;gap:26px;margin-top:30px;font-size:56px;color:var(--blue)">
+        <iconify-icon icon="solar:calendar-mark-bold-duotone"></iconify-icon><iconify-icon icon="solar:pallete-2-bold-duotone"></iconify-icon><iconify-icon icon="solar:chef-hat-bold-duotone"></iconify-icon><iconify-icon icon="solar:chart-2-bold-duotone"></iconify-icon><iconify-icon icon="solar:users-group-rounded-bold-duotone"></iconify-icon><iconify-icon icon="solar:qr-code-bold-duotone"></iconify-icon>
+      </div>
+      <small style="font-size:22px;color:var(--muted);display:block;margin-top:12px">Ícones Solar (duotone) em toda a rede</small>
+    </div>
+    <div class="g2" style="font-size:26px">
+      <div class="card" style="padding:26px"><b>120ms</b> <span style="color:var(--muted)">hover e toque</span></div>
+      <div class="card" style="padding:26px"><b>200ms</b> <span style="color:var(--muted)">troca de estado</span></div>
+      <div class="card" style="padding:26px"><b>320ms</b> <span style="color:var(--muted)">painéis</span></div>
+      <div class="card" style="padding:26px"><b>520ms</b> <span style="color:var(--muted)">troca de tela</span></div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>06</span></div>
+</section>
+
+<!-- 07 JORNADA -->
+<section class="slide dark">
+  <div class="glow" style="width:700px;height:700px;background:var(--blue);right:-200px;top:40%;opacity:.45"></div>
+  <div style="position:relative"><span class="kicker">A jornada</span><h2>Do primeiro clique ao negócio rodando.</h2></div>
+  <div class="fill" style="position:relative">
+    <div style="position:absolute;left:52px;top:120px;bottom:120px;width:4px;background:linear-gradient(180deg,var(--blue-lift),var(--signal))"></div>
+    <div style="display:grid;gap:56px;position:relative">
+      <div style="display:flex;gap:36px;align-items:center"><div class="nb" style="width:108px;height:108px;font-size:42px;border-radius:32px">01</div><div><h3>Landing</h3><p style="font-size:28px;color:rgba(255,255,255,.65);margin-top:6px">Explica o produto e leva ao cadastro.</p></div></div>
+      <div style="display:flex;gap:36px;align-items:center"><div class="nb" style="width:108px;height:108px;font-size:42px;border-radius:32px">02</div><div><h3>Login</h3><p style="font-size:28px;color:rgba(255,255,255,.65);margin-top:6px">E-mail, Google, telefone ou QR Code.</p></div></div>
+      <div style="display:flex;gap:36px;align-items:center"><div class="nb" style="width:108px;height:108px;font-size:42px;border-radius:32px">03</div><div><h3>Home</h3><p style="font-size:28px;color:rgba(255,255,255,.65);margin-top:6px">Escolhe o produto e vê o plano.</p></div></div>
+      <div style="display:flex;gap:36px;align-items:center"><div class="nb" style="width:108px;height:108px;font-size:42px;border-radius:32px;background:var(--signal);color:var(--ink)">04</div><div><h3>Produtos</h3><p style="font-size:28px;color:rgba(255,255,255,.65);margin-top:6px">Bookings, Studio e Menus.</p></div></div>
+      <div style="display:flex;gap:36px;align-items:center"><div class="nb" style="width:108px;height:108px;font-size:42px;border-radius:32px">05</div><div><h3>Planos</h3><p style="font-size:28px;color:rgba(255,255,255,.65);margin-top:6px">Assina e libera o que precisa.</p></div></div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>07</span></div>
+</section>
+
+<!-- 08 LANDING -->
+<section class="slide">
+  <span class="kicker">Passo 01 · Landing</span>
+  <h2>A primeira impressão já agenda.</h2>
+  <p class="lead">Cenas que rolam com a página, agenda animada e chamada clara para começar.</p>
+  <div class="fill">
+    <div class="win" style="zoom:.78;width:1200px">
+      <div class="bar" style="background:#1a1d2e;color:#9aa0b8"><i></i><i></i><i></i><span style="background:#0f1222">markfy.app</span></div>
+      <div style="height:880px;background:var(--ink);position:relative;overflow:hidden;color:#fff">
+        <div class="glow" style="width:600px;height:600px;background:var(--blue);right:-100px;top:-150px;opacity:.8"></div>
+        <div class="grid-bg"></div>
+        <div style="position:relative;margin:22px 30px;height:58px;display:flex;align-items:center;gap:28px;font-size:18px">
+          <span style="display:flex;align-items:center;gap:9px;font-family:var(--d);font-weight:800;font-size:26px"><svg width="32" height="32"><use href="#mk"/></svg>Markfy</span>
+          <span style="opacity:.75">Como funciona</span><span style="opacity:.75">Planos</span><span style="margin-left:auto;opacity:.85">Entrar</span><span class="pill solid" style="font-size:18px;padding:10px 22px">Criar conta</span>
+        </div>
+        <div style="position:relative;padding:40px 60px 0">
+          <span style="display:inline-flex;gap:8px;align-items:center;font-size:18px;padding:8px 16px;border-radius:100px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14)"><i style="width:9px;height:9px;border-radius:50%;background:var(--signal)"></i>Agendamento online 24h</span>
+          <div style="font-family:var(--d);font-weight:600;font-size:84px;letter-spacing:-.03em;line-height:1.02;margin-top:24px;max-width:900px">A agenda que trabalha enquanto você atende.</div>
+          <div style="display:flex;gap:12px;margin-top:30px"><span class="pill solid" style="font-size:20px">Começar grátis <iconify-icon icon="solar:arrow-right-linear"></iconify-icon></span><span class="pill outline" style="font-size:20px">Ver como funciona</span></div>
+          <div style="position:absolute;right:60px;top:330px;width:480px;background:#fff;color:var(--text);border-radius:26px;padding:24px;font-family:var(--p);box-shadow:0 30px 80px rgba(0,0,0,.4);transform:rotate(2deg)">
+            <div style="display:flex;gap:12px;align-items:center"><span style="width:44px;height:44px;border-radius:14px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:700">TK</span><div><b style="font-size:18px">Corte e barba</b><small style="display:block;color:var(--muted);font-size:14px">45 min · R$ 60,00</small></div></div>
+            <div style="display:grid;gap:8px;margin-top:16px;font-size:16px">
+              <div style="display:flex;justify-content:space-between;padding:12px 14px;border-radius:12px;border:1px solid var(--line)"><b>09:00</b><span style="color:#15803d">✓ Reservado</span></div>
+              <div style="display:flex;justify-content:space-between;padding:12px 14px;border-radius:12px;border:2px solid var(--blue);background:var(--blue-soft)"><b>10:30</b><span style="color:var(--blue)">Escolhido</span></div>
+              <div style="display:flex;justify-content:space-between;padding:12px 14px;border-radius:12px;border:1px solid var(--line)"><b>14:00</b><span style="color:var(--muted)">Livre</span></div>
+            </div>
+          </div>
+          <div style="position:absolute;left:60px;top:560px;background:var(--signal);color:var(--ink);border-radius:18px;padding:16px 20px;font-family:var(--p);font-size:18px;font-weight:600;display:flex;gap:10px;align-items:center"><iconify-icon icon="solar:bell-bing-bold" style="font-size:24px"></iconify-icon>Novo agendamento · 10:30</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:14px;margin-top:40px">
+      <span class="tag"><iconify-icon icon="solar:check-circle-bold"></iconify-icon>Cenas ao rolar</span><span class="tag"><iconify-icon icon="solar:check-circle-bold"></iconify-icon>Cookies LGPD</span><span class="tag"><iconify-icon icon="solar:check-circle-bold"></iconify-icon>Mobile-first</span>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>08</span></div>
+</section>
+
+<!-- 09 LOGIN -->
+<section class="slide white">
+  <span class="kicker">Passo 02 · Login</span>
+  <h2>Entrar do jeito que for mais fácil.</h2>
+  <div class="g2" style="margin-top:44px">
+    <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center;font-size:27px"><iconify-icon icon="solar:letter-bold-duotone" style="font-size:44px;color:var(--blue)"></iconify-icon>E-mail e senha</div>
+    <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center;font-size:27px"><iconify-icon icon="logos:google-icon" style="font-size:40px"></iconify-icon>Google</div>
+    <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center;font-size:27px"><iconify-icon icon="solar:smartphone-bold-duotone" style="font-size:44px;color:var(--blue)"></iconify-icon>Telefone + SMS</div>
+    <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center;font-size:27px;border:2px solid var(--blue)"><iconify-icon icon="solar:qr-code-bold-duotone" style="font-size:44px;color:var(--blue)"></iconify-icon>QR em outro aparelho</div>
+  </div>
+  <div class="fill" style="position:relative">
+    <div class="card app" style="width:700px;padding:52px;box-shadow:0 40px 100px rgba(10,18,50,.16)">
+      <div style="display:flex;align-items:center;gap:12px"><svg width="48" height="48"><use href="#mk"/></svg><b style="font-family:var(--d);font-size:34px;letter-spacing:-.03em">Markfy</b></div>
+      <div style="font-size:42px;font-weight:700;letter-spacing:-.03em;margin-top:36px">Bem-vindo de volta</div>
+      <div style="font-size:20px;color:var(--muted);margin-top:4px">Entre para cuidar da sua agenda.</div>
+      <div style="margin-top:28px;font-size:18px;font-weight:600">E-mail</div>
+      <div style="margin-top:8px;height:64px;border-radius:14px;border:2px solid var(--blue);box-shadow:0 0 0 4px rgba(9,42,243,.12);display:flex;align-items:center;padding:0 18px;font-size:20px">voce@seunegocio.com</div>
+      <div style="margin-top:18px;font-size:18px;font-weight:600">Senha</div>
+      <div style="margin-top:8px;height:64px;border-radius:14px;border:1.5px solid var(--line);display:flex;align-items:center;padding:0 18px;font-size:24px;letter-spacing:4px;color:var(--muted)">••••••••</div>
+      <div style="margin-top:24px;height:66px;border-radius:14px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:600;font-size:22px">Entrar</div>
+      <div style="margin-top:16px;height:60px;border-radius:14px;border:1.5px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:center;font-size:19px;font-weight:500"><iconify-icon icon="logos:google-icon"></iconify-icon>Conectar com Google</div>
+    </div>
+    <div class="phone" style="position:absolute;right:0;bottom:30px;width:300px;height:600px;transform:rotate(4deg)">
+      <div class="scr" style="background:var(--blue);color:#fff;padding:64px 26px;text-align:center"><div class="notch"></div>
+        <div style="font-size:24px;font-weight:700">Entrar com QR</div><div style="font-size:14px;opacity:.8;margin-top:6px">Aponte a câmera do celular já logado</div>
+        <div style="margin:30px auto 0;width:200px;height:200px;background:#fff;border-radius:22px;display:grid;place-items:center;color:var(--ink)"><iconify-icon icon="mdi:qrcode" style="width:170px;height:170px;font-size:170px"></iconify-icon></div>
+        <div style="margin-top:26px;font-size:14px">● Aguardando leitura…</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>09</span></div>
+</section>
+
+<!-- 10 HOME -->
+<section class="slide">
+  <span class="kicker">Passo 03 · Home da rede</span>
+  <h2>Uma porta de entrada. Três produtos.</h2>
+  <div class="fill">
+    <div class="g2 app">
+      <div class="card" style="padding:28px;height:520px;display:flex;flex-direction:column">
+        <div style="flex:1;border-radius:20px;background:linear-gradient(160deg,var(--blue-soft),#fff);padding:18px;display:flex;flex-direction:column;gap:10px;font-size:17px">
+          <b style="display:flex;gap:8px;align-items:center"><span style="width:34px;height:34px;border-radius:10px;background:var(--blue);color:#fff;display:grid;place-items:center;font-size:13px">TK</span>Corte e barba</b>
+          <div style="padding:12px;border-radius:12px;background:#fff;display:flex;justify-content:space-between"><b>09:00</b><span style="color:#15803d">✓ Reservado</span></div>
+          <div style="padding:12px;border-radius:12px;background:#fff;display:flex;justify-content:space-between"><b>10:30</b><span style="color:#15803d">✓ Reservado</span></div>
+          <div style="padding:12px;border-radius:12px;background:#fff;display:flex;justify-content:space-between"><b>14:00</b><span style="color:#15803d">✓ Reservado</span></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:20px"><iconify-icon icon="solar:calendar-mark-bold-duotone" style="font-size:44px;color:var(--blue)"></iconify-icon><b style="font-size:32px">Bookings</b></div>
+        <p style="font-size:21px;color:var(--muted);margin-top:4px">Agenda, equipe e pagamentos</p>
+      </div>
+      <div class="card" style="padding:28px;height:520px;display:flex;flex-direction:column">
+        <div style="flex:1;border-radius:20px;background:linear-gradient(160deg,#f5edff,#fff);padding:18px">
+          <div style="background:#fff;border-radius:14px;overflow:hidden;border:1px solid var(--line)"><div style="height:26px;background:#eef0f6"></div><div style="padding:16px"><div style="height:16px;width:70%;border-radius:6px;background:var(--ink)"></div><div style="height:10px;width:50%;border-radius:6px;background:var(--line);margin-top:8px"></div><div style="height:26px;width:42%;border-radius:20px;background:var(--violet);margin-top:12px"></div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:14px"><i style="height:70px;border-radius:8px;background:#ede4ff"></i><i style="height:70px;border-radius:8px;background:#ede4ff"></i><i style="height:70px;border-radius:8px;background:#ede4ff"></i></div></div></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:20px"><iconify-icon icon="solar:pallete-2-bold-duotone" style="font-size:44px;color:var(--violet)"></iconify-icon><b style="font-size:32px">Studio</b></div>
+        <p style="font-size:21px;color:var(--muted);margin-top:4px">Site profissional sem código</p>
+      </div>
+      <div class="card" style="padding:28px;height:520px;display:flex;flex-direction:column">
+        <div style="flex:1;border-radius:20px;background:linear-gradient(160deg,#fff1e6,#fff);padding:18px;display:flex;flex-direction:column;gap:10px;font-size:17px">
+          <div style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;background:#fff"><i style="width:46px;height:46px;border-radius:10px;background:var(--orange)"></i><span><b>Burger da casa</b><small style="display:block;color:var(--muted)">R$ 32,90</small></span></div>
+          <div style="display:flex;gap:10px;align-items:center;padding:10px;border-radius:12px;background:#fff"><i style="width:46px;height:46px;border-radius:10px;background:#fdba74"></i><span><b>Fritas rústicas</b><small style="display:block;color:var(--muted)">R$ 18,90</small></span></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:auto;font-size:13px;text-align:center"><span style="padding:8px 0;border-radius:10px;background:#dcfce7">1<br>Livre</span><span style="padding:8px 0;border-radius:10px;background:var(--blue-soft)">2<br>Ocup.</span><span style="padding:8px 0;border-radius:10px;background:#fef3c7">3<br>Prep.</span><span style="padding:8px 0;border-radius:10px;background:#fee2e2">4<br>Conta</span></div>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center;margin-top:20px"><iconify-icon icon="solar:chef-hat-bold-duotone" style="font-size:44px;color:var(--orange)"></iconify-icon><b style="font-size:32px">Menus</b></div>
+        <p style="font-size:21px;color:var(--muted);margin-top:4px">Cardápio, pedidos e salão</p>
+      </div>
+      <div class="card" style="padding:28px;height:520px;background:var(--ink);color:#fff;border:0">
+        <small style="font-size:16px;letter-spacing:.12em;opacity:.6;font-weight:600">PAINEL CENTRAL</small>
+        <div style="display:flex;gap:14px;align-items:center;margin-top:18px"><span style="width:60px;height:60px;border-radius:18px;background:var(--blue);display:grid;place-items:center;font-weight:700;font-size:24px">T</span><div><small style="opacity:.6;font-size:15px">Empresa aberta</small><b style="display:block;font-size:24px">TK Barbearia</b></div></div>
+        <span class="tag" style="background:rgba(52,211,153,.18);color:var(--green);margin-top:14px;font-size:18px">Premium ativo</span>
+        <div style="display:grid;gap:10px;margin-top:20px;font-size:19px">
+          <div style="display:flex;align-items:center;gap:10px;padding:13px;border-radius:14px;background:rgba(255,255,255,.06)">Bookings<span style="margin-left:auto;color:var(--signal)">Abrir →</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:13px;border-radius:14px;background:rgba(255,255,255,.06)">Studio<span style="margin-left:auto;color:var(--signal)">Abrir →</span></div>
+          <div style="display:flex;align-items:center;gap:10px;padding:13px;border-radius:14px;background:rgba(255,255,255,.06)">Menus<span style="margin-left:auto;color:var(--signal)">Abrir →</span></div>
+        </div>
+      </div>
+    </div>
+    <p style="font-size:28px;color:var(--muted);margin-top:36px;line-height:1.4">Os apps carregam <b>durante a transição</b> — quando a tela troca, o produto já está pronto.</p>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>10</span></div>
+</section>
+
+<!-- 11 DIVISOR BOOKINGS -->
+<section class="slide bluebg">
+  <div class="glow" style="width:900px;height:900px;background:#3b5bff;right:-400px;top:-300px;opacity:.8"></div>
+  <iconify-icon icon="solar:calendar-mark-bold-duotone" style="position:absolute;right:-120px;bottom:-60px;font-size:820px;opacity:.12"></iconify-icon>
+  <div class="fill" style="position:relative">
+    <span class="kicker">Produto 01</span>
+    <h1 style="font-size:180px">Markfy<br>Bookings</h1>
+    <p class="lead" style="font-size:44px">Agendar não deveria depender de alguém atender.</p>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>11</span></div>
+</section>
+
+<!-- 12 CENTRAL DO USUÁRIO -->
+<section class="slide white">
+  <span class="kicker">Bookings · Central do cliente</span>
+  <h2>Descobrir onde agendar virou vitrine.</h2>
+  <div class="fill" style="gap:34px">
+    <div class="win"><div class="bar"><i></i><i></i><i></i><span>markfy.app/central-user</span></div><img src="img/hero-user.jpg" alt="" style="height:820px;object-fit:cover;object-position:top"></div>
+    <div style="display:grid;gap:20px">
+      <div class="li"><span class="nb" style="width:60px;height:60px;font-size:28px"><iconify-icon icon="solar:magnifer-linear" style="font-size:30px"></iconify-icon></span>Busca e categorias</div>
+      <div class="li"><span class="nb" style="width:60px;height:60px;font-size:28px"><iconify-icon icon="solar:star-bold" style="font-size:30px"></iconify-icon></span>Recomendados por avaliação</div>
+      <div class="li"><span class="nb" style="width:60px;height:60px;font-size:28px"><iconify-icon icon="solar:tag-price-bold" style="font-size:30px"></iconify-icon></span>Combos com preço “de/por”</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>12 · captura real</span></div>
+</section>
+
+<!-- 13 FLUXO -->
+<section class="slide">
+  <span class="kicker">Bookings · Agendamento</span>
+  <h2>Quatro toques. Zero mensagens.</h2>
+  <div class="fill">
+    <div class="g2" style="gap:30px 30px;justify-items:center;zoom:.86;margin-top:30px">
+      <div style="text-align:center">
+        <div class="phone" style="width:340px;height:620px"><div class="scr" style="padding:58px 22px 20px;text-align:left"><div class="notch"></div>
+          <small style="color:var(--muted);font-size:13px">TK Barbearia</small><div style="font-size:22px;font-weight:700">Escolha o serviço</div>
+          <div style="display:grid;gap:10px;margin-top:16px;font-size:15px">
+            <div style="padding:13px;border-radius:14px;border:2px solid var(--blue);background:var(--blue-soft);display:flex;justify-content:space-between"><span><b>Corte + barba</b><small style="display:block;color:var(--muted)">45 min</small></span><b style="color:var(--blue)">R$ 60</b></div>
+            <div style="padding:13px;border-radius:14px;border:1px solid var(--line);display:flex;justify-content:space-between"><span><b>Degradê</b><small style="display:block;color:var(--muted)">30 min</small></span><b>R$ 40</b></div>
+            <div style="padding:13px;border-radius:14px;background:var(--ink);color:#fff;display:flex;justify-content:space-between"><span><b>Combo completo</b><small style="display:block;opacity:.6">de R$ 120</small></span><b style="color:var(--signal)">R$ 90</b></div>
+          </div>
+          <div style="position:absolute;left:22px;right:22px;bottom:24px;height:52px;border-radius:14px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:600;font-size:17px">Continuar</div>
+        </div></div>
+        <div style="margin-top:22px;font-size:28px;font-weight:600"><span style="color:var(--blue)">1 ·</span> Serviço</div>
+      </div>
+      <div style="text-align:center">
+        <div class="phone" style="width:340px;height:620px"><div class="scr" style="padding:58px 22px 20px;text-align:left"><div class="notch"></div>
+          <small style="color:var(--muted);font-size:13px">Corte + barba · 45 min</small><div style="font-size:22px;font-weight:700">Dia e horário</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-top:16px;text-align:center;font-size:12px">
+            <span style="padding:8px 0;border-radius:10px;background:var(--paper-alt)">Seg<b style="display:block;font-size:16px">12</b></span><span style="padding:8px 0;border-radius:10px;background:var(--paper-alt)">Ter<b style="display:block;font-size:16px">13</b></span><span style="padding:8px 0;border-radius:10px;background:var(--blue);color:#fff">Qua<b style="display:block;font-size:16px">14</b></span><span style="padding:8px 0;border-radius:10px;background:var(--paper-alt)">Qui<b style="display:block;font-size:16px">15</b></span><span style="padding:8px 0;border-radius:10px;background:var(--paper-alt)">Sex<b style="display:block;font-size:16px">16</b></span>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:20px;font-size:15px;text-align:center">
+            <span style="padding:12px 0;border-radius:10px;border:1px solid var(--line);color:#c0c4d2;text-decoration:line-through">09:00</span><span style="padding:12px 0;border-radius:10px;border:2px solid var(--blue);background:var(--blue-soft);color:var(--blue);font-weight:700">10:30</span><span style="padding:12px 0;border-radius:10px;border:1px solid var(--line)">11:15</span>
+            <span style="padding:12px 0;border-radius:10px;border:1px solid var(--line)">14:00</span><span style="padding:12px 0;border-radius:10px;border:1px solid var(--line)">15:30</span><span style="padding:12px 0;border-radius:10px;border:1px solid var(--line)">16:30</span>
+          </div>
+          <div style="position:absolute;left:22px;right:22px;bottom:24px;height:52px;border-radius:14px;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:600;font-size:17px">Reservar 10:30</div>
+        </div></div>
+        <div style="margin-top:22px;font-size:28px;font-weight:600"><span style="color:var(--blue)">2 ·</span> Horário livre</div>
+      </div>
+      <div style="text-align:center">
+        <div class="phone" style="width:340px;height:620px"><div class="scr" style="padding:58px 22px 20px;text-align:left"><div class="notch"></div>
+          <div style="font-size:22px;font-weight:700">Confirme seu telefone</div><small style="color:var(--muted);font-size:13px">Sem cadastro: o código chega por SMS</small>
+          <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:18px"><span style="height:50px;border-radius:12px;border:2px solid var(--blue);display:grid;place-items:center;font-weight:700;font-size:20px">4</span><span style="height:50px;border-radius:12px;border:2px solid var(--blue);display:grid;place-items:center;font-weight:700;font-size:20px">8</span><span style="height:50px;border-radius:12px;border:2px solid var(--blue);display:grid;place-items:center;font-weight:700;font-size:20px">2</span><span style="height:50px;border-radius:12px;border:2px solid var(--blue);display:grid;place-items:center;font-weight:700;font-size:20px">0</span><span style="height:50px;border-radius:12px;border:1px solid var(--line)"></span><span style="height:50px;border-radius:12px;border:1px solid var(--line)"></span></div>
+          <div style="margin-top:22px;font-size:15px;font-weight:600">Pagamento</div>
+          <div style="display:grid;gap:8px;margin-top:8px;font-size:15px">
+            <div style="padding:13px;border-radius:12px;border:2px solid var(--blue);display:flex;gap:8px;align-items:center"><iconify-icon icon="ic:baseline-pix" style="color:#32bcad;font-size:20px"></iconify-icon><b>Pix</b><span style="margin-left:auto;color:var(--muted)">na hora</span></div>
+            <div style="padding:13px;border-radius:12px;border:1px solid var(--line);display:flex;gap:8px;align-items:center"><iconify-icon icon="solar:card-linear" style="font-size:20px"></iconify-icon>Cartão</div>
+            <div style="padding:13px;border-radius:12px;border:1px solid var(--line);display:flex;gap:8px;align-items:center"><iconify-icon icon="solar:shop-linear" style="font-size:20px"></iconify-icon>Pagar no local</div>
+          </div>
+        </div></div>
+        <div style="margin-top:22px;font-size:28px;font-weight:600"><span style="color:var(--blue)">3 ·</span> SMS + Pix</div>
+      </div>
+      <div style="text-align:center">
+        <div class="phone" style="width:340px;height:620px"><div class="scr" style="padding:70px 22px 20px;background:var(--blue);color:#fff;text-align:center"><div class="notch"></div>
+          <div style="width:100px;height:100px;border-radius:50%;background:var(--signal);color:var(--ink);display:grid;place-items:center;margin:16px auto 0"><iconify-icon icon="solar:check-read-linear" style="font-size:60px"></iconify-icon></div>
+          <div style="font-size:26px;font-weight:700;margin-top:22px">Horário garantido!</div>
+          <div style="font-size:14px;opacity:.8;margin-top:6px">Quarta, 14 · 10:30 · TK Barbearia</div>
+          <div style="background:#fff;color:var(--text);border-radius:18px;padding:16px;margin-top:24px;text-align:left;font-size:14px">
+            <div style="display:flex;justify-content:space-between"><span style="color:var(--muted)">Serviço</span><b>Corte + barba</b></div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px"><span style="color:var(--muted)">Pago</span><b style="color:#15803d">R$ 60 · Pix</b></div>
+          </div>
+        </div></div>
+        <div style="margin-top:22px;font-size:28px;font-weight:600"><span style="color:var(--blue)">4 ·</span> Confirmação</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>13 · protótipo</span></div>
+</section>
+
+<!-- 14 PAINEL ADMIN -->
+<section class="slide dark">
+  <div class="glow" style="width:700px;height:700px;background:var(--blue);left:-300px;top:500px;opacity:.6"></div>
+  <div style="position:relative"><span class="kicker">Bookings · Painel da empresa</span><h2>O dia inteiro numa tela só.</h2><p class="lead">Receita (que pode ser ocultada), próximos atendimentos, equipe e ações rápidas.</p></div>
+  <div class="fill" style="position:relative;gap:36px">
+    <div class="win"><div class="bar" style="background:#1a1d2e;color:#9aa0b8"><i></i><i></i><i></i><span style="background:#0f1222">markfy.app/central-adm</span></div><img src="img/dashboard-empresa.jpg" alt=""></div>
+    <div class="g3">
+      <div class="feat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:24px"><iconify-icon icon="solar:users-group-rounded-bold-duotone" style="color:var(--blue-lift)"></iconify-icon>Equipe por convite e QR</div>
+      <div class="feat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:24px"><iconify-icon icon="solar:box-bold-duotone" style="color:var(--blue-lift)"></iconify-icon>Produtos e combos</div>
+      <div class="feat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:24px"><iconify-icon icon="solar:clock-circle-bold-duotone" style="color:var(--blue-lift)"></iconify-icon>Horário de funcionamento</div>
+      <div class="feat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:24px"><iconify-icon icon="solar:wallet-money-bold-duotone" style="color:var(--blue-lift)"></iconify-icon>Mercado Pago · Pix</div>
+      <div class="feat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:24px"><iconify-icon icon="solar:refresh-circle-bold-duotone" style="color:var(--blue-lift)"></iconify-icon>Mensalidades</div>
+      <div class="feat" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:24px"><iconify-icon icon="solar:palette-round-bold-duotone" style="color:var(--blue-lift)"></iconify-icon>Tema da empresa</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>14 · captura real</span></div>
+</section>
+
+<!-- 15 DIVISOR STUDIO -->
+<section class="slide" style="background:linear-gradient(160deg,#1b0d3a,#060818 60%);color:#fff">
+  <div class="glow" style="width:900px;height:900px;background:var(--violet);right:-400px;top:-300px;opacity:.5"></div>
+  <iconify-icon icon="solar:pallete-2-bold-duotone" style="position:absolute;right:-120px;bottom:-60px;font-size:820px;opacity:.12;color:#fff"></iconify-icon>
+  <div class="fill" style="position:relative">
+    <span class="kicker" style="color:#fff">Produto 02</span>
+    <h1 style="font-size:180px">Markfy<br><span style="color:var(--violet)">Studio</span></h1>
+    <p class="lead" style="font-size:44px;color:rgba(255,255,255,.72)">Seu negócio inteiro cabe em um link.</p>
+  </div>
+  <div class="foot" style="color:rgba(255,255,255,.55)"><span class="brand" style="color:#fff"><svg><use href="#mk"/></svg>Markfy</span><span>15</span></div>
+</section>
+
+<!-- 16 STUDIO EDITOR -->
+<section class="slide white">
+  <span class="kicker">Studio · Editor visual</span>
+  <h2>Arraste, ajuste, publique.</h2>
+  <p class="lead">Seções prontas, cores e fontes da marca, desfazer e prévia no celular — sem código.</p>
+  <div class="fill app">
+    <div class="win" style="border:1px solid var(--line);box-shadow:0 30px 80px rgba(10,18,50,.16)">
+      <div style="height:76px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 22px;font-size:20px">
+        <span style="display:flex;align-items:center;gap:10px;font-weight:700"><svg width="34" height="34"><use href="#mk"/></svg>Studio</span>
+        <span style="color:var(--muted);font-size:17px">/ Modelo Navalha</span>
+        <span style="margin-left:auto;display:flex;gap:8px;color:var(--muted);font-size:26px"><iconify-icon icon="solar:undo-left-round-linear"></iconify-icon><iconify-icon icon="solar:undo-right-round-linear"></iconify-icon></span>
+        <span class="pill solid" style="font-size:18px;padding:11px 20px"><iconify-icon icon="solar:rocket-2-bold"></iconify-icon>Publicar</span>
+      </div>
+      <div style="background:var(--paper-alt);padding:22px">
+        <div style="background:#141414;border-radius:18px;overflow:hidden;color:#f5efe6;font-family:var(--d)">
+          <div style="padding:40px;background:linear-gradient(120deg,#141414,#2a2118)">
+            <small style="font-family:var(--i);font-size:15px;letter-spacing:.2em;color:#c9a46a">BARBEARIA DESDE 2019</small>
+            <div style="font-size:60px;font-weight:800;letter-spacing:-.03em;line-height:1;margin-top:12px">TK Barbearia</div>
+            <span style="display:inline-block;margin-top:20px;padding:13px 24px;border-radius:100px;background:#c9a46a;color:#141414;font-family:var(--i);font-weight:600;font-size:17px">Agendar horário</span>
+          </div>
+          <div style="padding:34px 40px;outline:4px solid var(--blue);outline-offset:-4px;position:relative;background:#1b1b1b">
+            <span style="position:absolute;top:0;left:0;background:var(--blue);color:#fff;font-family:var(--i);font-size:15px;padding:5px 12px;border-bottom-right-radius:10px">Serviços · variante “menu”</span>
+            <div style="font-size:32px;font-weight:600;margin-top:12px">Tabela de serviços</div>
+            <div style="font-family:var(--i);font-size:18px;margin-top:14px;display:grid;gap:10px">
+              <div style="display:flex;gap:10px"><span>Corte + barba</span><i style="flex:1;border-bottom:1px dotted #555;margin-bottom:6px"></i><b style="color:#c9a46a">R$ 60</b></div>
+              <div style="display:flex;gap:10px"><span>Degradê</span><i style="flex:1;border-bottom:1px dotted #555;margin-bottom:6px"></i><b style="color:#c9a46a">R$ 40</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--line)">
+        <div style="padding:22px;border-right:1px solid var(--line);font-size:18px">
+          <small style="font-weight:600;color:var(--muted);letter-spacing:.08em;font-size:15px">SEÇÕES</small>
+          <div style="display:grid;gap:4px;margin-top:10px">
+            <div style="padding:10px 12px;border-radius:12px;display:flex;gap:10px;align-items:center"><iconify-icon icon="solar:star-shine-linear"></iconify-icon>Capa</div>
+            <div style="padding:10px 12px;border-radius:12px;display:flex;gap:10px;align-items:center;background:var(--blue-soft);color:var(--blue);font-weight:600"><iconify-icon icon="solar:list-check-linear"></iconify-icon>Serviços</div>
+            <div style="padding:10px 12px;border-radius:12px;display:flex;gap:10px;align-items:center"><iconify-icon icon="solar:gallery-linear"></iconify-icon>Galeria</div>
+            <div style="padding:10px 12px;border-radius:12px;display:flex;gap:10px;align-items:center"><iconify-icon icon="solar:calendar-linear"></iconify-icon>Agendamento</div>
+          </div>
+        </div>
+        <div style="padding:22px;font-size:18px">
+          <small style="font-weight:600;color:var(--muted);letter-spacing:.08em;font-size:15px">ESTILO</small>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:12px;font-size:15px;text-align:center"><span style="padding:10px 0;border-radius:10px;border:2px solid var(--blue);color:var(--blue);font-weight:600">Menu</span><span style="padding:10px 0;border-radius:10px;border:1px solid var(--line)">Cards</span><span style="padding:10px 0;border-radius:10px;border:1px solid var(--line)">Lista</span></div>
+          <div style="display:flex;gap:8px;margin-top:16px"><i style="width:42px;height:42px;border-radius:10px;background:#141414;outline:2px solid var(--blue);outline-offset:2px"></i><i style="width:42px;height:42px;border-radius:10px;background:#c9a46a"></i><i style="width:42px;height:42px;border-radius:10px;background:#f5efe6;border:1px solid var(--line)"></i><i style="width:42px;height:42px;border-radius:10px;background:var(--blue)"></i></div>
+          <div style="margin-top:16px;padding:12px;border-radius:12px;background:var(--blue-soft);color:var(--blue);font-size:15px;line-height:1.4">Serviços e preços vêm <b>direto da Bookings</b>.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>16 · protótipo</span></div>
+</section>
+
+<!-- 17 MODELOS -->
+<section class="slide">
+  <span class="kicker">Studio · Modelos por nicho</span>
+  <h2>Um ponto de partida para cada negócio.</h2>
+  <div class="fill">
+    <div class="g3 app" style="gap:20px;margin-top:40px">
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#141414,#2a2118);padding:20px;color:#f5efe6"><div style="font-family:var(--d);font-weight:800;font-size:28px">Navalha</div><i style="display:block;height:9px;width:60%;background:#c9a46a;border-radius:4px;margin-top:12px"></i><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:30px"><i style="height:54px;border-radius:8px;background:#3a3027"></i><i style="height:54px;border-radius:8px;background:#3a3027"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Navalha</b><small style="display:block;font-size:18px;color:var(--muted)">Barbearias</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#ffe4ec,#fff);padding:20px;color:#9d174d"><div style="font-family:var(--d);font-weight:600;font-size:28px;font-style:italic">Cílios</div><i style="display:block;height:9px;width:50%;background:#f472b6;border-radius:4px;margin-top:12px"></i><div style="display:grid;grid-template-columns:2fr 1fr;gap:6px;margin-top:30px"><i style="height:54px;border-radius:8px;background:#fbcfe8"></i><i style="height:54px;border-radius:8px;background:#f9a8d4"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Cílios</b><small style="display:block;font-size:18px;color:var(--muted)">Lash e sobrancelha</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#f4ede4,#fff);padding:20px;color:#5b4636"><div style="font-family:Georgia,serif;font-size:30px">Atelier</div><i style="display:block;height:9px;width:55%;background:#b08968;border-radius:4px;margin-top:12px"></i><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:30px"><i style="height:54px;border-radius:30px;background:#e6d5c3"></i><i style="height:54px;border-radius:30px;background:#e6d5c3"></i><i style="height:54px;border-radius:30px;background:#e6d5c3"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Atelier</b><small style="display:block;font-size:18px;color:var(--muted)">Salões e estética</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#e0f2fe,#fff);padding:20px;color:#075985"><div style="font-family:var(--i);font-weight:700;font-size:28px">Clínica</div><i style="display:block;height:9px;width:65%;background:#0ea5e9;border-radius:4px;margin-top:12px"></i><div style="display:grid;gap:6px;margin-top:26px"><i style="height:24px;border-radius:6px;background:#bae6fd"></i><i style="height:24px;border-radius:6px;background:#bae6fd"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Clínica</b><small style="display:block;font-size:18px;color:var(--muted)">Saúde</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#ecfccb,#fff);padding:20px;color:#3f6212"><div style="font-family:var(--d);font-weight:800;font-size:28px">Vitrine</div><i style="display:block;height:9px;width:45%;background:#84cc16;border-radius:4px;margin-top:12px"></i><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:26px"><i style="height:64px;border-radius:8px;background:#d9f99d"></i><i style="height:64px;border-radius:8px;background:#d9f99d"></i><i style="height:64px;border-radius:8px;background:#d9f99d"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Vitrine</b><small style="display:block;font-size:18px;color:var(--muted)">Lojas e WhatsApp</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#1e1b4b,#312e81);padding:20px;color:#e0e7ff"><div style="font-family:var(--d);font-weight:600;font-size:28px">Estúdio</div><i style="display:block;height:9px;width:55%;background:#818cf8;border-radius:4px;margin-top:12px"></i><div style="display:flex;gap:6px;margin-top:26px"><i style="flex:2;height:64px;border-radius:8px;background:#4338ca"></i><i style="flex:1;height:64px;border-radius:8px;background:#6366f1"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Estúdio</b><small style="display:block;font-size:18px;color:var(--muted)">Tatuagem e arte</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#18181b,#3f3f46);padding:20px;color:#fafafa"><div style="font-family:var(--i);font-weight:300;font-size:28px;letter-spacing:.2em">LENTE</div><i style="display:block;height:80px;border-radius:8px;background:#52525b;margin-top:18px"></i></div><div style="padding:16px 18px"><b style="font-size:24px">Lente</b><small style="display:block;font-size:18px;color:var(--muted)">Fotografia</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#fef9c3,#fff);padding:20px;color:#854d0e"><div style="font-family:var(--d);font-weight:800;font-size:28px">Patinhas</div><i style="display:block;height:9px;width:55%;background:#eab308;border-radius:4px;margin-top:12px"></i><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:26px"><i style="height:64px;border-radius:20px;background:#fde68a"></i><i style="height:64px;border-radius:20px;background:#fde68a"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Patinhas</b><small style="display:block;font-size:18px;color:var(--muted)">Pet shop e vet</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#ecfdf5,#fff);padding:20px;color:#065f46"><div style="font-family:var(--i);font-weight:700;font-size:28px">Endereço</div><i style="display:block;height:9px;width:60%;background:#10b981;border-radius:4px;margin-top:12px"></i><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:26px"><i style="height:64px;border-radius:8px;background:#a7f3d0"></i><i style="height:64px;border-radius:8px;background:#a7f3d0"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Endereço</b><small style="display:block;font-size:18px;color:var(--muted)">Imobiliárias</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#fff7ed,#fff);padding:20px;color:#9a3412"><div style="font-family:var(--d);font-weight:800;font-size:28px">Desapego</div><i style="display:block;height:9px;width:50%;background:#f97316;border-radius:4px;margin-top:12px"></i><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:26px"><i style="height:64px;border-radius:8px;background:#fed7aa"></i><i style="height:64px;border-radius:8px;background:#fed7aa"></i><i style="height:64px;border-radius:8px;background:#fed7aa"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Desapego</b><small style="display:block;font-size:18px;color:var(--muted)">Brechó e usados</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px"><div style="height:170px;background:linear-gradient(160deg,#7c2d12,#c2410c);padding:20px;color:#fff7ed"><div style="font-family:var(--d);font-weight:800;font-size:28px">Cardápio</div><i style="display:block;height:9px;width:55%;background:#fdba74;border-radius:4px;margin-top:12px"></i><div style="display:grid;gap:6px;margin-top:26px"><i style="height:24px;border-radius:6px;background:#9a3412"></i><i style="height:24px;border-radius:6px;background:#9a3412"></i></div></div><div style="padding:16px 18px"><b style="font-size:24px">Cardápio</b><small style="display:block;font-size:18px;color:var(--muted)">Restaurantes</small></div></div>
+      <div class="card" style="overflow:hidden;border-radius:24px;border:2px dashed var(--blue);background:var(--blue-soft);display:grid;place-items:center;text-align:center;color:var(--blue)"><div><iconify-icon icon="solar:add-circle-bold-duotone" style="font-size:72px"></iconify-icon><b style="display:block;font-size:24px;margin-top:8px">Em branco</b><small style="font-size:18px">monte do zero</small></div></div>
+    </div>
+    <p style="font-size:28px;color:var(--muted);margin-top:34px;line-height:1.4">Cada modelo já vem com as seções certas e o botão principal no lugar — agendar, comprar ou pedir orçamento.</p>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>17</span></div>
+</section>
+
+<!-- 18 PUBLICAR + ANALYTICS -->
+<section class="slide dark">
+  <div class="glow" style="width:800px;height:800px;background:var(--violet);right:-300px;bottom:-200px;opacity:.35"></div>
+  <div style="position:relative"><span class="kicker">Studio · Publicar e medir</span><h2>Link próprio. Números de verdade.</h2><p class="lead">A página sai em <b style="color:#fff">markfy.app/s/seu-negocio</b>, com SEO. Visitas, cliques e contatos são medidos.</p></div>
+  <div class="fill app" style="position:relative;gap:22px">
+    <div class="g3">
+      <div style="padding:26px;border-radius:26px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"><small style="opacity:.6;font-size:19px">Visitas · 30d</small><b style="display:block;font-size:58px;font-weight:700;letter-spacing:-.03em">2.418</b><span style="color:var(--signal);font-size:19px">↑ 32%</span></div>
+      <div style="padding:26px;border-radius:26px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)"><small style="opacity:.6;font-size:19px">Cliques Agendar</small><b style="display:block;font-size:58px;font-weight:700;letter-spacing:-.03em">386</b><span style="color:var(--signal);font-size:19px">↑ 18%</span></div>
+      <div style="padding:26px;border-radius:26px;background:var(--violet);color:#1b0d3a"><small style="opacity:.7;font-size:19px">Conversão</small><b style="display:block;font-size:58px;font-weight:700;letter-spacing:-.03em">16%</b><span style="font-size:19px">visita → agenda</span></div>
+    </div>
+    <div style="padding:30px;border-radius:26px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)">
+      <div style="display:flex;justify-content:space-between;font-size:22px"><b>Visitas por dia</b><span style="opacity:.6">4 semanas</span></div>
+      <div style="display:flex;align-items:flex-end;gap:9px;height:300px;margin-top:24px">
+        <i style="flex:1;height:30%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:42%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:38%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:55%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:48%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:62%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:58%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:70%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:66%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:78%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:85%;background:rgba(192,132,252,.4);border-radius:8px 8px 3px 3px"></i><i style="flex:1;height:100%;background:var(--violet);border-radius:8px 8px 3px 3px"></i>
+      </div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center;padding:22px 26px;border-radius:22px;background:#fff;color:var(--text);font-size:22px"><iconify-icon icon="solar:inbox-bold-duotone" style="font-size:38px;color:var(--blue)"></iconify-icon><span><b>Novo contato:</b> Mariana quer orçamento</span><span class="tag" style="margin-left:auto;font-size:18px">agora</span></div>
+    <div style="display:grid;gap:16px;margin-top:10px">
+      <div class="li" style="font-size:28px"><span class="nb" style="background:var(--violet);width:54px;height:54px;font-size:24px">1</span>Publica com um clique</div>
+      <div class="li" style="font-size:28px"><span class="nb" style="background:var(--violet);width:54px;height:54px;font-size:24px">2</span>Agendamentos chegam pela Bookings</div>
+      <div class="li" style="font-size:28px"><span class="nb" style="background:var(--violet);width:54px;height:54px;font-size:24px">3</span>Contatos viram leads no painel</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>18 · protótipo</span></div>
+</section>
+
+<!-- 19 DIVISOR MENUS -->
+<section class="slide" style="background:linear-gradient(160deg,#3a1406,#060818 60%);color:#fff">
+  <div class="glow" style="width:900px;height:900px;background:var(--orange);right:-400px;top:-300px;opacity:.45"></div>
+  <iconify-icon icon="solar:chef-hat-bold-duotone" style="position:absolute;right:-120px;bottom:-60px;font-size:820px;opacity:.12;color:#fff"></iconify-icon>
+  <div class="fill" style="position:relative">
+    <span class="kicker" style="color:#fff">Produto 03</span>
+    <h1 style="font-size:180px">Markfy<br><span style="color:var(--orange)">Menus</span></h1>
+    <p class="lead" style="font-size:44px;color:rgba(255,255,255,.72)">Cardápio digital, pedidos e salão no mesmo lugar.</p>
+  </div>
+  <div class="foot" style="color:rgba(255,255,255,.55)"><span class="brand" style="color:#fff"><svg><use href="#mk"/></svg>Markfy</span><span>19</span></div>
+</section>
+
+<!-- 20 MENUS CARDÁPIO + MESAS -->
+<section class="slide white">
+  <span class="kicker">Menus · Cliente e salão</span>
+  <h2>Do QR da mesa à cozinha.</h2>
+  <p class="lead">O cliente lê o QR, monta o pedido e acompanha. No painel, a mesa muda de cor sozinha.</p>
+  <div class="fill app">
+    <div style="display:flex;gap:30px;align-items:center">
+      <div class="phone" style="width:400px;height:780px;flex:none"><div class="scr"><div class="notch"></div>
+        <div style="height:200px;background:linear-gradient(160deg,#7c2d12,#ea580c);padding:62px 22px 0;color:#fff"><div style="display:flex;gap:12px;align-items:center"><span style="width:56px;height:56px;border-radius:16px;background:#fff;color:#c2410c;display:grid;place-items:center;font-weight:800;font-size:24px">B</span><div><b style="font-size:21px">Brasa Burger</b><small style="display:block;font-size:14px;opacity:.85">Mesa 2 · aberto até 23h</small></div></div></div>
+        <div style="display:flex;gap:8px;padding:16px 18px;font-size:14px"><span style="padding:8px 14px;border-radius:100px;background:var(--ink);color:#fff">Burgers</span><span style="padding:8px 14px;border-radius:100px;background:var(--paper-alt)">Porções</span><span style="padding:8px 14px;border-radius:100px;background:var(--paper-alt)">Bebidas</span></div>
+        <div style="display:grid;gap:12px;padding:0 18px;font-size:15px">
+          <div style="display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;border:1px solid var(--line)"><i style="width:70px;height:70px;border-radius:12px;background:linear-gradient(135deg,#f59e0b,#b45309)"></i><span style="flex:1"><b>Burger da casa</b><small style="display:block;color:var(--muted)">Blend 180g, cheddar</small><b style="color:#c2410c">R$ 32,90</b></span><iconify-icon icon="solar:add-circle-bold" style="font-size:34px;color:#ea580c"></iconify-icon></div>
+          <div style="display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;border:1px solid var(--line)"><i style="width:70px;height:70px;border-radius:12px;background:linear-gradient(135deg,#fde68a,#d97706)"></i><span style="flex:1"><b>Fritas rústicas</b><small style="display:block;color:var(--muted)">Alecrim e páprica</small><b style="color:#c2410c">R$ 18,90</b></span><iconify-icon icon="solar:add-circle-bold" style="font-size:34px;color:#ea580c"></iconify-icon></div>
+          <div style="display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;border:1px solid var(--line)"><i style="width:70px;height:70px;border-radius:12px;background:linear-gradient(135deg,#fef08a,#84cc16)"></i><span style="flex:1"><b>Limonada</b><small style="display:block;color:var(--muted)">500 ml</small><b style="color:#c2410c">R$ 9,90</b></span><iconify-icon icon="solar:add-circle-bold" style="font-size:34px;color:#ea580c"></iconify-icon></div>
+        </div>
+        <div style="position:absolute;left:18px;right:18px;bottom:26px;height:60px;border-radius:16px;background:#ea580c;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;font-weight:600;font-size:17px"><span>Ver pedido · 2</span><span>R$ 51,80</span></div>
+      </div></div>
+      <div style="flex:1;display:grid;gap:16px;font-size:20px;text-align:center">
+        <b style="font-size:26px;text-align:left">Salão principal</b>
+        <div class="g2" style="gap:14px">
+          <div style="height:130px;border-radius:50%;background:#dcfce7;border:3px solid #34d399;display:grid;place-items:center"><span><b style="font-size:32px">1</b><br>Livre</span></div>
+          <div style="height:130px;border-radius:22px;background:var(--blue-soft);border:3px solid var(--blue);display:grid;place-items:center"><span><b style="font-size:32px">2</b><br>Ocupada</span></div>
+          <div style="height:130px;border-radius:50%;background:#fef3c7;border:3px solid #f59e0b;display:grid;place-items:center"><span><b style="font-size:32px">3</b><br>Preparo</span></div>
+          <div style="height:130px;border-radius:22px;background:#fee2e2;border:3px solid #f87171;display:grid;place-items:center"><span><b style="font-size:32px">4</b><br>Conta</span></div>
+        </div>
+        <div style="height:90px;border-radius:18px;background:var(--paper-alt);border:3px dashed #cbd2e6;display:grid;place-items:center;color:var(--muted)">Balcão</div>
+      </div>
+    </div>
+    <div class="g2" style="margin-top:36px;gap:16px 24px">
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:pallete-2-bold-duotone" style="color:var(--orange)"></iconify-icon>16 modelos de cardápio</div>
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:armchair-2-bold-duotone" style="color:var(--orange)"></iconify-icon>Grade, lista ou planta</div>
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:bill-list-bold-duotone" style="color:var(--orange)"></iconify-icon>Comandas e divisão</div>
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:delivery-bold-duotone" style="color:var(--orange)"></iconify-icon>Retirada e entrega</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>20 · protótipo</span></div>
+</section>
+
+<!-- 21 MENUS OPERAÇÃO -->
+<section class="slide">
+  <span class="kicker">Menus · Operação</span>
+  <h2>Pedidos, cozinha, caixa e estoque conversando.</h2>
+  <div class="fill app" style="gap:22px">
+    <div class="g2" style="gap:20px">
+      <div style="background:#fff;border-radius:26px;padding:22px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;font-size:22px;font-weight:600"><span><i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--blue);margin-right:8px"></i>Novos</span><span style="color:var(--muted)">2</span></div>
+        <div style="display:grid;gap:10px;margin-top:14px;font-size:18px">
+          <div style="padding:16px;border-radius:16px;background:var(--paper-alt)"><b>#1042 · Mesa 2</b><small style="display:block;color:var(--muted);margin-top:4px">Burger · Fritas</small></div>
+          <div style="padding:16px;border-radius:16px;background:var(--paper-alt)"><b>#1043 · Entrega</b><small style="display:block;color:var(--muted);margin-top:4px">2× Smash · Pix pago</small></div>
+        </div></div>
+      <div style="background:#fff;border-radius:26px;padding:22px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;font-size:22px;font-weight:600"><span><i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#f59e0b;margin-right:8px"></i>Em preparo</span><span style="color:var(--muted)">2</span></div>
+        <div style="display:grid;gap:10px;margin-top:14px;font-size:18px">
+          <div style="padding:16px;border-radius:16px;background:#fffbeb;border:1px solid #fde68a"><b>#1039 · Mesa 3</b><small style="display:block;color:#b45309;margin-top:4px">8 min</small></div>
+          <div style="padding:16px;border-radius:16px;background:#fffbeb;border:1px solid #fde68a"><b>#1040 · Retirada</b><small style="display:block;color:#b45309;margin-top:4px">5 min</small></div>
+        </div></div>
+      <div style="background:#fff;border-radius:26px;padding:22px;border:1px solid var(--line)"><div style="display:flex;justify-content:space-between;font-size:22px;font-weight:600"><span><i style="display:inline-block;width:12px;height:12px;border-radius:50%;background:var(--green);margin-right:8px"></i>Pronto</span><span style="color:var(--muted)">1</span></div>
+        <div style="display:grid;gap:10px;margin-top:14px;font-size:18px">
+          <div style="padding:16px;border-radius:16px;background:#ecfdf5;border:1px solid #a7f3d0"><b>#1037 · Mesa 6</b><small style="display:block;color:#047857;margin-top:4px">pronto para servir</small></div>
+        </div></div>
+      <div style="background:var(--ink);color:#fff;border-radius:26px;padding:22px"><div style="font-size:22px;font-weight:600"><iconify-icon icon="solar:chef-hat-bold" style="color:var(--orange)"></iconify-icon> Tela da cozinha</div>
+        <div style="margin-top:14px;padding:18px;border-radius:16px;background:#fff;color:var(--text);font-size:18px;border-top:6px solid #f59e0b"><b style="font-size:24px">Mesa 3 · #1039</b><div style="margin-top:8px">☐ 3× Burger da casa</div><div style="margin-top:12px;height:48px;border-radius:12px;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:600;font-size:17px">Marcar como pronto</div></div>
+      </div>
+    </div>
+    <div class="g2" style="gap:20px">
+      <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center"><iconify-icon icon="solar:cash-out-bold-duotone" style="font-size:52px;color:var(--orange)"></iconify-icon><span><b style="font-size:25px">PDV / Balcão</b><small style="display:block;color:var(--muted);font-size:19px">venda rápida no caixa</small></span></div>
+      <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center"><iconify-icon icon="solar:box-minimalistic-bold-duotone" style="font-size:52px;color:var(--orange)"></iconify-icon><span><b style="font-size:25px">Estoque</b><small style="display:block;color:var(--muted);font-size:19px">baixa automática</small></span></div>
+      <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center"><iconify-icon icon="solar:chart-square-bold-duotone" style="font-size:52px;color:var(--orange)"></iconify-icon><span><b style="font-size:25px">Relatórios</b><small style="display:block;color:var(--muted);font-size:19px">produtos, horários</small></span></div>
+      <div class="card" style="padding:26px;display:flex;gap:16px;align-items:center"><iconify-icon icon="solar:plug-circle-bold-duotone" style="font-size:52px;color:var(--orange)"></iconify-icon><span><b style="font-size:25px">Integrações</b><small style="display:block;color:var(--muted);font-size:19px">iFood, 99Food, Keeta</small></span></div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>21 · protótipo</span></div>
+</section>
+
+<!-- 22 ECOSSISTEMA -->
+<section class="slide dark">
+  <div class="grid-bg"></div>
+  <div style="position:relative"><span class="kicker">O diferencial</span><h2>Tudo conectado, nada digitado duas vezes.</h2><p class="lead">Os três produtos leem a mesma empresa: um serviço da Bookings aparece no site do Studio; equipe e logo valem para o Menus.</p></div>
+  <div class="fill" style="position:relative">
+    <div style="position:relative;height:760px;width:900px;margin:0 auto">
+      <svg viewBox="0 0 900 760" style="position:absolute;inset:0;width:100%;height:100%">
+        <circle cx="450" cy="390" r="290" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="2" stroke-dasharray="6 10"/>
+        <line x1="450" y1="390" x2="450" y2="90" stroke="rgba(59,91,255,.6)" stroke-width="3"/>
+        <line x1="450" y1="390" x2="160" y2="590" stroke="rgba(192,132,252,.6)" stroke-width="3"/>
+        <line x1="450" y1="390" x2="740" y2="590" stroke="rgba(251,146,60,.6)" stroke-width="3"/>
+      </svg>
+      <div style="position:absolute;left:50%;top:390px;transform:translate(-50%,-50%);width:290px;height:290px;border-radius:70px;background:#fff;color:var(--ink);display:grid;place-items:center;text-align:center;box-shadow:0 0 0 20px rgba(9,42,243,.25),0 0 120px rgba(9,42,243,.6)">
+        <div><svg width="100" height="100"><use href="#mk"/></svg><b style="display:block;font-family:var(--d);font-size:34px;margin-top:8px">Sua empresa</b><small style="font-size:19px;color:var(--muted)">nome · logo · equipe<br>horários · catálogo</small></div>
+      </div>
+      <div style="position:absolute;left:50%;top:40px;transform:translateX(-50%);padding:22px 32px;border-radius:26px;background:var(--blue);display:flex;gap:12px;align-items:center;font-size:30px;font-weight:600"><iconify-icon icon="solar:calendar-mark-bold-duotone" style="font-size:40px"></iconify-icon>Bookings</div>
+      <div style="position:absolute;left:0;top:560px;padding:22px 32px;border-radius:26px;background:var(--violet);color:#1b0d3a;display:flex;gap:12px;align-items:center;font-size:30px;font-weight:600"><iconify-icon icon="solar:pallete-2-bold-duotone" style="font-size:40px"></iconify-icon>Studio</div>
+      <div style="position:absolute;right:0;top:560px;padding:22px 32px;border-radius:26px;background:var(--orange);color:#3a1406;display:flex;gap:12px;align-items:center;font-size:30px;font-weight:600"><iconify-icon icon="solar:chef-hat-bold-duotone" style="font-size:40px"></iconify-icon>Menus</div>
+    </div>
+    <div class="g2" style="gap:18px 24px;font-size:25px;color:rgba(255,255,255,.85);margin-top:30px">
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:shield-check-bold-duotone" style="color:var(--signal)"></iconify-icon>LGPD desde o 1º acesso</div>
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:moon-stars-bold-duotone" style="color:var(--signal)"></iconify-icon>Tema sincronizado</div>
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:bolt-bold-duotone" style="color:var(--signal)"></iconify-icon>Carrega só o que usa</div>
+      <div class="li" style="font-size:25px"><iconify-icon icon="solar:lock-keyhole-bold-duotone" style="color:var(--signal)"></iconify-icon>Licença no servidor</div>
+    </div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>22</span></div>
+</section>
+
+<!-- 23 PLANOS -->
+<section class="slide white">
+  <span class="kicker">Passo 05 · Planos</span>
+  <h2>Comece pequeno. Cresça junto.</h2>
+  <p class="lead" style="font-size:30px">O plano é da empresa. Pagamento pelo Mercado Pago; a licença é liberada pelo servidor.</p>
+  <div class="fill app">
+    <div class="g2" style="gap:24px">
+      <div class="card" style="padding:34px;border-top:10px solid var(--orange)">
+        <small style="color:var(--muted);font-size:18px;font-weight:600">NÍVEL 1</small><b style="display:block;font-size:42px;margin-top:4px">Básico</b>
+        <div style="margin-top:16px"><b style="font-size:52px;letter-spacing:-.03em">R$ 29,90</b><span style="color:var(--muted);font-size:20px">/mês</span></div>
+        <div style="display:grid;gap:10px;margin-top:20px;font-size:21px"><span>✓ Até 2 pessoas</span><span>✓ Até 10 serviços</span><span style="color:#b8bdcc">— Pagamento online</span></div>
+      </div>
+      <div class="card" style="padding:34px;border-top:10px solid var(--cyan)">
+        <small style="color:var(--muted);font-size:18px;font-weight:600">NÍVEL 2</small><b style="display:block;font-size:42px;margin-top:4px">Comum</b>
+        <div style="margin-top:16px"><b style="font-size:52px;letter-spacing:-.03em">R$ 59,90</b><span style="color:var(--muted);font-size:20px">/mês</span></div>
+        <div style="display:grid;gap:10px;margin-top:20px;font-size:21px"><span>✓ Até 5 pessoas</span><span>✓ Até 40 serviços</span><span>✓ Pix e cartão online</span></div>
+      </div>
+      <div class="card" style="padding:34px;border-top:10px solid #4160ff">
+        <small style="color:var(--muted);font-size:18px;font-weight:600">NÍVEL 3 · PACOTE</small><b style="display:block;font-size:42px;margin-top:4px">Pro</b>
+        <div style="margin-top:16px"><b style="font-size:52px;letter-spacing:-.03em">R$ 99,90</b><span style="color:var(--muted);font-size:20px">/mês</span></div>
+        <div style="display:grid;gap:10px;margin-top:20px;font-size:21px"><span>✓ Bookings + Studio</span><span>✓ 15 pessoas · 150 itens</span><span>✓ Mensalidades e analytics</span></div>
+      </div>
+      <div class="card" style="padding:34px;background:var(--ink);color:#fff;border:0;position:relative;box-shadow:0 30px 80px rgba(192,132,252,.35)">
+        <span class="tag" style="position:absolute;top:-20px;right:24px;background:var(--violet);color:#1b0d3a;font-size:19px">Mais completo</span>
+        <small style="opacity:.6;font-size:18px;font-weight:600">NÍVEL 4 · PACOTE</small><b style="display:block;font-size:42px;margin-top:4px">Premium</b>
+        <div style="margin-top:16px"><b style="font-size:52px;letter-spacing:-.03em">R$ 179,90</b><span style="opacity:.6;font-size:20px">/mês</span></div>
+        <div style="display:grid;gap:10px;margin-top:20px;font-size:21px"><span>✓ Os 3 produtos</span><span>✓ 50 pessoas · 500 itens</span><span>✓ Mesas, PDV, cozinha</span></div>
+      </div>
+    </div>
+    <p style="font-size:22px;color:var(--muted);margin-top:30px">Valores do catálogo padrão — editáveis pelo painel Master.</p>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>23</span></div>
+</section>
+
+<!-- 24 ENCERRAMENTO -->
+<section class="slide bluebg">
+  <div class="glow" style="width:1000px;height:1000px;background:#3b5bff;left:50%;top:50%;transform:translate(-50%,-50%);opacity:.7"></div>
+  <div class="fill" style="position:relative;align-items:center;text-align:center">
+    <svg width="170" height="170" style="border-radius:34px;box-shadow:0 0 0 16px rgba(255,255,255,.12)"><use href="#mk"/></svg>
+    <h1 style="font-size:132px;margin-top:70px">Sua próxima semana pode chegar cheia.</h1>
+    <p class="lead" style="font-size:40px;margin-top:36px">Crie a empresa, publique o link e deixe a agenda trabalhar.</p>
+    <div style="display:flex;flex-direction:column;gap:18px;margin-top:60px;width:640px"><span class="pill light" style="font-size:32px;padding:26px;justify-content:center">Começar agora <iconify-icon icon="solar:arrow-right-linear"></iconify-icon></span><span class="pill outline" style="font-size:32px;padding:26px;justify-content:center">markfy.app</span></div>
+  </div>
+  <div class="foot"><span class="brand"><svg><use href="#mk"/></svg>Markfy</span><span>24</span></div>
+</section>
+
+</body>
+</html>

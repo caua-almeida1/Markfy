@@ -49,8 +49,11 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "CI=false react-scripts build",
+    "prebuild": "node scripts/generate-sitemap.js",
+    "build": "CI=false GENERATE_SOURCEMAP=false react-scripts build",
     "test": "react-scripts test",
+    "test:functions": "cd functions-backend && npm test",
+    "test:rules": "firebase emulators:exec --only database --project demo-markfy \"node scripts/test-db-rules.js\"",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

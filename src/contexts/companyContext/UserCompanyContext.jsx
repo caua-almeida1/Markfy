@@ -8,6 +8,7 @@ import {
     onValue
 } from "firebase/database";
 import { getAuth } from "firebase/auth";
+import { repairCompanyIndex } from "../../firebase/companiesIndex";
 
 import {
     isDataUrl,
@@ -428,6 +429,11 @@ export const UserCompanyProvider = ({ children }) => {
             handle,
             ...companyData
         });
+
+        /* Empresa fora do índice público some do Explorar.
+           Quem é membro pode gravar o índice: repara aqui,
+           sem esperar alguém editar a empresa. */
+        repairCompanyIndex(handle, companyData);
 
         setCompanyFields(fields);
         setCompanyHandle(handle);

@@ -12,7 +12,7 @@ import {
 } from "firebase/database";
 
 import "./orders.css";
-import placeholder from "../../../img/1.jpg";
+import placeholder from "../../../img/adm-content/image-not-found.svg";
 import Toast from "../../../components/toast/Toast";
 import Modal from "../../../components/modal/Modal";
 import useLastValue from "../../../hooks/useLastValue";

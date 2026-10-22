@@ -1,0 +1,44 @@
+# Markfy
+
+> Plataforma brasileira para pequenos negócios de serviço e de alimentação: agenda online com página pública (Markfy Bookings), site da empresa (Markfy Studio) e cardápio digital com pedidos (Markfy Menus).
+
+A empresa cria a própria página na Markfy, cadastra serviços ou produtos e recebe clientes pela internet. O cliente escolhe serviço, profissional e horário, ou faz o pedido pelo cardápio, sem precisar ligar.
+
+## Produtos
+
+- Markfy Bookings: agenda online com página pública da empresa. O cliente escolhe serviço, profissional, dia e horário livre pelo celular, sem instalar app. Equipe com acesso próprio, pagamento online por Pix e cartão (Mercado Pago) e mensalidades para clientes recorrentes.
+- Markfy Studio: site da empresa montado com os dados já cadastrados (nome, fotos, serviços, horários). Editor visual por blocos, publicação em endereço público e analytics de visitas, cliques e conversão.
+- Markfy Menus: cardápio digital para restaurantes, lanchonetes e cafeterias. Pedidos para retirada, entrega e pelo QR da mesa; mesas, comandas e divisão de conta; PDV, tela da cozinha e quadro de pedidos; 16 modelos de cardápio; estoque e relatórios.
+
+## Como usar
+
+1. Crie uma conta com e-mail ou Google (gratuito).
+2. Cadastre a empresa: nome, segmento, endereço e o @ da página.
+3. Adicione serviços com preço e duração, horário de funcionamento e equipe.
+4. Escolha o plano: Bookings, Studio, Menus ou um pacote. O plano é da empresa.
+5. Compartilhe o link na bio, no WhatsApp ou no QR do balcão.
+
+## Preços
+
+Criar a conta e a empresa é gratuito. Para atender, a empresa ativa um plano mensal (Básico, Comum, Pro ou Premium); Pro e Premium são pacotes com mais de um produto. Valores atuais: https://markfy.vercel.app/#planos
+
+## Perguntas frequentes
+
+- O cliente precisa baixar aplicativo? Não, tudo funciona no navegador.
+- Dá para receber pagamento online? Sim, por Pix e cartão via Mercado Pago, nos planos com pagamentos online.
+- Serve para restaurante? Sim, pelo Markfy Menus.
+- Posso ter equipe? Sim; o limite de pessoas depende do plano.
+
+## Páginas públicas
+
+- [Página inicial](https://markfy.vercel.app/): o que é a Markfy, como usar, planos e perguntas frequentes
+- [Criar conta](https://markfy.vercel.app/register): cadastro gratuito para abrir a empresa
+- [Produtos](https://markfy.vercel.app/home): Bookings, Studio e Menus
+- [Encontrar empresas](https://markfy.vercel.app/central-user): empresas que agendam pela Markfy
+- [Demonstração do cardápio](https://markfy.vercel.app/menus/demo): restaurante fictício
+- [Política de Privacidade](https://markfy.vercel.app/privacidade)
+- [Termos de Uso](https://markfy.vercel.app/termos)
+
+## Contato
+
+- E-mail: markfy.suporte@gmail.com

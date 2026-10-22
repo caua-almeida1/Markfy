@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import { getDatabase, ref, get } from "firebase/database";
 
 import { useAuth } from "../../../contexts/authContext";
+import { fetchMyBookings } from "../../../firebase/bookingsApi";
 import { getBookedCompanies, parseScheduleDate } from "../../../utils/bookingHistory";
 import { isCancelled } from "../../../utils/scheduleStatus";
 
@@ -37,38 +37,21 @@ export const useMyReservations = () => {
         try {
             const handles = await getBookedCompanies(uid);
             const clientId = readClientId();
-            const db = getDatabase();
 
-            const perCompany = await Promise.all(
-                handles.map(async (handle) => {
-                    try {
-                        const [schedules, name] = await Promise.all([
-                            get(ref(db, `companys/${handle}/schedules`)),
-                            get(ref(db, `companys/${handle}/name`))
-                        ]);
-
-                        return Object.entries(schedules.val() || {})
-                            .map(([id, item]) => ({ id, ...item }))
-                            .filter((item) =>
-                                (uid && item.userId === uid) ||
-                                (clientId && item.clientId === clientId)
-                            )
-                            .map((item) => ({
-                                ...item,
-                                handle,
-                                companyName: name.val() || handle,
-                                date: parseScheduleDate(item.day, item.hour)
-                            }));
-                    } catch {
-                        return [];
-                    }
-                })
-            );
+            /* Uma chamada só para todas as empresas: o backend
+               filtra por conta/aparelho e não devolve a agenda
+               de outros clientes (que é privada). */
+            const mine = handles.length && (uid || clientId)
+                ? await fetchMyBookings({ handles, clientId })
+                : [];
 
             const now = Date.now();
 
-            const reservations = perCompany
-                .flat()
+            const reservations = mine
+                .map((item) => ({
+                    ...item,
+                    date: parseScheduleDate(item.day, item.hour)
+                }))
                 .sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0))
                 .map((item) => ({
                     ...item,

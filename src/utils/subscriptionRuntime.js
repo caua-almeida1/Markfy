@@ -1,7 +1,10 @@
 import {
+    equalTo,
     get,
     getDatabase,
     onValue,
+    orderByChild,
+    query,
     ref,
     update
 } from "firebase/database";
@@ -360,6 +363,39 @@ export const watchCompanySubscriptions = (handle, callback) =>
             );
 
         }
+    );
+
+
+/**
+ * Só as assinaturas desta pessoa na empresa.
+ *
+ * O cliente não pode ler companys/{handle}/subscriptions
+ * inteiro (são os planos de todos os clientes); as regras
+ * liberam exatamente esta consulta: orderByChild("uid")
+ * igual ao próprio uid.
+ */
+export const watchMySubscriptions = (handle, uid, callback) =>
+    onValue(
+        query(
+            ref(getDatabase(), `companys/${handle}/subscriptions`),
+            orderByChild("uid"),
+            equalTo(uid)
+        ),
+        (snapshot) => {
+
+            const dados = snapshot.val() || {};
+
+            callback(
+                Object.entries(dados)
+                    .map(([id, item]) => ({ ...item, id }))
+                    .sort(
+                        (a, b) =>
+                            (b.createdAt || 0) - (a.createdAt || 0)
+                    )
+            );
+
+        },
+        () => callback([])
     );
 
 

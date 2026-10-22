@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;650;700&display=swap');
+/* Fontes: carregadas uma vez só no public/index.html (preconnect + 1 requisição). */
 
 
 /* =========================================================
@@ -287,6 +287,20 @@
 
 .explore-section-heading>div {
     min-width: 0;
+}
+
+/* Explica o selo "Destaque" (conteúdo impulsionado por plano). */
+.explore-featured-disclosure {
+    display: block;
+
+    margin-top: 6px;
+
+    color:
+        var(--mkf-text-secondary);
+
+    font-size: 12px;
+
+    line-height: 1.45;
 }
 
 .explore-section-heading span {

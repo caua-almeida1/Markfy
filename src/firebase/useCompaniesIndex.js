@@ -1,66 +1,70 @@
-import { useEffect, useState } from "react";
-import { getDatabase, ref, get } from "firebase/database";
+import { useCallback, useEffect, useState } from "react";
 import { getAuth } from "firebase/auth";
 
-import { fetchCompaniesFromSource } from "./companiesIndex";
-import { fetchOpenHandles } from "../plans/publicAccess";
+import { loadPublicCompanyList } from "./companiesIndex";
+import { fetchPublicAccessMap } from "../plans/publicAccess";
+import { rankCompanies } from "../utils/companyEligibility";
 
 /* =========================================================
    LISTA PÚBLICA DE EMPRESAS (com cache de módulo)
 
-   Mesma fonte da tela Explorar: companiesIndex, e o
-   fallback por companys/ quando o índice ainda está vazio.
+   Fonte única do Explorar e da central do usuário:
+   companiesIndex, com entradas incompletas completadas pelos
+   campos públicos da empresa (ver loadPublicCompanyList).
 
-   A leitura é feita uma vez por sessão e compartilhada: a
-   transição da Home pré-carrega, e a central do usuário já
-   abre com as empresas na mão.
+   Só entram empresas elegíveis (publicAccess: plano ativo
+   com Bookings) — as mesmas que a página da empresa aceita
+   abrir. Antes, o Explorar listava todas e o clique levava a
+   "Empresa indisponível".
+
+   Cache por 5 minutos e só de lista não vazia: um "zero"
+   causado por falha não fica preso pela sessão inteira.
 ========================================================= */
 
+const TTL_MS = 5 * 60 * 1000;
+
 let cache = null;
+let cachedAt = 0;
 let inflight = null;
 
-const loadAll = async () => {
-    const snapshot = await get(ref(getDatabase(), "companiesIndex"));
+const fresh = () => cache && Date.now() - cachedAt < TTL_MS;
 
-    const data = snapshot.val();
-
-    /* Índice incompleto (entradas sem nome) conta como
-       vazio, igual à tela Explorar: melhor montar a lista
-       pela fonte do que mostrar zero empresas. */
-    const indexed = Object.entries(data || {})
-        .map(([handle, entry]) => ({ ...entry, handle: entry?.handle || handle }))
-        .filter((entry) => entry?.name);
-
-    if (indexed.length) {
-        return indexed;
-    }
-
-    let token = null;
-
-    try {
-        token = await getAuth().currentUser?.getIdToken();
-    } catch {
-        token = null;
-    }
-
-    return fetchCompaniesFromSource(token);
-};
-
-/* Só empresas com plano ativo aparecem para os clientes. */
 const load = async () => {
 
-    const [list, open] = await Promise.all([loadAll(), fetchOpenHandles()]);
+    let authToken = null;
 
-    return list.filter((entry) => open.has(entry.handle));
+    try {
+        authToken = await getAuth().currentUser?.getIdToken();
+    } catch {
+        authToken = null;
+    }
+
+    const access = await fetchPublicAccessMap();
+
+    /* Quem é elegível vem de publicAccess (só master e backend
+       gravam). O índice dá os dados do card; elegível fora do
+       índice é montado pelos campos públicos da empresa. */
+    const list = await loadPublicCompanyList({
+        authToken,
+        handles: Object.keys(access)
+    });
+
+    /* Filtra os elegíveis e ordena (destaque, perfil
+       completo, nome) — regra em utils/companyEligibility. */
+    return rankCompanies(list, access);
 };
 
-export const prefetchCompaniesIndex = () => {
-    if (cache) return Promise.resolve(cache);
+export const prefetchCompaniesIndex = ({ force = false } = {}) => {
+
+    if (!force && fresh()) return Promise.resolve(cache);
 
     if (!inflight) {
         inflight = load()
             .then((list) => {
-                cache = list;
+                if (list.length) {
+                    cache = list;
+                    cachedAt = Date.now();
+                }
                 return list;
             })
             .finally(() => {
@@ -72,23 +76,26 @@ export const prefetchCompaniesIndex = () => {
 };
 
 export const useCompaniesIndex = () => {
+
     const [state, setState] = useState(() => ({
         companies: cache || [],
-        loading: !cache,
+        loading: !fresh(),
         error: null
     }));
 
-    useEffect(() => {
-        if (cache) return undefined;
+    const run = useCallback((force) => {
 
         let cancelled = false;
 
-        prefetchCompaniesIndex()
+        setState((current) => ({ ...current, loading: true, error: null }));
+
+        prefetchCompaniesIndex({ force })
             .then((companies) => {
                 if (!cancelled) setState({ companies, loading: false, error: null });
             })
             .catch((error) => {
-                if (!cancelled) setState({ companies: [], loading: false, error });
+                console.error("Erro ao carregar empresas:", error);
+                if (!cancelled) setState({ companies: cache || [], loading: false, error });
             });
 
         return () => {
@@ -96,5 +103,14 @@ export const useCompaniesIndex = () => {
         };
     }, []);
 
-    return state;
+    useEffect(() => {
+        if (fresh()) return undefined;
+        return run(false);
+    }, [run]);
+
+    const reload = useCallback(() => {
+        run(true);
+    }, [run]);
+
+    return { ...state, reload };
 };

@@ -5,7 +5,16 @@
     "companiesIndex": {
       ".read": true,
       "$handle": {
-        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "document": {
+          ".validate": false
+        },
+        "email": {
+          ".validate": false
+        },
+        "phone": {
+          ".validate": false
+        }
       }
     },
     "documentsIndex": {
@@ -13,7 +22,7 @@
       ".write": false,
       "$document": {
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && ((newData.exists() && newData.isString() && root.child('companys').child(newData.val()).child('members').child(auth.uid).exists()) || (!newData.exists() && data.exists() && root.child('companys').child(data.val()).child('members').child(auth.uid).exists()))"
       }
     },
     "licenses": {
@@ -27,8 +36,124 @@
       ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       ".write": false,
       "$handle": {
-        ".read": true,
-        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        ".read": "auth != null && (data.child('members').child(auth.uid).exists() || (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('members').child(auth.uid).child('role').val() === 'master') || data.child('members').child(auth.uid).exists())",
+        "name": {
+          ".read": true
+        },
+        "handle": {
+          ".read": true
+        },
+        "description": {
+          ".read": true
+        },
+        "bio": {
+          ".read": true
+        },
+        "category": {
+          ".read": true
+        },
+        "categories": {
+          ".read": true
+        },
+        "logoPreview": {
+          ".read": true
+        },
+        "logoUrl": {
+          ".read": true
+        },
+        "location": {
+          ".read": true
+        },
+        "address": {
+          ".read": true
+        },
+        "endereco": {
+          ".read": true
+        },
+        "coordinates": {
+          ".read": true
+        },
+        "phone": {
+          ".read": true
+        },
+        "email": {
+          ".read": true
+        },
+        "socialMedia": {
+          ".read": true
+        },
+        "socials": {
+          ".read": true
+        },
+        "socialLinks": {
+          ".read": true
+        },
+        "businessHours": {
+          ".read": true
+        },
+        "amenities": {
+          ".read": true
+        },
+        "photos": {
+          ".read": true
+        },
+        "theme": {
+          ".read": true
+        },
+        "products": {
+          ".read": true
+        },
+        "members": {
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.child('inviteId').isString() && root.child('invites').child(newData.child('inviteId').val()).child('companyHandle').val() === $handle && root.child('invites').child(newData.child('inviteId').val()).child('status').val() === 'pending' && root.child('invites').child(newData.child('inviteId').val()).child('role').val() === newData.child('role').val() && (newData.child('role').val() === 'administrator' || newData.child('role').val() === 'professional') && (!root.child('invites').child(newData.child('inviteId').val()).child('expiresAt').exists() || root.child('invites').child(newData.child('inviteId').val()).child('expiresAt').val() > now) && auth.token.email != null && auth.token.email.toLowerCase() === root.child('invites').child(newData.child('inviteId').val()).child('invitedEmail').val().toLowerCase()",
+            ".read": "auth != null && auth.uid === $uid"
+          }
+        },
+        "integrations": {
+          "whatsapp": {
+            ".read": true
+          }
+        },
+        "paymentSettings": {
+          "receiveBeforeBooking": {
+            ".read": true
+          }
+        },
+        "paymentOrders": {
+          "$orderId": {
+            ".read": true
+          }
+        },
+        "schedules": {
+          ".indexOn": [
+            "day",
+            "professionalId",
+            "userId",
+            "clientId"
+          ]
+        },
+        "subscriptions": {
+          ".read": "auth != null && query.orderByChild === 'uid' && query.equalTo === auth.uid",
+          ".indexOn": [
+            "uid"
+          ],
+          "$subscriptionId": {
+            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)",
+            "cancellationRequestedAt": {
+              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            },
+            "cancelScheduledFor": {
+              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            },
+            "updatedAt": {
+              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            }
+          }
+        },
         "joinRequests": {
           "$uid": {
             ".read": "auth != null && (auth.uid === $uid || root.child('companys').child($handle).child('members').child(auth.uid).exists())",
@@ -45,10 +170,16 @@
         "email"
       ],
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && (auth.uid === $uid || (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com') || (root.child('users').child($uid).child('companyHandle').isString() && root.child('companys').child(root.child('users').child($uid).child('companyHandle').val()).child('members').child($uid).exists() && root.child('companys').child(root.child('users').child($uid).child('companyHandle').val()).child('members').child(auth.uid).exists()))",
         ".write": "auth != null && auth.uid === $uid",
-        "companyHandle": {
-          ".write": "auth != null && (auth.uid === $uid || root.child('companys').child(newData.val()).child('joinRequests').child($uid).child('status').val() === 'approved')"
+        "name": {
+          ".read": true
+        },
+        "description": {
+          ".read": true
+        },
+        "password": {
+          ".validate": "!newData.exists() || newData.val() === data.val()"
         }
       }
     },
@@ -57,7 +188,7 @@
       ".write": false,
       "$inviteId": {
         ".read": true,
-        ".write": "auth != null"
+        ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('inviterUid').val() === auth.uid && root.child('companys').child(newData.child('companyHandle').val()).child('members').child(auth.uid).exists()) || (data.exists() && root.child('companys').child(data.child('companyHandle').val()).child('members').child(auth.uid).exists() && (!newData.exists() || newData.child('companyHandle').val() === data.child('companyHandle').val())) || (data.exists() && newData.exists() && auth.token.email != null && auth.token.email.toLowerCase() === data.child('invitedEmail').val().toLowerCase() && newData.child('companyHandle').val() === data.child('companyHandle').val() && newData.child('role').val() === data.child('role').val() && newData.child('invitedEmail').val() === data.child('invitedEmail').val() && newData.child('inviterUid').val() === data.child('inviterUid').val()))"
       }
     },
     "mercadoPagoConnections": {
@@ -290,6 +421,14 @@
       }
     },
     "menusRate": {
+      ".read": false,
+      ".write": false
+    },
+    "bookingRate": {
+      ".read": false,
+      ".write": false
+    },
+    "bookingLocks": {
       ".read": false,
       ".write": false
     }

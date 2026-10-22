@@ -14,6 +14,8 @@ import { Badge, Button, useBodyClass } from "../../design-system/components";
 
 import markfyLogo from "../../img/logo-markfy.svg";
 
+import { usePageMeta } from "../../hooks/usePageMeta";
+import { SITE_HOST } from "../../config/site";
 import "./markfy-home.css";
 import "./markfy-home-menus.css";
 
@@ -102,7 +104,7 @@ const StudioScene = () => (
         <div className="mkh-browser">
             <div className="mkh-browser__bar">
                 <i /><i /><i />
-                <span>markfy.app/s/seu-negocio</span>
+                <span>{SITE_HOST}/s/seu-negocio</span>
             </div>
             <div className="mkh-browser__page">
                 <div className="mkh-block mkh-block--hero">
@@ -248,6 +250,14 @@ const MarkfyHome = () => {
     useBodyClass("mk-bleed");
 
     const { step } = useParams();
+
+    usePageMeta({
+        title: "Bookings, Studio e Menus",
+        description:
+            "Conheça os produtos da Markfy: agenda online com página pública (Bookings), site da empresa (Studio) e cardápio digital com pedidos (Menus).",
+        path: step ? undefined : "/home",
+        noindex: Boolean(step)
+    });
     const navigate = useNavigate();
 
     const { currentUser } = useAuth();

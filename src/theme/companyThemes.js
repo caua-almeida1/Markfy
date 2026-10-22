@@ -195,6 +195,156 @@ export const COMPANY_THEMES = [
             surfaceSoft: "#1e1d2b",
             link: "#a99dff"
         }
+    },
+
+    {
+        id: "floresta",
+        name: "Floresta",
+        description: "Verde profundo, natural e confiável.",
+        swatch: ["#2f7d4f", "#dcefe3", "#f5faf7"],
+        light: {
+            primary: "#2f7d4f",
+            primaryHover: "#276941",
+            primaryLight: "#dcefe3",
+            primaryLighter: "#f0f8f3",
+            background: "#f5faf7",
+            surfaceSoft: "#e9f4ee",
+            link: "#2a7048"
+        },
+        dark: {
+            primary: "#6fcf97",
+            primaryHover: "#8fdcb0",
+            primaryLight: "#16301f",
+            primaryLighter: "#102319",
+            background: "#0f1512",
+            surfaceSoft: "#1b251f",
+            link: "#9fe3bb"
+        }
+    },
+
+    {
+        id: "lavanda",
+        name: "Lavanda",
+        description: "Lilás leve, calmo e elegante.",
+        swatch: ["#7c5cc4", "#ece5fa", "#f9f7fd"],
+        light: {
+            primary: "#7c5cc4",
+            primaryHover: "#6a49b0",
+            primaryLight: "#ece5fa",
+            primaryLighter: "#f6f2fd",
+            background: "#f9f7fd",
+            surfaceSoft: "#f1ecfa",
+            link: "#6a49b0"
+        },
+        dark: {
+            primary: "#b49cf0",
+            primaryHover: "#c6b4f5",
+            primaryLight: "#2a2142",
+            primaryLighter: "#201933",
+            background: "#131018",
+            surfaceSoft: "#211c2b",
+            link: "#c6b4f5"
+        }
+    },
+
+    {
+        id: "por-do-sol",
+        name: "Pôr do sol",
+        description: "Laranja quente, cheio de energia.",
+        swatch: ["#e0662a", "#fde8dc", "#fffaf6"],
+        light: {
+            primary: "#e0662a",
+            primaryHover: "#c7561e",
+            primaryLight: "#fde8dc",
+            primaryLighter: "#fef4ee",
+            background: "#fffaf6",
+            surfaceSoft: "#fdf0e8",
+            link: "#c7561e"
+        },
+        dark: {
+            primary: "#ff9a62",
+            primaryHover: "#ffb48a",
+            primaryLight: "#40240f",
+            primaryLighter: "#2f1a0b",
+            background: "#171009",
+            surfaceSoft: "#271c14",
+            link: "#ffb48a"
+        }
+    },
+
+    {
+        id: "vinho",
+        name: "Vinho",
+        description: "Bordô intenso, sofisticado.",
+        swatch: ["#8e2f4a", "#f6dfe6", "#fcf6f8"],
+        light: {
+            primary: "#8e2f4a",
+            primaryHover: "#762640",
+            primaryLight: "#f6dfe6",
+            primaryLighter: "#fbf0f3",
+            background: "#fcf6f8",
+            surfaceSoft: "#f7e9ee",
+            link: "#8e2f4a"
+        },
+        dark: {
+            primary: "#e07a98",
+            primaryHover: "#eb9bb2",
+            primaryLight: "#3b1824",
+            primaryLighter: "#2c111b",
+            background: "#160d10",
+            surfaceSoft: "#251a1e",
+            link: "#eb9bb2"
+        }
+    },
+
+    {
+        id: "menta",
+        name: "Menta",
+        description: "Verde-água fresco e leve.",
+        swatch: ["#1f9d8a", "#d9f4ee", "#f3fbf9"],
+        light: {
+            primary: "#1f9d8a",
+            primaryHover: "#17836f",
+            primaryLight: "#d9f4ee",
+            primaryLighter: "#eefaf7",
+            background: "#f3fbf9",
+            surfaceSoft: "#e6f6f2",
+            link: "#17836f"
+        },
+        dark: {
+            primary: "#4fd1bb",
+            primaryHover: "#7de0cf",
+            primaryLight: "#10332d",
+            primaryLighter: "#0c2622",
+            background: "#0e1514",
+            surfaceSoft: "#192422",
+            link: "#7de0cf"
+        }
+    },
+
+    {
+        id: "indigo",
+        name: "Índigo",
+        description: "Azul-arroxeado moderno e marcante.",
+        swatch: ["#4338ca", "#e4e2fb", "#f7f7fd"],
+        light: {
+            primary: "#4338ca",
+            primaryHover: "#372fa8",
+            primaryLight: "#e4e2fb",
+            primaryLighter: "#f2f1fd",
+            background: "#f7f7fd",
+            surfaceSoft: "#ecebfa",
+            link: "#372fa8"
+        },
+        dark: {
+            primary: "#8b84f5",
+            primaryHover: "#a9a4f8",
+            primaryLight: "#1f1c4a",
+            primaryLighter: "#171538",
+            background: "#101018",
+            surfaceSoft: "#1d1d2b",
+            link: "#a9a4f8"
+        }
     }
 
 ];

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { usePageMeta } from "../../../hooks/usePageMeta";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Icon } from "@iconify/react";
 import Fuse from "fuse.js";
@@ -290,6 +291,13 @@ const CompanyPost = ({ company, logo, saved, onToggleSave, onAbout, onOpen, onSh
 
 const DiscoverHomeView = ({ onOpenTab }) => {
     const navigate = useNavigate();
+
+    usePageMeta({
+        title: "Encontre empresas com agendamento online",
+        description:
+            "Barbearias, salões, estética e outros serviços que agendam pela Markfy. Veja horários livres e marque sem ligar.",
+        path: "/central-user"
+    });
     const notify = useToast();
     const reduce = useReducedMotion();
 

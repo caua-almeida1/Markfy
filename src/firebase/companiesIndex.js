@@ -231,6 +231,48 @@ export const syncCompanyIndex = async (handle, company) => {
 };
 
 /*
+ * Repara a entrada do índice quando ela falta ou está sem
+ * nome (empresas antigas, ou só com logoUrl gravado pela
+ * migração da logo). Chamado quando um membro abre o painel:
+ * só membros podem gravar no índice.
+ *
+ * Uma vez por empresa por sessão, e nunca apaga a logoUrl que
+ * já está lá (o nó da empresa pode não ter a URL).
+ */
+const repairedIndexes = new Set();
+
+export const repairCompanyIndex = async (handle, company) => {
+
+    if (!handle || !company?.name || repairedIndexes.has(handle)) return;
+
+    repairedIndexes.add(handle);
+
+    try {
+
+        const current = await get(
+            ref(getDatabase(), `companiesIndex/${handle}/name`)
+        );
+
+        if (current.exists()) return;
+
+        const patch = buildCompanyIndexEntry(handle, company);
+
+        if (!patch.logoUrl) delete patch.logoUrl;
+
+        await updateCompanyIndex(handle, patch);
+
+    } catch (error) {
+
+        console.warn(
+            "Não foi possível reparar o índice da empresa:",
+            error
+        );
+
+    }
+
+};
+
+/*
  * Remove a entrada do índice.
  */
 
@@ -474,6 +516,89 @@ const fetchCompanyCardFields = async (handle) => {
             (field, position) => [field, values[position]]
         )
     );
+
+};
+
+
+/**
+ * Lista pública de empresas (Explorar e central do usuário).
+ *
+ * POR QUE AS EMPRESAS SUMIRAM (2026-10-20)
+ *
+ * O índice tinha 1 entrada para 3 empresas — e essa entrada
+ * só com `logoUrl`, gravada pela migração da logo
+ * (companyLogo.js). Entradas sem `name` eram descartadas; com
+ * o índice "vazio", as telas caíam no fallback por
+ * companys/?shallow=true, que as regras publicadas em
+ * 2026-10-20 passaram a negar para quem não é master. Lista
+ * vazia, sem erro na tela.
+ *
+ * Agora:
+ *   - entrada incompleta é completada com os campos públicos
+ *     da própria empresa (nome, descrição, categorias...),
+ *     que as regras liberam campo a campo;
+ *   - empresa sem entrada nenhuma só aparece depois do
+ *     backfill (scripts/backfill-companies-index.js) ou de
+ *     alguém da equipe abrir o painel (UserCompanyContext
+ *     repara o índice);
+ *   - erro de rede/permissão vira exceção, para a tela
+ *     mostrar "não deu para carregar" em vez de "nenhuma
+ *     empresa".
+ */
+export const loadPublicCompanyList = async ({ authToken, handles = [] } = {}) => {
+
+    const snapshot = await get(
+        ref(getDatabase(), "companiesIndex")
+    );
+
+    const data = { ...(snapshot.val() || {}) };
+
+    /*
+     * `handles`: empresas que sabemos ser públicas (as
+     * elegíveis de publicAccess). As que faltam no índice
+     * entram como entrada vazia e são completadas abaixo —
+     * assim uma empresa com plano ativo nunca some só porque
+     * o índice está atrasado.
+     */
+    handles
+        .filter((handle) => typeof handle === "string" && handle && !data[handle])
+        .forEach((handle) => {
+            data[handle] = { handle };
+        });
+
+    const entries = await Promise.all(
+        Object.entries(data).map(async ([handle, entry]) => {
+
+            const base = {
+                ...(entry || {}),
+                handle: entry?.handle || handle
+            };
+
+            if (base.name) return base;
+
+            const company =
+                await fetchCompanyCardFields(base.handle);
+
+            if (!company?.name) return null;
+
+            const built =
+                buildCompanyIndexEntry(base.handle, company);
+
+            return {
+                ...built,
+                logoUrl: base.logoUrl || built.logoUrl
+            };
+
+        })
+    );
+
+    const list = entries.filter(Boolean);
+
+    if (list.length) return list;
+
+    /* Índice vazio: o caminho antigo ainda serve à conta
+       master (as regras negam a consulta rasa aos demais). */
+    return fetchCompaniesFromSource(authToken);
 
 };
 

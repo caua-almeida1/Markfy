@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+/* Fontes: carregadas uma vez só no public/index.html (preconnect + 1 requisição). */
 
 /* =========================================================
    TOKENS — FONTE ÚNICA DE TEMA
@@ -841,4 +841,26 @@ body {
         transform: translateY(0) scale(1);
     }
 
+}
+
+/* =========================================================
+   BODY GLOBAL (vinha de DashboardAdm.css)
+
+   Esta regra morava no CSS do painel, mas valia para o site
+   inteiro porque o painel era carregado junto com tudo. Com o
+   painel carregado sob demanda, ela fica aqui — no fim do
+   arquivo, para continuar vencendo os paddings acima, como
+   antes.
+========================================================= */
+
+body {
+    background-color: var(--mkf-ui-background-secondary);
+    padding: 0;
+}
+
+/* Também vinha do CSS do painel (perfilAdm.css) e valia para
+   todos os <select> do site, inclusive Studio e Menus. */
+
+select {
+    background: transparent;
 }

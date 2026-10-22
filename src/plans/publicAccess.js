@@ -37,13 +37,20 @@ export const usePublicAccess = (handle) => {
     return state.handle === handle ? state : { handle, loading: true, open: false };
 };
 
+/** publicAccess inteiro ({ handle: { bookings, studio, menus, featured, expiresAt } }). */
+export const fetchPublicAccessMap = async () => {
+
+    const snapshot = await get(ref(getDatabase(), "publicAccess"));
+
+    return snapshot.val() || {};
+};
+
 /** Handles que podem receber clientes agora (para a tela Explorar). */
 export const fetchOpenHandles = async () => {
 
     try {
 
-        const snapshot = await get(ref(getDatabase(), "publicAccess"));
-        const data = snapshot.val() || {};
+        const data = await fetchPublicAccessMap();
 
         return new Set(Object.keys(data).filter((handle) => isOpen(data[handle])));
 

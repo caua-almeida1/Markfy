@@ -37,7 +37,7 @@ import MaleEmoji3 from "../../../img/MEMOJIS PACK/males/emoji (3).svg";
 import MaleEmoji4 from "../../../img/MEMOJIS PACK/males/emoji (4).svg";
 import MaleEmoji5 from "../../../img/MEMOJIS PACK/males/emoji (5).svg";
 
-import placeholder from "../../../img/product-details/not-professional.png";
+import placeholder from "../../../img/adm-content/image-not-found.svg";
 
 import { OrderDetailsModal } from "../ordersAdm/orders";
 

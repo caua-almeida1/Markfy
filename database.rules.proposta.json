@@ -1,34 +1,22 @@
 {
   "_comentario": [
-    "PROPOSTA de regras do Realtime Database.",
+    "Regras do Realtime Database (fonte). database.rules.json e GERADO a partir deste",
+    "arquivo por scripts/build-db-rules.js (predeploy do firebase.json).",
     "",
-    "Este arquivo NAO esta ligado ao firebase.json e NAO foi publicado.",
-    "Revise, teste no simulador do console e so entao aplique.",
+    "Revisao de 2026-10-21 (auditoria):",
+    "- companys/{handle} deixou de ser publico. Antes, qualquer pessoa que soubesse o handle",
+    "  lia CPF/CNPJ, a agenda (nome e telefone dos clientes), pedidos e pagamentos.",
+    "  Agora so membros leem o no inteiro; o publico le campo a campo (lista abaixo).",
+    "- schedules e privado. Cliente final agenda, lista e cancela pela Cloud Function",
+    "  bookingsApi (functions-backend/bookings.js), que confere conflito, plano e dono.",
+    "- users/{uid}: dono, colegas da empresa atual e master. Publicos so name e description.",
+    "- members/{uid}: alem dos membros, o convidado pode se incluir apontando um convite",
+    "  pendente desta empresa, deste papel e para o e-mail da conta logada.",
+    "- invites: so membros criam/gerenciam; o convidado so muda o status.",
+    "- documentsIndex: so membros da empresa apontada gravam.",
+    "- subscriptions: o assinante le as proprias (consulta por uid) e pede cancelamento.",
     "",
-    "Hoje o banco esta aberto: qualquer pessoa sem login le users,",
-    "companys (com CPF/CNPJ) e invites via curl.",
-    "",
-    "Pontos de atencao ao aplicar:",
-    "- companiesIndex precisa de leitura publica (a tela Explorar",
-    "  roda sem login).",
-    "- documentsIndex nunca libera o no pai, so a chave exata.",
-    "- users fica restrito ao proprio uid; a checagem de e-mail",
-    "  existente (Invite e cadastro) precisa virar Cloud Function",
-    "  antes de aplicar a regra abaixo, senao essas telas quebram.",
-    "- a consulta rasa de companys no contexto passa a falhar e cai",
-    "  automaticamente para companiesIndex, que e publico.",
-    "",
-    "Markfy Studio (studioDrafts, studioSites, studioLeads, studioAnalytics):",
-    "- o rascunho e isolado por empresa; publicar exige papel diferente de 'professional';",
-    "- users/{uid}/bookedCompanies ja e coberto pela regra de users/$uid;",
-    "- imagens do Studio vao para o Storage em companys/{handle}/studio/ (revise as regras do Storage).",
-    "",
-    "Markfy Menus (menusCatalog, menusSettings, menusDrafts, menusSites, menusSlugs, menusFloor,",
-    "menusOps, menusTrack, menusLedger, menusAudit, menusStock, menusStockMoves, menusStaff, menusRate):",
-    "- operacao (mesas, comandas, pedidos, pagamentos, estoque, planta, publicacao) so pelo backend (menusApi);",
-    "- o navegador grava apenas catalogo, configuracoes, rascunho de aparencia e perfis da equipe, conforme o papel;",
-    "- licenca com product 'all' (Premium) libera Bookings, Studio e Menus; as regras do Studio ja aceitam 'all';",
-    "- imagens do Menus vao para o Storage em companys/{handle}/menus/."
+    "Lembrete: o Admin SDK (Cloud Functions) ignora estas regras."
   ],
   "rules": {
     ".read": false,
@@ -36,15 +24,26 @@
     "companiesIndex": {
       ".read": true,
       "$handle": {
-        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
+        "_comentario": "Indice publico do Explorar. Nunca recebe documento, e-mail ou telefone.",
+        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
+        "document": {
+          ".validate": false
+        },
+        "email": {
+          ".validate": false
+        },
+        "phone": {
+          ".validate": false
+        }
       }
     },
     "documentsIndex": {
       ".read": false,
       ".write": false,
       "$document": {
+        "_comentario": "Le-se uma chave por vez (duplicidade de CPF/CNPJ). Grava so membro da empresa apontada.",
         ".read": "auth != null",
-        ".write": "auth != null"
+        ".write": "auth != null && ((newData.exists() && newData.isString() && root.child('companys').child(newData.val()).child('members').child(auth.uid).exists()) || (!newData.exists() && data.exists() && root.child('companys').child(data.val()).child('members').child(auth.uid).exists()))"
       }
     },
     "licenses": {
@@ -66,8 +65,136 @@
       ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",
       ".write": false,
       "$handle": {
-        ".read": true,
-        ".write": "auth != null && (!data.exists() || data.child('members').child(auth.uid).exists())",
+        "_comentario": [
+          "No inteiro: so membros (e master). O publico le os campos marcados com .read true.",
+          "Criacao: so se quem cria ja entra como membro master na mesma gravacao."
+        ],
+        ".read": "auth != null && (data.child('members').child(auth.uid).exists() || (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com'))",
+        ".write": "auth != null && ((!data.exists() && newData.child('members').child(auth.uid).child('role').val() === 'master') || data.child('members').child(auth.uid).exists())",
+        "name": {
+          ".read": true
+        },
+        "handle": {
+          ".read": true
+        },
+        "description": {
+          ".read": true
+        },
+        "bio": {
+          ".read": true
+        },
+        "category": {
+          ".read": true
+        },
+        "categories": {
+          ".read": true
+        },
+        "logoPreview": {
+          ".read": true
+        },
+        "logoUrl": {
+          ".read": true
+        },
+        "location": {
+          ".read": true
+        },
+        "address": {
+          ".read": true
+        },
+        "endereco": {
+          ".read": true
+        },
+        "coordinates": {
+          ".read": true
+        },
+        "phone": {
+          ".read": true
+        },
+        "email": {
+          ".read": true
+        },
+        "socialMedia": {
+          ".read": true
+        },
+        "socials": {
+          ".read": true
+        },
+        "socialLinks": {
+          ".read": true
+        },
+        "businessHours": {
+          ".read": true
+        },
+        "amenities": {
+          ".read": true
+        },
+        "photos": {
+          ".read": true
+        },
+        "theme": {
+          ".read": true
+        },
+        "products": {
+          ".read": true
+        },
+        "members": {
+          "$uid": {
+            "_comentario": "Aceite de convite por link: o proprio convidado se inclui, apontando o convite.",
+            ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.child('inviteId').isString() && root.child('invites').child(newData.child('inviteId').val()).child('companyHandle').val() === $handle && root.child('invites').child(newData.child('inviteId').val()).child('status').val() === 'pending' && root.child('invites').child(newData.child('inviteId').val()).child('role').val() === newData.child('role').val() && (newData.child('role').val() === 'administrator' || newData.child('role').val() === 'professional') && (!root.child('invites').child(newData.child('inviteId').val()).child('expiresAt').exists() || root.child('invites').child(newData.child('inviteId').val()).child('expiresAt').val() > now) && auth.token.email != null && auth.token.email.toLowerCase() === root.child('invites').child(newData.child('inviteId').val()).child('invitedEmail').val().toLowerCase()",
+            ".read": "auth != null && auth.uid === $uid"
+          },
+          "_comentario": [
+            "Privado (le-se pelo no da empresa, so membros). Cada pessoa le a PROPRIA entrada",
+            "(saber se ja entrou). A aprovacao de pedido grava nome, e-mail e telefone aqui."
+          ]
+        },
+        "integrations": {
+          "whatsapp": {
+            ".read": true
+          }
+        },
+        "paymentSettings": {
+          "receiveBeforeBooking": {
+            ".read": true
+          }
+        },
+        "paymentOrders": {
+          "_comentario": "Acompanhamento do pagamento pelo id (impossivel listar). Grava o backend.",
+          "$orderId": {
+            ".read": true
+          }
+        },
+        "schedules": {
+          "_comentario": "Privado: nome e telefone dos clientes. Cliente final usa a bookingsApi.",
+          ".indexOn": [
+            "day",
+            "professionalId",
+            "userId",
+            "clientId"
+          ]
+        },
+        "subscriptions": {
+          "_comentario": "Assinante le so as proprias (orderByChild('uid').equalTo(uid)) e pede cancelamento.",
+          ".read": "auth != null && query.orderByChild === 'uid' && query.equalTo === auth.uid",
+          ".indexOn": [
+            "uid"
+          ],
+          "$subscriptionId": {
+            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)",
+            "cancellationRequestedAt": {
+              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            },
+            "cancelScheduledFor": {
+              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            },
+            "updatedAt": {
+              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
+              ".validate": "newData.isNumber()"
+            }
+          }
+        },
         "joinRequests": {
           "_comentario": [
             "Pedido de entrada numa empresa.",
@@ -96,23 +223,23 @@
         "email"
       ],
       "$uid": {
-        ".read": "auth != null && auth.uid === $uid",
+        ".read": "auth != null && (auth.uid === $uid || (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com') || (root.child('users').child($uid).child('companyHandle').isString() && root.child('companys').child(root.child('users').child($uid).child('companyHandle').val()).child('members').child($uid).exists() && root.child('companys').child(root.child('users').child($uid).child('companyHandle').val()).child('members').child(auth.uid).exists()))",
         ".write": "auth != null && auth.uid === $uid",
-        "companyHandle": {
-          "_comentario": [
-            "Ao aprovar um pedido, quem administra grava o handle no",
-            "usuario aprovado — e esse no pertence a OUTRA pessoa, que",
-            "a regra de users/$uid so libera para o dono.",
-            "",
-            "Esta regra abre exatamente esse caso: um membro da empresa",
-            "pode escrever o companyHandle de alguem que tem um pedido",
-            "aprovado naquela empresa. Nada alem disso.",
-            "",
-            "A tela de espera tambem grava esse campo sozinha ao ver a",
-            "aprovacao, entao o fluxo funciona mesmo que esta regra",
-            "seja removida."
-          ],
-          ".write": "auth != null && (auth.uid === $uid || root.child('companys').child(newData.val()).child('joinRequests').child($uid).child('status').val() === 'approved')"
+        "_comentario": [
+          "Dono le e grava (inclusive companyHandle: so ele, nunca outra pessoa).",
+          "Colegas leem quando o ALVO aponta companyHandle para uma empresa da qual ele e quem le sao membros.",
+          "Antes, um membro da empresa A podia aprovar um joinRequest falso para qualquer uid, gravar o",
+          "companyHandle da vitima para A e passar a ler users/{vitima}. Publicos: so name e description."
+        ],
+        "name": {
+          "_comentario": "Nome publico (profissionais na pagina de agendamento).",
+          ".read": true
+        },
+        "description": {
+          ".read": true
+        },
+        "password": {
+          ".validate": "!newData.exists() || newData.val() === data.val()"
         }
       }
     },
@@ -120,8 +247,12 @@
       ".read": false,
       ".write": false,
       "$inviteId": {
+        "_comentario": [
+          "Le-se pelo id do link. Criar/gerenciar: membros da empresa do convite.",
+          "O convidado (e-mail da conta = invitedEmail) so altera status/aceite."
+        ],
         ".read": true,
-        ".write": "auth != null"
+        ".write": "auth != null && ((!data.exists() && newData.exists() && newData.child('inviterUid').val() === auth.uid && root.child('companys').child(newData.child('companyHandle').val()).child('members').child(auth.uid).exists()) || (data.exists() && root.child('companys').child(data.child('companyHandle').val()).child('members').child(auth.uid).exists() && (!newData.exists() || newData.child('companyHandle').val() === data.child('companyHandle').val())) || (data.exists() && newData.exists() && auth.token.email != null && auth.token.email.toLowerCase() === data.child('invitedEmail').val().toLowerCase() && newData.child('companyHandle').val() === data.child('companyHandle').val() && newData.child('role').val() === data.child('role').val() && newData.child('invitedEmail').val() === data.child('invitedEmail').val() && newData.child('inviterUid').val() === data.child('inviterUid').val()))"
       }
     },
     "mercadoPagoConnections": {
@@ -406,6 +537,16 @@
     },
     "menusRate": {
       "_comentario": "Contadores do freio de pedidos publicos (backend).",
+      ".read": false,
+      ".write": false
+    },
+    "bookingRate": {
+      "_comentario": "Freio por IP da bookingsApi (so backend).",
+      ".read": false,
+      ".write": false
+    },
+    "bookingLocks": {
+      "_comentario": "Trava por profissional/dia da bookingsApi (so backend).",
       ".read": false,
       ".write": false
     }

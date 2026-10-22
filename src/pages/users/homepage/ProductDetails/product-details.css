@@ -4083,6 +4083,44 @@
    MENSALIDADE — AVISOS E ESTADO DA ASSINATURA
    ========================================================= */
 
+/* Carregando / erro / sem horários na escolha do horário. */
+.product-details-times-status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+
+    margin: 12px 0 0;
+    padding: 14px 16px;
+
+    border-radius: 12px;
+    background: var(--mkf-ui-surface-2, #f2f3f6);
+
+    font-size: .9rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary, #5f626b);
+}
+
+.product-details-times-status button {
+    min-height: 40px;
+    padding: 0 16px;
+
+    border: 0;
+    border-radius: 99px;
+    background: var(--mkf-ui-primary, #092af3);
+
+    font: inherit;
+    font-weight: 700;
+    color: #fff;
+    cursor: pointer;
+}
+
+.product-details-times-status button:focus-visible {
+    outline: 3px solid var(--mkf-ui-primary-soft, #c7d0ff);
+    outline-offset: 2px;
+}
+
 .product-details-subscription-hint {
     display: flex;
     align-items: flex-start;

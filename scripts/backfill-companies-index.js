@@ -391,6 +391,24 @@ const run = async () => {
 
         const entry = buildCompanyIndexEntry(handle, company);
 
+        /*
+         * A update() abaixo substitui companiesIndex/{handle}
+         * inteiro. Se o nó da empresa não tem a URL da logo
+         * (logo já migrada para o Storage), preserva a que o
+         * índice já tem em vez de apagá-la.
+         */
+        if (!entry.logoUrl) {
+
+            const existingLogo = (
+                await db.ref(`companiesIndex/${handle}/logoUrl`).once("value")
+            ).val();
+
+            if (typeof existingLogo === "string" && existingLogo.startsWith("http")) {
+                entry.logoUrl = existingLogo;
+            }
+
+        }
+
         companiesIndexUpdates[handle] = entry;
 
         const document = normalizeDocument(company.document);
@@ -415,9 +433,10 @@ const run = async () => {
             JSON.stringify(entry, null, 4)
         );
 
+        /* CPF/CNPJ não vai para o terminal: só os 4 últimos dígitos. */
         console.log(
             document
-                ? `documentsIndex/${document} = ${handle}`
+                ? `documentsIndex/***${document.slice(-4)} = ${handle}`
                 : "documentsIndex: (empresa sem documento)"
         );
 
