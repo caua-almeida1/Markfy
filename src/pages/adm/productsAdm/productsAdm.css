@@ -2618,10 +2618,8 @@ label.adm-monthly-setting-info {
     border-radius: 999px;
     background: var(--mkf-ui-primary-lighter);
     color: var(--mkf-ui-primary);
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.75rem; 
 }
-
 
 /* ---------- Entrada manual ---------- */
 
@@ -3257,7 +3255,19 @@ label.adm-monthly-setting-info {
     margin-bottom: 8px;
 }
 
+/* A foto do membro não tinha regra: saía no tamanho original
+   e quadrada. Agora preenche o círculo de 50px. */
+.adm_admins-avatar {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
 .adm_admins-config-circle {
+    overflow: hidden;
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: center;

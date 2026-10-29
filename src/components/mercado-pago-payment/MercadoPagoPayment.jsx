@@ -89,9 +89,8 @@ const MercadoPagoPayment = ({
        pagamento é aprovado. */
     notes,
 
-    /* Plano de mensalidade, quando o produto é assinatura.
-       Muda o endpoint, os meios de pagamento e o texto. */
-    subscriptionPlan,
+    /* Mensalidade não passa por aqui: tem fluxo próprio em
+       components/subscription-checkout. */
 
     onSuccess,
     onError,
@@ -117,10 +116,6 @@ const MercadoPagoPayment = ({
         useState(null);
 
     const [copied, setCopied] =
-        useState(false);
-
-    /* Aceite explícito da cobrança automática. */
-    const [autoDebitAccepted, setAutoDebitAccepted] =
         useState(false);
 
     /* Virou "pago" enquanto a pessoa olhava o QR. */
@@ -557,41 +552,9 @@ const MercadoPagoPayment = ({
             };
 
 
-            /*
-             * Assinatura vai por outro caminho.
-             *
-             * /v1/payments cobra UMA vez. Cobrança que se
-             * repete sozinha é /preapproval, que guarda a
-             * autorização no cartão — e é por isso que
-             * mensalidade não aceita Pix nem boleto: não há
-             * como debitá-los automaticamente.
-             */
-            const endpoint =
-                subscriptionPlan
-                    ? "createMercadoPagoSubscription"
-                    : "createMercadoPagoPayment";
-
-            const corpo =
-                subscriptionPlan
-                    ? {
-                        companyHandle,
-                        productId,
-                        professionalId,
-                        professionalName,
-                        day,
-                        dayLabel,
-                        hour,
-                        userName,
-                        clientId,
-                        notes,
-                        cardTokenId: formData?.token || null,
-                        payerEmail: payer.email
-                    }
-                    : paymentData;
-
             const response =
                 await fetch(
-                    `${FUNCTIONS_URL}/${endpoint}`,
+                    `${FUNCTIONS_URL}/createMercadoPagoPayment`,
                     {
                         method: "POST",
                         headers: {
@@ -601,7 +564,7 @@ const MercadoPagoPayment = ({
                                 `Bearer ${idToken}`
                         },
                         body:
-                            JSON.stringify(corpo)
+                            JSON.stringify(paymentData)
                     }
                 );
 
@@ -758,8 +721,6 @@ const MercadoPagoPayment = ({
        (nome do titular, CPF) e o Brick acusava "Dado obrigatório".
     ===================================================== */
 
-    const isSubscription = Boolean(subscriptionPlan);
-
     const brickInitialization = useMemo(() => ({
 
         amount: Number(amount) || 0,
@@ -773,21 +734,14 @@ const MercadoPagoPayment = ({
     }), [amount, payerEmail]);
 
     const brickCustomization = useMemo(() => ({
-        paymentMethods:
-            isSubscription
-                ? {
-                    /* Só crédito: débito e Pix não
-                       sustentam cobrança recorrente. */
-                    creditCard: "all"
-                }
-                : {
-                    creditCard: "all",
-                    debitCard: "all",
+        paymentMethods: {
+            creditCard: "all",
+            debitCard: "all",
 
-                    /* É por aqui que o Pix aparece. */
-                    bankTransfer: "all"
-                }
-    }), [isSubscription]);
+            /* É por aqui que o Pix aparece. */
+            bankTransfer: "all"
+        }
+    }), []);
 
     const handleSubmitRef = useRef(handleSubmit);
     handleSubmitRef.current = handleSubmit;
@@ -1069,121 +1023,6 @@ const MercadoPagoPayment = ({
                 )}
 
                 {/* =====================================================
-                    MENSALIDADE — O QUE VAI ACONTECER
-
-                    Assinar é autorizar uma cobrança que se
-                    repete sozinha. Isso precisa estar escrito
-                    antes do formulário, com o valor, a
-                    frequência e como cancelar — não em letra
-                    miúda depois.
-                ===================================================== */}
-
-                {subscriptionPlan && (
-
-                    <div className="mercado-pago-subscription-notice">
-
-                        <div className="mercado-pago-subscription-notice-head">
-                            <Icon icon="solar:refresh-circle-bold" />
-                            <strong>Cobrança automática</strong>
-                        </div>
-
-                        <ul>
-
-                            <li>
-                                <Icon icon="solar:card-outline" />
-                                <span>
-                                    Serão cobrados{" "}
-                                    <strong>
-                                        {Number(amount || 0).toLocaleString("pt-BR", {
-                                            style: "currency",
-                                            currency: "BRL"
-                                        })}
-                                    </strong>{" "}
-                                    no seu cartão{" "}
-                                    <strong>
-                                        {subscriptionPlan.billingCycleDescription ||
-                                            "a cada ciclo"}
-                                    </strong>
-                                    , sem você precisar fazer nada.
-                                </span>
-                            </li>
-
-                            <li>
-                                <Icon icon="solar:calendar-outline" />
-                                <span>
-                                    A cobrança se repete até você cancelar.
-                                </span>
-                            </li>
-
-                            <li>
-                                <Icon icon="solar:close-circle-outline" />
-                                <span>
-                                    Dá para cancelar quando quiser, pela aba{" "}
-                                    <strong>Reservas</strong>
-                                    {subscriptionPlan.cancellationNoticeDays > 0
-                                        ? `, avisando com ${subscriptionPlan.cancellationNoticeDays} dias de antecedência`
-                                        : ""}
-                                    {subscriptionPlan.loyaltyMonths > 0
-                                        ? `. Este plano tem fidelidade de ${subscriptionPlan.loyaltyMonths} ${subscriptionPlan.loyaltyMonths === 1 ? "mês" : "meses"}`
-                                        : ""}
-                                    .
-                                </span>
-                            </li>
-
-                            {/* Sem estorno.
-
-                                Precisa estar no aviso, e não só
-                                em algum termo: é a única parte
-                                que custa dinheiro a quem
-                                desistir no meio do ciclo. */}
-                            <li>
-                                <Icon icon="solar:shield-warning-outline" />
-                                <span>
-                                    <strong>
-                                        Valores já cobrados não são
-                                        estornados.
-                                    </strong>{" "}
-                                    Ao cancelar, você mantém o acesso
-                                    até o fim do ciclo pago, mas não
-                                    há devolução proporcional.
-                                </span>
-                            </li>
-
-                            <li>
-                                <Icon icon="solar:bill-list-outline" />
-                                <span>
-                                    Só cartão de crédito: Pix e boleto não podem
-                                    ser debitados automaticamente.
-                                </span>
-                            </li>
-
-                        </ul>
-
-                        <label className="mercado-pago-subscription-accept">
-
-                            <input
-                                type="checkbox"
-                                checked={autoDebitAccepted}
-                                onChange={(e) =>
-                                    setAutoDebitAccepted(e.target.checked)
-                                }
-                            />
-
-                            <span>
-                                Entendi e autorizo a cobrança automática
-                                no meu cartão, e que valores já cobrados
-                                não são estornados em caso de
-                                cancelamento.
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                )}
-
-
-                {/* =====================================================
                     PAGAMENTO — PAYMENT BRICK
 
                     Pix e cartão, os dois pelo Brick do Mercado
@@ -1205,16 +1044,12 @@ const MercadoPagoPayment = ({
                     cliente não redigita.
                 ===================================================== */}
 
-                {(!subscriptionPlan || autoDebitAccepted) && (
-
                 <Payment
                     initialization={brickInitialization}
                     customization={brickCustomization}
                     onSubmit={handleBrickSubmit}
                     onError={handleBrickError}
                 />
-
-                )}
 
             </div>
 

@@ -3746,6 +3746,88 @@
     color: #a3261c;
 }
 
+/* Estados de getSubscriptionStatusInfo (subscriptionRuntime.js). */
+.reservations-subscription-badge.is-pending {
+    background: var(--mkf-ui-primary-light, #e9edff);
+    color: var(--mkf-ui-primary, #092af3);
+}
+
+.reservations-subscription-badge.is-ending {
+    background: var(--mkf-ui-warning-soft, #fff8e8);
+    color: var(--mkf-warning-text, #92400e);
+}
+
+.reservations-subscription-badge.is-ended {
+    background: var(--mkf-ui-surface-hover, #f4f6fb);
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.reservations-subscription-alert.is-pending {
+    background: var(--mkf-ui-primary-lighter, #f5f7ff);
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.reservations-subscription-alert.is-ending,
+.reservations-subscription-alert.is-ended {
+    background: var(--mkf-ui-warning-soft, #fff8e8);
+    color: var(--mkf-warning-text, #92400e);
+}
+
+
+/* Últimas cobranças (sem dado de cartão). */
+.reservations-subscription-charges {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    border: 1px solid var(--mkf-ui-border, #e4e7ef);
+    border-radius: 12px;
+}
+
+.reservations-subscription-charges li {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+
+    padding: 9px 12px;
+
+    font-size: .85rem;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.reservations-subscription-charges li + li {
+    border-top: 1px solid var(--mkf-ui-border, #e4e7ef);
+}
+
+.reservations-subscription-charges svg {
+    font-size: 17px;
+    color: var(--mkf-text-light, #9aa0b4);
+}
+
+.reservations-subscription-charges svg.is-paid {
+    color: var(--mkf-success, #22c55e);
+}
+
+.reservations-subscription-charges svg.is-failed {
+    color: var(--mkf-error, #ef4444);
+}
+
+.reservations-subscription-charges strong {
+    color: var(--mkf-text-primary);
+    font-weight: 600;
+}
+
+.reservations-subscription-charges em {
+    min-width: 64px;
+    font-style: normal;
+    font-size: .78rem;
+    text-align: right;
+}
+
 .reservations-subscription-facts {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -3957,4 +4039,56 @@
 
 .reservations-cancel-sub-warning strong {
     color: #6d4e10;
+}
+
+
+/* Arrependimento (7 dias): a saída com reembolso vem primeiro. */
+.reservations-cancel-sub-withdrawal {
+    width: 100%;
+    box-sizing: border-box;
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    padding: 13px 14px;
+
+    border: 1px solid var(--mkf-ui-primary-light, #e9edff);
+    border-radius: 14px;
+    background: var(--mkf-ui-primary-lighter, #f5f7ff);
+
+    text-align: left;
+}
+
+.reservations-cancel-sub-withdrawal strong {
+    font-size: .92rem;
+    color: var(--mkf-text-primary);
+}
+
+.reservations-cancel-sub-withdrawal span {
+    font-size: .85rem;
+    line-height: 1.5;
+    color: var(--mkf-text-secondary, #5c6278);
+}
+
+.reservations-cancel-sub-withdrawal button {
+    align-self: flex-start;
+    margin-top: 4px;
+    min-height: 40px;
+    padding: 0 16px;
+
+    border: 0;
+    border-radius: 100px;
+    background: var(--mkf-ui-primary, #092af3);
+    color: #fff;
+
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.reservations-cancel-sub-withdrawal button:disabled {
+    opacity: .5;
+    cursor: default;
 }

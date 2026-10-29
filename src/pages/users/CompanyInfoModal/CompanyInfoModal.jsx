@@ -16,6 +16,8 @@ import {
     listAll
 } from "firebase/storage";
 
+import { useProductImages } from "../../../utils/productImages";
+
 import "./company-info-modal.css";
 import Modal from "../../../components/modal/Modal";
 
@@ -790,6 +792,12 @@ const CompanyInfoModal = ({
 
     }, [company?.products]);
 
+    /* As fotos dos produtos ficam no Storage
+       (companys/{handle}/products/{id}/images), não no banco:
+       ler só o registro do produto deixava o catálogo sem foto. */
+    const catalogImages =
+        useProductImages(companyHandle, catalogProducts);
+
     const getCatalogProductName = (product) => {
 
         return (
@@ -816,6 +824,12 @@ const CompanyInfoModal = ({
 
 
     const getCatalogProductImage = (product) => {
+
+        const stored = catalogImages[product?.id];
+
+        if (stored?.[0]) {
+            return stored[0];
+        }
 
         if (product?.image) {
             return product.image;

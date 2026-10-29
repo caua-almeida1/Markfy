@@ -60,8 +60,14 @@ const Orders = ({ company, initialOrder }) => {
     }, [company?.handle]);
 
 
+    /* Inclui as canceladas que ainda valem até o fim do período
+       pago — o profissional ainda atende essas pessoas. */
     const activeSubscriptions =
         subscriptions.filter(isSubscriptionUsable);
+
+    /* Só o que volta a cobrar entra na receita por ciclo. */
+    const recurringSubscriptions =
+        activeSubscriptions.filter((item) => item.status !== "cancelled");
 
     const [orders, setOrders] = useState([]);
 
@@ -2097,7 +2103,7 @@ const Orders = ({ company, initialOrder }) => {
                                     <span>Por ciclo</span>
 
                                     <strong>
-                                        {activeSubscriptions
+                                        {recurringSubscriptions
                                             .reduce(
                                                 (soma, item) =>
                                                     soma + Number(item.price || 0),
@@ -2216,14 +2222,13 @@ const Orders = ({ company, initialOrder }) => {
                                                 </div>
 
                                                 <span
-                                                    className={`orders-subscription-badge ${assinatura.status === "past_due"
-                                                        ? "is-late"
-                                                        : "is-active"
+                                                    className={`orders-subscription-badge ${resumo.estado.tone === "active"
+                                                        ? "is-active"
+                                                        : "is-late"
                                                         }`}
+                                                    title={resumo.estado.description}
                                                 >
-                                                    {assinatura.status === "past_due"
-                                                        ? "Em atraso"
-                                                        : "Ativa"}
+                                                    {resumo.estado.label}
                                                 </span>
 
                                             </header>
@@ -2257,6 +2262,19 @@ const Orders = ({ company, initialOrder }) => {
                                                 </div>
 
                                             </div>
+
+                                            {/* Arrependimento (7 dias) com estorno que o
+                                                Mercado Pago não aceitou: a empresa precisa
+                                                devolver pelo painel de lá. */}
+                                            {assinatura.withdrawal?.refundFailed && (
+                                                <p className="orders-subscription-alert">
+                                                    <Icon icon="lucide:triangle-alert" />
+                                                    O cliente desistiu dentro do prazo de
+                                                    arrependimento e o estorno automático não
+                                                    passou. Devolva o valor pelo painel do
+                                                    Mercado Pago (Atividade → pagamento → Devolver).
+                                                </p>
+                                            )}
 
                                             <div className="orders-subscription-days">
 

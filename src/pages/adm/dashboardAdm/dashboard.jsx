@@ -474,8 +474,12 @@ const Dashboard = ({
     }, [company?.handle]);
 
 
+    /* Cancelada que ainda vale até o fim do período pago não
+       é receita recorrente: não cobra de novo. */
     const activeSubscriptions =
-        subscriptions.filter(isSubscriptionUsable);
+        subscriptions.filter(
+            (item) => isSubscriptionUsable(item) && item.status !== "cancelled"
+        );
 
     /* Quanto entra a cada ciclo, somando os planos ativos. */
     const recurringRevenue =

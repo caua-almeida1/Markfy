@@ -1,6 +1,9 @@
 import React from "react";
 import { Icon } from "@iconify/react";
 import { useLicense } from "../../../../plans/LicenseContext";
+import { useUserCompany } from "../../../../contexts/companyContext/UserCompanyContext";
+
+import "./monthly-readiness.css";
 
 import ThumbProduct from "../../../../img/adm-content/file (63).png";
 
@@ -53,6 +56,14 @@ const ProductCreationModal = ({
 }) => {
 
     const license = useLicense();
+
+    /* A mensalidade cai na conta Mercado Pago da empresa. Sem
+       ela conectada, o plano aparece no catálogo e ninguém
+       consegue assinar — melhor avisar aqui, na criação. */
+    const { company } = useUserCompany() || {};
+
+    const mercadoPagoConnected =
+        company?.paymentSettings?.mercadoPago?.connected === true;
 
     const {
         DESCRIPTION_MAX_LENGTH,
@@ -718,6 +729,75 @@ const ProductCreationModal = ({
                         </div>
 
 
+                        {/* PARA O CLIENTE CONSEGUIR ASSINAR */}
+
+                        <div className="adm-monthly-readiness">
+
+                            <strong className="adm-monthly-readiness-title">
+                                Para o cliente conseguir assinar
+                            </strong>
+
+                            <ol>
+
+                                <li className={mercadoPagoConnected ? "is-done" : "is-todo"}>
+                                    <Icon
+                                        icon={mercadoPagoConnected
+                                            ? "solar:check-circle-bold"
+                                            : "solar:danger-circle-outline"}
+                                    />
+                                    <div>
+                                        <b>
+                                            {mercadoPagoConnected
+                                                ? "Mercado Pago conectado"
+                                                : "Conecte o Mercado Pago"}
+                                        </b>
+                                        <span>
+                                            Perfil → Formas de Pagamento → Cartões → Conta Mercado Pago.
+                                            É nessa conta que as mensalidades caem.
+                                        </span>
+                                    </div>
+                                </li>
+
+                                <li>
+                                    <Icon icon="solar:refresh-circle-outline" />
+                                    <div>
+                                        <b>Verifique as assinaturas</b>
+                                        <span>
+                                            Na mesma tela, toque em "Verificar assinaturas". Se o
+                                            Mercado Pago ainda não liberou, a tela diz o que fazer.
+                                        </span>
+                                    </div>
+                                </li>
+
+                                <li>
+                                    <Icon icon="solar:user-check-outline" />
+                                    <div>
+                                        <b>O cliente assina em 4 passos</b>
+                                        <span>
+                                            Confere o plano, autoriza a cobrança recorrente, paga com
+                                            cartão de crédito ou com a conta Mercado Pago, e pronto: a
+                                            cobrança se repete sozinha a cada ciclo até ele cancelar.
+                                        </span>
+                                    </div>
+                                </li>
+
+                            </ol>
+
+                            {!mercadoPagoConnected && (
+                                <a
+                                    className="adm-monthly-readiness-link"
+                                    href="/central-adm?tab=perfil&screen=payment-card"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    Conectar agora (abre em outra aba)
+                                    <Icon icon="solar:arrow-right-up-linear" />
+                                </a>
+                            )}
+
+                        </div>
+
+
                         {/* AJUDA */}
 
                         <div className="adm-product-type-help">
@@ -726,7 +806,8 @@ const ProductCreationModal = ({
 
                             <span>
                                 Você poderá alterar essas configurações
-                                depois na página de gestão do produto.
+                                depois na página de gestão do produto. Quem já
+                                assina continua com as condições que aceitou.
                             </span>
 
                         </div>

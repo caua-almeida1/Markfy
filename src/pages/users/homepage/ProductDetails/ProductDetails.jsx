@@ -379,21 +379,15 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         notes:
                             notes.trim(),
 
-                        /* O checkout precisa saber que é
-                           assinatura: muda o endpoint, os
-                           meios de pagamento e o aviso. */
+                        /* Assinatura abre o checkout em etapas
+                           (components/subscription-checkout). O
+                           plano vai inteiro só para MOSTRAR: o
+                           preço cobrado o backend lê do produto. */
                         subscriptionPlan:
                             monthlyPlan
                                 ? {
-                                    billingCycle:
-                                        monthlyPlan.billingCycle,
-                                    billingCycleDescription:
-                                        monthlyPlan.billingCyclePeriodLabel ||
-                                        monthlyPlan.billingCycleLabel,
-                                    cancellationNoticeDays:
-                                        monthlyPlan.cancellationNoticeDays,
-                                    loyaltyMonths:
-                                        monthlyPlan.loyaltyMonths
+                                    ...monthlyPlan,
+                                    amount: getEffectivePrice(product)
                                 }
                                 : null,
 
@@ -2005,9 +1999,25 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 : guestEmail
         ).trim();
 
+    /* Mensalidade pede o e-mail na própria etapa de pagamento
+       (é lá que se escolhe cartão ou conta Mercado Pago). */
     const precisaPedirEmail =
         requiresPayment &&
+        !monthlyPlan &&
         !(isUserLoggedIn && loggedUserEmail);
+
+    /* Produto mensal sem assinatura ativa: o próximo passo é
+       assinar — com ou sem "pagamento antecipado" ligado na
+       empresa. Antes isso só acontecia com ele ligado; sem,
+       o botão tentava agendar e o backend recusava ("Assine o
+       plano mensal..."), e ninguém conseguia assinar. */
+    const goesToSubscription =
+        Boolean(monthlyPlan) &&
+        !activeSubscription;
+
+    const goesToPayment =
+        goesToSubscription ||
+        (requiresPayment && !activeSubscription);
 
     const payerPhone =
         guestPhoneDigits;
@@ -3646,7 +3656,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                     </div>
                                                 </div>
 
-                                                {requiresPayment && (
+                                                {/* Mensalidade não é pagamento antecipado: tem o próprio aviso. */}
+                                                {requiresPayment && !monthlyPlan && (
                                                     <div className="product-details-payment-notice">
 
                                                         <div className="product-details-payment-notice-icon">
@@ -3693,12 +3704,15 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                             <div>
                                                                 <strong>
-                                                                    Você já assina este plano
+                                                                    {activeSubscription.status === "cancelled"
+                                                                        ? `Sua assinatura vale até ${new Date(activeSubscription.accessUntil).toLocaleDateString("pt-BR")}`
+                                                                        : "Você já assina este plano"}
                                                                 </strong>
 
                                                                 <span>
-                                                                    Escolha o dia e o horário do próximo
-                                                                    atendimento — não há nada a pagar agora.
+                                                                    {activeSubscription.status === "cancelled"
+                                                                        ? "Ela foi cancelada e não gera novas cobranças. Até lá, marque os atendimentos que já pagou."
+                                                                        : "Escolha o dia e o horário do próximo atendimento — não há nada a pagar agora."}
                                                                 </span>
                                                             </div>
 
@@ -3718,8 +3732,10 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             <div>
                                                                 <span>Próxima cobrança</span>
                                                                 <strong>
-                                                                    {subscriptionSummary.proximaCobranca
-                                                                        .toLocaleDateString("pt-BR")}
+                                                                    {activeSubscription.status === "cancelled"
+                                                                        ? "Nenhuma"
+                                                                        : subscriptionSummary.proximaCobranca
+                                                                            .toLocaleDateString("pt-BR")}
                                                                 </strong>
                                                             </div>
 
@@ -4982,7 +4998,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                 {/* Aviso de pagamento */}
 
-                                                {requiresPayment && (
+                                                {requiresPayment && !monthlyPlan && (
                                                     <div className="confirmation-payment-notice">
 
                                                         <div className="confirmation-payment-notice-icon">
@@ -5133,10 +5149,19 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                         <span>Voltar</span>
                                                     </button>
 
+                                                    {/* Volta para este produto depois de
+                                                        entrar — antes caía no início e a
+                                                        pessoa precisava achar o plano de novo. */}
                                                     <button
                                                         type="button"
                                                         className="confirmation-modal-button confirmation-modal-button--primary"
-                                                        onClick={() => navigate("/login")}
+                                                        onClick={() =>
+                                                            navigate(
+                                                                `/login?redirect=${encodeURIComponent(
+                                                                    `/central-user/${companyHandle}?product=${product.id}`
+                                                                )}`
+                                                            )
+                                                        }
                                                     >
                                                         <span>Entrar ou criar conta</span>
                                                         <Icon icon="solar:arrow-right-outline" />
@@ -5494,9 +5519,12 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                      * - telefone
                                                                      * - SMS
                                                                      * - novo login
+                                                                     *
+                                                                     * Mensalidade sem assinatura vai
+                                                                     * para o checkout da assinatura.
                                                                      */
 
-                                                                    if (requiresPayment) {
+                                                                    if (goesToPayment) {
 
                                                                         openCheckout();
 
@@ -5511,14 +5539,16 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             >
 
                                                                 <span>
-                                                                    {requiresPayment
-                                                                        ? "Continuar para pagamento"
-                                                                        : "Confirmar agendamento"}
+                                                                    {goesToSubscription
+                                                                        ? "Continuar para assinatura"
+                                                                        : goesToPayment
+                                                                            ? "Continuar para pagamento"
+                                                                            : "Confirmar agendamento"}
                                                                 </span>
 
                                                                 <Icon
                                                                     icon={
-                                                                        requiresPayment
+                                                                        goesToPayment
                                                                             ? "solar:arrow-right-outline"
                                                                             : "solar:check-outline"
                                                                     }

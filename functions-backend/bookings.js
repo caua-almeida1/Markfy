@@ -70,7 +70,17 @@ const fail = (status, message, code) => {
    nunca cresce. Não é um WAF: segura robô e clique repetido.
 ----------------------------------------------------- */
 
-const RATE_LIMITS = { availability: 60, create: 8, mine: 30, cancel: 10 };
+/* subscribe/subscriptionSync/subscriptionCancel são da
+   subscriptionsApi (subscriptions.js), que usa o mesmo freio. */
+const RATE_LIMITS = {
+    availability: 60,
+    create: 8,
+    mine: 30,
+    cancel: 10,
+    subscribe: 6,
+    subscriptionSync: 30,
+    subscriptionCancel: 10
+};
 
 const throttle = async (req, action) => {
 
@@ -220,7 +230,14 @@ const availability = async (body) => {
 };
 
 
-const create = async (body, uid) => {
+/*
+ * `fromSubscription`: o primeiro atendimento de uma assinatura,
+ * criado pelo backend quando o Mercado Pago autoriza. Pula a
+ * trava dos 30 minutos — a pessoa pode ter agendado outro
+ * serviço agora há pouco, e esse horário já foi escolhido
+ * antes de pagar.
+ */
+const create = async (body, uid, { fromSubscription = false } = {}) => {
 
     const parsed = core.parseCreate(body);
 
@@ -271,6 +288,14 @@ const create = async (body, uid) => {
             fail(402, "Assine o plano mensal para agendar este serviço.", "subscription_required");
         }
 
+        if (!core.subscriptionCoversDate(subscription, request.date)) {
+            fail(
+                402,
+                `Sua mensalidade foi cancelada e vale até ${new Date(subscription.accessUntil).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}. Escolha uma data até lá.`,
+                "subscription_ending"
+            );
+        }
+
         request.subscriptionId = subscriptionId;
     }
 
@@ -304,7 +329,10 @@ const create = async (body, uid) => {
             uid ? schedulesWhere(handle, "userId", uid) : Promise.resolve({})
         ]);
 
-        if (core.bookedRecently({ ...byClient, ...byUser }, { uid, clientId: request.clientId }, now)) {
+        if (
+            !fromSubscription &&
+            core.bookedRecently({ ...byClient, ...byUser }, { uid, clientId: request.clientId }, now)
+        ) {
             fail(429, "Você já realizou um agendamento recentemente. Tente novamente em 30 minutos.", "recent_booking");
         }
 
@@ -450,3 +478,10 @@ exports.bookingsApi = onRequest({ maxInstances: 10 }, async (req, res) => {
 });
 
 exports.bookingsCore = core;
+
+/* Peças usadas pela subscriptionsApi (subscriptions.js). */
+exports.createBooking = create;
+exports.throttle = throttle;
+exports.BookingError = BookingError;
+exports.schedulesWhere = schedulesWhere;
+exports.readProduct = readProduct;

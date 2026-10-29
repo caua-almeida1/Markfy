@@ -174,25 +174,17 @@
           ]
         },
         "subscriptions": {
-          "_comentario": "Assinante le so as proprias (orderByChild('uid').equalTo(uid)) e pede cancelamento.",
+          "_comentario": [
+            "Assinante le so as proprias (orderByChild('uid').equalTo(uid)), inclusive o aceite e as cobrancas",
+            "(direito de acesso, LGPD art. 18). Assinar, sincronizar e cancelar: so pela subscriptionsApi.",
+            "Antes o cliente gravava cancelScheduledFor direto, o que pulava a fidelidade."
+          ],
           ".read": "auth != null && query.orderByChild === 'uid' && query.equalTo === auth.uid",
           ".indexOn": [
             "uid"
           ],
           "$subscriptionId": {
-            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)",
-            "cancellationRequestedAt": {
-              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
-              ".validate": "newData.isNumber()"
-            },
-            "cancelScheduledFor": {
-              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
-              ".validate": "newData.isNumber()"
-            },
-            "updatedAt": {
-              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
-              ".validate": "newData.isNumber()"
-            }
+            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)"
           }
         },
         "joinRequests": {
@@ -256,12 +248,29 @@
       }
     },
     "mercadoPagoConnections": {
+      "_comentario": [
+        "So backend. Guarda o access token e o refresh token do Mercado Pago da empresa, que",
+        "cobram, estornam e leem pagamentos. Antes qualquer membro (ate profissional) lia.",
+        "O painel le o estado da conexao em companys/{handle}/paymentSettings/mercadoPago."
+      ],
       ".read": false,
       ".write": false,
-      "$handle": {
-        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
-      }
+      ".indexOn": [
+        "mercadoPagoUserId"
+      ]
+    },
+    "subscriptionsIndex": {
+      "_comentario": "preapproval do Mercado Pago -> assinatura (webhook e sincronizacao diaria). So backend.",
+      ".read": false,
+      ".write": false,
+      ".indexOn": [
+        "open"
+      ]
+    },
+    "subscriptionLocks": {
+      "_comentario": "Trava contra assinar duas vezes ao mesmo tempo. So backend.",
+      ".read": false,
+      ".write": false
     },
     "studioDrafts": {
       "_comentario": [

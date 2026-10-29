@@ -104,6 +104,7 @@ const PrivacyPolicy = () => {
                         { term: "Cliente que agenda", text: "nome, telefone e, quando houver login, e-mail. Um identificador anônimo é gerado no seu dispositivo para você reencontrar suas reservas sem criar conta." },
                         { term: "Agendamentos", text: "serviço escolhido, profissional, data, horário, valor e status." },
                         { term: "Pagamentos", text: "status, valor e identificadores da transação. Os dados do cartão são digitados direto no ambiente do Mercado Pago e nunca passam pelos nossos servidores." },
+                        { term: "Mensalidades (cobrança recorrente)", text: "nome, e-mail do pagador, forma de pagamento escolhida (cartão ou conta Mercado Pago), histórico das cobranças (valor, data e situação) e o registro do seu aceite: data, versão do texto e condições do plano que você autorizou. Não guardamos número, validade nem código do cartão, nem seu endereço IP." },
                         { term: "Localização aproximada", text: "somente se você ativar a busca por empresas próximas, e apenas durante a consulta. Não guardamos sua localização." }
                     ]
                 }
@@ -126,6 +127,8 @@ const PrivacyPolicy = () => {
                         ["Criar e manter sua conta, autenticar o acesso", "Execução de contrato (Art. 7º, V)"],
                         ["Registrar, confirmar e exibir agendamentos", "Execução de contrato (Art. 7º, V)"],
                         ["Processar pagamentos pelo Mercado Pago", "Execução de contrato (Art. 7º, V)"],
+                        ["Cobrar a mensalidade a cada ciclo e liberar os atendimentos do plano", "Execução de contrato (Art. 7º, V)"],
+                        ["Guardar a prova de que você autorizou a cobrança recorrente", "Exercício regular de direitos (Art. 7º, VI) e Art. 8º, §2º"],
                         ["Verificar telefone por SMS e prevenir fraude", "Legítimo interesse e prevenção à fraude (Art. 7º, IX e X)"],
                         ["Emitir notas, guardar registros fiscais e contábeis", "Cumprimento de obrigação legal (Art. 7º, II)"],
                         ["Responder a suporte e resolver disputas", "Legítimo interesse (Art. 7º, IX)"],
@@ -160,7 +163,7 @@ const PrivacyPolicy = () => {
                     headers: ["Serviço", "Para quê", "Dados envolvidos"],
                     rows: [
                         ["Google Firebase", "Autenticação, banco de dados, armazenamento de imagens e envio de SMS", "Conta, empresa, agendamentos e imagens"],
-                        ["Mercado Pago", "Processamento de pagamentos", "Valor, identificação do pedido e dados que você informa no checkout deles"],
+                        ["Mercado Pago", "Processamento de pagamentos e das cobranças recorrentes das mensalidades", "Valor, identificação do pedido, e-mail do pagador (nas mensalidades) e dados que você informa no checkout deles"],
                         ["ViaCEP e serviço de geocodificação", "Converter CEP e endereço em coordenadas na busca por proximidade", "Apenas o CEP ou endereço consultado"],
                         ["Empresa que você agendou", "Prestar o atendimento contratado", "Nome, telefone e dados do agendamento"]
                     ]
@@ -235,6 +238,7 @@ const PrivacyPolicy = () => {
                         { term: "Dados da conta", text: "enquanto a conta existir." },
                         { term: "Agendamentos", text: "enquanto a conta da empresa existir, para histórico e comprovação do atendimento." },
                         { term: "Registros de pagamento", text: "pelo prazo exigido pela legislação fiscal." },
+                        { term: "Mensalidades", text: "enquanto a assinatura existir e, depois de encerrada, pelo prazo fiscal e para comprovar a contratação. Uma tentativa de assinatura não concluída é apagada em até 48 horas." },
                         { term: "Escolha de cookies", text: "180 dias, depois perguntamos de novo." },
                         { term: "Produtos arquivados", text: "excluídos automaticamente após 30 dias." }
                     ]

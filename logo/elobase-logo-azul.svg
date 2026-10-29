@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 140" width="520" height="140">
+  <!-- Ícone: duas barras retas paralelas formando um "S" minimalista -->
+  <polygon points="20,52 104,14 104,44 20,82" fill="#2563EB"/>
+  <polygon points="34,96 118,58 118,88 34,126" fill="#3B82F6"/>
+  <!-- Texto -->
+  <text x="140" y="96" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="72" font-weight="800" letter-spacing="-2">
+    <tspan fill="#0B1220">Elo</tspan><tspan fill="#2563EB">Base</tspan>
+  </text>
+</svg>

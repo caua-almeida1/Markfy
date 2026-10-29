@@ -195,3 +195,15 @@ test("sessionsLeft conta só o ciclo atual e ignora cancelados", () => {
     assert.equal(core.isSubscriptionUsable(subscription), true);
     assert.equal(core.isSubscriptionUsable({ status: "cancelled" }), false);
 });
+
+test("assinatura cancelada vale até o fim do período pago, e só para datas até lá", () => {
+    const cancelled = { status: "cancelled", accessUntil: NOW + 10 * 24 * 60 * 60 * 1000 };
+
+    assert.equal(core.isSubscriptionUsable(cancelled, NOW), true);
+    assert.equal(core.isSubscriptionUsable({ ...cancelled, accessUntil: NOW - 1 }, NOW), false);
+    assert.equal(core.isSubscriptionUsable({ status: "pending" }, NOW), false);
+
+    assert.equal(core.subscriptionCoversDate(cancelled, new Date(NOW + 24 * 60 * 60 * 1000)), true);
+    assert.equal(core.subscriptionCoversDate(cancelled, new Date(NOW + 11 * 24 * 60 * 60 * 1000)), false);
+    assert.equal(core.subscriptionCoversDate({ status: "authorized" }, new Date(NOW + 400 * 24 * 60 * 60 * 1000)), true);
+});

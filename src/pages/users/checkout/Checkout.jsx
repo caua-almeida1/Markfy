@@ -3,7 +3,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 import MercadoPagoPayment from "../../../components/mercado-pago-payment/MercadoPagoPayment";
+import SubscriptionCheckout from "../../../components/subscription-checkout/SubscriptionCheckout";
 import { releaseScrollLock } from "../../../components/modal/Modal";
+import { parsePrice } from "../../../utils/price";
 
 import "./Checkout.css";
 
@@ -79,27 +81,12 @@ const Checkout = () => {
         checkoutData?.product || null;
 
 
-    const amount = useMemo(() => {
-
-        const value =
-            checkoutData?.productPrice ??
-            product?.value ??
-            0;
-
-        if (typeof value === "number") {
-            return value;
-        }
-
-        return Number(
-            String(value)
-                .replace(/[^\d,.-]/g, "")
-                .replace(",", ".")
-        ) || 0;
-
-    }, [
-        checkoutData,
-        product
-    ]);
+    /* parsePrice entende o milhar: "R$ 1.234,56" virava 0 com
+       a conversão que morava aqui. */
+    const amount = useMemo(
+        () => parsePrice(checkoutData?.productPrice ?? product?.value ?? 0),
+        [checkoutData, product]
+    );
 
 
     const formattedAmount =
@@ -156,6 +143,60 @@ const Checkout = () => {
                     </button>
 
                 </div>
+
+            </main>
+
+        );
+
+    }
+
+
+    /*
+     * =====================================================
+     * MENSALIDADE
+     *
+     * Assinatura tem fluxo próprio, em etapas: plano,
+     * autorização da cobrança recorrente, pagamento (cartão
+     * ou conta Mercado Pago) e resultado.
+     * =====================================================
+     */
+
+    if (checkoutData.subscriptionPlan) {
+
+        return (
+
+            <main className="checkout-page">
+
+                <header className="checkout-header">
+
+                    <button
+                        type="button"
+                        className="checkout-back"
+                        onClick={() => navigate(-1)}
+                        aria-label="Voltar"
+                    >
+                        <Icon icon="solar:arrow-left-outline" />
+                    </button>
+
+                    <div className="checkout-header-brand">
+                        <strong>Markfy</strong>
+                        <span>Assinatura</span>
+                    </div>
+
+                    <div className="checkout-header-processor">
+                        <Icon icon="solar:shield-check-bold" />
+                        <span>
+                            Pagamento processado por
+                            <strong>Mercado Pago</strong>
+                        </span>
+                    </div>
+
+                </header>
+
+                <SubscriptionCheckout
+                    checkoutData={checkoutData}
+                    onExit={() => navigate(-1)}
+                />
 
             </main>
 
@@ -505,10 +546,6 @@ const Checkout = () => {
 
                                 notes={
                                     checkoutData.notes
-                                }
-
-                                subscriptionPlan={
-                                    checkoutData.subscriptionPlan
                                 }
 
                                 onBack={() =>

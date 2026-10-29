@@ -139,19 +139,7 @@
             "uid"
           ],
           "$subscriptionId": {
-            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)",
-            "cancellationRequestedAt": {
-              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
-              ".validate": "newData.isNumber()"
-            },
-            "cancelScheduledFor": {
-              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
-              ".validate": "newData.isNumber()"
-            },
-            "updatedAt": {
-              ".write": "auth != null && root.child('companys').child($handle).child('subscriptions').child($subscriptionId).child('uid').val() === auth.uid",
-              ".validate": "newData.isNumber()"
-            }
+            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)"
           }
         },
         "joinRequests": {
@@ -194,10 +182,20 @@
     "mercadoPagoConnections": {
       ".read": false,
       ".write": false,
-      "$handle": {
-        ".read": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()",
-        ".write": "auth != null && root.child('companys').child($handle).child('members').child(auth.uid).exists()"
-      }
+      ".indexOn": [
+        "mercadoPagoUserId"
+      ]
+    },
+    "subscriptionsIndex": {
+      ".read": false,
+      ".write": false,
+      ".indexOn": [
+        "open"
+      ]
+    },
+    "subscriptionLocks": {
+      ".read": false,
+      ".write": false
     },
     "studioDrafts": {
       ".read": "auth != null && (auth.token.email === 'caua.master@markfy.com' || auth.token.email === 'marcelo.master@markfy.com')",

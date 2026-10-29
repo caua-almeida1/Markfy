@@ -155,7 +155,8 @@ const reseed = () => call("PUT", "", "admin", SEED);
     await expect("cliente consulta a própria assinatura que ainda não existe", call("GET", "companys/acme/subscriptions/cust1_p9", as.customer), true);
     await expect("cliente NÃO lê assinatura de outro pelo id", call("GET", "companys/acme/subscriptions/other_p1", as.customer), false);
     await expect("assinante NÃO lista todas", call("GET", "companys/acme/subscriptions", as.customer), false);
-    await expect("assinante pede cancelamento", call("PATCH", "companys/acme/subscriptions/cust1_p1", as.customer, { cancellationRequestedAt: NOW, cancelScheduledFor: NOW, updatedAt: NOW }), true);
+    /* Cancelar é pela subscriptionsApi: gravar a data direto pulava a fidelidade. */
+    await expect("assinante NÃO agenda o próprio cancelamento direto no banco", call("PATCH", "companys/acme/subscriptions/cust1_p1", as.customer, { cancellationRequestedAt: NOW, cancelScheduledFor: NOW, updatedAt: NOW }), false);
     await expect("assinante NÃO muda o status", call("PUT", "companys/acme/subscriptions/cust1_p1/status", as.customer, "authorized"), false);
 
     /* ---------- convite por link ---------- */
@@ -183,6 +184,10 @@ const reseed = () => call("PUT", "", "admin", SEED);
     /* ---------- nós só do backend ---------- */
     await expect("ninguém lê bookingLocks", call("GET", "bookingLocks", as.owner), false);
     await expect("ninguém grava bookingRate", call("PUT", "bookingRate/1", as.stranger, 1), false);
+    await expect("profissional NÃO lê o token do Mercado Pago da empresa", call("GET", "mercadoPagoConnections/acme", as.pro), false);
+    await expect("dona NÃO lê o token do Mercado Pago (só o backend)", call("GET", "mercadoPagoConnections/acme", as.owner), false);
+    await expect("ninguém lê subscriptionsIndex", call("GET", "subscriptionsIndex", as.owner), false);
+    await expect("ninguém grava subscriptionLocks", call("PUT", "subscriptionLocks/acme/x", as.customer, { at: NOW }), false);
 
     const failed = results.filter((item) => !item.ok);
 

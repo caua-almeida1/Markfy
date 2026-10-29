@@ -56,6 +56,7 @@ const InitialSetup = lazy(() => import("./pages/inital-pages/initial-setup"));
 const CreateCompany = lazy(() => import("./pages/inital-pages/initial-steps-components/create-company/CreateCompany"));
 const PreviewCompany = lazy(() => import("./pages/inital-pages/initial-steps-components/preview-company/PreviewCompany"));
 const Checkout = lazy(() => import("./pages/users/checkout/Checkout"));
+const SubscriptionReturn = lazy(() => import("./pages/users/subscription-return/SubscriptionReturn"));
 const PaymentResult = lazy(() => import("./components/payment-result/PaymentResult"));
 const Invite = lazy(() => import("./pages/invite/Invite"));
 const QrLoginPage = lazy(() => import("./qr/QrLoginPage"));
@@ -303,6 +304,17 @@ function App() {
       element: (
         <NoIndex title="Pagamento">
           <Checkout />
+        </NoIndex>
+      ),
+    },
+
+    /* Volta do Mercado Pago depois de assinar pela conta de lá
+       (back_url da assinatura). */
+    {
+      path: "/assinatura/retorno",
+      element: (
+        <NoIndex title="Assinatura">
+          <SubscriptionReturn />
         </NoIndex>
       ),
     },

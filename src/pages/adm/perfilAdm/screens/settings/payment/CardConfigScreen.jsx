@@ -729,6 +729,41 @@ const CardConfigScreen = ({ onBack }) => {
 
 
             {/* =================================================
+                MENSALIDADES — COMO FUNCIONA
+
+                O passo a passo do lado da empresa. O do cliente
+                está no checkout da assinatura.
+            ================================================= */}
+
+            <div className="payment-info">
+
+                <div className="payment-info-icon">
+                    <Icon icon="solar:refresh-circle-outline" />
+                </div>
+
+                <div className="payment-info-content">
+
+                    <h3>
+                        Como funcionam as mensalidades
+                    </h3>
+
+                    <p>
+                        1. Conecte a conta acima e toque em "Verificar
+                        assinaturas". 2. Cadastre um produto do tipo
+                        "Plano de mensalidade". 3. O cliente autoriza a
+                        cobrança recorrente e paga com cartão de crédito
+                        ou com a conta Mercado Pago dele. 4. O Mercado
+                        Pago cobra sozinho a cada ciclo e tenta de novo
+                        se uma cobrança for recusada. Você acompanha tudo
+                        em Pedidos → Assinaturas.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            {/* =================================================
                 SEGURANÇA
             ================================================= */}
 

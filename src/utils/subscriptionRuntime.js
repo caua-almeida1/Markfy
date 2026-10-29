@@ -5,11 +5,10 @@ import {
     onValue,
     orderByChild,
     query,
-    ref,
-    update
+    ref
 } from "firebase/database";
 
-import { getBillingCycle, normalizeMonthlyPlan } from "./subscription";
+import { getBillingCycle } from "./subscription";
 
 
 /* =========================================================
@@ -35,11 +34,16 @@ import { getBillingCycle, normalizeMonthlyPlan } from "./subscription";
    `subscriptionId` preenchido. Assim o painel, a agenda e o
    cancelamento seguem funcionando sem saber o que é
    assinatura.
+
+   Quem grava este nó é só o backend (subscriptionsApi). As
+   regras de cancelamento daqui espelham as de
+   functions-backend/subscriptions-core.js: a tela mostra o
+   que vai acontecer, o backend decide.
    ========================================================= */
 
 
 export const SUBSCRIPTION_STATUS = {
-    /* Esperando o Mercado Pago autorizar o cartão. */
+    /* Esperando a pessoa autorizar (conta Mercado Pago). */
     PENDING: "pending",
 
     /* Ativa e cobrando. */
@@ -48,9 +52,22 @@ export const SUBSCRIPTION_STATUS = {
     /* Cobrança falhou; o Mercado Pago vai tentar de novo. */
     PAST_DUE: "past_due",
 
-    /* Encerrada — pelo cliente ou por falta de pagamento. */
+    /* Pausada no Mercado Pago. */
+    PAUSED: "paused",
+
+    /* Encerrada — pode valer até accessUntil. */
     CANCELLED: "cancelled"
 };
+
+
+/* Versão do texto de autorização (subscriptions-core.js).
+   Mudou o texto do checkout, muda aqui e lá. */
+export const CONSENT_VERSION = "2026-10-24";
+
+/* Direito de arrependimento (CDC, art. 49). */
+export const WITHDRAWAL_DAYS = 7;
+
+const DAY_MS = 86400000;
 
 
 export const buildSubscriptionId = (uid, productId) =>
@@ -300,11 +317,18 @@ export const canCancelAt = (date, product, now = new Date()) => {
 --------------------------------------------------------- */
 
 /**
- * A assinatura pode ser encerrada hoje?
+ * O que acontece se a assinatura for cancelada hoje.
  *
- * Duas travas do plano, e as duas precisam ser ditas ao
- * cliente ANTES de ele assinar — por isso devolvem o motivo
- * e a data, não só um booleano.
+ * As travas do plano precisam ser ditas ao cliente ANTES de
+ * ele confirmar — por isso devolvem o motivo e as datas, não
+ * só um booleano.
+ *
+ *   emFidelidade   não dá para cancelar ainda (só arrependimento)
+ *   agendado       o aviso prévio passa da próxima cobrança:
+ *                  ela ainda acontece, e o fim é em `encerraEm`
+ *   acessoAte      até quando os atendimentos continuam valendo
+ *   arrependimento ainda dentro dos 7 dias: dá para desistir
+ *                  com estorno integral
  */
 export const getCancellationRules = (subscription, now = new Date()) => {
 
@@ -322,22 +346,112 @@ export const getCancellationRules = (subscription, now = new Date()) => {
             ? addMonths(inicio, fidelidadeMeses)
             : null;
 
-    const emFidelidade =
-        fimDaFidelidade ? now < fimDaFidelidade : false;
+    /* Ainda não autorizada: nada começou, nada a cumprir. */
+    const naoComecou =
+        !subscription?.startedAt ||
+        subscription?.status === SUBSCRIPTION_STATUS.PENDING;
 
-    /* O aviso prévio não impede o pedido: ele adia o fim.
-       Quem cancela hoje segue com acesso até lá — e segue
-       pagando, o que é justamente o que precisa estar claro. */
+    const emFidelidade =
+        !naoComecou &&
+        (fimDaFidelidade ? now < fimDaFidelidade : false);
+
+    const arrependimento =
+        Boolean(subscription?.startedAt) &&
+        now.getTime() - Number(subscription.startedAt) <= WITHDRAWAL_DAYS * DAY_MS;
+
+    const prazoArrependimento =
+        subscription?.startedAt
+            ? new Date(Number(subscription.startedAt) + WITHDRAWAL_DAYS * DAY_MS)
+            : null;
+
+    /* O aviso prévio não impede o pedido: ele adia o fim. */
     const encerraEm =
-        new Date(now.getTime() + avisoDias * 86400000);
+        new Date(now.getTime() + avisoDias * DAY_MS);
+
+    /* Em dia: vale até o fim do período pago. Em atraso: não
+       há período pago a preservar. */
+    const fimDoPago =
+        subscription?.status === SUBSCRIPTION_STATUS.ACTIVE
+            ? getNextBillingDate(subscription)
+            : now;
+
+    const agendado = !naoComecou && encerraEm > fimDoPago;
 
     return {
         podeCancelar: !emFidelidade,
         emFidelidade,
         fimDaFidelidade,
         avisoDias,
-        encerraEm
+        encerraEm,
+        agendado,
+        acessoAte: agendado ? null : fimDoPago,
+        arrependimento,
+        prazoArrependimento
     };
+
+};
+
+
+/**
+ * Rótulo, tom e explicação do estado — o mesmo nas telas do
+ * cliente e do painel.
+ */
+export const getSubscriptionStatusInfo = (subscription, now = Date.now()) => {
+
+    const data = (ms) => new Date(Number(ms)).toLocaleDateString("pt-BR");
+
+    switch (subscription?.status) {
+
+        case SUBSCRIPTION_STATUS.PENDING:
+            return {
+                label: "Aguardando confirmação",
+                tone: "pending",
+                description: "Estamos esperando o Mercado Pago confirmar a autorização."
+            };
+
+        case SUBSCRIPTION_STATUS.PAST_DUE:
+            return {
+                label: "Pagamento pendente",
+                tone: "late",
+                description: "A última cobrança não passou. O Mercado Pago tenta de novo nos próximos dias; se não der certo, a assinatura é encerrada."
+            };
+
+        case SUBSCRIPTION_STATUS.PAUSED:
+            return {
+                label: "Pausada",
+                tone: "late",
+                description: "A assinatura está pausada no Mercado Pago. Nada é cobrado enquanto isso."
+            };
+
+        case SUBSCRIPTION_STATUS.CANCELLED:
+            return Number(subscription.accessUntil) > now
+                ? {
+                    label: `Cancelada · vale até ${data(subscription.accessUntil)}`,
+                    tone: "ending",
+                    description: `Não haverá novas cobranças. Seus atendimentos continuam valendo até ${data(subscription.accessUntil)}.`
+                }
+                : {
+                    label: "Encerrada",
+                    tone: "ended",
+                    description: "Esta assinatura foi encerrada e não gera mais cobranças."
+                };
+
+        case SUBSCRIPTION_STATUS.ACTIVE:
+            return subscription.cancelScheduledFor
+                ? {
+                    label: `Cancelamento em ${data(subscription.cancelScheduledFor)}`,
+                    tone: "ending",
+                    description: `Pelo aviso prévio do plano, a assinatura é encerrada em ${data(subscription.cancelScheduledFor)}.`
+                }
+                : {
+                    label: "Ativa",
+                    tone: "active",
+                    description: "Cobrança automática em dia."
+                };
+
+        default:
+            return { label: "—", tone: "ended", description: "" };
+    }
 
 };
 
@@ -433,28 +547,22 @@ export const getUserSubscription = async (handle, uid, productId) => {
 };
 
 
-export const isSubscriptionUsable = (subscription) =>
+/* Cancelada continua valendo até o fim do período já pago
+   (mesma regra de bookings-core.js no backend). */
+export const isSubscriptionUsable = (subscription, now = Date.now()) =>
     subscription?.status === SUBSCRIPTION_STATUS.ACTIVE ||
-    subscription?.status === SUBSCRIPTION_STATUS.PAST_DUE;
-
-
-/** Marca a intenção de cancelar; quem encerra de fato é o backend. */
-export const requestSubscriptionCancellation = async (
-    handle,
-    subscriptionId,
-    encerraEm
-) => {
-
-    await update(
-        subscriptionRef(handle, subscriptionId),
-        {
-            cancellationRequestedAt: Date.now(),
-            cancelScheduledFor: encerraEm?.getTime?.() || Date.now(),
-            updatedAt: Date.now()
-        }
+    subscription?.status === SUBSCRIPTION_STATUS.PAST_DUE ||
+    (
+        subscription?.status === SUBSCRIPTION_STATUS.CANCELLED &&
+        Number(subscription.accessUntil) > now
     );
 
-};
+
+/** Aparece para o cliente: usável, esperando confirmação ou pausada. */
+export const isSubscriptionVisible = (subscription, now = Date.now()) =>
+    isSubscriptionUsable(subscription, now) ||
+    subscription?.status === SUBSCRIPTION_STATUS.PENDING ||
+    subscription?.status === SUBSCRIPTION_STATUS.PAUSED;
 
 
 /**
@@ -476,29 +584,14 @@ export const getSubscriptionSummary = (subscription, schedules = []) => {
         sessoesRestantes: getSessionsRemaining(subscription, schedules),
         proximaCobranca: getNextBillingDate(subscription),
         cancelamento: getCancellationRules(subscription),
-        ciclo: getBillingCycle(subscription?.billingCycle)
-    };
+        ciclo: getBillingCycle(subscription?.billingCycle),
+        estado: getSubscriptionStatusInfo(subscription),
 
-};
-
-
-/** Dados do plano do produto, no formato gravado na assinatura. */
-export const planToSubscriptionFields = (product) => {
-
-    const plan = normalizeMonthlyPlan(product);
-
-    if (!plan) return null;
-
-    return {
-        billingCycle: plan.billingCycle,
-        price: plan.price,
-        currency: plan.currency,
-        unlimitedSessions: plan.unlimitedSessions,
-        sessionsPerCycle: plan.sessionsPerCycle,
-        autoRenew: plan.autoRenew,
-        trialDays: plan.trialDays,
-        loyaltyMonths: plan.loyaltyMonths,
-        cancellationNoticeDays: plan.cancellationNoticeDays
+        /* Cobranças já registradas, da mais recente para a
+           mais antiga (sem dado de cartão nenhum). */
+        cobrancas: Object.entries(subscription?.charges || {})
+            .map(([id, item]) => ({ ...item, id }))
+            .sort((a, b) => (b.chargedAt || 0) - (a.chargedAt || 0))
     };
 
 };

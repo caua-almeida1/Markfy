@@ -259,9 +259,20 @@ const cycleWindow = (subscription, reference = new Date()) => {
     return { start, end };
 };
 
-const isSubscriptionUsable = (subscription) =>
-    Boolean(subscription) &&
-    (subscription.status === "authorized" || subscription.status === "past_due");
+/* Cancelada continua valendo até o fim do período já pago
+   (accessUntil): quem cancela no dia 5 de um ciclo pago até
+   o dia 30 não perde os atendimentos que pagou. */
+const isSubscriptionUsable = (subscription, now = Date.now()) =>
+    Boolean(subscription) && (
+        subscription.status === "authorized" ||
+        subscription.status === "past_due" ||
+        (subscription.status === "cancelled" && Number(subscription.accessUntil) > now)
+    );
+
+/** Uma assinatura cancelada só cobre atendimentos antes do fim do acesso. */
+const subscriptionCoversDate = (subscription, date) =>
+    !(subscription && subscription.status === "cancelled") ||
+    date.getTime() < Number(subscription.accessUntil || 0);
 
 /** Sessões que ainda cabem no ciclo; null = ilimitado. */
 const sessionsLeft = (subscription, schedules, now = new Date()) => {
@@ -459,8 +470,10 @@ module.exports = {
     relatedIds,
     busySlots,
     hasConflict,
+    addMonths,
     cycleWindow,
     isSubscriptionUsable,
+    subscriptionCoversDate,
     sessionsLeft,
     parseCreate,
     buildSchedule,

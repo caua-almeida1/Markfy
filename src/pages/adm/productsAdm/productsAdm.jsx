@@ -60,15 +60,6 @@ import Modal from "../../../components/modal/Modal";
 
 const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
-    /* =====================================================
-       COMBOS
-
-       Um combo é um produto com `type: "combo"`: nasce no
-       mesmo nó, aparece no mesmo catálogo e é agendado pelo
-       mesmo fluxo. O que ele guarda a mais são os itens que
-       o formam.
-    ===================================================== */
-
     const [isComboModalOpen, setIsComboModalOpen] = useState(false);
 
     const [creatingCombo, setCreatingCombo] = useState(false);
@@ -1643,59 +1634,83 @@ const Products = ({ shouldOpenModal, setOpenProductsModal }) => {
 
     const [members, setMembers] = useState([]);
 
+    /*
+     * Equipe para "Relacionar usuários".
+     *
+     * Antes lia users/{uid} inteiro, que as regras só liberam
+     * para colegas em certas condições: um único membro negado
+     * derrubava o Promise.all e a lista sumia. Agora lê só o
+     * que é público — users/{uid}/name — e a foto do Storage
+     * (users/{uid}/profileImg, a mesma da página do produto),
+     * cada membro com a própria falha isolada.
+     */
+    const ROLE_LABELS = {
+        master: "Responsável",
+        administrator: "Administrador",
+        administrador: "Administrador",
+        professional: "Profissional"
+    };
+
     useEffect(() => {
+
+        if (!companyHandle) return undefined;
+
+        let cancelado = false;
+
         const fetchMembers = async () => {
             try {
-                const auth = getAuth();
-                const user = auth.currentUser;
-                if (!user) return;
-
-                // O handle vem do contexto: não precisamos
-                // varrer o nó "companys" para descobri-lo.
-                const companyKey = companyHandle;
-
-                if (!companyKey) return;
 
                 const db = getDatabase();
+                const storage = getStorage();
 
-                // Buscar os membros dessa empresa
-                const membersRef = ref(db, `companys/${companyKey}/members`);
-                const membersSnap = await get(membersRef);
+                const membersSnap = await get(
+                    ref(db, `companys/${companyHandle}/members`)
+                );
 
-                if (membersSnap.exists()) {
-                    const membersData = membersSnap.val();
+                const entries = Object.entries(membersSnap.val() || {});
 
-                    // Buscar apenas os uids necessários,
-                    // nunca o nó "users" inteiro.
-                    const entries = Object.entries(membersData);
+                const parsedMembers = await Promise.all(
+                    entries.map(async ([uid, info]) => {
 
-                    const parsedMembers = await Promise.all(
-                        entries.map(async ([uid, info]) => {
-                            const userSnap = await get(
-                                ref(db, `users/${uid}`)
-                            );
+                        const [name, avatar] = await Promise.all([
+                            get(ref(db, `users/${uid}/name`))
+                                .then((snap) => snap.val())
+                                .catch(() => null),
+                            getDownloadURL(storageRef(storage, `users/${uid}/profileImg`))
+                                .catch(() => null)
+                        ]);
 
-                            const userInfo = userSnap.exists()
-                                ? userSnap.val()
-                                : {};
+                        return {
+                            id: uid,
+                            name: name || "Sem nome",
+                            avatar,
+                            role:
+                                ROLE_LABELS[info?.role] ||
+                                info?.role ||
+                                "Sem função"
+                        };
+                    })
+                );
 
-                            return {
-                                id: uid,
-                                name: userInfo.name || "Sem nome",
-                                avatar: userInfo.avatar || null,
-                                role: info.role || "Sem função",
-                            };
-                        })
-                    );
+                if (!cancelado) setMembers(parsedMembers);
 
-                    setMembers(parsedMembers);
-                }
             } catch (err) {
-                console.error("Erro ao buscar membros:", err);
+                console.error("Erro ao buscar membros:", err?.code || err?.message);
             }
         };
 
-        fetchMembers();
+        /* Espera a sessão ser restaurada: com currentUser ainda
+           null a leitura era pulada e nunca refeita. */
+        const unsubscribe = getAuth().onAuthStateChanged((user) => {
+            if (user) fetchMembers();
+        });
+
+        return () => {
+            cancelado = true;
+            unsubscribe();
+        };
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [companyHandle]);
 
     const [selectedAdmins, setSelectedAdmins] = useState([]);

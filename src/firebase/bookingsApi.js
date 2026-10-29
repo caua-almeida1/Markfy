@@ -20,7 +20,13 @@ const FUNCTIONS_URL = "https://us-central1-markfy-96942.cloudfunctions.net";
 const NETWORK_MESSAGE =
     "Sem conexão com o servidor. Confira a internet e tente de novo.";
 
-export const callBookings = async (action, body = {}, { signal } = {}) => {
+/**
+ * Chama uma Cloud Function no formato { action, ... } (a
+ * bookingsApi e a subscriptionsApi seguem o mesmo contrato).
+ * O erro carrega `code`, `status` e o corpo inteiro em `data`
+ * — a mensalidade usa campos a mais, como `ownerAction`.
+ */
+export const callApi = async (endpoint, action, body = {}, { signal } = {}) => {
 
     const headers = { "Content-Type": "application/json" };
 
@@ -37,7 +43,7 @@ export const callBookings = async (action, body = {}, { signal } = {}) => {
     let response;
 
     try {
-        response = await fetch(`${FUNCTIONS_URL}/bookingsApi`, {
+        response = await fetch(`${FUNCTIONS_URL}/${endpoint}`, {
             method: "POST",
             headers,
             body: JSON.stringify({ ...body, action }),
@@ -57,11 +63,15 @@ export const callBookings = async (action, body = {}, { signal } = {}) => {
         const error = new Error(data.message || "Não foi possível concluir. Tente de novo.");
         error.status = response.status;
         error.code = data.code || null;
+        error.data = data;
         throw error;
     }
 
     return data.result;
 };
+
+export const callBookings = (action, body, options) =>
+    callApi("bookingsApi", action, body, options);
 
 /** Horários ocupados ({ day, hour, duration? }) de um profissional. */
 export const fetchBusySlots = async (handle, professionalId, options) =>

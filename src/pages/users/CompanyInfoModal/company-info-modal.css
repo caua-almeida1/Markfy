@@ -2136,3 +2136,44 @@
     }
 
 }
+
+
+/* =========================================================
+   GALERIA COMPACTA ("Nosso espaço")
+
+   Células em retrato (3/4) e a primeira foto em 2×2 deixavam
+   a seção mais alta que o resto do modal. Agora é uma faixa
+   de miniaturas quadradas, 4 por linha; a primeira ocupa 2
+   colunas na mesma altura. A foto inteira abre no visualizador.
+   ========================================================= */
+
+.company-info-gallery {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-auto-rows: auto;
+}
+
+.company-info-gallery-item,
+.company-info-gallery-item.featured:only-child,
+.company-info-gallery-item.featured:nth-last-child(2) {
+    aspect-ratio: 1 / 1;
+    grid-row: span 1;
+}
+
+.company-info-gallery-item.featured {
+    grid-column: span 2;
+    grid-row: span 1;
+    aspect-ratio: 2 / 1;
+}
+
+.company-info-gallery-item.featured:only-child {
+    grid-column: 1 / -1;
+    aspect-ratio: 16 / 7;
+}
+
+@media (max-width: 600px) {
+
+    .company-info-gallery {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-rows: auto;
+    }
+}
