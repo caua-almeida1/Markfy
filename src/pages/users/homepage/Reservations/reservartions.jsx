@@ -2,6 +2,7 @@ import React, {
     useCallback,
     useEffect,
     useMemo,
+    useRef,
     useState
 } from "react";
 
@@ -10,8 +11,7 @@ import { Icon } from "@iconify/react";
 import {
     getDatabase,
     ref,
-    get,
-    update
+    get
 } from "firebase/database";
 
 import { useNavigate, useParams } from "react-router-dom";
@@ -24,9 +24,19 @@ import { getClientId } from "../../../../utils/clientID";
 
 import {
     getSubscriptionSummary,
-    isSubscriptionUsable,
-    watchCompanySubscriptions
+    isSubscriptionVisible,
+    watchMySubscriptions
 } from "../../../../utils/subscriptionRuntime";
+
+import {
+    cancelSubscription,
+    syncSubscription
+} from "../../../../firebase/subscriptionsApi";
+
+import {
+    cancelMyBooking,
+    fetchMyBookings
+} from "../../../../firebase/bookingsApi";
 
 import "./reservations.css";
 
@@ -71,14 +81,15 @@ const Reservations = () => {
             return undefined;
         }
 
-        const unsubscribe = watchCompanySubscriptions(
+        const unsubscribe = watchMySubscriptions(
             handle,
-            (todas) =>
+            accountUid,
+            (minhas) =>
                 setSubscriptions(
-                    todas.filter(
+                    minhas.filter(
                         item =>
                             item.uid === accountUid &&
-                            isSubscriptionUsable(item)
+                            isSubscriptionVisible(item)
                     )
                 )
         );
@@ -88,7 +99,44 @@ const Reservations = () => {
     }, [handle, accountUid]);
 
 
-    const cancelarAssinatura = async () => {
+    /*
+     * Confere cada assinatura no Mercado Pago uma vez ao abrir.
+     *
+     * Se o webhook se perdeu (ou a URL de notificação não está
+     * configurada), é aqui que a tela descobre a cobrança
+     * recusada ou a autorização que chegou depois.
+     */
+    const [syncingSub, setSyncingSub] = useState(null);
+    const syncedOnce = useRef(new Set());
+
+    const conferirAssinatura = useCallback(async (assinatura, { quiet = false } = {}) => {
+
+        setSyncingSub(assinatura.id);
+
+        try {
+            await syncSubscription(handle, assinatura.id);
+        } catch (error) {
+            if (!quiet) showToast(error.message || "Não foi possível conferir agora.", "error");
+        } finally {
+            setSyncingSub(null);
+        }
+
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [handle]);
+
+    useEffect(() => {
+
+        subscriptions
+            .filter((item) => item.status !== "cancelled" && !syncedOnce.current.has(item.id))
+            .forEach((item) => {
+                syncedOnce.current.add(item.id);
+                conferirAssinatura(item, { quiet: true });
+            });
+
+    }, [subscriptions, conferirAssinatura]);
+
+
+    const cancelarAssinatura = async ({ withdrawal = false } = {}) => {
 
         if (!cancelTarget) return;
 
@@ -96,43 +144,45 @@ const Reservations = () => {
 
         try {
 
-            const token =
-                await getAuth().currentUser?.getIdToken();
-
-            const resposta = await fetch(
-                "https://us-central1-markfy-96942.cloudfunctions.net/cancelMercadoPagoSubscription",
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        Authorization: `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        companyHandle: handle,
-                        subscriptionId: cancelTarget.id
-                    })
-                }
+            const result = await cancelSubscription(
+                handle,
+                cancelTarget.id,
+                { withdrawal }
             );
 
-            const dados = await resposta.json().catch(() => ({}));
-
-            if (!resposta.ok || !dados.success) {
-                throw new Error(
-                    dados.message ||
-                    "Não foi possível cancelar a assinatura."
-                );
-            }
+            const data = (ms) => new Date(Number(ms)).toLocaleDateString("pt-BR");
 
             setCancelTarget(null);
 
-            showToast(
-                "Assinatura cancelada. Não haverá novas cobranças.",
-                "success"
-            );
+            if (withdrawal) {
+
+                showToast(
+                    result.refund?.failed
+                        ? "Assinatura cancelada. A empresa vai concluir o seu reembolso."
+                        : `Assinatura cancelada e ${formatPrice(result.refund?.refunded || 0)} estornados.`,
+                    "success"
+                );
+
+            } else if (result.cancelScheduledFor && result.status !== "cancelled") {
+
+                showToast(
+                    `Cancelamento agendado para ${data(result.cancelScheduledFor)}, pelo aviso prévio do plano.`,
+                    "success"
+                );
+
+            } else {
+
+                showToast(
+                    result.accessUntil
+                        ? `Assinatura cancelada. Seus atendimentos valem até ${data(result.accessUntil)}.`
+                        : "Assinatura cancelada. Não haverá novas cobranças.",
+                    "success"
+                );
+            }
 
         } catch (error) {
 
-            console.error("Erro ao cancelar assinatura:", error);
+            console.error("Erro ao cancelar assinatura:", error?.code || error?.message);
 
             showToast(
                 error.message ||
@@ -254,8 +304,6 @@ const Reservations = () => {
 
                 const clientId = getClientId();
 
-                const db = getDatabase();
-
                 if (!handle) {
 
                     setReservations([]);
@@ -263,32 +311,19 @@ const Reservations = () => {
                     return;
                 }
 
-                const schedulesRef = ref(
-                    db,
-                    `companys/${handle}/schedules`
-                );
-
-                const snapshot =
-                    await get(schedulesRef);
-
-                if (!snapshot.exists()) {
-
-                    setReservations([]);
-
-                    return;
-                }
-
-                const schedules =
-                    snapshot.val();
+                /*
+                 * A agenda da empresa é privada (tem nome e
+                 * telefone de todos os clientes). O backend
+                 * devolve só as reservas desta conta e deste
+                 * aparelho.
+                 */
+                const schedules = await fetchMyBookings({
+                    handles: [handle],
+                    clientId
+                });
 
                 const firebaseReservations =
-                    Object.entries(schedules)
-                        .map(
-                            ([id, reservation]) => ({
-                                id,
-                                ...reservation
-                            })
-                        )
+                    schedules
                         /*
                          * Meus agendamentos = os desta conta
                          * OU os deste aparelho.
@@ -1348,35 +1383,19 @@ const Reservations = () => {
 
             try {
 
-                const db =
-                    getDatabase();
-
                 const reservation =
                     selectedReservation;
 
-                const reservationRef =
-                    ref(
-                        db,
-                        `companys/${handle}/schedules/${reservation.id}`
-                    );
-
-                const reservationSnapshot =
-                    await get(
-                        reservationRef
-                    );
-
-                if (
-                    !reservationSnapshot.exists()
-                ) {
-
-                    throw new Error(
-                        "Esta reserva não foi encontrada."
-                    );
-
-                }
-
+                /*
+                 * A reserva vem da lista (já filtrada pelo
+                 * backend para esta conta/aparelho). As
+                 * conferências abaixo só deixam a mensagem
+                 * mais clara; quem decide de verdade é o
+                 * backend (bookingsApi/cancel), que repete
+                 * dono, status e antecedência.
+                 */
                 const currentReservation =
-                    reservationSnapshot.val();
+                    reservation;
 
                 if (
                     currentReservation.status !==
@@ -1433,27 +1452,25 @@ const Reservations = () => {
                     currentReservation.productId
                 ) {
 
-                    const productRef =
-                        ref(
-                            db,
-                            `companys/${handle}/products/${currentReservation.productId}`
-                        );
+                    /* Só o campo do prazo: o produto inteiro
+                       pode ter imagens antigas em base64. */
+                    try {
 
-                    const productSnapshot =
-                        await get(
-                            productRef
-                        );
-
-                    if (
-                        productSnapshot.exists()
-                    ) {
-
-                        const product =
-                            productSnapshot.val();
+                        const advanceSnapshot =
+                            await get(
+                                ref(
+                                    getDatabase(),
+                                    `companys/${handle}/products/${currentReservation.productId}/cancellationAdvance`
+                                )
+                            );
 
                         cancellationAdvance =
-                            product.cancellationAdvance ||
+                            advanceSnapshot.val() ||
                             null;
+
+                    } catch {
+
+                        cancellationAdvance = null;
 
                     }
 
@@ -1487,17 +1504,12 @@ const Reservations = () => {
 
                 }
 
-                const cancelledAt =
-                    new Date().toISOString();
-
-                await update(
-                    reservationRef,
-                    {
-                        status: "cancelados",
-                        cancelledAt,
-                        cancelledBy: "client"
-                    }
-                );
+                const { cancelledAt } =
+                    await cancelMyBooking(
+                        handle,
+                        reservation.id,
+                        getClientId()
+                    );
 
                 setReservations(
                     (prev) =>
@@ -2633,107 +2645,6 @@ const Reservations = () => {
 
                 {renderHeader()}
 
-            {/* =====================================================
-                CANCELAR ASSINATURA
-
-                As duas travas do plano — fidelidade e aviso
-                prévio — aparecem aqui, na hora da decisão. Dizer
-                isso só no contrato não ajuda ninguém.
-            ===================================================== */}
-
-            <Modal
-                open={!!cancelTarget}
-                onClose={() => !cancellingSub && setCancelTarget(null)}
-                overlayClassName="reservations-cancel-sub-overlay"
-                className="reservations-cancel-sub-modal"
-                label="Cancelar assinatura"
-            >
-
-                {cancelTarget && (() => {
-
-                    const regras =
-                        getSubscriptionSummary(
-                            cancelTarget,
-                            reservations
-                        ).cancelamento;
-
-                    return (
-                        <>
-                            <div className="reservations-cancel-sub-icon">
-                                <Icon icon="solar:close-circle-outline" />
-                            </div>
-
-                            <h2>Cancelar esta mensalidade?</h2>
-
-                            {regras.emFidelidade ? (
-
-                                <p>
-                                    Este plano tem fidelidade até{" "}
-                                    <strong>
-                                        {regras.fimDaFidelidade
-                                            .toLocaleDateString("pt-BR")}
-                                    </strong>
-                                    . Só depois dessa data ele pode ser
-                                    encerrado. Fale com a empresa se precisar
-                                    de uma exceção.
-                                </p>
-
-                            ) : (
-
-                                <>
-
-                                <p>
-                                    As cobranças param e o acesso segue até o
-                                    fim do ciclo atual
-                                    {regras.avisoDias > 0
-                                        ? `, e o aviso prévio de ${regras.avisoDias} dias faz o encerramento valer a partir de ${regras.encerraEm.toLocaleDateString("pt-BR")}`
-                                        : ""}
-                                    .
-                                </p>
-
-                                {/* O que a pessoa precisa saber ANTES de
-                                    confirmar, não depois de ver a fatura. */}
-                                <p className="reservations-cancel-sub-warning">
-                                    <strong>
-                                        O valor já cobrado não será estornado.
-                                    </strong>{" "}
-                                    Não há devolução proporcional pelos dias
-                                    restantes do ciclo.
-                                </p>
-
-                                </>
-
-                            )}
-
-                            <div className="reservations-cancel-sub-actions">
-
-                                <button
-                                    type="button"
-                                    disabled={cancellingSub}
-                                    onClick={() => setCancelTarget(null)}
-                                >
-                                    Manter assinatura
-                                </button>
-
-                                <button
-                                    type="button"
-                                    className="is-danger"
-                                    disabled={cancellingSub || regras.emFidelidade}
-                                    onClick={cancelarAssinatura}
-                                >
-                                    {cancellingSub
-                                        ? "Cancelando..."
-                                        : "Cancelar assinatura"}
-                                </button>
-
-                            </div>
-                        </>
-                    );
-
-                })()}
-
-            </Modal>
-
                 <div className="reservations-skeleton-summary">
 
                     <div className="reservation-skeleton-block" />
@@ -2782,6 +2693,141 @@ const Reservations = () => {
 
             {renderHeader()}
 
+            {/* =====================================================
+                CANCELAR ASSINATURA
+
+                Fidelidade, aviso prévio, até quando vale e o
+                direito de arrependimento aparecem aqui, na hora
+                da decisão. As mesmas regras são conferidas de
+                novo no backend.
+
+                Antes este modal só existia na tela de
+                "carregando": depois de carregar, o botão
+                "Cancelar assinatura" não abria nada.
+            ===================================================== */}
+
+            <Modal
+                open={!!cancelTarget}
+                onClose={() => !cancellingSub && setCancelTarget(null)}
+                overlayClassName="reservations-cancel-sub-overlay"
+                className="reservations-cancel-sub-modal"
+                label="Cancelar assinatura"
+            >
+
+                {cancelTarget && (() => {
+
+                    const regras =
+                        getSubscriptionSummary(
+                            cancelTarget,
+                            reservations
+                        ).cancelamento;
+
+                    const data = (date) => date.toLocaleDateString("pt-BR");
+
+                    return (
+                        <>
+                            <div className="reservations-cancel-sub-icon">
+                                <Icon icon="solar:close-circle-outline" />
+                            </div>
+
+                            <h2>Cancelar esta mensalidade?</h2>
+
+                            {regras.arrependimento && (
+
+                                <div className="reservations-cancel-sub-withdrawal">
+                                    <strong>
+                                        Você ainda está no prazo de arrependimento
+                                    </strong>
+                                    <span>
+                                        Até {data(regras.prazoArrependimento)} dá para desistir
+                                        e receber de volta o que foi cobrado (CDC, art. 49). A
+                                        assinatura acaba na hora e os horários marcados nela
+                                        são desmarcados.
+                                    </span>
+                                    <button
+                                        type="button"
+                                        disabled={cancellingSub}
+                                        onClick={() => cancelarAssinatura({ withdrawal: true })}
+                                    >
+                                        Desistir e pedir o reembolso
+                                    </button>
+                                </div>
+
+                            )}
+
+                            {regras.emFidelidade ? (
+
+                                <p>
+                                    Fora do arrependimento, este plano tem permanência
+                                    mínima até{" "}
+                                    <strong>{data(regras.fimDaFidelidade)}</strong>. Fale
+                                    com a empresa se precisar sair antes.
+                                </p>
+
+                            ) : regras.agendado ? (
+
+                                <p>
+                                    Pelo aviso prévio de {regras.avisoDias} dias, o
+                                    cancelamento vale a partir de{" "}
+                                    <strong>{data(regras.encerraEm)}</strong>. Até lá, a
+                                    próxima cobrança ainda acontece e seus atendimentos
+                                    continuam valendo.
+                                </p>
+
+                            ) : (
+
+                                <p>
+                                    As cobranças param agora.
+                                    {regras.acessoAte && regras.acessoAte > new Date()
+                                        ? <> Seus atendimentos continuam valendo até <strong>{data(regras.acessoAte)}</strong>; horários marcados depois disso são desmarcados.</>
+                                        : " Horários marcados nesta assinatura são desmarcados."}
+                                </p>
+
+                            )}
+
+                            {!regras.arrependimento && !regras.emFidelidade && cancelTarget.status !== "pending" && (
+
+                                <p className="reservations-cancel-sub-warning">
+                                    <strong>
+                                        O valor já cobrado não é devolvido.
+                                    </strong>{" "}
+                                    O prazo de arrependimento (7 dias) já passou, e não há
+                                    devolução proporcional do ciclo em andamento.
+                                </p>
+
+                            )}
+
+                            <div className="reservations-cancel-sub-actions">
+
+                                <button
+                                    type="button"
+                                    disabled={cancellingSub}
+                                    onClick={() => setCancelTarget(null)}
+                                >
+                                    Manter assinatura
+                                </button>
+
+                                <button
+                                    type="button"
+                                    className="is-danger"
+                                    disabled={cancellingSub || regras.emFidelidade}
+                                    onClick={() => cancelarAssinatura()}
+                                >
+                                    {cancellingSub
+                                        ? "Cancelando..."
+                                        : regras.agendado
+                                            ? "Agendar cancelamento"
+                                            : "Cancelar assinatura"}
+                                </button>
+
+                            </div>
+                        </>
+                    );
+
+                })()}
+
+            </Modal>
+
             <main className="reservations-main">
 
                 {renderSummary()}
@@ -2801,7 +2847,7 @@ const Reservations = () => {
                                     Mensalidades
                                 </span>
 
-                                <h2>Seus planos ativos</h2>
+                                <h2>Seus planos</h2>
                             </div>
                         </div>
 
@@ -2811,6 +2857,11 @@ const Reservations = () => {
                                 assinatura,
                                 reservations
                             );
+
+                            const estado = resumo.estado;
+                            const pendente = assinatura.status === "pending";
+                            const encerrada = assinatura.status === "cancelled";
+                            const cobrancas = resumo.cobrancas.slice(0, 3);
 
                             return (
                                 <article
@@ -2830,103 +2881,189 @@ const Reservations = () => {
                                             </strong>
 
                                             <span>
-                                                {Number(assinatura.price || 0)
-                                                    .toLocaleString("pt-BR", {
-                                                        style: "currency",
-                                                        currency: "BRL"
-                                                    })}
+                                                {formatPrice(assinatura.price)}
                                                 {" · "}
                                                 {resumo.ciclo.periodLabel}
+                                                {assinatura.method === "account"
+                                                    ? " · conta Mercado Pago"
+                                                    : assinatura.method === "card"
+                                                        ? " · cartão de crédito"
+                                                        : ""}
                                             </span>
                                         </div>
 
                                         <span
-                                            className={`reservations-subscription-badge ${assinatura.status === "past_due"
-                                                ? "is-late"
-                                                : "is-active"
-                                                }`}
+                                            className={`reservations-subscription-badge is-${estado.tone}`}
                                         >
-                                            {assinatura.status === "past_due"
-                                                ? "Pagamento pendente"
-                                                : "Ativa"}
+                                            {estado.label}
                                         </span>
 
                                     </header>
 
-                                    <div className="reservations-subscription-facts">
+                                    {!pendente && (
 
-                                        <div>
-                                            <span>Neste ciclo</span>
-                                            <strong>
-                                                {resumo.sessoesRestantes === null
-                                                    ? "Ilimitado"
-                                                    : `${resumo.sessoesRestantes} de ${assinatura.sessionsPerCycle}`}
-                                            </strong>
+                                        <div className="reservations-subscription-facts">
+
+                                            <div>
+                                                <span>Neste ciclo</span>
+                                                <strong>
+                                                    {resumo.sessoesRestantes === null
+                                                        ? "Ilimitado"
+                                                        : `${resumo.sessoesRestantes} de ${assinatura.sessionsPerCycle}`}
+                                                </strong>
+                                            </div>
+
+                                            <div>
+                                                <span>{encerrada ? "Vale até" : "Próxima cobrança"}</span>
+                                                <strong>
+                                                    {encerrada
+                                                        ? new Date(assinatura.accessUntil).toLocaleDateString("pt-BR")
+                                                        : resumo.proximaCobranca.toLocaleDateString("pt-BR")}
+                                                </strong>
+                                            </div>
+
+                                            <div>
+                                                <span>Ciclo atual até</span>
+                                                <strong>
+                                                    {resumo.cycleEnd
+                                                        .toLocaleDateString("pt-BR")}
+                                                </strong>
+                                            </div>
+
                                         </div>
 
-                                        <div>
-                                            <span>Próxima cobrança</span>
-                                            <strong>
-                                                {resumo.proximaCobranca
-                                                    .toLocaleDateString("pt-BR")}
-                                            </strong>
-                                        </div>
+                                    )}
 
-                                        <div>
-                                            <span>Ciclo atual até</span>
-                                            <strong>
-                                                {resumo.cycleEnd
-                                                    .toLocaleDateString("pt-BR")}
-                                            </strong>
-                                        </div>
+                                    {estado.tone !== "active" && estado.description && (
 
-                                    </div>
-
-                                    {assinatura.status === "past_due" && (
-
-                                        <p className="reservations-subscription-alert">
-                                            <Icon icon="solar:danger-triangle-outline" />
+                                        <p className={`reservations-subscription-alert is-${estado.tone}`}>
+                                            <Icon
+                                                icon={pendente
+                                                    ? "solar:hourglass-line-linear"
+                                                    : "solar:danger-triangle-outline"}
+                                            />
 
                                             <span>
-                                                A última cobrança não passou. O Mercado
-                                                Pago vai tentar de novo; se não der certo,
-                                                a assinatura é encerrada.
+                                                {estado.description}
+                                                {pendente && " Se você desistiu no Mercado Pago, nada foi cobrado e a tentativa some sozinha em 48 horas."}
                                             </span>
                                         </p>
 
                                     )}
 
+                                    {assinatura.firstBooking?.status === "failed" && !encerrada && (
+
+                                        <p className="reservations-subscription-alert is-late">
+                                            <Icon icon="solar:calendar-minimalistic-outline" />
+                                            <span>
+                                                O horário que você escolheu ao assinar não pôde
+                                                ser reservado ({assinatura.firstBooking.message || "já estava ocupado"}).
+                                                Marque outro abaixo — não há nada a pagar.
+                                            </span>
+                                        </p>
+
+                                    )}
+
+                                    {/* Cobranças: só valor, data e situação. O
+                                        comprovante completo é o e-mail do Mercado Pago. */}
+                                    {cobrancas.length > 0 && (
+
+                                        <ul className="reservations-subscription-charges">
+
+                                            {cobrancas.map((cobranca) => (
+
+                                                <li key={cobranca.id}>
+
+                                                    <Icon
+                                                        icon={cobranca.paid
+                                                            ? "solar:check-circle-bold"
+                                                            : cobranca.failed
+                                                                ? "solar:close-circle-bold"
+                                                                : "solar:clock-circle-outline"}
+                                                        className={cobranca.paid
+                                                            ? "is-paid"
+                                                            : cobranca.failed
+                                                                ? "is-failed"
+                                                                : ""}
+                                                    />
+
+                                                    <span>
+                                                        {cobranca.chargedAt
+                                                            ? new Date(cobranca.chargedAt).toLocaleDateString("pt-BR")
+                                                            : "—"}
+                                                    </span>
+
+                                                    <strong>{formatPrice(cobranca.amount)}</strong>
+
+                                                    <em>
+                                                        {cobranca.paid
+                                                            ? "Paga"
+                                                            : cobranca.failed
+                                                                ? "Recusada"
+                                                                : "Agendada"}
+                                                    </em>
+
+                                                </li>
+
+                                            ))}
+
+                                        </ul>
+
+                                    )}
+
                                     <div className="reservations-subscription-actions">
 
-                                        {/* Marcar o próximo atendimento acontece na
-                                            tela do produto: é lá que vivem a agenda do
-                                            profissional e as regras de antecedência.
-                                            Duplicar o seletor aqui seria manter duas
-                                            versões da mesma regra. */}
-                                        <button
-                                            type="button"
-                                            className="reservations-subscription-primary"
-                                            disabled={resumo.sessoesRestantes === 0}
-                                            onClick={() =>
-                                                navigate(
-                                                    `/central-user/${handle}?product=${assinatura.productId}`
-                                                )
-                                            }
-                                        >
-                                            <Icon icon="solar:calendar-add-outline" />
+                                        {pendente ? (
 
-                                            {resumo.sessoesRestantes === 0
-                                                ? "Sem atendimentos neste ciclo"
-                                                : "Marcar próximo atendimento"}
-                                        </button>
+                                            <button
+                                                type="button"
+                                                className="reservations-subscription-primary"
+                                                disabled={syncingSub === assinatura.id}
+                                                onClick={() => conferirAssinatura(assinatura)}
+                                            >
+                                                <Icon
+                                                    icon={syncingSub === assinatura.id
+                                                        ? "svg-spinners:ring-resize"
+                                                        : "solar:refresh-outline"}
+                                                />
+                                                Verificar no Mercado Pago
+                                            </button>
 
-                                        <button
-                                            type="button"
-                                            className="reservations-subscription-cancel"
-                                            onClick={() => setCancelTarget(assinatura)}
-                                        >
-                                            Cancelar assinatura
-                                        </button>
+                                        ) : (
+
+                                            /* Marcar o próximo atendimento acontece na
+                                               tela do produto: é lá que vivem a agenda do
+                                               profissional e as regras de antecedência. */
+                                            <button
+                                                type="button"
+                                                className="reservations-subscription-primary"
+                                                disabled={resumo.sessoesRestantes === 0}
+                                                onClick={() =>
+                                                    navigate(
+                                                        `/central-user/${handle}?product=${assinatura.productId}`
+                                                    )
+                                                }
+                                            >
+                                                <Icon icon="solar:calendar-add-outline" />
+
+                                                {resumo.sessoesRestantes === 0
+                                                    ? "Sem atendimentos neste ciclo"
+                                                    : "Marcar próximo atendimento"}
+                                            </button>
+
+                                        )}
+
+                                        {!encerrada && !assinatura.cancelScheduledFor && (
+
+                                            <button
+                                                type="button"
+                                                className="reservations-subscription-cancel"
+                                                onClick={() => setCancelTarget(assinatura)}
+                                            >
+                                                {pendente ? "Desistir" : "Cancelar assinatura"}
+                                            </button>
+
+                                        )}
 
                                     </div>
 

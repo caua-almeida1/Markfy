@@ -3,6 +3,7 @@ import { getDatabase, ref, get } from "firebase/database";
 import { getStorage, ref as storageRef, getDownloadURL } from "firebase/storage";
 
 import { loadCompanyLogo } from "../../firebase/companyLogo";
+import { fetchProfessionalProfile } from "../../firebase/publicCompany";
 import { loadCompanyPhotos } from "../../firebase/companyPhotos";
 import { loadProductImages } from "../../utils/productImages";
 import { toE164BR, formatPhoneBR } from "../../utils/phoneBR";
@@ -32,7 +33,8 @@ const FIELDS = [
     "email",
     "socialMedia",
     "businessHours",
-    "integrations",
+    /* Só o WhatsApp: é o único pedaço público de integrations. */
+    "integrations/whatsapp",
     "categories"
 ];
 
@@ -59,13 +61,13 @@ const pickWhatsapp = (company) => {
 
 const loadProfessionals = async (handle, members) => {
     const entries = Object.entries(members || {}).slice(0, 16);
-    const db = getDatabase();
     const storage = getStorage();
 
     const list = await Promise.all(
         entries.map(async ([uid, member]) => {
             const [user, photo] = await Promise.all([
-                get(ref(db, `users/${uid}`)).then((snap) => snap.val()).catch(() => null),
+                /* Só nome e descrição: users/{uid} inteiro é privado. */
+                fetchProfessionalProfile(uid).catch(() => null),
                 getDownloadURL(storageRef(storage, `users/${uid}/profileImg`)).catch(() => null)
             ]);
 
@@ -98,6 +100,8 @@ const loadBundle = async (handle) => {
 
     const company = Object.fromEntries(FIELDS.map((field, index) => [field, values[index]]));
 
+    company.integrations = { whatsapp: company["integrations/whatsapp"] || null };
+
     if (!company.name) {
         return null;
     }
@@ -109,7 +113,27 @@ const loadBundle = async (handle) => {
         loadCompanyPhotos(handle)
     ]);
 
-    const products = Object.entries(productsSnap?.val() || {})
+    const rawProducts = productsSnap?.val() || {};
+
+    /*
+     * Equipe: members é privado (guarda e-mail e telefone de
+     * quem entrou por pedido), então só a própria equipe o lê.
+     * Na página pública, a equipe são os profissionais ligados
+     * aos serviços (relatedUsers), que já são públicos.
+     */
+    const team = membersSnap?.val() || Object.fromEntries(
+        Object.values(rawProducts)
+            .filter((product) => product?.status !== "arquivados")
+            .flatMap((product) =>
+                Array.isArray(product?.relatedUsers)
+                    ? product.relatedUsers
+                    : Object.values(product?.relatedUsers || {})
+            )
+            .filter((item) => item && typeof item.id === "string")
+            .map((item) => [item.id, { role: item.role === "master" ? "master" : "professional" }])
+    );
+
+    const products = Object.entries(rawProducts)
         .map(([id, product]) => ({ id, ...product }))
         .filter((product) => product?.name && product.status !== "arquivados")
         .sort((a, b) => (Number(b.orders) || 0) - (Number(a.orders) || 0))
@@ -133,7 +157,7 @@ const loadBundle = async (handle) => {
                 product.image = images?.[0] || null;
             })
         ),
-        loadProfessionals(handle, membersSnap?.val())
+        loadProfessionals(handle, team)
     ]);
 
     const whatsapp = pickWhatsapp(company);

@@ -170,6 +170,11 @@ export const licenseActive = (license, now = Date.now()) =>
         (!license.expiresAt || Number(license.expiresAt) > now)
     );
 
+/* Planos que dão destaque nas áreas públicas (Explorar e
+   central do usuário). Destaque muda a ORDEM e é sinalizado
+   na tela; nunca esconde empresas de outros planos. */
+export const FEATURED_PLAN_IDS = ["pro", "premium"];
+
 /** Espelho público mínimo (publicAccess/{handle}). */
 export const publicAccessFor = (license, now = Date.now()) => {
     const active = Boolean(license) && license.status === "active" && (!license.expiresAt || Number(license.expiresAt) > now);
@@ -177,6 +182,7 @@ export const publicAccessFor = (license, now = Date.now()) => {
         bookings: active && productIncludes(license.product, "bookings"),
         studio: active && productIncludes(license.product, "studio"),
         menus: active && productIncludes(license.product, "menus"),
+        featured: active && FEATURED_PLAN_IDS.includes(license?.plan),
         expiresAt: license?.expiresAt || null
     };
 };

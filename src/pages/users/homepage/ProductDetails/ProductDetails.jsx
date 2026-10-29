@@ -4,7 +4,7 @@ import {
 } from "react-router-dom";
 
 import { createPortal } from "react-dom";
-import { getDatabase, ref, onValue, get, update } from "firebase/database";
+import { getDatabase, ref, onValue, get } from "firebase/database";
 import { Icon } from '@iconify/react';
 import { getClientId } from "../../../../utils/clientID";
 import {
@@ -65,6 +65,14 @@ import {
 
 import { useSingleProductImages } from "../../../../utils/productImages";
 
+import {
+    createBooking,
+    fetchBusySlots,
+    fetchMyBookings
+} from "../../../../firebase/bookingsApi";
+
+import { trackEvent } from "../../../../analytics/analytics";
+
 import { useExitTransition } from "../../../../hooks/useExitTransition";
 
 import "./product-details.css";
@@ -103,6 +111,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     const [showAllDays, setShowAllDays] = useState(false);
     const [availableTimes, setAvailableTimes] = useState([]);
     const [loadingTimes, setLoadingTimes] = useState(false);
+    const [timesError, setTimesError] = useState("");
+    const [timesReloadKey, setTimesReloadKey] = useState(0);
 
     const [loadingProfessionals, setLoadingProfessionals] = useState(false);
     const [currentMonthIndex, setCurrentMonthIndex] = useState(0);
@@ -369,21 +379,15 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         notes:
                             notes.trim(),
 
-                        /* O checkout precisa saber que é
-                           assinatura: muda o endpoint, os
-                           meios de pagamento e o aviso. */
+                        /* Assinatura abre o checkout em etapas
+                           (components/subscription-checkout). O
+                           plano vai inteiro só para MOSTRAR: o
+                           preço cobrado o backend lê do produto. */
                         subscriptionPlan:
                             monthlyPlan
                                 ? {
-                                    billingCycle:
-                                        monthlyPlan.billingCycle,
-                                    billingCycleDescription:
-                                        monthlyPlan.billingCyclePeriodLabel ||
-                                        monthlyPlan.billingCycleLabel,
-                                    cancellationNoticeDays:
-                                        monthlyPlan.cancellationNoticeDays,
-                                    loyaltyMonths:
-                                        monthlyPlan.loyaltyMonths
+                                    ...monthlyPlan,
+                                    amount: getEffectivePrice(product)
                                 }
                                 : null,
 
@@ -466,29 +470,39 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 const storage = getStorage();
 
                 /*
-                 * Lê apenas os uids relacionados ao produto.
+                 * Lê só o NOME de cada profissional do produto.
                  *
-                 * Ler o nó "users" inteiro numa rota pública
-                 * expõe nome e e-mail de toda a base.
+                 * users/{uid} inteiro é privado (e-mail,
+                 * telefone, preferências); as regras liberam
+                 * para o público apenas users/{uid}/name.
+                 * Um profissional sem nome legível não derruba
+                 * a lista dos outros.
                  */
 
                 const enrichedUsers = await Promise.all(
 
                     product.relatedUsers.map(async (relUser) => {
 
-                        const userSnap = await get(
-                            ref(db, `users/${relUser.id}`)
-                        );
+                        let name = "";
 
-                        const userInfo =
-                            userSnap.exists()
-                                ? userSnap.val()
-                                : {};
+                        try {
+
+                            const nameSnap = await get(
+                                ref(db, `users/${relUser.id}/name`)
+                            );
+
+                            name = nameSnap.val() || "";
+
+                        } catch (error) {
+
+                            name = "";
+
+                        }
 
                         return {
                             id: relUser.id,
                             role: relUser.role,
-                            name: userInfo.name || "Sem nome"
+                            name: name || "Profissional"
                         };
 
                     })
@@ -576,24 +590,18 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                 const db = getDatabase();
 
-                const paymentSettingsRef = ref(
-                    db,
-                    `companys/${companyHandle}/paymentSettings`
-                );
-
+                /* Só a chave pública: o resto de paymentSettings
+                   (conexão do Mercado Pago) é privado. */
                 const snapshot =
-                    await get(paymentSettingsRef);
-
-                if (!snapshot.exists()) {
-                    setRequiresPayment(false);
-                    return;
-                }
-
-                const paymentSettings =
-                    snapshot.val();
+                    await get(
+                        ref(
+                            db,
+                            `companys/${companyHandle}/paymentSettings/receiveBeforeBooking`
+                        )
+                    );
 
                 setRequiresPayment(
-                    paymentSettings.receiveBeforeBooking === true
+                    snapshot.val() === true
                 );
 
             } catch (error) {
@@ -848,56 +856,45 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
             }
 
             setLoadingTimes(true);
+            setTimesError("");
 
             try {
 
                 const db = getDatabase();
 
                 // ==========================================
-                // PROFISSIONAL
+                // HORÁRIOS OCUPADOS + EXPEDIENTE
                 // ==========================================
 
-                const userRef = ref(
-                    db,
-                    `users/${productDetailsSelectedProfessionalId}`
-                );
+                /*
+                 * Os ocupados vêm do backend (bookingsApi),
+                 * que lê a agenda e devolve só dia, hora e
+                 * duração. Antes eles saíam de
+                 * users/{profissional}/scheduledTimes, que
+                 * as regras fecharam — e que nunca liberava
+                 * o horário quando alguém cancelava.
+                 *
+                 * Do nó da empresa basta o expediente: ler
+                 * companys/{handle} inteiro trazia produtos
+                 * (com imagens antigas em base64), pedidos e
+                 * a agenda de todos os clientes.
+                 */
 
-                const userSnap = await get(userRef);
-
-                if (!userSnap.exists()) {
-
-                    setAvailableTimes([]);
-
-                    return;
-
-                }
-
-                const userData = userSnap.val();
-
-                const scheduledTimes =
-                    Array.isArray(userData.scheduledTimes)
-                        ? userData.scheduledTimes
-                        : [];
-
-
-                // ==========================================
-                // EMPRESA
-                // ==========================================
-
-                const companyRef = ref(
-                    db,
-                    `companys/${companyHandle}`
-                );
-
-                const companySnap = await get(companyRef);
-
-                const companyData =
-                    companySnap.exists()
-                        ? companySnap.val()
-                        : {};
+                const [scheduledTimes, hoursSnap] = await Promise.all([
+                    fetchBusySlots(
+                        companyHandle,
+                        productDetailsSelectedProfessionalId
+                    ),
+                    get(
+                        ref(
+                            db,
+                            `companys/${companyHandle}/businessHours`
+                        )
+                    )
+                ]);
 
                 const businessHours =
-                    companyData.businessHours || {};
+                    hoursSnap.val() || {};
 
                 const appointmentInterval =
                     Number(businessHours.interval) || 30;
@@ -1345,9 +1342,12 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                         }
 
 
+                        /* Duração do agendamento que já está
+                           lá, quando conhecida; senão a do
+                           serviço escolhido (regra antiga). */
                         const endMinutes =
                             startMinutes +
-                            serviceDuration;
+                            (Number(t.duration) || serviceDuration);
 
 
                         uniqueSlots.forEach((slot) => {
@@ -1449,6 +1449,13 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                 setAvailableTimes([]);
 
+                /* "Sem horários" e "não deu para carregar" são
+                   coisas diferentes para quem está agendando. */
+                setTimesError(
+                    err?.message ||
+                    "Não foi possível carregar os horários."
+                );
+
             } finally {
 
                 setLoadingTimes(false);
@@ -1467,7 +1474,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
         /* Emendar ou tirar um serviço muda o tempo total, e
            com ele os horários que cabem. */
-        bookingDuration
+        bookingDuration,
+
+        timesReloadKey
     ]);
 
     const productDetailsCapFirst = (s = "") =>
@@ -1990,9 +1999,25 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 : guestEmail
         ).trim();
 
+    /* Mensalidade pede o e-mail na própria etapa de pagamento
+       (é lá que se escolhe cartão ou conta Mercado Pago). */
     const precisaPedirEmail =
         requiresPayment &&
+        !monthlyPlan &&
         !(isUserLoggedIn && loggedUserEmail);
+
+    /* Produto mensal sem assinatura ativa: o próximo passo é
+       assinar — com ou sem "pagamento antecipado" ligado na
+       empresa. Antes isso só acontecia com ele ligado; sem,
+       o botão tentava agendar e o backend recusava ("Assine o
+       plano mensal..."), e ninguém conseguia assinar. */
+    const goesToSubscription =
+        Boolean(monthlyPlan) &&
+        !activeSubscription;
+
+    const goesToPayment =
+        goesToSubscription ||
+        (requiresPayment && !activeSubscription);
 
     const payerPhone =
         guestPhoneDigits;
@@ -2042,23 +2067,16 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                 if (isSubscriptionUsable(assinatura)) {
 
-                    const snapshot = await get(
-                        ref(
-                            getDatabase(),
-                            `companys/${companyHandle}/schedules`
-                        )
-                    );
+                    /* Só os agendamentos desta assinatura, pelo
+                       backend: a agenda da empresa é privada. */
+                    const daAssinatura = await fetchMyBookings({
+                        handles: [companyHandle],
+                        subscriptionId: assinatura.id
+                    });
 
                     if (cancelado) return;
 
-                    setSubscriptionSchedules(
-                        Object.entries(snapshot.val() || {})
-                            .map(([id, item]) => ({ id, ...item }))
-                            .filter(
-                                item =>
-                                    item.subscriptionId === assinatura.id
-                            )
-                    );
+                    setSubscriptionSchedules(daAssinatura);
 
                 }
 
@@ -2756,132 +2774,39 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
         try {
 
-            const db = getDatabase();
+            /*
+             * O agendamento é criado pelo backend
+             * (bookingsApi). Ele confere o que antes ficava
+             * só no navegador — e que qualquer um podia pular:
+             *
+             * - empresa com plano ativo;
+             * - profissional que atende este serviço;
+             * - horário ainda livre (com trava contra dois
+             *   clientes no mesmo horário);
+             * - 30 minutos entre agendamentos do mesmo
+             *   aparelho/conta;
+             * - pagamento antecipado e mensalidade;
+             * - preço, duração e nomes lidos do banco.
+             *
+             * O navegador manda só as escolhas da pessoa.
+             */
 
-            // ==========================================
-            // VERIFICAR AGENDAMENTO RECENTE
-            // ==========================================
-
-            const schedulesRef = ref(
-                db,
-                `companys/${companyHandle}/schedules`
-            );
-
-            const schedulesSnap =
-                await get(schedulesRef);
-
-            const schedulesData =
-                schedulesSnap.exists()
-                    ? schedulesSnap.val()
-                    : {};
-
-            const now = Date.now();
-
-            let bloqueado = false;
-
-            Object.values(schedulesData).forEach((ag) => {
-
-                if (
-                    !ag ||
-                    ag.clientId !== clientId ||
-                    !ag.timestamp
-                ) {
-                    return;
-                }
-
-                const createdAt =
-                    new Date(ag.timestamp).getTime();
-
-                if (Number.isNaN(createdAt)) {
-                    return;
-                }
-
-                const diffMs =
-                    now - createdAt;
-
-                const diffMinutes =
-                    diffMs / (1000 * 60);
-
-                // Bloqueia pelos 30 minutos após a criação
-                if (
-                    diffMinutes >= 0 &&
-                    diffMinutes < 30
-                ) {
-                    bloqueado = true;
-                }
-
-            });
-
-            if (bloqueado) {
-
-                openToast(
-                    "error",
-                    "Agendamento recente",
-                    "Você já realizou um agendamento recentemente. Tente novamente em 30 minutos."
-                );
-
-                return false;
-            }
-
-            // ==========================================
-            // ATUALIZAR PEDIDOS DO PRODUTO
-            // ==========================================
-
-            const productRef = ref(
-                db,
-                `companys/${companyHandle}/products/${product.id}`
-            );
-
-            const updatedOrders =
-                (product.orders || 0) + 1;
-
-            await update(
-                productRef,
-                {
-                    orders: updatedOrders
-                }
-            );
-
-            // ==========================================
-            // SALVAR AGENDAMENTO
-            // ==========================================
-
-            const scheduleId =
-                agendamento.timestamp
-                    .replace(/[:.]/g, "-");
-
-            const newScheduleRef =
-                ref(
-                    db,
-                    `companys/${companyHandle}/schedules/${scheduleId}`
-                );
-
-            const agendamentoComStatus = {
-                ...agendamento,
-                status: "pending",
+            const result = await createBooking({
+                handle: companyHandle,
+                productId: product.id,
+                professionalId: productDetailsSelectedProfessionalId,
                 clientId,
-
-                /* Liga o agendamento à conta, quando existe
-                   uma. O clientId sozinho identifica só o
-                   aparelho: trocar de celular fazia o
-                   histórico desaparecer. */
-                ...(loggedUserId
-                    ? { userId: loggedUserId }
-                    : {}
+                day: agendamento.day,
+                dayLabel: agendamento.dayLabel,
+                hour: agendamento.hour,
+                userName: agendamento.userName,
+                notes: agendamento.notes,
+                extraProductIds: (agendamento.extraServices || []).map(
+                    (item) => item.productId
                 ),
-
-                /* Veio de uma página do Markfy Studio: é
-                   assim que o Studio conta conversões. */
-                ...(readBookingSource(companyHandle)
-                    ? { source: readBookingSource(companyHandle) }
-                    : {}
-                )
-            };
-
-            await update(
-                newScheduleRef,
-                agendamentoComStatus
-            );
+                subscriptionId: agendamento.subscriptionId,
+                source: readBookingSource(companyHandle) || undefined
+            });
 
             /* Deixa a central do usuário (sem empresa na URL)
                encontrar esta reserva depois. */
@@ -2890,42 +2815,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 loggedUserId
             );
 
-            // ==========================================
-            // ATUALIZAR HORÁRIOS DO PROFISSIONAL
-            // ==========================================
-
-            const userRef = ref(
-                db,
-                `users/${productDetailsSelectedProfessionalId}`
-            );
-
-            const userSnap =
-                await get(userRef);
-
-            const userData =
-                userSnap.exists()
-                    ? userSnap.val()
-                    : {};
-
-            const currentTimes =
-                Array.isArray(userData.scheduledTimes)
-                    ? userData.scheduledTimes
-                    : [];
-
-            const updatedTimes = [
-                ...currentTimes,
-                {
-                    day: agendamento.day,
-                    hour: agendamento.hour
-                }
-            ];
-
-            await update(
-                userRef,
-                {
-                    scheduledTimes: updatedTimes
-                }
-            );
+            /* Só o handle da empresa (nome comercial público). */
+            trackEvent("booking_completed", { company_handle: companyHandle });
 
             // ==========================================
             // ATUALIZAR HORÁRIOS NA INTERFACE
@@ -2945,24 +2836,35 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                 )
             );
 
-            console.log(
-                "✅ Agendamento confirmado:",
-                agendamento.day,
-                agendamento.hour
-            );
-
-            return true;
+            return result?.scheduleId || true;
 
         } catch (error) {
 
             console.error(
-                "❌ Erro ao salvar agendamento:",
-                error
+                "Erro ao salvar agendamento:",
+                error?.code || error?.message
             );
+
+            /* Horário tomado por outra pessoa: recarrega a
+               lista para não oferecer o mesmo de novo. */
+            if (error?.code === "slot_taken") {
+                setTimesReloadKey((key) => key + 1);
+            }
+
+            const titles = {
+                recent_booking: "Agendamento recente",
+                slot_taken: "Horário indisponível",
+                payment_required: "Pagamento necessário",
+                subscription_required: "Mensalidade necessária",
+                subscription_exhausted: "Sessões esgotadas",
+                company_unavailable: "Empresa indisponível",
+                network: "Sem conexão"
+            };
 
             openToast(
                 "error",
-                "Não foi possível agendar",
+                titles[error?.code] || "Não foi possível agendar",
+                error?.message ||
                 "Ocorreu um erro ao realizar o agendamento. Tente novamente."
             );
 
@@ -2972,11 +2874,6 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     const finalizeAgendamento = async (agendamento) => {
         setIsConfirmed("loading");
-
-        console.log(
-            "📅 Agendamento iniciado:",
-            agendamento
-        );
 
         const success =
             await toShedule(agendamento);
@@ -3759,7 +3656,8 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                     </div>
                                                 </div>
 
-                                                {requiresPayment && (
+                                                {/* Mensalidade não é pagamento antecipado: tem o próprio aviso. */}
+                                                {requiresPayment && !monthlyPlan && (
                                                     <div className="product-details-payment-notice">
 
                                                         <div className="product-details-payment-notice-icon">
@@ -3806,12 +3704,15 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                             <div>
                                                                 <strong>
-                                                                    Você já assina este plano
+                                                                    {activeSubscription.status === "cancelled"
+                                                                        ? `Sua assinatura vale até ${new Date(activeSubscription.accessUntil).toLocaleDateString("pt-BR")}`
+                                                                        : "Você já assina este plano"}
                                                                 </strong>
 
                                                                 <span>
-                                                                    Escolha o dia e o horário do próximo
-                                                                    atendimento — não há nada a pagar agora.
+                                                                    {activeSubscription.status === "cancelled"
+                                                                        ? "Ela foi cancelada e não gera novas cobranças. Até lá, marque os atendimentos que já pagou."
+                                                                        : "Escolha o dia e o horário do próximo atendimento — não há nada a pagar agora."}
                                                                 </span>
                                                             </div>
 
@@ -3831,8 +3732,10 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             <div>
                                                                 <span>Próxima cobrança</span>
                                                                 <strong>
-                                                                    {subscriptionSummary.proximaCobranca
-                                                                        .toLocaleDateString("pt-BR")}
+                                                                    {activeSubscription.status === "cancelled"
+                                                                        ? "Nenhuma"
+                                                                        : subscriptionSummary.proximaCobranca
+                                                                            .toLocaleDateString("pt-BR")}
                                                                 </strong>
                                                             </div>
 
@@ -4455,6 +4358,38 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                                         )}
 
+                                                                        {productDetailsSelectedProfessionalId && months.length === 0 && (
+
+                                                                            <div
+                                                                                className="product-details-times-status"
+                                                                                role="status"
+                                                                                aria-live="polite"
+                                                                            >
+                                                                                {loadingTimes ? (
+                                                                                    <span>Carregando horários…</span>
+                                                                                ) : timesError ? (
+                                                                                    <>
+                                                                                        <span>{timesError}</span>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() =>
+                                                                                                setTimesReloadKey(
+                                                                                                    (key) => key + 1
+                                                                                                )
+                                                                                            }
+                                                                                        >
+                                                                                            Tentar de novo
+                                                                                        </button>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    <span>
+                                                                                        Nenhum horário livre nos próximos dias com este profissional.
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+
+                                                                        )}
+
                                                                         {months.length > 0 && (
 
                                                                             <div className="month-selector">
@@ -5063,7 +4998,7 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
                                                 {/* Aviso de pagamento */}
 
-                                                {requiresPayment && (
+                                                {requiresPayment && !monthlyPlan && (
                                                     <div className="confirmation-payment-notice">
 
                                                         <div className="confirmation-payment-notice-icon">
@@ -5214,10 +5149,19 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                         <span>Voltar</span>
                                                     </button>
 
+                                                    {/* Volta para este produto depois de
+                                                        entrar — antes caía no início e a
+                                                        pessoa precisava achar o plano de novo. */}
                                                     <button
                                                         type="button"
                                                         className="confirmation-modal-button confirmation-modal-button--primary"
-                                                        onClick={() => navigate("/login")}
+                                                        onClick={() =>
+                                                            navigate(
+                                                                `/login?redirect=${encodeURIComponent(
+                                                                    `/central-user/${companyHandle}?product=${product.id}`
+                                                                )}`
+                                                            )
+                                                        }
                                                     >
                                                         <span>Entrar ou criar conta</span>
                                                         <Icon icon="solar:arrow-right-outline" />
@@ -5575,9 +5519,12 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                                      * - telefone
                                                                      * - SMS
                                                                      * - novo login
+                                                                     *
+                                                                     * Mensalidade sem assinatura vai
+                                                                     * para o checkout da assinatura.
                                                                      */
 
-                                                                    if (requiresPayment) {
+                                                                    if (goesToPayment) {
 
                                                                         openCheckout();
 
@@ -5592,14 +5539,16 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             >
 
                                                                 <span>
-                                                                    {requiresPayment
-                                                                        ? "Continuar para pagamento"
-                                                                        : "Confirmar agendamento"}
+                                                                    {goesToSubscription
+                                                                        ? "Continuar para assinatura"
+                                                                        : goesToPayment
+                                                                            ? "Continuar para pagamento"
+                                                                            : "Confirmar agendamento"}
                                                                 </span>
 
                                                                 <Icon
                                                                     icon={
-                                                                        requiresPayment
+                                                                        goesToPayment
                                                                             ? "solar:arrow-right-outline"
                                                                             : "solar:check-outline"
                                                                     }

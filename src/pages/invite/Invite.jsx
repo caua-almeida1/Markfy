@@ -113,11 +113,15 @@ export default function Invite() {
                     Date.now() > inviteData.expiresAt
                 ) {
 
-                    await update(inviteRef, {
+                    /* Marcar como expirado é só arrumação: quem
+                       abre o link pode não ter permissão de
+                       gravar o convite, e isso não pode
+                       transformar "expirado" em "inválido". */
+                    update(inviteRef, {
 
                         status: "expired"
 
-                    });
+                    }).catch(() => {});
 
                     setPageState("expired");
 
@@ -174,17 +178,32 @@ export default function Invite() {
                 const lowercasedEmail =
                     invitedEmail.toLowerCase();
 
+                /*
+                 * As regras fecham users para consultas
+                 * públicas (elas revelavam quem tem conta).
+                 * Negada a consulta, o resultado é "não sei"
+                 * e a página mostra o login — que também
+                 * leva à criação de conta.
+                 */
                 const findUserByEmail = async (email) => {
 
-                    const snapshot = await get(
-                        query(
-                            ref(db, "users"),
-                            orderByChild("email"),
-                            equalTo(email)
-                        )
-                    );
+                    try {
 
-                    return snapshot.exists();
+                        const snapshot = await get(
+                            query(
+                                ref(db, "users"),
+                                orderByChild("email"),
+                                equalTo(email)
+                            )
+                        );
+
+                        return snapshot.exists();
+
+                    } catch {
+
+                        return null;
+
+                    }
 
                 };
 
@@ -192,13 +211,18 @@ export default function Invite() {
                     await findUserByEmail(lowercasedEmail);
 
                 if (
-                    !accountExists &&
+                    accountExists === false &&
                     invitedEmail !== lowercasedEmail
                 ) {
 
                     accountExists =
                         await findUserByEmail(invitedEmail);
 
+                }
+
+                /* Sem resposta: assume conta existente (login). */
+                if (accountExists === null) {
+                    accountExists = true;
                 }
 
                 setInvite({
@@ -645,7 +669,13 @@ export default function Invite() {
                 {
                     role: invite.role,
                     joinedAt: Date.now(),
-                    invitedBy: invite.inviterUid
+                    invitedBy: invite.inviterUid,
+
+                    /* As regras do banco só deixam alguém se
+                       tornar membro apontando um convite
+                       pendente, desta empresa, deste papel e
+                       para o e-mail da conta logada. */
+                    inviteId
                 }
             );
 

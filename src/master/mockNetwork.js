@@ -1,10 +1,13 @@
 /* Dados falsos SÓ para pré-visualizar o layout em desenvolvimento
    (/markfy-master-dev?mock). Nunca é carregado em produção. */
 
+import { SITE_URL } from "../config/site";
+
+/* markfy.app é de outra empresa: os links usam o endereço real. */
 const link = (h) => ({
-    bookings: `https://markfy.app/central-user/${h}`,
-    catalog: `https://markfy.app/central-user/${h}/catalog`,
-    studio: `https://markfy.app/s/${h}`
+    bookings: `${SITE_URL}/central-user/${h}`,
+    catalog: `${SITE_URL}/central-user/${h}/catalog`,
+    studio: `${SITE_URL}/s/${h}`
 });
 
 const mk = (handle, name, plan, product, studio) => ({

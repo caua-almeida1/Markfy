@@ -1,6 +1,5 @@
 import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, OAuthProvider } from "firebase/auth";
-import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getDatabase } from "firebase/database";
 
@@ -23,7 +22,8 @@ export const facebookProvider = new FacebookAuthProvider();
 export const appleProvider = new OAuthProvider('apple.com');
 
 export const storage = getStorage(app);
-export const db = getFirestore(app);
+/* Firestore não é usado pelo app (os dados vivem no Realtime
+   Database). Inicializá-lo só colocava o SDK dele no bundle. */
 export const realtimeDb = getDatabase(app);
 
 export { app, auth };

@@ -1755,6 +1755,40 @@ select {
 }
 
 
+/* ---------- Ver mais ---------- */
+
+.branding-themes-more {
+    align-self: center;
+
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+
+    padding: .5rem .9rem;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 999px;
+
+    background: transparent;
+    color: var(--mkf-ui-primary);
+
+    font: inherit;
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-semibold);
+
+    cursor: pointer;
+}
+
+.branding-themes-more svg {
+    width: 18px;
+    height: 18px;
+}
+
+.branding-themes-more:hover {
+    background: var(--mkf-ui-primary-light);
+}
+
+
 /* ---------- Nota ---------- */
 
 .branding-themes-note {

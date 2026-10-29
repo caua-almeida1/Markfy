@@ -1,0 +1,86 @@
+/* =========================================================
+   PLANO DE MENSALIDADE — "PARA O CLIENTE CONSEGUIR ASSINAR"
+
+   Passo 2.5 da criação do produto (ProductCreationModal).
+========================================================= */
+
+.adm-monthly-readiness {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px 16px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    border: 1px solid var(--mkf-ui-primary-light);
+    border-radius: 14px;
+    background: var(--mkf-ui-primary-lighter);
+}
+
+.adm-monthly-readiness-title {
+    font-size: var(--mkf-font-sm);
+    color: var(--mkf-text-primary);
+}
+
+.adm-monthly-readiness ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.adm-monthly-readiness li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.adm-monthly-readiness li > svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    font-size: 18px;
+    color: var(--mkf-ui-primary);
+}
+
+.adm-monthly-readiness li.is-done > svg {
+    color: var(--mkf-success, #22c55e);
+}
+
+.adm-monthly-readiness li.is-todo > svg {
+    color: var(--mkf-warning, #f59e0b);
+}
+
+.adm-monthly-readiness li div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.adm-monthly-readiness b {
+    font-size: var(--mkf-font-xs);
+    color: var(--mkf-text-primary);
+}
+
+.adm-monthly-readiness span {
+    font-size: var(--mkf-font-2xs, .6875rem);
+    line-height: 1.45;
+    color: var(--mkf-text-secondary);
+}
+
+.adm-monthly-readiness-link {
+    align-self: flex-start;
+
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    color: var(--mkf-ui-primary);
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+    text-decoration: none;
+}

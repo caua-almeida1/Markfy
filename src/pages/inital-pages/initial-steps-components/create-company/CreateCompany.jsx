@@ -1,2520 +1,724 @@
-import { useEffect, useRef, useState } from "react";
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Icon } from "@iconify/react";
+import { getAuth } from "firebase/auth";
+import { getDatabase, ref, get } from "firebase/database";
 
-import './create-company.css';
-import ImageCropper from './utils/components/ImageCropper';
+/* CSS antigo: só pelas classes do recortador de logo
+   (ImageCropper). O assistente usa o prefixo ncw-. */
+import "./create-company.css";
+import "./new-company.css";
 
+import ImageCropper from "./utils/components/ImageCropper";
+import { saveDraftImage, getDraftImage } from "./utils/companyDraft";
+import CoachMarks from "./CoachMarks";
+import { COMPANY_SEGMENTS, getSegment, searchSegments } from "./companySegments";
 import {
-  saveDraftImage,
-  getDraftImage,
-  removeDraftImage
-} from './utils/companyDraft';
+    digits,
+    formatDocument,
+    formatPhone,
+    formatZip,
+    hasProblems,
+    normalizeHandle,
+    stepProblems,
+    suggestHandle
+} from "./companyValidation";
+import { COMPANY_CATEGORIES } from "../../../../utils/companyCategories";
 
-import { Icon } from '@iconify/react';
+/* =========================================================
+   CADASTRO DE EMPRESA — ASSISTENTE
 
-import {
-  getDatabase,
-  ref as dbRef,
-  get,
-  child
-} from 'firebase/database';
+   4 etapas, duas obrigatórias:
+     0  Seu negócio   ramo (preenche sugestões), nome e @
+     1  Contato       CPF/CNPJ, e-mail e telefone
+     2  Identidade    logo, descrição, categorias   (pode pular)
+     3  Endereço      CEP preenche o resto          (pode pular)
+   e então a revisão (/newcompany/previewcompany/:id).
 
+   Rascunho salvo a cada mudança (localStorage + logo no
+   IndexedDB) e restaurado ao recarregar. Tutorial com
+   destaque de cada campo na primeira vez; pode ser pulado e
+   reaberto pelo botão de ajuda.
+========================================================= */
 
-const emptyLocation = {
-  street: '',
-  number: '',
-  neighborhood: '',
-  city: '',
-  state: '',
-  zipCode: '',
-  country: ''
+export const draftKeyFor = (sessionId) => `markfy_create_company_draft_${sessionId}`;
+
+const TOUR_KEY = "markfy-newcompany-tour";
+
+export const EMPTY_COMPANY = {
+    segment: "",
+    name: "",
+    handle: "",
+    handleEdited: false,
+    document: "",
+    email: "",
+    phone: "",
+    description: "",
+    categories: [],
+    location: { zipCode: "", street: "", number: "", neighborhood: "", city: "", state: "", country: "Brasil" }
 };
 
-const COMPANY_CATEGORIES = [
-  {
-    id: 'barbearia',
-    name: 'Barbearia',
-    icon: 'solar:scissors-outline'
-  },
-  {
-    id: 'salao-beleza',
-    name: 'Salão de beleza',
-    icon: 'solar:mirror-outline'
-  },
-  {
-    id: 'cabeleireiro',
-    name: 'Cabeleireiro',
-    icon: 'solar:scissors-outline'
-  },
-  {
-    id: 'manicure-pedicure',
-    name: 'Manicure e pedicure',
-    icon: 'solar:hand-stars-outline'
-  },
-  {
-    id: 'sobrancelhas',
-    name: 'Design de sobrancelhas',
-    icon: 'solar:eye-outline'
-  },
-  {
-    id: 'cilios',
-    name: 'Extensão de cílios',
-    icon: 'solar:eye-scan-outline'
-  },
-  {
-    id: 'maquiagem',
-    name: 'Maquiagem',
-    icon: 'solar:palette-outline'
-  },
-  {
-    id: 'tatuagem',
-    name: 'Estúdio de tatuagem',
-    icon: 'solar:pen-new-square-outline'
-  },
-  {
-    id: 'fotografia',
-    name: 'Estúdio de fotografia',
-    icon: 'solar:camera-outline'
-  },
-  {
-    id: 'estetica',
-    name: 'Clínica de estética',
-    icon: 'solar:heart-pulse-outline'
-  },
-  {
-    id: 'massoterapia',
-    name: 'Massoterapia',
-    icon: 'solar:hand-heart-outline'
-  },
-  {
-    id: 'spa',
-    name: 'Spa e bem-estar',
-    icon: 'solar:leaf-outline'
-  },
-  {
-    id: 'odontologia',
-    name: 'Clínica odontológica',
-    icon: 'solar:medical-kit-outline'
-  },
-  {
-    id: 'medicina',
-    name: 'Consultório médico',
-    icon: 'solar:stethoscope-outline'
-  },
-  {
-    id: 'fisioterapia',
-    name: 'Fisioterapia',
-    icon: 'solar:health-outline'
-  },
-  {
-    id: 'nutricao',
-    name: 'Nutrição',
-    icon: 'solar:chef-hat-outline'
-  },
-  {
-    id: 'psicologia',
-    name: 'Psicologia',
-    icon: 'solar:brain-outline'
-  },
-  {
-    id: 'personal-trainer',
-    name: 'Personal trainer',
-    icon: 'solar:running-outline'
-  },
-  {
-    id: 'academia',
-    name: 'Academia',
-    icon: 'solar:dumbbell-outline'
-  },
-  {
-    id: 'pilates',
-    name: 'Pilates',
-    icon: 'solar:body-outline'
-  },
-  {
-    id: 'yoga',
-    name: 'Yoga',
-    icon: 'solar:meditation-outline'
-  },
-  {
-    id: 'pet-shop',
-    name: 'Pet shop',
-    icon: 'solar:cat-outline'
-  },
-  {
-    id: 'banho-tosa',
-    name: 'Banho e tosa',
-    icon: 'solar:scissors-square-outline'
-  },
-  {
-    id: 'eventos',
-    name: 'Fotografia e eventos',
-    icon: 'solar:gallery-outline'
-  },
-  {
-    id: 'design',
-    name: 'Agência de design',
-    icon: 'solar:pen-2-outline'
-  },
-  {
-    id: 'marketing',
-    name: 'Marketing e publicidade',
-    icon: 'solar:graph-up-outline'
-  },
-  {
-    id: 'tecnologia',
-    name: 'Tecnologia e desenvolvimento',
-    icon: 'solar:code-outline'
-  },
-  {
-    id: 'consultoria',
-    name: 'Consultoria',
-    icon: 'solar:case-outline'
-  },
-  {
-    id: 'educacao',
-    name: 'Educação e cursos',
-    icon: 'solar:book-2-outline'
-  },
-  {
-    id: 'automotivo',
-    name: 'Serviços automotivos',
-    icon: 'solar:wheel-outline'
-  }
+const STEPS = [
+    { id: "negocio", title: "Seu negócio", hint: "O básico para a empresa existir na Markfy.", required: true },
+    { id: "contato", title: "Contato", hint: "Como clientes e a Markfy falam com você.", required: true },
+    { id: "identidade", title: "Identidade", hint: "Logo e apresentação. Dá para fazer depois.", required: false },
+    { id: "endereco", title: "Endereço", hint: "Ajuda clientes por perto a encontrar você.", required: false }
 ];
+
+const TOUR = [
+    [
+        { target: "ncw-segments", title: "Escolha o ramo", text: "Preenchemos categorias e uma descrição inicial para você. Tudo continua editável." },
+        { target: "ncw-field-name", title: "Nome da empresa", text: "É o nome que aparece para os clientes na página e no Explorar." },
+        { target: "ncw-field-handle", title: "O @ da empresa", text: "Vira o endereço da sua página (…/central-user/seu-arroba). Sugerimos um a partir do nome." }
+    ],
+    [
+        { target: "ncw-field-document", title: "CPF ou CNPJ", text: "Usado só para identificar a empresa. Não aparece para os clientes." },
+        { target: "ncw-field-email", title: "E-mail de contato", text: "Preenchemos com o e-mail da sua conta; troque se quiser outro." },
+        { target: "ncw-field-phone", title: "Telefone ou WhatsApp", text: "Com DDD. Os clientes podem usar para falar com você." }
+    ],
+    [
+        { target: "ncw-field-logo", title: "Logo (opcional)", text: "Uma imagem quadrada fica melhor. Você ajusta o enquadramento antes de salvar." },
+        { target: "ncw-field-description", title: "Descrição", text: "Já veio uma sugestão do seu ramo. Conte em uma ou duas frases o que você faz." },
+        { target: "ncw-field-categories", title: "Categorias", text: "É por elas que clientes filtram no Explorar. Marque todas que combinam." }
+    ],
+    [
+        { target: "ncw-field-zip", title: "CEP", text: "Digite o CEP e completamos rua, bairro, cidade e estado." },
+        { target: "ncw-use-location", title: "Ou use sua localização", text: "Se estiver no local da empresa, preenchemos pelo GPS do aparelho." }
+    ]
+];
+
+const readTour = () => {
+    try {
+        return JSON.parse(localStorage.getItem(TOUR_KEY)) || {};
+    } catch {
+        return {};
+    }
+};
+
+const writeTour = (value) => {
+    try {
+        localStorage.setItem(TOUR_KEY, JSON.stringify(value));
+    } catch {
+        /* sem armazenamento: o tutorial só volta a aparecer */
+    }
+};
+
+const Field = ({ id, label, required, error, hint, children }) => (
+    <div className={`ncw-field ${error ? "has-error" : ""}`} id={`ncw-field-${id}`}>
+        <label htmlFor={`ncw-${id}`}>
+            {label}
+            {required ? <span className="ncw-req" aria-hidden="true">*</span> : <span className="ncw-opt">opcional</span>}
+        </label>
+        {children}
+        {error
+            ? <p className="ncw-error" id={`ncw-${id}-error`} role="alert">{error}</p>
+            : hint ? <p className="ncw-hint">{hint}</p> : null}
+    </div>
+);
 
 const CreateCompany = () => {
 
-  const navigate = useNavigate();
-  const routerLocation = useLocation();
-
-  const database = getDatabase();
-  const sessionId = routerLocation.pathname.split('/').pop();
-
-  const draftKey = `markfy_create_company_draft_${sessionId}`;
-  const hasRestoredDraft = useRef(false);
-  const [step, setStep] = useState(1);
-
-  /* =====================================================
-     DADOS DA EMPRESA
-     ===================================================== */
-
-  const [companyName, setCompanyName] = useState('');
-  const [companyHandle, setCompanyHandle] = useState('');
-  const [doc, setDoc] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-
-  const [settingsStep, setSettingsStep] = useState('location');
-  const [companyCategories, setCompanyCategories] = useState([]);
-  /* =====================================================
-       VALIDAÇÕES
-       ===================================================== */
-
-  const [nameErrors, setNameErrors] = useState([]);
-  const [errors, setErrors] = useState([]);
-  const [docError, setDocError] = useState('');
-  const [emailError, setEmailError] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-  const [isCheckingHandle, setIsCheckingHandle] = useState(false);
-
-
-  /* =====================================================
-     IDENTIDADE
-     ===================================================== */
-
-  const [companyDescription, setCompanyDescription] = useState('');
-  const [selectedImage, setSelectedImage] = useState(null);
-
-  const [logoFile, setLogoFile] = useState(null);
-
-  const [showLogoModal, setShowLogoModal] = useState(false);
-
-  const [logoSource, setLogoSource] = useState(null);
-  const [showLogoCropper, setShowLogoCropper] = useState(false);
-
-  const [isDraggingLogo, setIsDraggingLogo] = useState(false);
-
-  /* =====================================================
-     LOCALIZAÇÃO
-     ===================================================== */
-
-  const [location, setLocation] = useState(emptyLocation);
-  const [loadingLocation, setLoadingLocation] = useState(false);
-
-  /* =====================================================
-     VALIDA NOME
-     ===================================================== */
-
-  const handleCategoryToggle = (categoryId) => {
-
-    setCompanyCategories(prev => {
-
-      if (prev.includes(categoryId)) {
-        return prev.filter(id => id !== categoryId);
-      }
-
-      if (prev.length >= 3) {
-        return prev;
-      }
-
-      return [...prev, categoryId];
-
-    });
-
-  };
-  const validateName = (value) => {
-
-    const validationErrors = [];
-
-    if (value.trim().length === 0) {
-      validationErrors.push(
-        'O nome da empresa é obrigatório.'
-      );
-    }
-
-    if (value.length > 30) {
-      validationErrors.push(
-        'Máximo de 30 caracteres.'
-      );
-    }
-
-    setNameErrors(validationErrors);
-
-  };
-
-
-  /* =====================================================
-     VALIDA IDENTIFICADOR
-     ===================================================== */
-
-  const validateHandle = async (value) => {
-
-    const validationErrors = [];
-
-    if (value.length < 3) {
-      validationErrors.push(
-        'Mínimo de 3 caracteres.'
-      );
-    }
-
-    if (value.length > 25) {
-      validationErrors.push(
-        'Máximo de 25 caracteres.'
-      );
-    }
-
-    if (/\s/.test(value)) {
-      validationErrors.push(
-        'Não pode conter espaços.'
-      );
-    }
-
-    if (!/^[a-zA-Z0-9_-]*$/.test(value)) {
-      validationErrors.push(
-        'Apenas letras, números, hífen ou underline são permitidos.'
-      );
-    }
-
-    if (
-      validationErrors.length === 0 &&
-      value
-    ) {
-
-      setIsCheckingHandle(true);
-
-      try {
-
-        const snapshot = await get(
-          child(
-            dbRef(database),
-            `companys/${value}`
-          )
-        );
-
-        if (snapshot.exists()) {
-
-          validationErrors.push(
-            'Este identificador já está em uso.'
-          );
-
-        }
-
-      } catch (err) {
-
-        console.error(
-          'Erro ao verificar identificador:',
-          err
-        );
-
-      }
-
-      setIsCheckingHandle(false);
-
-    }
-
-    setErrors(validationErrors);
-
-  };
-
-
-  /* =====================================================
-     CPF / CNPJ
-     ===================================================== */
-
-  const validateCPF_CNPJ = (value) => {
-
-    const clean = value.replace(/\D/g, '');
-
-    if (clean.length === 11) {
-
-      if (!isValidCPF(clean)) {
-        setDocError('CPF inválido.');
-      } else {
-        setDocError('');
-      }
-
-      return;
-    }
-
-    if (clean.length === 14) {
-
-      if (!isValidCNPJ(clean)) {
-        setDocError('CNPJ inválido.');
-      } else {
-        setDocError('');
-      }
-
-      return;
-    }
-
-    setDocError(
-      'Informe um CPF ou CNPJ válido.'
-    );
-
-  };
-
-
-  const isValidCPF = (cpf) => {
-
-    if (
-      !cpf ||
-      cpf.length !== 11 ||
-      /^(\d)\1{10}$/.test(cpf)
-    ) {
-      return false;
-    }
-
-    let sum = 0;
-
-    for (let i = 0; i < 9; i++) {
-
-      sum +=
-        parseInt(cpf[i]) *
-        (10 - i);
-
-    }
-
-    let firstDigit =
-      (sum * 10) % 11;
-
-    if (firstDigit === 10) {
-      firstDigit = 0;
-    }
-
-    if (
-      firstDigit !==
-      parseInt(cpf[9])
-    ) {
-      return false;
-    }
-
-    sum = 0;
-
-    for (let i = 0; i < 10; i++) {
-
-      sum +=
-        parseInt(cpf[i]) *
-        (11 - i);
-
-    }
-
-    let secondDigit =
-      (sum * 10) % 11;
-
-    if (secondDigit === 10) {
-      secondDigit = 0;
-    }
-
-    return (
-      secondDigit ===
-      parseInt(cpf[10])
-    );
-
-  };
-
-
-  const isValidCNPJ = (cnpj) => {
-
-    if (
-      !cnpj ||
-      cnpj.length !== 14 ||
-      /^(\d)\1{13}$/.test(cnpj)
-    ) {
-      return false;
-    }
-
-    let length = cnpj.length - 2;
-
-    let numbers =
-      cnpj.substring(0, length);
-
-    let digits =
-      cnpj.substring(length);
-
-    let sum = 0;
-
-    let pos =
-      length - 7;
-
-    for (
-      let i = length;
-      i >= 1;
-      i--
-    ) {
-
-      sum +=
-        parseInt(
-          numbers.charAt(
-            length - i
-          )
-        ) * pos--;
-
-      if (pos < 2) {
-        pos = 9;
-      }
-
-    }
-
-    let result =
-      sum % 11 < 2
-        ? 0
-        : 11 - (sum % 11);
-
-    if (
-      result !==
-      parseInt(digits.charAt(0))
-    ) {
-      return false;
-    }
-
-    length += 1;
-
-    numbers =
-      cnpj.substring(0, length);
-
-    sum = 0;
-
-    pos =
-      length - 7;
-
-    for (
-      let i = length;
-      i >= 1;
-      i--
-    ) {
-
-      sum +=
-        parseInt(
-          numbers.charAt(
-            length - i
-          )
-        ) * pos--;
-
-      if (pos < 2) {
-        pos = 9;
-      }
-
-    }
-
-    result =
-      sum % 11 < 2
-        ? 0
-        : 11 - (sum % 11);
-
-    return (
-      result ===
-      parseInt(digits.charAt(1))
-    );
-
-  };
-
-
-  /* =====================================================
-     EMAIL
-     ===================================================== */
-
-  const validateEmail = (value) => {
-
-    const regex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!regex.test(value)) {
-
-      setEmailError(
-        'Email inválido.'
-      );
-
-    } else {
-
-      setEmailError('');
-
-    }
-
-  };
-
-
-  /* =====================================================
-     TELEFONE
-     ===================================================== */
-
-  const validatePhone = (value) => {
-
-    const digits =
-      value.replace(/\D/g, '');
-
-    if (
-      digits.length < 10 ||
-      digits.length > 11
-    ) {
-
-      setPhoneError(
-        'Número de telefone deve ter 10 ou 11 dígitos.'
-      );
-
-    } else {
-
-      setPhoneError('');
-
-    }
-
-  };
-
-
-  /* =====================================================
-     IDENTIFICADOR
-     ===================================================== */
-
-  const handleHandleChange = (event) => {
-
-    const value =
-      event.target.value
-        .toLowerCase()
-        .replace(/^@/, '');
-
-    setCompanyHandle(value);
-
-    validateHandle(value);
-
-  };
-
-
-  /* =====================================================
-     LOCALIZAÇÃO
-     ===================================================== */
-
-  const handleLocationChange = (event) => {
-
-    const {
-      name,
-      value
-    } = event.target;
-
-    setLocation(prev => ({
-      ...prev,
-      [name]: value
-    }));
-
-  };
-
-
-  const handleDeviceLocation = () => {
-
-    if (!navigator.geolocation) {
-      return;
-    }
-
-    setLoadingLocation(true);
-
-    navigator.geolocation.getCurrentPosition(
-
-      async (position) => {
-
-        try {
-
-          const {
-            latitude,
-            longitude
-          } = position.coords;
-
-          const response =
-            await fetch(
-              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=18&addressdetails=1`,
-              {
-                headers: {
-                  Accept:
-                    'application/json'
+    const navigate = useNavigate();
+    const routerLocation = useLocation();
+
+    const sessionId = routerLocation.pathname.split("/").pop();
+    const draftKey = draftKeyFor(sessionId);
+
+    const [step, setStep] = useState(0);
+    const [data, setData] = useState(EMPTY_COMPANY);
+    const [logo, setLogo] = useState(null);
+    const [touched, setTouched] = useState({});
+    const [showErrors, setShowErrors] = useState(false);
+    const [handleStatus, setHandleStatus] = useState("idle");
+    const [segmentSearch, setSegmentSearch] = useState("");
+    const [autofillNote, setAutofillNote] = useState("");
+    const [cropSource, setCropSource] = useState(null);
+    const [zipStatus, setZipStatus] = useState("idle");
+    const [locating, setLocating] = useState(false);
+    const [tourOpen, setTourOpen] = useState(false);
+    const restored = useRef(false);
+    const [ready, setReady] = useState(false);
+
+    /* ---------------- rascunho ---------------- */
+
+    useEffect(() => {
+
+        let cancelled = false;
+
+        (async () => {
+            try {
+                const saved = JSON.parse(localStorage.getItem(draftKey) || "null");
+
+                if (saved?.data && !cancelled) {
+                    setData({ ...EMPTY_COMPANY, ...saved.data, location: { ...EMPTY_COMPANY.location, ...(saved.data.location || {}) } });
+                    setStep(Number.isInteger(saved.step) ? saved.step : 0);
+                } else if (!cancelled) {
+                    const email = getAuth().currentUser?.email || "";
+                    if (email) setData((current) => ({ ...current, email }));
                 }
-              }
-            );
 
-          if (!response.ok) {
-            throw new Error(
-              'Erro ao buscar endereço.'
-            );
-          }
-
-          const data =
-            await response.json();
-
-          const address =
-            data.address || {};
-
-          setLocation({
-
-            street:
-              address.road ||
-              address.pedestrian ||
-              address.residential ||
-              '',
-
-            number:
-              address.house_number ||
-              '',
-
-            neighborhood:
-              address.neighbourhood ||
-              address.suburb ||
-              '',
-
-            city:
-              address.city ||
-              address.town ||
-              address.village ||
-              '',
-
-            state:
-              address.state ||
-              '',
-
-            zipCode:
-              address.postcode ||
-              '',
-
-            country:
-              address.country ||
-              ''
-
-          });
-
-        } catch (error) {
-
-          console.error(error);
-
-        } finally {
-
-          setLoadingLocation(false);
-
-        }
-
-      },
-
-      (error) => {
-
-        console.error(error);
-
-        setLoadingLocation(false);
-
-      },
-
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-
-    );
-
-  };
-
-
-  /* =====================================================
-     ETAPA 01
-     ===================================================== */
-
-  const handleNextStep = (event) => {
-
-    event.preventDefault();
-
-    if (
-      errors.length > 0 ||
-      nameErrors.length > 0 ||
-      docError !== '' ||
-      emailError !== '' ||
-      phoneError !== '' ||
-      isCheckingHandle
-    ) {
-      return;
-    }
-
-    if (
-      !companyName.trim() ||
-      !companyHandle.trim() ||
-      !doc.trim() ||
-      !email.trim() ||
-      !phone.trim()
-    ) {
-      return;
-    }
-
-    setStep(2);
-
-  };
-
-
-  /* =====================================================
-     ETAPA 02
-     ===================================================== */
-
-  const handleNextToSettings = () => {
-    setStep(3);
-  };
-
-  /* =====================================================
-     VOLTAR
-     ===================================================== */
-
-  const handlePreviousStep = () => {
-
-    setStep(prev =>
-      Math.max(1, prev - 1)
-    );
-
-  };
-
-
-  /* =====================================================
-     PREVIEW
-     ===================================================== */
-
-  const handleProceedToPreview = () => {
-    navigate(
-      `/newcompany/previewcompany/${sessionId}`,
-      {
-        state: {
-          name: companyName,
-          handle: companyHandle,
-          document: doc,
-          email,
-          phone,
-
-          companyCategories,
-          description: companyDescription,
-
-          logoPreview: selectedImage || null,
-
-          location: {
-            street: location.street || '',
-            number: location.number || '',
-            neighborhood: location.neighborhood || '',
-            city: location.city || '',
-            state: location.state || '',
-            zipCode: location.zipCode || '',
-            country: location.country || ''
-          },
-
-          returnStep: step,
-          draftKey
-        }
-      }
-    );
-  };
-
-  /* =====================================================
-   LOGO
-   ===================================================== */
-  const handleLogoChange = (event) => {
-
-    const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    handleLogoFile(file);
-
-    event.target.value = '';
-
-  };
-
-  const handleLogoFile = (file) => {
-
-    if (!file || !file.type.startsWith('image/')) {
-      return;
-    }
-
-    setLogoFile(file);
-
-    const reader = new FileReader();
-
-    reader.onload = () => {
-
-      setLogoSource(reader.result);
-
-      // Fecha o modal de seleção
-      setShowLogoModal(false);
-
-      // Abre somente o modal de recorte
-      setShowLogoCropper(true);
-
-    };
-
-    reader.onerror = () => {
-
-      console.error('Erro ao carregar imagem.');
-
-    };
-
-    reader.readAsDataURL(file);
-
-  };
-
-  const handleLogoDragOver = (event) => {
-
-    event.preventDefault();
-
-    setIsDraggingLogo(true);
-
-  };
-
-
-  const handleLogoDragLeave = (event) => {
-
-    event.preventDefault();
-
-    setIsDraggingLogo(false);
-
-  };
-
-
-  const handleLogoDrop = (event) => {
-
-    event.preventDefault();
-
-    setIsDraggingLogo(false);
-
-    const file = event.dataTransfer.files?.[0];
-
-    if (!file) {
-      return;
-    }
-
-    handleLogoFile(file);
-
-  };
-
-  const handleLogoCrop = (croppedImage) => {
-
-    setSelectedImage(croppedImage);
-
-    setShowLogoCropper(false);
-    setLogoSource(null);
-
-  };
-
-  /* =====================================================
-   RESTAURAR RASCUNHO
-   ===================================================== */
-
-  useEffect(() => {
-
-    let cancelled = false;
-
-    const restoreDraft = async () => {
-
-      try {
-
-        const savedDraft =
-          localStorage.getItem(draftKey);
-
-        let draft = null;
-
-        if (savedDraft) {
-
-          draft = JSON.parse(
-            savedDraft
-          );
-
-        }
-
-
-        // ============================
-        // DADOS DA EMPRESA
-        // ============================
-
-        if (draft) {
-
-          setCompanyName(
-            draft.companyName || ''
-          );
-
-          setCompanyHandle(
-            draft.companyHandle || ''
-          );
-
-          setDoc(
-            draft.doc || ''
-          );
-
-          setEmail(
-            draft.email || ''
-          );
-
-          setPhone(
-            draft.phone || ''
-          );
-
-
-          // ============================
-          // IDENTIDADE
-          // ============================
-
-          setCompanyDescription(
-            draft.companyDescription || ''
-          );
-
-
-          // ============================
-          // LOCALIZAÇÃO
-          // ============================
-
-          setLocation(
-            draft.location || emptyLocation
-          );
-
-          setCompanyCategories(
-            Array.isArray(draft.companyCategories)
-              ? draft.companyCategories
-              : draft.companyCategory
-                ? [draft.companyCategory]
-                : []
-          );
-
-          setSettingsStep(
-            draft.settingsStep || 'location'
-          );
-          // ============================
-          // ETAPA
-          // ============================
-
-          setStep(
-            draft.step || 1
-          );
-
-        }
-
-
-        // ============================
-        // RESTAURAR IMAGEM
-        // ============================
-
-        const savedImage =
-          await getDraftImage(draftKey);
-
-        if (
-          savedImage &&
-          !cancelled
-        ) {
-
-          setSelectedImage(
-            savedImage
-          );
-
-        }
-
-      } catch (error) {
-
-        console.error(
-          'Erro ao restaurar rascunho:',
-          error
-        );
-
-      } finally {
-
-        if (!cancelled) {
-
-          hasRestoredDraft.current =
-            true;
-
-        }
-
-      }
-
-    };
-
-
-    restoreDraft();
-
-    return () => {
-
-      cancelled = true;
-
-    };
-
-  }, [draftKey]);
-
-  /* =====================================================
-   SALVAR RASCUNHO
-   ===================================================== */
-
-  useEffect(() => {
-
-    if (
-      !hasRestoredDraft.current
-    ) {
-      return;
-    }
-
-
-    const saveDraft = async () => {
-
-      try {
-
-        // ============================
-        // LOCALSTORAGE
-        // SOMENTE DADOS LEVES
-        // ============================
-
-        const draft = {
-
-          step,
-
-          companyName,
-          companyHandle,
-          doc,
-          email,
-          phone,
-
-          companyCategories,
-          settingsStep,
-
-          companyDescription,
-
-          location
-
+                const image = await getDraftImage(draftKey).catch(() => null);
+                if (image && !cancelled) setLogo(image);
+            } catch {
+                /* rascunho corrompido: começa do zero */
+            } finally {
+                if (!cancelled) {
+                    /* Voltou da revisão pelo "Editar": abre na etapa certa. */
+                    const editStep = routerLocation.state?.editStep;
+                    if (Number.isInteger(editStep)) setStep(editStep);
+                    restored.current = true;
+                    setReady(true);
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [draftKey]);
 
-        localStorage.setItem(
-          draftKey,
-          JSON.stringify(draft)
-        );
+    useEffect(() => {
+        if (!restored.current) return undefined;
+        const timer = setTimeout(() => {
+            try {
+                localStorage.setItem(draftKey, JSON.stringify({ step, data, savedAt: Date.now() }));
+            } catch {
+                /* sem espaço: segue sem rascunho */
+            }
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [draftKey, step, data]);
 
+    useEffect(() => {
+        if (!restored.current || !logo) return;
+        saveDraftImage(draftKey, logo).catch(() => {});
+    }, [draftKey, logo]);
 
-        // ============================
-        // IMAGEM → INDEXEDDB
-        // ============================
+    /* ---------------- tutorial ---------------- */
 
-        if (selectedImage) {
+    useEffect(() => {
+        if (!ready) return undefined;
+        const tour = readTour();
+        if (tour.skipped || tour[STEPS[step].id]) return undefined;
+        const timer = setTimeout(() => setTourOpen(true), 350);
+        return () => clearTimeout(timer);
+    }, [step, ready]);
 
-          await saveDraftImage(
-            draftKey,
-            selectedImage
-          );
+    const finishTour = useCallback((skipped) => {
+        const tour = readTour();
+        writeTour(skipped ? { ...tour, skipped: true } : { ...tour, [STEPS[step].id]: true });
+        setTourOpen(false);
+    }, [step]);
 
-        } else {
+    /* ---------------- campos ---------------- */
 
-          await removeDraftImage(
-            draftKey
-          );
+    const set = (patch) => setData((current) => ({ ...current, ...patch }));
+    const setLocationField = (patch) => setData((current) => ({ ...current, location: { ...current.location, ...patch } }));
+    const touch = (field) => setTouched((current) => ({ ...current, [field]: true }));
 
+    const problems = useMemo(() => stepProblems(step, data), [step, data]);
+
+    const errorFor = (field) => {
+        if (!(showErrors || touched[field])) return "";
+        if (field === "handle" && !problems.handle) {
+            if (handleStatus === "taken") return "Este @ já está em uso. Tente outro.";
         }
-
-      } catch (error) {
-
-        console.error(
-          'Erro ao salvar rascunho:',
-          error
-        );
-
-      }
-
+        return problems[field] || "";
     };
 
-
-    saveDraft();
-
-  }, [
-    draftKey,
-
-    step,
-
-    companyName,
-    companyHandle,
-    doc,
-    email,
-    phone,
-
-    companyDescription,
-
-    selectedImage,
-
-    location
-  ]);
-
-  return (
-
-    <main className="create-company-wrapper">
-
-      {/* =================================================
-          HEADER
-          ================================================= */}
-
-      <header className="create-company-header">
-
-        <button
-          type="button"
-          className="create-company-header-back"
-          onClick={() => navigate(-1)}
-          aria-label="Voltar"
-        >
-          <Icon icon="solar:arrow-left-linear" />
-        </button>
-
-        <div className="create-company-header-brand">
-          <span>MARKFY</span>
-        </div>
-
-        <span className="create-company-header-step">
-          0{step}
-        </span>
-
-      </header>
-
-
-      <section className="create-company-content">
-
-        {/* =================================================
-            PROGRESS
-            ================================================= */}
-
-        <div className="create-company-progress">
-
-          <div
-            className={`create-company-progress-item ${step >= 1 ? 'active' : ''
-              }`}
-          >
-            <span>01</span>
-            <p>Dados da empresa</p>
-          </div>
-
-          <div className="create-company-progress-line" />
-
-          <div
-            className={`create-company-progress-item ${step >= 2 ? 'active' : ''
-              }`}
-          >
-            <span>02</span>
-            <p>Identidade</p>
-          </div>
-
-          <div className="create-company-progress-line" />
-
-          <div
-            className={`create-company-progress-item ${step >= 3 ? 'active' : ''
-              }`}
-          >
-            <span>03</span>
-            <p>Configurações</p>
-          </div>
-
-        </div>
-
-
-        {/* =================================================
-            STEP 01
-            ================================================= */}
-
-        {step === 1 && (
-
-          <div className="create-company-step">
-
-            <div className="create-company-intro">
-
-              <span className="create-company-overline">
-                DADOS DA EMPRESA
-              </span>
-
-              <h1>
-                Vamos criar sua empresa.
-              </h1>
-
-              <p>
-                Informe os dados principais para
-                cadastrar sua empresa na Markfy.
-              </p>
-
-            </div>
-
-
-            <form
-              className="create-company-form"
-              onSubmit={handleNextStep}
-            >
-
-              <div className="create-company-field">
-
-                <label htmlFor="companyName">
-                  Nome da empresa
-                </label>
-
-                <input
-                  id="companyName"
-                  type="text"
-                  placeholder="Ex.: Markfy Tecnologia"
-                  value={companyName}
-                  onChange={(event) => {
-
-                    const value =
-                      event.target.value;
-
-                    setCompanyName(value);
-
-                    validateName(value);
-
-                  }}
-                  required
-                />
-
-                {nameErrors.length > 0 && (
-
-                  <div className="create-company-field-error">
-
-                    <Icon icon="solar:danger-triangle-linear" />
-
-                    <span>
-                      {nameErrors[0]}
-                    </span>
-
-                  </div>
-
-                )}
-
-              </div>
-
-
-              <div className="create-company-field">
-
-                <label htmlFor="companyHandle">
-                  Identificador
-                </label>
-
-                <div className="create-company-handle">
-
-                  <span>@</span>
-
-                  <input
-                    id="companyHandle"
-                    type="text"
-                    placeholder="nome_da_empresa"
-                    value={companyHandle}
-                    onChange={handleHandleChange}
-                    autoComplete="off"
-                    required
-                  />
-
-                  {isCheckingHandle && (
-
-                    <Icon
-                      icon="svg-spinners:ring-resize"
-                      className="create-company-loading"
-                    />
-
-                  )}
-
-                </div>
-
-                <small>
-                  Esse identificador será usado para
-                  encontrar sua empresa na Markfy.
-                </small>
-
-                {errors.length > 0 && (
-
-                  <div className="create-company-field-error">
-
-                    <Icon icon="solar:danger-triangle-linear" />
-
-                    <span>
-                      {errors[0]}
-                    </span>
-
-                  </div>
-
-                )}
-
-              </div>
-
-
-              <div className="create-company-field">
-
-                <label htmlFor="companyDocument">
-                  CPF ou CNPJ
-                </label>
-
-                <input
-                  id="companyDocument"
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="Digite o CPF ou CNPJ"
-                  value={doc}
-                  onChange={(event) => {
-
-                    const value =
-                      event.target.value.replace(
-                        /\D/g,
-                        ''
-                      );
-
-                    setDoc(value);
-
-                    validateCPF_CNPJ(value);
-
-                  }}
-                  required
-                />
-
-                {docError && (
-
-                  <div className="create-company-field-error">
-
-                    <Icon icon="solar:danger-triangle-linear" />
-
-                    <span>
-                      {docError}
-                    </span>
-
-                  </div>
-
-                )}
-
-              </div>
-
-
-              <div className="create-company-fields-row">
-
-                <div className="create-company-field">
-
-                  <label htmlFor="companyEmail">
-                    Email
-                  </label>
-
-                  <input
-                    id="companyEmail"
-                    type="email"
-                    placeholder="contato@empresa.com"
-                    value={email}
-                    onChange={(event) => {
-
-                      const value =
-                        event.target.value;
-
-                      setEmail(value);
-
-                      validateEmail(value);
-
-                    }}
-                    required
-                  />
-
-                  {emailError && (
-
-                    <div className="create-company-field-error">
-
-                      <Icon icon="solar:danger-triangle-linear" />
-
-                      <span>
-                        {emailError}
-                      </span>
-
-                    </div>
-
-                  )}
-
-                </div>
-
-
-                <div className="create-company-field">
-
-                  <label htmlFor="companyPhone">
-                    Telefone
-                  </label>
-
-                  <input
-                    id="companyPhone"
-                    type="tel"
-                    inputMode="numeric"
-                    placeholder="(00) 00000-0000"
-                    value={phone}
-                    onChange={(event) => {
-
-                      const value =
-                        event.target.value.replace(
-                          /\D/g,
-                          ''
-                        );
-
-                      setPhone(value);
-
-                      validatePhone(value);
-
-                    }}
-                    required
-                  />
-
-                  {phoneError && (
-
-                    <div className="create-company-field-error">
-
-                      <Icon icon="solar:danger-triangle-linear" />
-
-                      <span>
-                        {phoneError}
-                      </span>
-
-                    </div>
-
-                  )}
-
-                </div>
-
-              </div>
-
-
-              <div className="create-company-actions">
-
-                <button
-                  type="button"
-                  className="create-company-back"
-                  onClick={() => navigate(-1)}
-                >
-                  <Icon icon="solar:arrow-left-linear" />
-
-                  Voltar
+    const chooseSegment = (segment) => {
+        setData((current) => {
+            const previous = getSegment(current.segment);
+            const keepCategories =
+                current.categories.length &&
+                (!previous || current.categories.join() !== previous.categories.join());
+            const keepDescription =
+                current.description.trim() &&
+                (!previous || current.description !== previous.description);
+
+            return {
+                ...current,
+                segment: segment.id,
+                categories: keepCategories ? current.categories : segment.categories,
+                description: keepDescription ? current.description : segment.description
+            };
+        });
+
+        setAutofillNote(
+            segment.categories.length || segment.description
+                ? `Preenchemos categorias e descrição de ${segment.name}. Você edita na etapa Identidade.`
+                : ""
+        );
+    };
+
+    const changeName = (name) => {
+        setData((current) => ({
+            ...current,
+            name,
+            handle: current.handleEdited ? current.handle : suggestHandle(name)
+        }));
+    };
+
+    /* @ disponível? (só o nome é público; ver regras do banco) */
+    useEffect(() => {
+
+        const handle = data.handle;
+
+        if (step !== 0 || !handle || problems.handle) {
+            setHandleStatus("idle");
+            return undefined;
+        }
+
+        setHandleStatus("checking");
+
+        let cancelled = false;
+
+        const timer = setTimeout(async () => {
+            try {
+                const snapshot = await get(ref(getDatabase(), `companys/${handle}/name`));
+                if (!cancelled) setHandleStatus(snapshot.exists() ? "taken" : "free");
+            } catch {
+                if (!cancelled) setHandleStatus("error");
+            }
+        }, 450);
+
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
+    }, [data.handle, step, problems.handle]);
+
+    /* CEP → endereço (ViaCEP, gratuito) */
+    useEffect(() => {
+
+        const zip = digits(data.location.zipCode);
+
+        if (zip.length !== 8) {
+            setZipStatus("idle");
+            return undefined;
+        }
+
+        let cancelled = false;
+        setZipStatus("loading");
+
+        fetch(`https://viacep.com.br/ws/${zip}/json/`)
+            .then((response) => response.json())
+            .then((result) => {
+                if (cancelled) return;
+                if (result?.erro) {
+                    setZipStatus("notfound");
+                    return;
+                }
+                setData((current) => ({
+                    ...current,
+                    location: {
+                        ...current.location,
+                        street: current.location.street || result.logradouro || "",
+                        neighborhood: current.location.neighborhood || result.bairro || "",
+                        city: result.localidade || current.location.city,
+                        state: result.uf || current.location.state,
+                        country: "Brasil"
+                    }
+                }));
+                setZipStatus("ok");
+            })
+            .catch(() => !cancelled && setZipStatus("error"));
+
+        return () => {
+            cancelled = true;
+        };
+    }, [data.location.zipCode]);
+
+    const useDeviceLocation = () => {
+
+        if (!navigator.geolocation) return;
+
+        setLocating(true);
+
+        navigator.geolocation.getCurrentPosition(
+            async ({ coords }) => {
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}&zoom=18&addressdetails=1`,
+                        { headers: { Accept: "application/json" } }
+                    );
+                    const address = (await response.json())?.address || {};
+                    setLocationField({
+                        street: address.road || address.pedestrian || "",
+                        number: address.house_number || "",
+                        neighborhood: address.neighbourhood || address.suburb || "",
+                        city: address.city || address.town || address.village || "",
+                        state: address.state || "",
+                        zipCode: formatZip(address.postcode || ""),
+                        country: address.country || "Brasil"
+                    });
+                } catch {
+                    /* sem endereço: a pessoa digita */
+                } finally {
+                    setLocating(false);
+                }
+            },
+            () => setLocating(false),
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+    };
+
+    const pickLogo = (file) => {
+        if (!file || !file.type.startsWith("image/")) return;
+        const reader = new FileReader();
+        reader.onload = () => setCropSource(reader.result);
+        reader.readAsDataURL(file);
+    };
+
+    /* ---------------- navegação ---------------- */
+
+    const canContinue =
+        !hasProblems(problems) &&
+        !(step === 0 && (handleStatus === "taken" || handleStatus === "checking"));
+
+    const goReview = () =>
+        navigate(`/newcompany/previewcompany/${sessionId}`, {
+            state: { company: data, logo, draftKey }
+        });
+
+    const next = () => {
+        if (!canContinue) {
+            setShowErrors(true);
+            const first = Object.keys(problems).find((field) => problems[field]);
+            document.getElementById(`ncw-${first === "segment" ? "segment-search" : first}`)?.focus();
+            return;
+        }
+        setShowErrors(false);
+        if (step === STEPS.length - 1) goReview();
+        else setStep(step + 1);
+    };
+
+    const skip = () => {
+        setShowErrors(false);
+        if (step === STEPS.length - 1) goReview();
+        else setStep(step + 1);
+    };
+
+    const back = () => {
+        setShowErrors(false);
+        if (step === 0) navigate(-1);
+        else setStep(step - 1);
+    };
+
+    const segments = searchSegments(segmentSearch);
+    const current = STEPS[step];
+
+    /* ---------------- render ---------------- */
+
+    return (
+        <main className="ncw">
+
+            <header className="ncw-top">
+                <button type="button" className="ncw-icon-btn" onClick={back} aria-label="Voltar">
+                    <Icon icon="solar:alt-arrow-left-linear" />
                 </button>
 
-                <button
-                  type="submit"
-                  className="create-company-primary"
-                  disabled={
-                    isCheckingHandle ||
-                    errors.length > 0 ||
-                    nameErrors.length > 0 ||
-                    docError !== '' ||
-                    emailError !== '' ||
-                    phoneError !== ''
-                  }
-                >
-                  Continuar
+                <div className="ncw-progress" aria-label={`Etapa ${step + 1} de ${STEPS.length}`}>
+                    {STEPS.map((item, index) => (
+                        <span key={item.id} className={index < step ? "is-done" : index === step ? "is-current" : ""} />
+                    ))}
+                </div>
 
-                  <Icon icon="solar:arrow-right-linear" />
+                <button type="button" className="ncw-icon-btn" onClick={() => setTourOpen(true)} aria-label="Ver o tutorial desta etapa">
+                    <Icon icon="solar:question-circle-linear" />
                 </button>
+            </header>
 
-              </div>
+            <section className="ncw-body" key={current.id}>
 
-            </form>
+                <p className="ncw-eyebrow">Etapa {step + 1} de {STEPS.length}{current.required ? "" : " · opcional"}</p>
+                <h1>{current.title}</h1>
+                <p className="ncw-lead">{current.hint}</p>
 
-          </div>
-
-        )}
-
-
-        {/* =================================================
-            STEP 02
-            ================================================= */}
-
-        {step === 2 && (
-
-          <div className="create-company-step">
-
-            <div className="create-company-intro">
-
-              <span className="create-company-overline">
-                IDENTIDADE DA EMPRESA
-              </span>
-
-              <h1>
-                Dê uma identidade à sua empresa.
-              </h1>
-
-              <p>
-                Escolha como sua empresa será apresentada
-                para seus clientes.
-              </p>
-
-            </div>
-
-
-            {/* LOGO */}
-
-            <div className="create-company-logo-section">
-
-              <div className="create-company-section-heading">
-
-                <div className="create-company-section-icon">
-                  <Icon icon="solar:gallery-add-linear" />
-                </div>
-
-                <div>
-
-                  <strong>
-                    Logo da empresa
-                  </strong>
-
-                  <span>
-                    Use uma imagem quadrada para obter
-                    o melhor resultado.
-                  </span>
-
-                </div>
-
-              </div>
-
-
-              <div className="create-company-logo-upload-wrapper">
-
-                <button
-                  type="button"
-                  className={`create-company-logo-upload ${selectedImage ? 'has-image' : ''
-                    }`}
-                  onClick={() => setShowLogoModal(true)}
-                >
-
-                  {selectedImage ? (
-
+                {step === 0 && (
                     <>
-                      <div className="create-company-logo-preview-circle">
-                        <img
-                          src={selectedImage}
-                          alt="Preview da logo"
-                        />
-                      </div>
-
-                      <div className="create-company-logo-overlay">
-
-                        <Icon icon="solar:pen-new-square-linear" />
-
-                        <span>
-                          Editar imagem
-                        </span>
-
-                      </div>
-                    </>
-
-                  ) : (
-
-                    <div className="create-company-logo-empty">
-
-                      <div className="create-company-logo-empty-icon">
-
-                        <Icon icon="solar:gallery-add-linear" />
-
-                      </div>
-
-                      <strong>
-                        Adicionar logo
-                      </strong>
-
-                      <span>
-                        PNG, JPG ou WEBP
-                      </span>
-
-                    </div>
-
-                  )}
-
-                </button>
-
-              </div>
-
-              {selectedImage && (
-
-                <button
-                  type="button"
-                  className="create-company-logo-remove"
-                  onClick={() =>
-                    setSelectedImage(null)
-                  }
-                >
-                  <Icon icon="solar:trash-bin-trash-linear" />
-
-                  Remover logo
-                </button>
-
-              )}
-
-            </div>
-
-
-            {/* DESCRIÇÃO */}
-
-            <div className="create-company-description">
-
-              <label htmlFor="companyDescription">
-                Descrição
-              </label>
-
-              <textarea
-                id="companyDescription"
-                placeholder="Conte brevemente sobre sua empresa..."
-                maxLength={300}
-                rows={5}
-                value={companyDescription}
-                onChange={(event) =>
-                  setCompanyDescription(
-                    event.target.value
-                  )
-                }
-              />
-
-              <div className="create-company-description-footer">
-
-                <span>
-                  Uma breve descrição ajuda seus clientes
-                  a entenderem sua empresa.
-                </span>
-
-                <small>
-                  {companyDescription.length}/300
-                </small>
-
-              </div>
-
-            </div>
-
-
-            <div className="create-company-actions">
-
-              <button
-                type="button"
-                className="create-company-back"
-                onClick={handlePreviousStep}
-              >
-                <Icon icon="solar:arrow-left-linear" />
-
-                Voltar
-              </button>
-
-              <button
-                type="button"
-                className="create-company-primary"
-                onClick={handleNextToSettings}
-              >
-                Continuar
-
-                <Icon icon="solar:arrow-right-linear" />
-              </button>
-
-            </div>
-
-          </div>
-
-        )}
-
-
-        {/* =================================================
-            STEP 03
-            ================================================= */}
-
-        {/* =================================================
-    STEP 03 — CONFIGURAÇÕES
-    ================================================= */}
-
-        {step === 3 && (
-
-          <div className="create-company-step">
-
-            <div className="create-company-intro">
-
-              <span className="create-company-overline">
-                CONFIGURAÇÕES DA EMPRESA
-              </span>
-
-              <h1>
-                Vamos configurar sua empresa.
-              </h1>
-
-              <p>
-                Complete as informações abaixo para
-                deixar sua empresa pronta para seus clientes.
-              </p>
-
-            </div>
-
-
-            {/* =================================================
-        CONFIGURATION TABS
-        ================================================= */}
-
-            <div className="create-company-settings-tabs">
-
-              <button
-                type="button"
-                className={
-                  settingsStep === 'location'
-                    ? 'active'
-                    : ''
-                }
-                onClick={() =>
-                  setSettingsStep('location')
-                }
-              >
-
-                <Icon icon="solar:map-point-outline" />
-
-                <span>
-                  Localização
-                </span>
-
-              </button>
-
-
-              <button
-                type="button"
-                className={
-                  settingsStep === 'category'
-                    ? 'active'
-                    : ''
-                }
-                onClick={() =>
-                  setSettingsStep('category')
-                }
-              >
-
-                <Icon icon="solar:shop-2-outline" />
-
-                <span>
-                  Categoria
-                </span>
-
-              </button>
-
-            </div>
-
-
-            {/* =================================================
-        LOCALIZAÇÃO
-        ================================================= */}
-
-            {settingsStep === 'location' && (
-
-              <div className="create-company-settings-content">
-
-                <div className="create-company-subintro">
-
-                  <span className="create-company-overline">
-                    LOCALIZAÇÃO
-                  </span>
-
-                  <h2>
-                    Onde sua empresa está?
-                  </h2>
-
-                  <p>
-                    Adicione o endereço da sua empresa.
-                    Você pode usar sua localização atual
-                    ou preencher os dados manualmente.
-                  </p>
-
-                </div>
-
-
-                {/* LOCALIZAÇÃO AUTOMÁTICA */}
-
-                <button
-                  type="button"
-                  className="create-company-location-detect"
-                  onClick={handleDeviceLocation}
-                  disabled={loadingLocation}
-                >
-
-                  <div className="create-company-location-detect-icon">
-
-                    <Icon
-                      icon={
-                        loadingLocation
-                          ? 'line-md:loading-twotone-loop'
-                          : 'solar:gps-outline'
-                      }
-                    />
-
-                  </div>
-
-
-                  <div className="create-company-location-detect-content">
-
-                    <strong>
-                      {loadingLocation
-                        ? 'Localizando...'
-                        : 'Usar minha localização'}
-                    </strong>
-
-                    <span>
-                      Preencher automaticamente pelo dispositivo
-                    </span>
-
-                  </div>
-
-
-                  <Icon
-                    icon="solar:alt-arrow-right-linear"
-                    className="create-company-location-detect-arrow"
-                  />
-
-                </button>
-
-
-                <div className="create-company-location-divider">
-                  <span>
-                    ou preencha manualmente
-                  </span>
-                </div>
-
-
-                {/* ENDEREÇO */}
-
-                <div className="create-company-location-form">
-
-                  <div className="create-company-location-row">
-
-                    <div className="create-company-field">
-
-                      <label htmlFor="street">
-                        Rua ou avenida
-                      </label>
-
-                      <div className="create-company-input-icon-wrapper">
-
-                        <Icon icon="solar:map-point-outline" />
-
-                        <input
-                          id="street"
-                          name="street"
-                          type="text"
-                          placeholder="Rua ou avenida"
-                          value={location.street}
-                          onChange={handleLocationChange}
-                        />
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="create-company-field create-company-location-number">
-
-                      <label htmlFor="number">
-                        Número
-                      </label>
-
-                      <input
-                        id="number"
-                        name="number"
-                        type="text"
-                        placeholder="Número"
-                        value={location.number}
-                        onChange={handleLocationChange}
-                      />
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="create-company-field">
-
-                    <label htmlFor="neighborhood">
-                      Bairro
-                    </label>
-
-                    <input
-                      id="neighborhood"
-                      name="neighborhood"
-                      type="text"
-                      placeholder="Bairro"
-                      value={location.neighborhood}
-                      onChange={handleLocationChange}
-                    />
-
-                  </div>
-
-
-                  <div className="create-company-location-row">
-
-                    <div className="create-company-field">
-
-                      <label htmlFor="city">
-                        Cidade
-                      </label>
-
-                      <input
-                        id="city"
-                        name="city"
-                        type="text"
-                        placeholder="Cidade"
-                        value={location.city}
-                        onChange={handleLocationChange}
-                      />
-
-                    </div>
-
-
-                    <div className="create-company-field">
-
-                      <label htmlFor="state">
-                        Estado
-                      </label>
-
-                      <input
-                        id="state"
-                        name="state"
-                        type="text"
-                        placeholder="Estado"
-                        value={location.state}
-                        onChange={handleLocationChange}
-                      />
-
-                    </div>
-
-                  </div>
-
-
-                  <div className="create-company-location-row">
-
-                    <div className="create-company-field">
-
-                      <label htmlFor="zipCode">
-                        CEP
-                      </label>
-
-                      <input
-                        id="zipCode"
-                        name="zipCode"
-                        type="text"
-                        inputMode="numeric"
-                        placeholder="00000-000"
-                        value={location.zipCode}
-                        onChange={handleLocationChange}
-                      />
-
-                    </div>
-
-
-                    <div className="create-company-field">
-
-                      <label htmlFor="country">
-                        País
-                      </label>
-
-                      <input
-                        id="country"
-                        name="country"
-                        type="text"
-                        placeholder="País"
-                        value={location.country}
-                        onChange={handleLocationChange}
-                      />
-
-                    </div>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            )}
-
-
-            {/* =================================================
-        CATEGORIA
-        ================================================= */}
-
-            {settingsStep === 'category' && (
-
-              <div className="create-company-settings-content">
-
-                <div className="create-company-subintro">
-
-                  <span className="create-company-overline">
-                    CATEGORIA
-                  </span>
-
-                  <h2>
-                    Qual é o tipo da sua empresa?
-                  </h2>
-
-                  <div className="create-company-category-counter">
-                    <span>
-                      {companyCategories.length}/3 categorias selecionadas
-                    </span>
-
-                    {companyCategories.length === 3 && (
-                      <small>
-                        Você atingiu o limite de categorias.
-                      </small>
-                    )}
-                  </div>
-
-                </div>
-
-
-                <div className="create-company-category-grid">
-
-                  {COMPANY_CATEGORIES.map((category) => {
-
-                    const isSelected =
-                      companyCategories.includes(category.id);
-
-                    return (
-
-                      <button
-                        key={category.id}
-                        type="button"
-                        className={`create-company-category-card ${isSelected
-                          ? 'selected'
-                          : ''
-                          }`}
-                        onClick={() =>
-                          handleCategoryToggle(category.id)
-                        }
-                      >
-
-                        <div className="create-company-category-icon">
-
-                          <Icon icon={category.icon} />
-
+                        <div className={`ncw-field ${errorFor("segment") ? "has-error" : ""}`} id="ncw-segments">
+                            <label htmlFor="ncw-segment-search">
+                                Ramo da empresa <span className="ncw-req" aria-hidden="true">*</span>
+                            </label>
+                            <div className="ncw-search">
+                                <Icon icon="solar:magnifer-linear" aria-hidden="true" />
+                                <input
+                                    id="ncw-segment-search"
+                                    type="search"
+                                    placeholder="Buscar ramo (ex.: barbearia)"
+                                    value={segmentSearch}
+                                    onChange={(event) => setSegmentSearch(event.target.value)}
+                                />
+                            </div>
+                            <div className="ncw-segments" role="radiogroup" aria-label="Ramo da empresa">
+                                {segments.map((segment) => (
+                                    <button
+                                        key={segment.id}
+                                        type="button"
+                                        role="radio"
+                                        aria-checked={data.segment === segment.id}
+                                        className={`ncw-segment ${data.segment === segment.id ? "is-selected" : ""}`}
+                                        onClick={() => chooseSegment(segment)}
+                                    >
+                                        <Icon icon={segment.icon} aria-hidden="true" />
+                                        <span>{segment.name}</span>
+                                    </button>
+                                ))}
+                                {!segments.length && <p className="ncw-hint">Nenhum ramo com esse nome. Escolha "Outro tipo de serviço".</p>}
+                            </div>
+                            {errorFor("segment") && <p className="ncw-error" role="alert">{errorFor("segment")}</p>}
+                            {autofillNote && <p className="ncw-note" role="status"><Icon icon="solar:magic-stick-3-linear" aria-hidden="true" />{autofillNote}</p>}
                         </div>
 
+                        <Field id="name" label="Nome da empresa" required error={errorFor("name")}>
+                            <input
+                                id="ncw-name"
+                                value={data.name}
+                                maxLength={40}
+                                autoComplete="organization"
+                                placeholder="Ex.: Barbearia do Zé"
+                                aria-invalid={Boolean(errorFor("name"))}
+                                onChange={(event) => changeName(event.target.value)}
+                                onBlur={() => touch("name")}
+                            />
+                        </Field>
 
-                        <span>
-                          {category.name}
-                        </span>
+                        <Field
+                            id="handle"
+                            label="@ da empresa"
+                            required
+                            error={errorFor("handle")}
+                            hint={
+                                handleStatus === "checking" ? "Conferindo se está livre…"
+                                    : handleStatus === "free" ? "Disponível ✓"
+                                        : handleStatus === "error" ? "Não deu para conferir agora; conferimos de novo ao salvar."
+                                            : "Letras minúsculas, números, - ou _. De 3 a 25 caracteres."
+                            }
+                        >
+                            <div className={`ncw-prefix ${handleStatus === "free" ? "is-ok" : ""}`}>
+                                <span aria-hidden="true">@</span>
+                                <input
+                                    id="ncw-handle"
+                                    value={data.handle}
+                                    maxLength={25}
+                                    autoCapitalize="none"
+                                    spellCheck={false}
+                                    aria-invalid={Boolean(errorFor("handle"))}
+                                    onChange={(event) => set({ handle: normalizeHandle(event.target.value), handleEdited: true })}
+                                    onBlur={() => touch("handle")}
+                                />
+                            </div>
+                        </Field>
+                    </>
+                )}
 
+                {step === 1 && (
+                    <>
+                        <Field id="document" label="CPF ou CNPJ" required error={errorFor("document")} hint="Não aparece para os clientes.">
+                            <input
+                                id="ncw-document"
+                                inputMode="numeric"
+                                value={formatDocument(data.document)}
+                                placeholder="000.000.000-00"
+                                aria-invalid={Boolean(errorFor("document"))}
+                                onChange={(event) => set({ document: digits(event.target.value).slice(0, 14) })}
+                                onBlur={() => touch("document")}
+                            />
+                        </Field>
+                        <Field id="email" label="E-mail de contato" required error={errorFor("email")}>
+                            <input
+                                id="ncw-email"
+                                type="email"
+                                autoComplete="email"
+                                value={data.email}
+                                placeholder="contato@empresa.com"
+                                aria-invalid={Boolean(errorFor("email"))}
+                                onChange={(event) => set({ email: event.target.value.trim() })}
+                                onBlur={() => touch("email")}
+                            />
+                        </Field>
+                        <Field id="phone" label="Telefone ou WhatsApp" required error={errorFor("phone")}>
+                            <input
+                                id="ncw-phone"
+                                type="tel"
+                                inputMode="tel"
+                                autoComplete="tel-national"
+                                value={formatPhone(data.phone)}
+                                placeholder="(11) 99999-9999"
+                                aria-invalid={Boolean(errorFor("phone"))}
+                                onChange={(event) => set({ phone: digits(event.target.value).slice(0, 11) })}
+                                onBlur={() => touch("phone")}
+                            />
+                        </Field>
+                    </>
+                )}
 
-                        {isSelected && (
+                {step === 2 && (
+                    <>
+                        <div className="ncw-field" id="ncw-field-logo">
+                            <span className="ncw-label">Logo <span className="ncw-opt">opcional</span></span>
+                            <div className="ncw-logo">
+                                <div className="ncw-logo__preview">
+                                    {logo
+                                        ? <img src={logo} alt="Logo escolhida" width="88" height="88" />
+                                        : <Icon icon="solar:gallery-add-linear" aria-hidden="true" />}
+                                </div>
+                                <div className="ncw-logo__actions">
+                                    <label className="ncw-btn ncw-btn--ghost">
+                                        {logo ? "Trocar imagem" : "Escolher imagem"}
+                                        <input
+                                            type="file"
+                                            accept="image/*,.heic,.heif"
+                                            className="ncw-visually-hidden"
+                                            onChange={(event) => {
+                                                pickLogo(event.target.files?.[0]);
+                                                event.target.value = "";
+                                            }}
+                                        />
+                                    </label>
+                                    {logo && (
+                                        <button type="button" className="ncw-link" onClick={() => setLogo(null)}>Remover</button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
 
-                          <div className="create-company-category-check">
+                        <Field id="description" label="Descrição" hint={`${data.description.length}/300`}>
+                            <textarea
+                                id="ncw-description"
+                                rows={3}
+                                maxLength={300}
+                                value={data.description}
+                                placeholder="Conte em uma ou duas frases o que a empresa faz."
+                                onChange={(event) => set({ description: event.target.value })}
+                            />
+                        </Field>
 
-                            <Icon icon="solar:check-circle-bold" />
+                        <div className="ncw-field" id="ncw-field-categories">
+                            <span className="ncw-label">Categorias <span className="ncw-opt">opcional</span></span>
+                            <div className="ncw-chips">
+                                {COMPANY_CATEGORIES.map((category) => {
+                                    const on = data.categories.includes(category.id);
+                                    return (
+                                        <button
+                                            key={category.id}
+                                            type="button"
+                                            aria-pressed={on}
+                                            className={`ncw-chip ${on ? "is-on" : ""}`}
+                                            onClick={() =>
+                                                set({
+                                                    categories: on
+                                                        ? data.categories.filter((id) => id !== category.id)
+                                                        : [...data.categories, category.id]
+                                                })
+                                            }
+                                        >
+                                            {on && <Icon icon="solar:check-read-linear" aria-hidden="true" />}
+                                            {category.name}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </>
+                )}
 
-                          </div>
+                {step === 3 && (
+                    <>
+                        <Field
+                            id="zip"
+                            label="CEP"
+                            hint={
+                                zipStatus === "loading" ? "Buscando endereço…"
+                                    : zipStatus === "notfound" ? "CEP não encontrado. Preencha abaixo."
+                                        : zipStatus === "error" ? "Não deu para buscar o CEP agora. Preencha abaixo."
+                                            : zipStatus === "ok" ? "Endereço preenchido. Confira o número."
+                                                : "Digite o CEP para preencher o resto."
+                            }
+                        >
+                            <input
+                                id="ncw-zip"
+                                inputMode="numeric"
+                                autoComplete="postal-code"
+                                value={formatZip(data.location.zipCode)}
+                                placeholder="00000-000"
+                                onChange={(event) => setLocationField({ zipCode: formatZip(event.target.value) })}
+                            />
+                        </Field>
 
-                        )}
+                        <button type="button" id="ncw-use-location" className="ncw-btn ncw-btn--ghost ncw-wide" onClick={useDeviceLocation} disabled={locating}>
+                            <Icon icon={locating ? "svg-spinners:ring-resize" : "solar:map-point-linear"} aria-hidden="true" />
+                            {locating ? "Buscando sua localização…" : "Usar minha localização atual"}
+                        </button>
 
-                      </button>
+                        <div className="ncw-grid">
+                            <Field id="street" label="Rua">
+                                <input id="ncw-street" autoComplete="address-line1" value={data.location.street} onChange={(event) => setLocationField({ street: event.target.value })} />
+                            </Field>
+                            <Field id="number" label="Número">
+                                <input id="ncw-number" value={data.location.number} onChange={(event) => setLocationField({ number: event.target.value })} />
+                            </Field>
+                            <Field id="neighborhood" label="Bairro">
+                                <input id="ncw-neighborhood" value={data.location.neighborhood} onChange={(event) => setLocationField({ neighborhood: event.target.value })} />
+                            </Field>
+                            <Field id="city" label="Cidade">
+                                <input id="ncw-city" autoComplete="address-level2" value={data.location.city} onChange={(event) => setLocationField({ city: event.target.value })} />
+                            </Field>
+                            <Field id="state" label="Estado (UF)">
+                                <input id="ncw-state" maxLength={20} autoComplete="address-level1" value={data.location.state} onChange={(event) => setLocationField({ state: event.target.value })} />
+                            </Field>
+                        </div>
+                    </>
+                )}
 
-                    );
+            </section>
 
-                  })}
-
+            <footer className="ncw-bottom">
+                <button type="button" className="ncw-btn ncw-btn--ghost" onClick={back}>
+                    {step === 0 ? "Cancelar" : "Voltar"}
+                </button>
+                <div className="ncw-bottom__right">
+                    {!current.required && (
+                        <button type="button" className="ncw-link" onClick={skip}>Pular por agora</button>
+                    )}
+                    <button type="button" className="ncw-btn ncw-btn--primary" onClick={next} aria-disabled={!canContinue}>
+                        {step === STEPS.length - 1 ? "Revisar cadastro" : "Continuar"}
+                        <Icon icon="solar:alt-arrow-right-linear" aria-hidden="true" />
+                    </button>
                 </div>
+            </footer>
 
-              </div>
+            <p className="ncw-saved" aria-live="polite">
+                <Icon icon="solar:cloud-check-linear" aria-hidden="true" /> Rascunho salvo neste aparelho
+            </p>
 
+            {cropSource && (
+                <div className="create-company-crop-modal ncw-crop" role="dialog" aria-modal="true" aria-label="Ajustar logo">
+                    <div className="create-company-crop-modal-content">
+                        <div className="create-company-crop-header">
+                            <h2>Enquadre sua logo</h2>
+                        </div>
+                        <div className="create-company-crop-area">
+                            <ImageCropper
+                                imageSrc={cropSource}
+                                closeModal={() => setCropSource(null)}
+                                updateAvatar={(image) => {
+                                    setLogo(image);
+                                    setCropSource(null);
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
             )}
 
+            {tourOpen && <CoachMarks key={step} items={TOUR[step]} onFinish={() => finishTour(false)} onSkip={() => finishTour(true)} />}
 
-            {/* =================================================
-        ACTIONS
-        ================================================= */}
-
-            <div className="create-company-actions">
-
-              <button
-                type="button"
-                className="create-company-back"
-                onClick={handlePreviousStep}
-              >
-
-                <Icon icon="solar:arrow-left-linear" />
-
-                Voltar
-
-              </button>
-
-
-              {settingsStep === 'location' ? (
-
-                <button
-                  type="button"
-                  className="create-company-primary"
-                  onClick={() =>
-                    setSettingsStep('category')
-                  }
-                >
-
-                  Continuar
-
-                  <Icon icon="solar:arrow-right-linear" />
-
-                </button>
-
-              ) : (
-
-                <button
-                  type="button"
-                  className="create-company-primary"
-                  disabled={companyCategories.length === 0}
-                  onClick={handleProceedToPreview}
-                >
-                  Revisar empresa
-
-                  <Icon icon="solar:arrow-right-linear" />
-
-                </button>
-
-              )}
-
-            </div>
-
-          </div>
-
-        )}
-
-
-
-      </section>
-
-
-      {/* =================================================
-          MODAL DA LOGO
-          ================================================= */}
-
-      {/* =================================================
-    MODAL DA LOGO
-    ================================================= */}
-
-      {
-        showLogoModal && (
-
-          <div
-            className="create-company-logo-modal"
-            role="dialog"
-            aria-modal="true"
-            onClick={(event) => {
-
-              if (event.target === event.currentTarget) {
-                setShowLogoModal(false);
-              }
-
-            }}
-          >
-
-            <div className="create-company-logo-modal-content">
-
-              {/* HEADER */}
-
-              <div className="create-company-logo-modal-header">
-
-                <div className="create-company-logo-modal-title">
-
-                  <div className="create-company-logo-modal-title-icon">
-                    <Icon icon="solar:gallery-add-linear" />
-                  </div>
-
-                  <div>
-
-                    <span className="create-company-overline">
-                      LOGO DA EMPRESA
-                    </span>
-
-                    <h2>
-                      {selectedImage
-                        ? 'Sua logo está pronta.'
-                        : 'Adicione sua logo.'}
-                    </h2>
-
-                    <p>
-                      {selectedImage
-                        ? 'Você pode trocar a imagem sempre que quiser.'
-                        : 'Escolha uma imagem ou arraste um arquivo para cá.'}
-                    </p>
-
-                  </div>
-
-                </div>
-
-
-                <button
-                  type="button"
-                  className="create-company-logo-modal-close"
-                  onClick={() => setShowLogoModal(false)}
-                  aria-label="Fechar"
-                >
-                  <Icon icon="solar:close-linear" />
-                </button>
-
-              </div>
-
-
-              {/* CONTEÚDO */}
-
-              {selectedImage ? (
-
-                <div className="create-company-logo-editor">
-
-                  <div
-                    className="create-company-logo-final-preview"
-                    onClick={() => {
-                      setLogoSource(selectedImage);
-                      setShowLogoModal(false);
-                      setShowLogoCropper(true);
-                    }}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ' ') {
-                        event.preventDefault();
-
-                        setLogoSource(selectedImage);
-                        setShowLogoModal(false);
-                        setShowLogoCropper(true);
-                      }
-                    }}
-                  >
-                    <div className="create-company-logo-final-circle">
-
-                      <img
-                        src={selectedImage}
-                        alt="Logo da empresa"
-                      />
-
-                    </div>
-
-                    <div className="create-company-logo-final-overlay">
-
-                      <Icon icon="solar:pen-new-square-linear" />
-
-                      <span>
-                        Editar imagem
-                      </span>
-
-                    </div>
-                  </div>
-
-
-                  <div className="create-company-logo-final-info">
-
-                    <strong>
-                      Logo definida
-                    </strong>
-
-                    <span>
-                      A imagem foi recortada em formato circular
-                      para manter uma apresentação consistente.
-                    </span>
-
-                  </div>
-
-
-                  <div className="create-company-logo-editor-actions">
-
-                    <label
-                      htmlFor="companyLogoReplace"
-                      className="create-company-logo-change"
-                    >
-
-                      <Icon icon="solar:gallery-edit-linear" />
-
-                      Trocar imagem
-
-                    </label>
-
-                    <input
-                      id="companyLogoReplace"
-                      type="file"
-                      accept="image/png,image/jpeg,image/webp"
-                      className="create-company-logo-file-input"
-                      onChange={handleLogoChange}
-                    />
-
-
-                    <button
-                      type="button"
-                      className="create-company-logo-remove-editor"
-                      onClick={() => {
-
-                        setSelectedImage(null);
-                        setLogoFile(null);
-                        setLogoSource(null);
-
-                      }}
-                    >
-
-                      <Icon icon="solar:trash-bin-trash-linear" />
-
-                      Remover
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-              ) : (
-
-                <div
-                  className={`create-company-logo-dropzone ${isDraggingLogo ? 'dragging' : ''
-                    }`}
-                  onDragOver={handleLogoDragOver}
-                  onDragEnter={handleLogoDragOver}
-                  onDragLeave={handleLogoDragLeave}
-                  onDrop={handleLogoDrop}
-                >
-
-                  <input
-                    id="companyLogo"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    className="create-company-logo-file-input"
-                    onChange={handleLogoChange}
-                  />
-
-
-                  <div className="create-company-logo-dropzone-icon">
-
-                    <Icon icon="solar:cloud-upload-linear" />
-
-                  </div>
-
-
-                  <strong>
-                    Arraste sua logo para cá
-                  </strong>
-
-                  <span>
-                    ou selecione uma imagem do seu dispositivo
-                  </span>
-
-
-                  <label
-                    htmlFor="companyLogo"
-                    className="create-company-logo-select"
-                  >
-
-                    <Icon icon="solar:gallery-add-linear" />
-
-                    Selecionar imagem
-
-                  </label>
-
-
-                  <small>
-                    PNG, JPG ou WEBP · recomendado 1:1
-                  </small>
-
-                </div>
-
-              )}
-
-
-              {/* FOOTER */}
-
-              <div className="create-company-logo-modal-footer">
-
-                <span>
-                  Você poderá alterar sua logo depois.
-                </span>
-
-                <button
-                  type="button"
-                  className="create-company-logo-modal-primary"
-                  onClick={() => setShowLogoModal(false)}
-                >
-
-                  {selectedImage
-                    ? 'Usar esta logo'
-                    : 'Continuar sem logo'}
-
-                  <Icon icon="solar:arrow-right-linear" />
-
-                </button>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        )
-      }
-
-      {
-        showLogoCropper && logoSource && (
-
-          <div className="create-company-crop-modal">
-
-            <div className="create-company-crop-modal-content">
-
-              <div className="create-company-crop-header">
-
-                <span className="create-company-overline">
-                  AJUSTAR LOGO
-                </span>
-
-                <h2>
-                  Enquadre sua logo.
-                </h2>
-
-                <p>
-                  Ajuste a imagem dentro do círculo
-                  para definir exatamente como ela será exibida.
-                </p>
-
-              </div>
-
-
-              <div className="create-company-crop-area">
-
-                <ImageCropper
-                  imageSrc={logoSource}
-
-                  closeModal={() => {
-
-                    setShowLogoCropper(false);
-                    setLogoSource(null);
-                    setLogoFile(null);
-
-                  }}
-
-                  updateAvatar={handleLogoCrop}
-
-                />
-
-              </div>
-
-            </div>
-
-          </div>
-
-        )
-      }
-
-    </main >
-
-  );
-
+        </main>
+    );
 };
 
-
+export { COMPANY_SEGMENTS };
 export default CreateCompany;

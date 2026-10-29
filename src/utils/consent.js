@@ -34,13 +34,19 @@
 
 export const CONSENT_COOKIE = "markfy_consent";
 
+const GA_CONFIGURED =
+    /^G-[A-Z0-9]+$/.test((process.env.REACT_APP_GA_MEASUREMENT_ID || "").trim());
+
 export const CONSENT_STORAGE_KEY = "markfy-consent";
 
 /*
  * Subir a versão faz o banner reaparecer para todo mundo.
  * Use quando mudar finalidade, categoria ou ferramenta.
+ *
+ * Ligar o Google Analytics é uma ferramenta nova: a versão
+ * sobe junto, e quem já tinha respondido é consultado de novo.
  */
-export const CONSENT_VERSION = 1;
+export const CONSENT_VERSION = GA_CONFIGURED ? 2 : 1;
 
 /*
  * 6 meses. Passado esse prazo o titular é consultado de
@@ -131,18 +137,46 @@ export const CONSENT_CATEGORIES = [
         ]
     },
 
-    {
-        id: "analytics",
-        required: false,
-        label: "Estatísticas",
-        summary:
-            "Ajudam a entender como o site é usado, de forma agregada.",
-        description:
-            "Hoje o Markfy não carrega nenhuma ferramenta de " +
-            "estatística de terceiros. A categoria fica aqui para que, " +
-            "se isso mudar, nada seja ativado sem o seu aceite.",
-        items: []
-    },
+    /*
+     * O Google Analytics só existe quando o build tem
+     * REACT_APP_GA_MEASUREMENT_ID (ver src/analytics). Sem ele,
+     * a descrição continua dizendo a verdade: nada é carregado.
+     */
+    GA_CONFIGURED
+        ? {
+            id: "analytics",
+            required: false,
+            label: "Estatísticas",
+            summary:
+                "Ajudam a entender como o site é usado, de forma agregada.",
+            description:
+                "Com o seu aceite, usamos o Google Analytics 4 para contar " +
+                "visitas e etapas (como agendamento concluído), sem nome, " +
+                "e-mail, telefone ou o que você digita. Recusar não muda " +
+                "nada no funcionamento do site.",
+            items: [
+                {
+                    name: "_ga, _ga_*",
+                    purpose:
+                        "Google Analytics 4: distinguir visitantes de forma " +
+                        "pseudônima para estatísticas agregadas. Google " +
+                        "Signals e personalização de anúncios desligados.",
+                    retention: "Até 2 anos (padrão do Google Analytics)."
+                }
+            ]
+        }
+        : {
+            id: "analytics",
+            required: false,
+            label: "Estatísticas",
+            summary:
+                "Ajudam a entender como o site é usado, de forma agregada.",
+            description:
+                "Hoje o Markfy não carrega nenhuma ferramenta de " +
+                "estatística de terceiros. A categoria fica aqui para que, " +
+                "se isso mudar, nada seja ativado sem o seu aceite.",
+            items: []
+        },
 
     {
         id: "marketing",

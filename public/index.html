@@ -1,34 +1,108 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <!-- Zoom liberado (acessibilidade, WCAG 1.4.4): maximum-scale=1 e
+         user-scalable=no impediam quem precisa ampliar a tela. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#ffffff" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="#ffffff!important">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
+    <!--
+      Metadados da PÁGINA INICIAL. Robôs que não executam
+      JavaScript (prévias de link, alguns buscadores e IAs) leem
+      só isto. As demais rotas ajustam título/descrição pelo hook
+      src/hooks/usePageMeta.js.
+
+      Domínio canônico: https://markfy.vercel.app (mude aqui e em
+      src/config/site.js se a Markfy ganhar domínio próprio).
+    -->
+    <title>Markfy — agendamento online, site e cardápio digital para pequenos negócios</title>
     <meta
       name="description"
-      content="Markfy App"
+      content="Plataforma brasileira para negócios de serviço e alimentação: agenda online com página pública (Bookings), site da empresa (Studio) e cardápio digital com pedidos (Menus)."
+    />
+    <link rel="canonical" href="https://markfy.vercel.app/" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Markfy" />
+    <meta property="og:locale" content="pt_BR" />
+    <meta property="og:title" content="Markfy — agendamento online, site e cardápio digital" />
+    <meta property="og:description" content="Agenda online com página pública, site da empresa e cardápio digital com pedidos, num só lugar." />
+    <meta property="og:url" content="https://markfy.vercel.app/" />
+    <meta property="og:image" content="https://markfy.vercel.app/og-markfy.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Logo da Markfy com o texto: agenda online, site da empresa e cardápio digital" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Markfy — agendamento online, site e cardápio digital" />
+    <meta name="twitter:description" content="Agenda online com página pública, site da empresa e cardápio digital com pedidos, num só lugar." />
+    <meta name="twitter:image" content="https://markfy.vercel.app/og-markfy.png" />
+
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="192x192" href="%PUBLIC_URL%/icon-192.png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/apple-touch-icon.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- Fontes numa única requisição. Antes eram 7 @import espalhados
+         no CSS: o navegador só descobria a fonte depois de baixar e
+         ler o CSS, em cadeia, o que atrasava o primeiro texto. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,800&family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700;800&display=swap"
     />
 
-    <link rel="icon" href="%PUBLIC_URL%/logo-markfy.png" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo-markfy.png" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
+      Dados estruturados: só fatos visíveis no site. Sem preço,
+      avaliação, endereço ou CNPJ (não publicados ainda).
     -->
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://markfy.vercel.app/#organization",
+            "name": "Markfy",
+            "url": "https://markfy.vercel.app/",
+            "logo": "https://markfy.vercel.app/icon-512.png",
+            "email": "markfy.suporte@gmail.com"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://markfy.vercel.app/#website",
+            "name": "Markfy",
+            "url": "https://markfy.vercel.app/",
+            "inLanguage": "pt-BR",
+            "publisher": { "@id": "https://markfy.vercel.app/#organization" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Markfy",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "url": "https://markfy.vercel.app/",
+            "inLanguage": "pt-BR",
+            "description": "Agenda online com página pública (Markfy Bookings), site da empresa (Markfy Studio) e cardápio digital com pedidos (Markfy Menus).",
+            "publisher": { "@id": "https://markfy.vercel.app/#organization" }
+          }
+        ]
+      }
+    </script>
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>Markfy</title>
+    <!-- Com JavaScript, o resumo estático do #root fica oculto antes
+         do primeiro paint (sem "piscar"); sem JavaScript, ele é o
+         conteúdo da página. -->
+    <script>document.documentElement.classList.add("js");</script>
+    <style>
+      .js .mk-static { display: none; }
+      .mk-static { max-width: 720px; margin: 0 auto; padding: 32px 16px; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.6; color: #17181c; }
+      .mk-static h1 { font-size: 1.75rem; line-height: 1.25; }
+      .mk-static a { color: #092af3; }
+    </style>
 
     <!--
       TEMA — aplicado ANTES do primeiro paint.
@@ -83,9 +157,52 @@
     </script>
   </head>
   <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-<div id="modal-root"></div>
-
+    <noscript>Para usar a Markfy, ative o JavaScript no navegador.</noscript>
+    <div id="root">
+      <!--
+        Resumo da Markfy em HTML puro. O React substitui este
+        conteúdo ao carregar; quem não executa JavaScript lê
+        isto. Mesmo texto da página inicial — nada exclusivo
+        para robôs.
+      -->
+      <main class="mk-static">
+        <h1>Markfy: agendamento online, site e cardápio digital para pequenos negócios</h1>
+        <p>
+          A Markfy é uma plataforma brasileira para negócios de serviço e de
+          alimentação. A empresa cria a sua página, cadastra serviços ou produtos
+          e recebe clientes pela internet, sem depender de ligação ou mensagem.
+        </p>
+        <h2>Produtos</h2>
+        <ul>
+          <li><strong>Markfy Bookings</strong>: agenda online com página pública da empresa, escolha de profissional e horário, e a lista de reservas do cliente.</li>
+          <li><strong>Markfy Studio</strong>: site da empresa montado a partir dos dados que ela já tem na Markfy.</li>
+          <li><strong>Markfy Menus</strong>: cardápio digital com pedidos, mesas e cozinha.</li>
+        </ul>
+        <h2>Como usar a Markfy</h2>
+        <ol>
+          <li>Crie sua conta com e-mail ou Google. Criar a conta e a empresa não custa nada.</li>
+          <li>Cadastre a empresa: nome, segmento, endereço e o @ da sua página.</li>
+          <li>Adicione serviços com preço e duração, o horário de funcionamento e a equipe.</li>
+          <li>Escolha o plano: Bookings, Studio, Menus ou um pacote.</li>
+          <li>Compartilhe o link na bio, no WhatsApp ou no QR do balcão. As reservas e pedidos chegam no painel.</li>
+        </ol>
+        <h2>Planos</h2>
+        <p>Criar a conta e cadastrar a empresa é gratuito. Para receber clientes, a empresa ativa um plano mensal: planos individuais por produto ou pacotes com Bookings, Studio e Menus.</p>
+        <h2>Para quem</h2>
+        <p>Barbearias, salões de beleza, estética, clínicas, profissionais autônomos, serviços técnicos, restaurantes e lanchonetes.</p>
+        <p>
+          <a href="/central-user">Encontrar empresas</a> ·
+          <a href="/home">Conhecer os produtos</a> ·
+          <a href="/menus/demo">Ver a demonstração do cardápio</a> ·
+          <a href="/login">Entrar ou criar conta</a>
+        </p>
+        <p>
+          <a href="/privacidade">Política de Privacidade</a> ·
+          <a href="/termos">Termos de Uso</a> ·
+          Contato: <a href="mailto:markfy.suporte@gmail.com">markfy.suporte@gmail.com</a>
+        </p>
+      </main>
+    </div>
+    <div id="modal-root"></div>
   </body>
 </html>

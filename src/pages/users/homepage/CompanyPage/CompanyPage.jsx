@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getDatabase, ref, get } from "firebase/database";
+import { fetchPublicCompany } from "../../../../firebase/publicCompany";
 import TabBar from "../../../../components/tabbar";
 import { useAuth } from "../../../../contexts/authContext"; // 🟢 importa o contexto de auth
 
@@ -39,15 +39,17 @@ function CompanyPageInner() {
   useEffect(() => {
     const fetchCompany = async () => {
       try {
-        const db = getDatabase();
-        const companyRef = ref(db, `companys/${handle}`);
-        const snapshot = await get(companyRef);
-
-        if (snapshot.exists()) {
-          setCompany(snapshot.val());
-        } else {
-          setCompany(null);
-        }
+        /* Só os campos públicos (ver firebase/publicCompany.js). */
+        setCompany(
+          await fetchPublicCompany(handle, [
+            "name",
+            "handle",
+            "description",
+            "logoPreview",
+            "phone",
+            "email"
+          ])
+        );
       } catch (error) {
         console.error("Erro ao buscar empresa:", error);
       } finally {

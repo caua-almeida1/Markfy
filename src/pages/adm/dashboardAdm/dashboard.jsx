@@ -37,7 +37,7 @@ import MaleEmoji3 from "../../../img/MEMOJIS PACK/males/emoji (3).svg";
 import MaleEmoji4 from "../../../img/MEMOJIS PACK/males/emoji (4).svg";
 import MaleEmoji5 from "../../../img/MEMOJIS PACK/males/emoji (5).svg";
 
-import placeholder from "../../../img/product-details/not-professional.png";
+import placeholder from "../../../img/adm-content/image-not-found.svg";
 
 import { OrderDetailsModal } from "../ordersAdm/orders";
 
@@ -474,8 +474,12 @@ const Dashboard = ({
     }, [company?.handle]);
 
 
+    /* Cancelada que ainda vale até o fim do período pago não
+       é receita recorrente: não cobra de novo. */
     const activeSubscriptions =
-        subscriptions.filter(isSubscriptionUsable);
+        subscriptions.filter(
+            (item) => isSubscriptionUsable(item) && item.status !== "cancelled"
+        );
 
     /* Quanto entra a cada ciclo, somando os planos ativos. */
     const recurringRevenue =

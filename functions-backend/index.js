@@ -13,6 +13,71 @@ admin.initializeApp({
 
 const db = admin.database();
 
+const DATABASE_URL = "https://markfy-96942-default-rtdb.firebaseio.com";
+
+
+/* =====================================================
+   LEITURA PARCIAL DE companys
+
+   Webhooks e assinaturas precisavam "varrer as empresas" e
+   faziam isso com db.ref("companys").once("value"): cada
+   chamada baixava TODAS as empresas inteiras — agenda,
+   produtos (alguns com imagens base64 de mais de 1 MB),
+   pedidos. Download do Realtime Database é cobrado por byte,
+   e o Mercado Pago manda várias notificações por pagamento.
+
+   Agora: lista os handles com consulta rasa (só as chaves) e
+   lê, de cada empresa, só o filho que interessa. Se a
+   consulta rasa falhar, volta à leitura completa — mais
+   cara, mas nunca pior do que antes.
+===================================================== */
+
+async function listCompanyHandles() {
+
+    try {
+
+        const credential = admin.app().options.credential;
+        const { access_token: accessToken } = await credential.getAccessToken();
+
+        const response = await fetch(`${DATABASE_URL}/companys.json?shallow=true`, {
+            headers: { Authorization: `Bearer ${accessToken}` }
+        });
+
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+        return Object.keys((await response.json()) || {});
+
+    } catch (error) {
+
+        console.warn("Consulta rasa de companys indisponível; lendo completo:", error.message);
+
+        return Object.keys((await db.ref("companys").once("value")).val() || {});
+    }
+}
+
+/** { handle: { filho: valor } } só com os filhos pedidos. */
+async function loadCompaniesChildren(children) {
+
+    const handles = await listCompanyHandles();
+
+    const entries = await Promise.all(handles.map(async (handle) => {
+
+        const values = await Promise.all(
+            children.map((child) => db.ref(`companys/${handle}/${child}`).once("value"))
+        );
+
+        const company = {};
+
+        children.forEach((child, index) => {
+            if (values[index].exists()) company[child] = values[index].val();
+        });
+
+        return [handle, company];
+    }));
+
+    return Object.fromEntries(entries);
+}
+
 
 /* =====================================================
    CONVERTER PREÇO
@@ -602,58 +667,40 @@ exports.saveMercadoPagoCard = onRequest(
  */
 async function findUserCompany(uid) {
 
-    console.log("🔎 Procurando empresa para UID:", uid);
+    /*
+     * Primeiro as empresas que o próprio usuário aponta
+     * (companyHandle e o índice users/{uid}/companies); só
+     * se nenhuma servir, confere members/{uid} empresa a
+     * empresa — lendo apenas esse nó, nunca a empresa toda.
+     *
+     * Não registra nada sobre os membros no log: era dado
+     * pessoal indo para o Cloud Logging a cada chamada.
+     */
 
-    const snapshot =
-        await db.ref("companys").once("value");
+    const [currentHandle, indexed] = await Promise.all([
+        db.ref(`users/${uid}/companyHandle`).once("value").then((snap) => snap.val()),
+        db.ref(`users/${uid}/companies`).once("value").then((snap) => Object.keys(snap.val() || {}))
+    ]);
 
-    const companies =
-        snapshot.val() || {};
+    const tryHandles = async (handles) => {
 
-    for (const [handle, company] of Object.entries(companies)) {
+        for (const handle of handles) {
 
-        console.log("🏢 Empresa:", handle);
+            if (typeof handle !== "string" || !handle) continue;
 
-        if (!company?.members) {
-            console.log("⚠️ Sem members:", handle);
-            continue;
+            const member = (await db.ref(`companys/${handle}/members/${uid}`).once("value")).val();
+
+            if (member) return { handle, member };
         }
 
-        console.log(
-            "👥 UIDs cadastrados:",
-            Object.keys(company.members)
-        );
+        return null;
+    };
 
-        const member =
-            company.members[uid];
+    const direct = await tryHandles([...new Set([currentHandle, ...indexed])]);
 
-        if (!member) {
-            continue;
-        }
+    if (direct) return direct;
 
-        console.log(
-            "✅ EMPRESA ENCONTRADA:",
-            handle
-        );
-
-        console.log(
-            "👤 MEMBER:",
-            member
-        );
-
-        return {
-            handle,
-            company,
-            member
-        };
-    }
-
-    console.log(
-        "❌ NENHUMA EMPRESA ENCONTRADA PARA UID:",
-        uid
-    );
-
-    return null;
+    return tryHandles(await listCompanyHandles());
 }
 
 /**
@@ -2325,47 +2372,27 @@ exports.createMercadoPagoPayment = onRequest(
 /* =====================================================
    ASSINATURAS — MERCADO PAGO (PREAPPROVAL)
 
-   Cobrança recorrente não passa por /v1/payments. Aquela
-   API cobra uma vez; assinatura é /preapproval, que guarda
-   uma autorização no cartão e cobra sozinha a cada ciclo.
+   Cobrança recorrente não passa por /v1/payments (que cobra
+   uma vez): é /preapproval, que guarda a autorização e cobra
+   sozinha a cada ciclo, na conta da empresa.
 
-   É por isso que mensalidade só aceita cartão: Pix e boleto
-   não têm como ser debitados automaticamente — cada
-   cobrança exigiria a pessoa pagar de novo, na mão, o que
-   deixa de ser assinatura.
+   Tudo de mensalidade mora em subscriptions.js (endpoints,
+   webhook, sincronização diária) e subscriptions-core.js
+   (regras puras, com testes). Aqui fica só a ligação com o
+   que é deste arquivo: os secrets e a renovação do token.
 
-   O QUE ACONTECE AQUI
-
-     createMercadoPagoSubscription  cria a assinatura com o token
-                                    do cartão digitado no Markfy
-     cancelMercadoPagoSubscription  encerra
-     (webhook)                      recebe cada cobrança
-                                    automática
+     subscriptionsApi        create | sync | cancel
+     subscriptionsDailySync  todo dia às 06:00 (Brasília)
 
    O nó companys/{handle}/subscriptions/{uid}_{productId} é
    o espelho local: o Mercado Pago é a fonte da verdade da
    cobrança, e o nó é o que as telas leem.
 ===================================================== */
 
-
-/** Ciclo do plano -> o que o Mercado Pago entende. */
-const CICLOS_MP = {
-    monthly: { frequency: 1, frequency_type: "months" },
-    quarterly: { frequency: 3, frequency_type: "months" },
-    semiannual: { frequency: 6, frequency_type: "months" },
-    annual: { frequency: 12, frequency_type: "months" }
-};
-
-
 const carregarConexao = async (companyHandle) => {
 
-    const snapshot =
-        await admin
-            .database()
-            .ref(`mercadoPagoConnections/${companyHandle}`)
-            .once("value");
-
-    const connection = snapshot.val();
+    const connection =
+        (await db.ref(`mercadoPagoConnections/${companyHandle}`).once("value")).val();
 
     if (
         !connection ||
@@ -2379,781 +2406,16 @@ const carregarConexao = async (companyHandle) => {
 
 };
 
-
-/*
-   COMO A ASSINATURA É CRIADA
-
-   O cliente digita o cartão no Markfy (Payment Brick do Mercado
-   Pago, que gera o `card_token_id` sem o número passar por
-   aqui). O backend cria a assinatura "authorized" com esse
-   token: o Mercado Pago valida o cartão com uma cobrança mínima
-   (que ele devolve) e passa a cobrar sozinho a cada ciclo, na
-   conta do vendedor.
-
-   O token vale uma vez só e precisa ter sido gerado com a chave
-   pública da MESMA conta cujo access token cria a assinatura.
-   É por isso que a chave vem de getMercadoPagoPublicKey, da
-   conexão da empresa.
-*/
-
-/** Preço que o cliente viu: o promocional, quando existe. */
-const precoEfetivoDaAssinatura = (product) => {
-
-    const plan = product.monthlyPlan || {};
-
-    const normal =
-        parseMoney(plan.price) ??
-        parseMoney(product.value);
-
-    const promocional = parseMoney(product.discountedPrice);
-
-    if (
-        normal > 0 &&
-        promocional > 0 &&
-        promocional < normal
-    ) {
-        return promocional;
-    }
-
-    return normal;
-
-};
-
-
-/**
- * Cria o primeiro agendamento da assinatura, uma única vez.
- *
- * O rascunho fica em `pendingSchedule` e é retirado numa
- * transação: a notificação do Mercado Pago pode chegar repetida
- * e concorrer com a resposta da criação, e só quem retirou o
- * rascunho cria o agendamento.
- */
-const ativarPrimeiroAtendimento = async (handle, subscriptionId) => {
-
-    const assinaturaRef =
-        db.ref(`companys/${handle}/subscriptions/${subscriptionId}`);
-
-    let rascunho = null;
-
-    await assinaturaRef
-        .child("pendingSchedule")
-        .transaction((atual) => {
-
-            if (!atual) return undefined;
-
-            rascunho = atual;
-
-            return null;
-
-        });
-
-    if (!rascunho) return null;
-
-    const a = (await assinaturaRef.once("value")).val() || {};
-
-    const scheduleId =
-        `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-
-    await db
-        .ref(`companys/${handle}/schedules/${scheduleId}`)
-        .set({
-            productId: a.productId,
-            productName: a.productName || null,
-            productPrice: a.price
-                ? `R$ ${Number(a.price).toFixed(2).replace(".", ",")}`
-                : null,
-            professionalId: a.professionalId || null,
-            professionalName: a.professionalName || null,
-            day: rascunho.day,
-            dayLabel: rascunho.dayLabel || null,
-            hour: rascunho.hour,
-            userName: a.userName || null,
-            userId: a.uid,
-            clientId: a.clientId || null,
-            notes: rascunho.notes || null,
-            subscriptionId,
-            status: "pending",
-            timestamp: new Date().toISOString()
-        });
-
-    return scheduleId;
-
-};
-
-
-/**
- * O pagamento recusado mais recente da conta, nos últimos
- * 10 minutos. Serve só de diagnóstico: devolve o motivo
- * (status_detail) sem dados do cartão.
- */
-const buscarRecusaRecente = async (accessToken) => {
-
-    try {
-
-        const resposta = await fetch(
-            "https://api.mercadopago.com/v1/payments/search?sort=date_created&criteria=desc&limit=10",
-            {
-                headers: { Authorization: `Bearer ${accessToken}` }
-            }
-        );
-
-        if (!resposta.ok) return null;
-
-        const dados = await resposta.json();
-
-        const limite = Date.now() - 10 * 60 * 1000;
-
-        const recusado = (dados?.results || []).find(
-            (p) =>
-                p?.status === "rejected" &&
-                new Date(p.date_created).getTime() >= limite
-        );
-
-        if (!recusado) return null;
-
-        return {
-            paymentId: recusado.id,
-            statusDetail: recusado.status_detail || null,
-            amount: recusado.transaction_amount ?? null,
-            paymentMethodId: recusado.payment_method_id || null,
-            paymentTypeId: recusado.payment_type_id || null,
-            createdAt: recusado.date_created || null
-        };
-
-    } catch {
-
-        return null;
-
-    }
-
-};
-
-
-exports.createMercadoPagoSubscription = onRequest(
-    {
-        secrets: [
-            mercadoPagoClientId,
-            mercadoPagoClientSecret
-        ]
-    },
-    async (req, res) => {
-
-        try {
-
-            res.set("Access-Control-Allow-Origin", "*");
-            res.set(
-                "Access-Control-Allow-Headers",
-                "Authorization, Content-Type"
-            );
-
-            if (req.method === "OPTIONS") {
-                return res.status(204).send("");
-            }
-
-            if (req.method !== "POST") {
-                return res.status(405).json({
-                    success: false,
-                    message: "Método não permitido."
-                });
-            }
-
-
-            /* ---------- QUEM ESTÁ ASSINANDO ----------
-
-               Assinatura exige conta: uma cobrança que se repete
-               todo mês precisa de alguém a quem responder, para
-               ver, pausar e cancelar. */
-
-            const authorization =
-                req.headers.authorization || "";
-
-            if (!authorization.startsWith("Bearer ")) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Entre na sua conta para assinar."
-                });
-            }
-
-            const decodedToken =
-                await admin
-                    .auth()
-                    .verifyIdToken(
-                        authorization.replace("Bearer ", "")
-                    );
-
-            const uid = decodedToken.uid;
-
-
-            const {
-                companyHandle,
-                productId,
-                professionalId,
-                professionalName,
-                day,
-                dayLabel,
-                hour,
-                userName,
-                clientId,
-                notes,
-                cardTokenId,
-                payerEmail
-            } = req.body || {};
-
-
-            const idValido = (v) =>
-                typeof v === "string" && /^[A-Za-z0-9_-]{1,100}$/.test(v);
-
-            if (
-                !idValido(companyHandle) ||
-                !idValido(productId) ||
-                typeof cardTokenId !== "string" ||
-                !cardTokenId
-            ) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Dados incompletos para criar a assinatura."
-                });
-            }
-
-            const emailDoPagador =
-                typeof payerEmail === "string"
-                    ? payerEmail.trim().toLowerCase()
-                    : "";
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailDoPagador)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Informe um e-mail válido para a assinatura."
-                });
-            }
-
-
-            /* ---------- PRODUTO E PLANO ---------- */
-
-            const productSnapshot =
-                await db
-                    .ref(`companys/${companyHandle}/products/${productId}`)
-                    .once("value");
-
-            const product = productSnapshot.val();
-
-            if (!product) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Produto não encontrado."
-                });
-            }
-
-            if (product.type !== "monthly") {
-                return res.status(400).json({
-                    success: false,
-                    message: "Este produto não é uma mensalidade."
-                });
-            }
-
-            const plan = product.monthlyPlan || {};
-
-            /* Os preços são gravados como texto ("R$ 99,00"):
-               `Number()` neles é NaN. */
-            const valor = precoEfetivoDaAssinatura(product);
-
-            if (!(valor > 0)) {
-                return res.status(400).json({
-                    success: false,
-                    message: "O plano possui um valor inválido."
-                });
-            }
-
-            const ciclo =
-                CICLOS_MP[plan.billingCycle] ||
-                CICLOS_MP.monthly;
-
-
-            const connection =
-                await carregarConexao(companyHandle);
-
-            if (!connection) {
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "O Mercado Pago ainda não está conectado para esta empresa."
-                });
-            }
-
-
-            /* ---------- UMA ASSINATURA POR PESSOA ----------
-
-               Sem esta checagem, dois cliques autorizariam dois
-               cartões para o mesmo plano. Uma tentativa anterior
-               que ficou "pending" (cartão recusado, aba fechada)
-               NÃO bloqueia: senão a pessoa nunca conseguiria
-               tentar de novo com outro cartão. */
-
-            const subscriptionId = `${uid}_${productId}`;
-
-            const subscriptionRef =
-                db.ref(
-                    `companys/${companyHandle}/subscriptions/${subscriptionId}`
-                );
-
-            const existente =
-                (await subscriptionRef.once("value")).val();
-
-            if (
-                existente &&
-                (
-                    existente.status === "authorized" ||
-                    existente.status === "past_due" ||
-                    existente.status === "paused"
-                )
-            ) {
-                return res.status(409).json({
-                    success: false,
-                    code: "SUBSCRIPTION_ALREADY_ACTIVE",
-                    message: "Você já tem uma assinatura deste plano."
-                });
-            }
-
-            if (
-                existente?.status === "pending" &&
-                existente.mercadoPagoPreapprovalId
-            ) {
-                await fetch(
-                    `https://api.mercadopago.com/preapproval/${existente.mercadoPagoPreapprovalId}`,
-                    {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization:
-                                `Bearer ${connection.accessToken}`
-                        },
-                        body: JSON.stringify({ status: "cancelled" })
-                    }
-                ).catch(() => null);
-            }
-
-
-            /* ---------- CRIAR NO MERCADO PAGO ---------- */
-
-            const corpo = {
-
-                reason:
-                    product.name || "Mensalidade Markfy",
-
-                external_reference: subscriptionId,
-
-                payer_email: emailDoPagador,
-
-                card_token_id: cardTokenId,
-
-                /* "authorized" cobra a primeira vez agora. Com
-                   "pending" o cartão ficaria sem autorização e a
-                   empresa não receberia nada. */
-                status: "authorized",
-
-                auto_recurring: {
-                    frequency: ciclo.frequency,
-                    frequency_type: ciclo.frequency_type,
-                    transaction_amount: Number(valor.toFixed(2)),
-                    currency_id: "BRL"
-                },
-
-                back_url:
-                    `https://markfy.vercel.app/central-user/${companyHandle}?tab=reservas`,
-
-                notification_url:
-                    "https://us-central1-markfy-96942.cloudfunctions.net/mercadoPagoWebhook"
-
-            };
-
-            /* Período de teste configurado no plano. */
-            if (Number(plan.trialDays) > 0) {
-                corpo.auto_recurring.free_trial = {
-                    frequency: Number(plan.trialDays),
-                    frequency_type: "days"
-                };
-            }
-
-            const criar = (token) =>
-                fetch(
-                    "https://api.mercadopago.com/preapproval",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify(corpo)
-                    }
-                );
-
-            let accessToken = connection.accessToken;
-
-            let resposta = await criar(accessToken);
-            let dados = await resposta.json().catch(() => ({}));
-
-            /* Token vencido: renova e tenta uma vez. */
-            if (
-                resposta.status === 401 ||
-                /credential/i.test(dados?.message || "")
-            ) {
-
-                const renovada =
-                    await refreshMercadoPagoAccessToken(
-                        companyHandle,
-                        connection
-                    );
-
-                accessToken = renovada.accessToken;
-
-                resposta = await criar(accessToken);
-                dados = await resposta.json().catch(() => ({}));
-
-            }
-
-
-            if (!resposta.ok || !dados?.id) {
-
-                const motivo =
-                    (Array.isArray(dados?.cause)
-                        ? dados.cause.map(c => c?.description).filter(Boolean).join("; ")
-                        : null) ||
-                    dados?.message ||
-                    "O Mercado Pago não aceitou a assinatura.";
-
-                /* A resposta inteira vai para o log: o texto do
-                   Mercado Pago é a única pista de por que uma
-                   assinatura foi recusada. O token do cartão não
-                   é registrado. */
-                console.error(
-                    "❌ Preapproval recusado:",
-                    resposta.status,
-                    motivo,
-                    JSON.stringify(dados),
-                    {
-                        modo:
-                            String(connection.publicKey || "")
-                                .startsWith("TEST-")
-                                ? "teste"
-                                : "producao",
-                        valor,
-                        ciclo: ciclo.frequency_type
-                    }
-                );
-
-                /* A conta de recebimento precisa estar habilitada
-                   para assinaturas, uma liberação à parte no
-                   Mercado Pago. */
-                const problemaDaConta =
-                    /not authorized|unauthorized|forbidden|preapproval.*not.*enabled|collector/i
-                        .test(motivo);
-
-                /* CC_VAL_433: o Mercado Pago não validou o
-                   cartão. Costuma ser recusa do banco ou do
-                   antifraude, não campo errado. */
-                const cartaoNaoValidado =
-                    /CC_VAL_433|card validation/i.test(
-                        `${motivo} ${JSON.stringify(dados)}`
-                    );
-
-                /* A resposta do /preapproval não diz POR QUE a
-                   validação falhou. O motivo fica no pagamento de
-                   validação que o Mercado Pago cria na conta do
-                   vendedor: procuramos o mais recente recusado. */
-                const recusaDaValidacao =
-                    cartaoNaoValidado
-                        ? await buscarRecusaRecente(accessToken)
-                        : null;
-
-                if (recusaDaValidacao) {
-                    console.error(
-                        "❌ Pagamento de validação recusado:",
-                        JSON.stringify(recusaDaValidacao)
-                    );
-                }
-
-                return res.status(problemaDaConta ? 502 : 400).json({
-                    statusDetail:
-                        recusaDaValidacao?.statusDetail || null,
-                    success: false,
-                    code: problemaDaConta
-                        ? "MERCADO_PAGO_SUBSCRIPTION_NOT_ENABLED"
-                        : cartaoNaoValidado
-                            ? "CARD_NOT_VALIDATED"
-                            : "MERCADO_PAGO_REJECTED",
-                    ownerAction: problemaDaConta,
-                    message: problemaDaConta
-                        ? "A conta Mercado Pago desta empresa ainda não pode receber assinaturas. " +
-                          "O responsável precisa habilitar Assinaturas no Mercado Pago."
-                        : cartaoNaoValidado
-                            ? "O Mercado Pago não conseguiu validar este cartão para cobrança automática. " +
-                              "Tente outro cartão de crédito."
-                            : "Não foi possível autorizar a assinatura. Confira os dados do cartão.",
-                    details: motivo
-                });
-
-            }
-
-
-            /* ---------- ESPELHO LOCAL ----------
-
-               O primeiro atendimento fica guardado como rascunho e
-               só vira agendamento com a assinatura autorizada. */
-
-            const agora = Date.now();
-
-            const status = dados.status || "pending";
-
-            await subscriptionRef.set({
-
-                id: subscriptionId,
-                uid,
-                clientId: clientId || null,
-
-                companyHandle,
-                productId,
-                productName: product.name || null,
-
-                professionalId: professionalId || null,
-                professionalName: professionalName || null,
-
-                userName: userName || null,
-                payerEmail: emailDoPagador,
-
-                mercadoPagoPreapprovalId: String(dados.id),
-
-                status,
-
-                price: Number(valor.toFixed(2)),
-                currency: "BRL",
-
-                billingCycle: plan.billingCycle || "monthly",
-                unlimitedSessions: Boolean(plan.unlimitedSessions),
-                sessionsPerCycle: Number(plan.sessionsPerCycle) || 0,
-                autoRenew: plan.autoRenew !== false,
-                trialDays: Number(plan.trialDays) || 0,
-                loyaltyMonths: Number(plan.loyaltyMonths) || 0,
-                cancellationNoticeDays:
-                    Number(plan.cancellationNoticeDays) || 0,
-
-                pendingSchedule:
-                    (day && hour)
-                        ? {
-                            day,
-                            dayLabel: dayLabel || null,
-                            hour,
-                            notes:
-                                (typeof notes === "string" && notes.trim())
-                                    ? notes.trim().slice(0, 300)
-                                    : null
-                        }
-                        : null,
-
-                startedAt: status === "authorized" ? agora : null,
-
-                nextBillingAt:
-                    dados.next_payment_date
-                        ? new Date(dados.next_payment_date).getTime()
-                        : null,
-
-                createdAt: agora,
-                updatedAt: agora
-
-            });
-
-
-            /* Autorizada na hora: já agenda. Se ficou pendente, o
-               webhook agenda quando o Mercado Pago confirmar. */
-            let scheduleId = null;
-
-            if (status === "authorized") {
-                scheduleId =
-                    await ativarPrimeiroAtendimento(
-                        companyHandle,
-                        subscriptionId
-                    );
-            }
-
-
-            return res.status(200).json({
-                success: true,
-                subscriptionId,
-                scheduleId,
-                status,
-                nextBillingAt:
-                    dados.next_payment_date
-                        ? new Date(dados.next_payment_date).getTime()
-                        : null
-            });
-
-        } catch (error) {
-
-            console.error(
-                "Erro createMercadoPagoSubscription:",
-                error
-            );
-
-            return res.status(500).json({
-                success: false,
-                message: "Erro interno ao criar a assinatura."
-            });
-
-        }
-
-    }
-);
-
-
-exports.cancelMercadoPagoSubscription = onRequest(
-    {
-        secrets: [
-            mercadoPagoClientId,
-            mercadoPagoClientSecret
-        ]
-    },
-    async (req, res) => {
-
-        try {
-
-            res.set("Access-Control-Allow-Origin", "*");
-            res.set(
-                "Access-Control-Allow-Headers",
-                "Authorization, Content-Type"
-            );
-
-            if (req.method === "OPTIONS") {
-                return res.status(204).send("");
-            }
-
-            const authorization =
-                req.headers.authorization || "";
-
-            if (!authorization.startsWith("Bearer ")) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Usuário não autenticado."
-                });
-            }
-
-            const decodedToken =
-                await admin
-                    .auth()
-                    .verifyIdToken(
-                        authorization.replace("Bearer ", "")
-                    );
-
-            const uid = decodedToken.uid;
-
-            const { companyHandle, subscriptionId } =
-                req.body || {};
-
-            if (!companyHandle || !subscriptionId) {
-                return res.status(400).json({
-                    success: false,
-                    message: "Dados incompletos."
-                });
-            }
-
-            const db = admin.database();
-
-            const subscriptionRef =
-                db.ref(
-                    `companys/${companyHandle}/subscriptions/${subscriptionId}`
-                );
-
-            const assinatura =
-                (await subscriptionRef.once("value")).val();
-
-            if (!assinatura) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Assinatura não encontrada."
-                });
-            }
-
-            /* Só o dono da assinatura, ou alguém da equipe da
-               empresa, pode encerrar. */
-            const membro =
-                (await db
-                    .ref(`companys/${companyHandle}/members/${uid}`)
-                    .once("value")).exists();
-
-            if (assinatura.uid !== uid && !membro) {
-                return res.status(403).json({
-                    success: false,
-                    message: "Você não pode cancelar esta assinatura."
-                });
-            }
-
-            const connection =
-                await carregarConexao(companyHandle);
-
-            if (connection && assinatura.mercadoPagoPreapprovalId) {
-
-                const resposta = await fetch(
-                    `https://api.mercadopago.com/preapproval/${assinatura.mercadoPagoPreapprovalId}`,
-                    {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization:
-                                `Bearer ${connection.accessToken}`
-                        },
-                        body: JSON.stringify({ status: "cancelled" })
-                    }
-                );
-
-                if (!resposta.ok) {
-
-                    const erro = await resposta.text();
-
-                    console.error(
-                        "❌ Falha ao cancelar no Mercado Pago:",
-                        resposta.status,
-                        erro
-                    );
-
-                    /*
-                     * Não marcamos como cancelado localmente
-                     * se o Mercado Pago não confirmou. Um nó
-                     * dizendo "cancelado" enquanto a cobrança
-                     * continua é pior do que um erro na tela.
-                     */
-                    return res.status(502).json({
-                        success: false,
-                        message:
-                            "Não foi possível cancelar no Mercado Pago. Tente de novo."
-                    });
-
-                }
-
-            }
-
-            await subscriptionRef.update({
-                status: "cancelled",
-                cancelledAt: Date.now(),
-                cancelledBy: assinatura.uid === uid ? "client" : "company",
-                updatedAt: Date.now()
-            });
-
-            return res.status(200).json({ success: true });
-
-        } catch (error) {
-
-            console.error(
-                "Erro cancelMercadoPagoSubscription:",
-                error
-            );
-
-            return res.status(500).json({
-                success: false,
-                message: "Erro interno ao cancelar a assinatura."
-            });
-
-        }
-
-    }
-);
+const subscriptions = require("./subscriptions")({
+    admin,
+    secrets: [mercadoPagoClientId, mercadoPagoClientSecret],
+    refreshAccessToken: (handle, connection) =>
+        refreshMercadoPagoAccessToken(handle, connection),
+    loadCompaniesChildren
+});
+
+exports.subscriptionsApi = subscriptions.subscriptionsApi;
+exports.subscriptionsDailySync = subscriptions.subscriptionsDailySync;
 
 
 /* =====================================================
@@ -3244,7 +2506,7 @@ exports.checkMercadoPagoSubscriptions = onRequest(
             const corpo = {
                 reason: "Verificação Markfy",
                 payer_email:
-                    decodedToken.email || "verificacao@markfy.app",
+                    decodedToken.email || "markfy.suporte@gmail.com" /* markfy.app é domínio de outra empresa */,
                 status: "pending",
                 auto_recurring: {
                     frequency: 1,
@@ -3498,221 +2760,15 @@ exports.getMercadoPagoPublicKey = onRequest(
    MERCADO PAGO — WEBHOOK
 ===================================================== */
 
-/* =====================================================
-   ASSINATURAS — SINCRONIA COM O MERCADO PAGO
-
-   Encontrar a assinatura a partir do id do Mercado Pago
-   exige varrer as empresas, porque o espelho local é
-   indexado por uid+produto, não pelo id de lá. É uma
-   varredura rasa e só acontece quando chega notificação de
-   assinatura, que é raro comparado a agendamento.
-===================================================== */
-
-const acharAssinaturaPorPreapproval = async (preapprovalId) => {
-
-    const empresas =
-        (await db.ref("companys").once("value")).val() || {};
-
-    for (const [handle, empresa] of Object.entries(empresas)) {
-
-        const assinaturas = empresa?.subscriptions || {};
-
-        for (const [id, assinatura] of Object.entries(assinaturas)) {
-
-            if (
-                String(assinatura?.mercadoPagoPreapprovalId) ===
-                String(preapprovalId)
-            ) {
-                return { handle, id, assinatura };
-            }
-
-        }
-
-    }
-
-    return null;
-
-};
-
-
-const sincronizarAssinatura = async (preapprovalId) => {
-
-    const encontrada =
-        await acharAssinaturaPorPreapproval(preapprovalId);
-
-    if (!encontrada) {
-
-        console.warn(
-            "Assinatura desconhecida no webhook:",
-            preapprovalId
-        );
-
-        return;
-
-    }
-
-    const connection =
-        await carregarConexao(encontrada.handle);
-
-    if (!connection) return;
-
-    const resposta = await fetch(
-        `https://api.mercadopago.com/preapproval/${preapprovalId}`,
-        {
-            headers: {
-                Authorization: `Bearer ${connection.accessToken}`
-            }
-        }
-    );
-
-    if (!resposta.ok) {
-
-        console.error(
-            "Não foi possível ler a assinatura:",
-            resposta.status
-        );
-
-        return;
-
-    }
-
-    const dados = await resposta.json();
-
-    const assinaturaRef =
-        db.ref(
-            `companys/${encontrada.handle}/subscriptions/${encontrada.id}`
-        );
-
-    const novoStatus =
-        dados.status || encontrada.assinatura.status;
-
-    /* O ciclo conta a partir da autorização, não de quando a
-       assinatura foi criada. */
-    const acabouDeAutorizar =
-        novoStatus === "authorized" &&
-        !encontrada.assinatura.startedAt;
-
-    await assinaturaRef.update({
-
-        status: novoStatus,
-
-        ...(acabouDeAutorizar
-            ? { startedAt: Date.now() }
-            : {}),
-
-        nextBillingAt:
-            dados.next_payment_date
-                ? new Date(dados.next_payment_date).getTime()
-                : encontrada.assinatura.nextBillingAt || null,
-
-        lastSyncAt: Date.now(),
-        updatedAt: Date.now()
-
-    });
-
-
-    /* Só com o cartão autorizado o horário escolhido na hora de
-       assinar vira agendamento. */
-
-    if (novoStatus === "authorized") {
-        await ativarPrimeiroAtendimento(
-            encontrada.handle,
-            encontrada.id
-        );
-    }
-
-};
-
-
-const registrarCobrancaDeAssinatura = async (authorizedPaymentId) => {
-
-    /*
-     * Para saber de qual assinatura é a cobrança precisamos
-     * ler o pagamento autorizado — ele traz o preapproval_id.
-     * Como a conexão é por empresa e ainda não sabemos qual,
-     * tentamos cada uma até uma responder.
-     */
-    const empresas =
-        (await db.ref("companys").once("value")).val() || {};
-
-    for (const handle of Object.keys(empresas)) {
-
-        const connection = await carregarConexao(handle);
-
-        if (!connection) continue;
-
-        const resposta = await fetch(
-            `https://api.mercadopago.com/authorized_payments/${authorizedPaymentId}`,
-            {
-                headers: {
-                    Authorization: `Bearer ${connection.accessToken}`
-                }
-            }
-        );
-
-        if (!resposta.ok) continue;
-
-        const dados = await resposta.json();
-
-        const preapprovalId = dados?.preapproval_id;
-
-        if (!preapprovalId) continue;
-
-        const encontrada =
-            await acharAssinaturaPorPreapproval(preapprovalId);
-
-        if (!encontrada) continue;
-
-        const pago =
-            dados?.status === "processed" ||
-            dados?.payment?.status === "approved";
-
-        await db
-            .ref(
-                `companys/${encontrada.handle}/subscriptions/${encontrada.id}`
-            )
-            .update({
-
-                status: pago ? "authorized" : "past_due",
-
-                lastChargeAt: Date.now(),
-
-                lastChargeStatus:
-                    dados?.payment?.status || dados?.status || null,
-
-                nextBillingAt:
-                    dados?.next_retry_date
-                        ? new Date(dados.next_retry_date).getTime()
-                        : encontrada.assinatura.nextBillingAt || null,
-
-                updatedAt: Date.now()
-
-            });
-
-        /* Histórico de cobranças, para o painel mostrar. */
-        await db
-            .ref(
-                `companys/${encontrada.handle}/subscriptions/${encontrada.id}/charges/${authorizedPaymentId}`
-            )
-            .set({
-                amount: dados?.transaction_amount || null,
-                status: dados?.payment?.status || dados?.status || null,
-                paidAt: Date.now()
-            });
-
-        return;
-
-    }
-
-    console.warn(
-        "Cobrança de assinatura não localizada:",
-        authorizedPaymentId
-    );
-
-};
-
-
 exports.mercadoPagoWebhook = onRequest(
+    {
+        /* A sincronização de assinaturas pode precisar renovar
+           o token da empresa. */
+        secrets: [
+            mercadoPagoClientId,
+            mercadoPagoClientSecret
+        ]
+    },
     async (req, res) => {
 
         try {
@@ -3744,13 +2800,17 @@ exports.mercadoPagoWebhook = onRequest(
                DADOS DA NOTIFICAÇÃO
             ========================================= */
 
+            /* Webhook manda type + data.id no corpo; o IPN antigo
+               manda topic + id na URL. */
             const type =
                 req.body?.type ||
-                req.query?.type;
+                req.query?.type ||
+                req.query?.topic;
 
             const dataId =
                 req.body?.data?.id ||
-                req.query?.["data.id"];
+                req.query?.["data.id"] ||
+                req.query?.id;
 
 
             if (!dataId) {
@@ -3761,38 +2821,28 @@ exports.mercadoPagoWebhook = onRequest(
             /* =========================================
                ASSINATURAS
 
-               O Mercado Pago avisa duas coisas diferentes:
-
-                 preapproval / subscription_preapproval
-                   mudou o estado da assinatura — autorizada,
-                   pausada, cancelada por falta de pagamento;
-
+                 subscription_preapproval   mudou o estado
                  subscription_authorized_payment
-                   cobrou mais um ciclo.
+                                            cobrança agendada,
+                                            paga ou recusada
 
-               Sem tratar as duas, o espelho local congela no
-               dia da assinatura: a tela continuaria dizendo
-               "ativa" para quem já teve o cartão recusado, e
-               a próxima cobrança mostrada seria sempre a
-               mesma data velha.
+               Ver subscriptions.js. `user_id` é a conta
+               Mercado Pago da empresa: diz de quem é a
+               cobrança sem varrer todas as conexões.
             ========================================= */
 
             if (
                 type === "preapproval" ||
-                type === "subscription_preapproval"
+                type === "subscription_preapproval" ||
+                type === "subscription_authorized_payment" ||
+                type === "authorized_payment"
             ) {
 
-                await sincronizarAssinatura(String(dataId));
-
-                return res.status(200).send("OK");
-
-            }
-
-            if (type === "subscription_authorized_payment") {
-
-                await registrarCobrancaDeAssinatura(
-                    String(dataId)
-                );
+                await subscriptions.handleNotification({
+                    type,
+                    id: String(dataId),
+                    collectorId: req.body?.user_id || null
+                });
 
                 return res.status(200).send("OK");
 
@@ -3814,13 +2864,10 @@ exports.mercadoPagoWebhook = onRequest(
                BUSCAR PAYMENT ORDER
             ========================================= */
 
-            const companiesSnapshot =
-                await db
-                    .ref("companys")
-                    .once("value");
-
+            /* Só paymentOrders de cada empresa (ver
+               loadCompaniesChildren). */
             const companies =
-                companiesSnapshot.val() || {};
+                await loadCompaniesChildren(["paymentOrders"]);
 
             let paymentOrder = null;
             let companyHandle = null;
@@ -4084,8 +3131,10 @@ exports.mercadoPagoWebhook = onRequest(
             if (!paymentResponse.ok) {
 
                 console.error(
+                    /* Sem o corpo: ele traz os dados do pagador. */
                     "Erro ao consultar pagamento Mercado Pago:",
-                    paymentData
+                    paymentResponse.status,
+                    paymentData?.message || null
                 );
 
                 return res
@@ -4274,8 +3323,9 @@ exports.mercadoPagoWebhook = onRequest(
             ) {
 
                 console.error(
+                    /* Só a chave: o pedido tem nome e telefone. */
                     "PaymentOrder sem dados suficientes:",
-                    freshPaymentOrder
+                    paymentOrderKey
                 );
 
                 return res
@@ -4580,6 +3630,9 @@ const menus = require("./menus");
 const { licenseProductFor, planPriceFor, publicAccessFor } = menus.menusLicensing;
 
 exports.menusApi = menus.menusApi;
+
+/* Agendamento pelo cliente final (ver bookings.js). */
+exports.bookingsApi = require("./bookings").bookingsApi;
 
 const planCors = (req, res) => {
 

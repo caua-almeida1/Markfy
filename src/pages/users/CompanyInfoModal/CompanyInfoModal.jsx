@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { Icon } from "@iconify/react";
 
 import {
-    getDatabase,
-    ref,
-    get
-} from "firebase/database";
+    PUBLIC_COMPANY_FIELDS,
+    fetchProfessionalProfile,
+    fetchPublicCompany
+} from "../../../firebase/publicCompany";
 
 import {
     getStorage,
@@ -15,6 +15,8 @@ import {
     getDownloadURL,
     listAll
 } from "firebase/storage";
+
+import { useProductImages } from "../../../utils/productImages";
 
 import "./company-info-modal.css";
 import Modal from "../../../components/modal/Modal";
@@ -236,24 +238,19 @@ const CompanyInfoModal = ({
 
             try {
 
-                const db = getDatabase();
-
-                const companyRef =
-                    ref(
-                        db,
-                        `companys/${companyHandle}`
+                /* Campos públicos + produtos (para achar os
+                   profissionais). O nó inteiro traria a agenda
+                   dos clientes, que é privada. */
+                const companyData =
+                    await fetchPublicCompany(
+                        companyHandle,
+                        [...PUBLIC_COMPANY_FIELDS, "products"]
                     );
 
-                const companySnap =
-                    await get(companyRef);
-
-                if (!companySnap.exists()) {
+                if (!companyData) {
                     setLoading(false);
                     return;
                 }
-
-                const companyData =
-                    companySnap.val();
 
                 setCompany(companyData);
 
@@ -309,30 +306,19 @@ const CompanyInfoModal = ({
 
 
                 /*
-                 * Lê apenas os uids dos profissionais
-                 * relacionados aos produtos.
-                 *
-                 * Ler o nó "users" inteiro numa rota pública
-                 * expõe nome e e-mail de toda a base.
+                 * Só nome e descrição de cada profissional
+                 * relacionado aos produtos: users/{uid}
+                 * inteiro é privado (e-mail, telefone,
+                 * preferências).
                  */
 
                 const usersEntries =
                     await Promise.all(
 
-                        ids.map(async (id) => {
-
-                            const userSnap = await get(
-                                ref(db, `users/${id}`)
-                            );
-
-                            return [
-                                id,
-                                userSnap.exists()
-                                    ? userSnap.val()
-                                    : null
-                            ];
-
-                        })
+                        ids.map(async (id) => [
+                            id,
+                            await fetchProfessionalProfile(id)
+                        ])
 
                     );
 
@@ -806,6 +792,12 @@ const CompanyInfoModal = ({
 
     }, [company?.products]);
 
+    /* As fotos dos produtos ficam no Storage
+       (companys/{handle}/products/{id}/images), não no banco:
+       ler só o registro do produto deixava o catálogo sem foto. */
+    const catalogImages =
+        useProductImages(companyHandle, catalogProducts);
+
     const getCatalogProductName = (product) => {
 
         return (
@@ -832,6 +824,12 @@ const CompanyInfoModal = ({
 
 
     const getCatalogProductImage = (product) => {
+
+        const stored = catalogImages[product?.id];
+
+        if (stored?.[0]) {
+            return stored[0];
+        }
 
         if (product?.image) {
             return product.image;

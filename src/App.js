@@ -6,27 +6,11 @@ import PrivateRoute from "./components/auth/PrivateRoute";
 // ========= IMAGE CROPPER ===========
 import "react-image-crop/dist/ReactCrop.css";
 
-import InitialSetup from "./pages/inital-pages/initial-setup";
-
-// ========= CREATE COMPANY ===========
-import CreateCompany from "./pages/inital-pages/initial-steps-components/create-company/CreateCompany";
-import PreviewCompany from "./pages/inital-pages/initial-steps-components/preview-company/PreviewCompany";
-
-import Home from "./components/home";
-
 // ========= USERS COMUNS PAGES ===========
 
 import { AuthProvider } from "./contexts/authContext";
 import { useRoutes } from "react-router-dom";
 import { lazy, Suspense } from "react";
-
-import Dashboard from "./pages/adm/dashboardAdm/dashboard";
-import CentralAdm from "./pages/adm/centralAdm";
-import HomePage from "./pages/users/homepage";
-
-import Checkout from "./pages/users/checkout/Checkout";
-
-import PaymentResult from "./components/payment-result/PaymentResult";
 
 import CentralUser from "./pages/users/homepage/centralUser";
 import CompanyPage from "./pages/users/homepage/CompanyPage/CompanyPage";
@@ -36,20 +20,48 @@ import { UserCompanyProvider } from "./contexts/companyContext/UserCompanyContex
 import { ConsentProvider } from "./contexts/consentContext/ConsentContext";
 import { ThemeProvider } from "./theme/ThemeContext";
 
-import Invite from "./pages/invite/Invite"
 
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import TermsOfUse from "./pages/legal/TermsOfUse";
 
-import TestSMS from "./pages/TESTE-SMS/testesms";
 
 import MarkfyHome from "./pages/home/MarkfyHome";
-import QrLoginPage from "./qr/QrLoginPage";
-import QrInvitePage from "./qr/QrInvitePage";
 import { LicenseProvider } from "./plans/LicenseContext";
 import LicenseGate from "./plans/LicenseGate";
-import PlansPage from "./plans/PlansPage";
 import RouteFallback from "./components/route-transition/RouteFallback";
+import NotFound from "./pages/not-found/NotFound";
+import { usePageMeta } from "./hooks/usePageMeta";
+import { useAnalytics } from "./analytics/analytics";
+
+/* Rotas privadas ou de fluxo (login, painel, checkout...):
+   título próprio e "noindex" — não devem aparecer na busca.
+   O robots.txt sozinho não impede indexação. */
+const NoIndex = ({ title, children }) => {
+  usePageMeta({ title, noindex: true });
+  return children;
+};
+
+/*
+ * Painel da empresa, criação de empresa, checkout, convites e
+ * planos em pedaços próprios do bundle.
+ *
+ * Antes, quem só abria a página de uma barbearia para agendar
+ * baixava junto o painel inteiro (dashboard, produtos,
+ * pedidos, agenda — dezenas de milhares de linhas). O CSS
+ * global que vivia nesses módulos foi para src/index.css,
+ * para nada mudar de aparência.
+ */
+const CentralAdm = lazy(() => import("./pages/adm/centralAdm"));
+const InitialSetup = lazy(() => import("./pages/inital-pages/initial-setup"));
+const CreateCompany = lazy(() => import("./pages/inital-pages/initial-steps-components/create-company/CreateCompany"));
+const PreviewCompany = lazy(() => import("./pages/inital-pages/initial-steps-components/preview-company/PreviewCompany"));
+const Checkout = lazy(() => import("./pages/users/checkout/Checkout"));
+const SubscriptionReturn = lazy(() => import("./pages/users/subscription-return/SubscriptionReturn"));
+const PaymentResult = lazy(() => import("./components/payment-result/PaymentResult"));
+const Invite = lazy(() => import("./pages/invite/Invite"));
+const QrLoginPage = lazy(() => import("./qr/QrLoginPage"));
+const QrInvitePage = lazy(() => import("./qr/QrInvitePage"));
+const PlansPage = lazy(() => import("./plans/PlansPage"));
 
 /*
  * Markfy Studio e as páginas públicas criadas nele ficam em
@@ -89,7 +101,17 @@ const RtdbAnalytics = IS_DEV
   ? lazy(() => import("./pages/dev/RtdbAnalytics/RtdbAnalytics"))
   : null;
 
+/* Página de teste de SMS: ferramenta de desenvolvimento. Em
+   produção ela ficava pública e puxava o @mui/material (e o
+   emotion) para o bundle principal só por causa dela. */
+const TestSMS = IS_DEV
+  ? lazy(() => import("./pages/TESTE-SMS/testesms"))
+  : null;
+
 function App() {
+  /* GA4 só com ID configurado E aceite de "Estatísticas". */
+  useAnalytics();
+
   /*
    * O identificador anônimo do cliente (markfy-client-id)
    * NÃO é mais criado aqui. Ele é essencial para reencontrar
@@ -107,8 +129,15 @@ function App() {
     ===================================================== */
 
     {
-      path: "*",
+      path: "/",
       element: <LandingPage />,
+    },
+
+    /* Endereço desconhecido: página 404 de verdade, em vez
+       de mostrar a landing em qualquer URL. */
+    {
+      path: "*",
+      element: <NotFound />,
     },
 
     /* =====================================================
@@ -117,7 +146,24 @@ function App() {
 
     {
       path: "/login",
-      element: <Login />,
+      element: (
+        <NoIndex title="Entrar">
+          <Login />
+        </NoIndex>
+      ),
+    },
+
+    /* O convite manda quem ainda não tem conta para
+       /register?invite=...; a tela de login já abre no modo
+       cadastro quando há convite. Sem esta rota, a pessoa
+       caía na landing. */
+    {
+      path: "/register",
+      element: (
+        <NoIndex title="Criar conta">
+          <Login />
+        </NoIndex>
+      ),
     },
 
     /* =====================================================
@@ -131,7 +177,11 @@ function App() {
 
     {
       path: "/home/:step",
-      element: <MarkfyHome />,
+      element: (
+        <NoIndex title="Markfy">
+          <MarkfyHome />
+        </NoIndex>
+      ),
     },
 
     /* =====================================================
@@ -189,12 +239,20 @@ function App() {
     /* QR CODE — entrar em outro aparelho e entrar na equipe. */
     {
       path: "/qr-login",
-      element: <QrLoginPage />,
+      element: (
+        <NoIndex title="Entrar com QR Code">
+          <QrLoginPage />
+        </NoIndex>
+      ),
     },
 
     {
       path: "/entrar-equipe/:inviteId",
-      element: <QrInvitePage />,
+      element: (
+        <NoIndex title="Entrar na equipe">
+          <QrInvitePage />
+        </NoIndex>
+      ),
     },
 
     /* PLANOS DA EMPRESA — escolha e pagamento (só o administrador
@@ -202,9 +260,11 @@ function App() {
     {
       path: "/planos",
       element: (
-        <PrivateRoute>
-          <PlansPage />
-        </PrivateRoute>
+        <NoIndex title="Planos da empresa">
+          <PrivateRoute>
+            <PlansPage />
+          </PrivateRoute>
+        </NoIndex>
       ),
     },
 
@@ -212,9 +272,11 @@ function App() {
     {
       path: "/markfy-master-dev",
       element: (
-        <Suspense fallback={<RouteFallback />}>
-          <MarkfyMasterDev />
-        </Suspense>
+        <NoIndex title="Master">
+          <Suspense fallback={<RouteFallback />}>
+            <MarkfyMasterDev />
+          </Suspense>
+        </NoIndex>
       ),
     },
 
@@ -230,12 +292,31 @@ function App() {
 
     {
       path: "/payment-result",
-      element: <PaymentResult />,
+      element: (
+        <NoIndex title="Pagamento">
+          <PaymentResult />
+        </NoIndex>
+      ),
     },
 
     {
       path: "/checkout",
-      element: <Checkout />,
+      element: (
+        <NoIndex title="Pagamento">
+          <Checkout />
+        </NoIndex>
+      ),
+    },
+
+    /* Volta do Mercado Pago depois de assinar pela conta de lá
+       (back_url da assinatura). */
+    {
+      path: "/assinatura/retorno",
+      element: (
+        <NoIndex title="Assinatura">
+          <SubscriptionReturn />
+        </NoIndex>
+      ),
     },
 
     /* =====================================================
@@ -244,7 +325,11 @@ function App() {
 
     {
       path: "/initial-setup",
-      element: <InitialSetup />,
+      element: (
+        <NoIndex title="Primeiros passos">
+          <InitialSetup />
+        </NoIndex>
+      ),
     },
 
     /* =====================================================
@@ -253,7 +338,11 @@ function App() {
 
     {
       path: "/invite/:inviteId",
-      element: <Invite />,
+      element: (
+        <NoIndex title="Convite">
+          <Invite />
+        </NoIndex>
+      ),
     },
 
     /* =====================================================
@@ -263,18 +352,22 @@ function App() {
     {
       path: "/newcompany/:sessionId",
       element: (
-        <PrivateRoute>
-          <CreateCompany />
-        </PrivateRoute>
+        <NoIndex title="Criar empresa">
+          <PrivateRoute>
+            <CreateCompany />
+          </PrivateRoute>
+        </NoIndex>
       ),
     },
 
     {
       path: "/newcompany/previewcompany/:sessionId",
       element: (
-        <PrivateRoute>
-          <PreviewCompany />
-        </PrivateRoute>
+        <NoIndex title="Revisar empresa">
+          <PrivateRoute>
+            <PreviewCompany />
+          </PrivateRoute>
+        </NoIndex>
       ),
     },
 
@@ -285,11 +378,13 @@ function App() {
     {
       path: "/central-adm",
       element: (
-        <PrivateRoute>
-          <LicenseGate product="bookings">
-            <CentralAdm />
-          </LicenseGate>
-        </PrivateRoute>
+        <NoIndex title="Painel da empresa">
+          <PrivateRoute>
+            <LicenseGate product="bookings">
+              <CentralAdm />
+            </LicenseGate>
+          </PrivateRoute>
+        </NoIndex>
       ),
     },
 
@@ -330,15 +425,6 @@ function App() {
     },
 
     /* =====================================================
-       TESTES
-    ===================================================== */
-
-    {
-      path: "/test-sms",
-      element: <TestSMS />,
-    },
-
-    /* =====================================================
        DESENVOLVIMENTO
 
        Só existe rodando npm start. Em produção o array
@@ -347,6 +433,14 @@ function App() {
 
     ...(IS_DEV
       ? [
+        {
+          path: "/test-sms",
+          element: (
+            <Suspense fallback={<div style={{ padding: 24 }}>Carregando…</div>}>
+              <TestSMS />
+            </Suspense>
+          ),
+        },
         {
           path: "/dev/rtdb",
           element: (
@@ -376,7 +470,9 @@ function App() {
               consentimento via useConsent(). */}
           <ConsentProvider>
             <div className="w-full h-screen flex flex-col">
-              {routesElement}
+              <Suspense fallback={<RouteFallback />}>
+                {routesElement}
+              </Suspense>
             </div>
           </ConsentProvider>
          </LicenseProvider>

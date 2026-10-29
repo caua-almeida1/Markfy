@@ -1,0 +1,1096 @@
+/* =============================================================================
+   CHECKOUT DA MENSALIDADE — MARKFY
+
+   Cores e tamanhos vêm dos tokens globais (src/index.css), que já
+   trocam no tema escuro.
+============================================================================= */
+
+.subcheck {
+    width: 100%;
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 28px 24px 64px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+
+    color: var(--mkf-text-primary);
+}
+
+
+/* =============================================================================
+   ETAPAS
+============================================================================= */
+
+.subcheck-stepper {
+    list-style: none;
+    margin: 0 auto;
+    padding: 0;
+
+    width: 100%;
+    max-width: 640px;
+
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+}
+
+.subcheck-stepper-item {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+
+    color: var(--mkf-text-light);
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+    text-align: center;
+}
+
+/* Linha entre uma etapa e a seguinte. */
+.subcheck-stepper-item:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    top: 16px;
+    left: calc(50% + 22px);
+    right: calc(-50% + 22px);
+    height: 2px;
+    border-radius: 2px;
+    background: var(--mkf-ui-border);
+}
+
+.subcheck-stepper-item.is-done:not(:last-child)::after {
+    background: var(--mkf-ui-primary);
+}
+
+.subcheck-stepper-dot {
+    width: 34px;
+    height: 34px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 999px;
+    border: 2px solid var(--mkf-ui-border);
+    background: var(--mkf-ui-white);
+
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+
+    transition: background .2s ease, border-color .2s ease, color .2s ease;
+}
+
+.subcheck-stepper-item.is-current {
+    color: var(--mkf-text-primary);
+}
+
+.subcheck-stepper-item.is-current .subcheck-stepper-dot {
+    border-color: var(--mkf-ui-primary);
+    color: var(--mkf-ui-primary);
+    box-shadow: 0 0 0 4px var(--mkf-ui-primary-light);
+}
+
+.subcheck-stepper-item.is-done {
+    color: var(--mkf-text-secondary);
+}
+
+.subcheck-stepper-item.is-done .subcheck-stepper-dot {
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary, #fff);
+}
+
+.subcheck-stepper-dot svg {
+    font-size: 18px;
+}
+
+
+/* =============================================================================
+   CARTÕES E TÍTULOS
+============================================================================= */
+
+.subcheck-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.subcheck-card {
+    min-width: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+
+    padding: 28px;
+
+    background: var(--mkf-ui-white);
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: var(--mkf-radius-lg, 22px);
+    box-shadow: 0 1px 2px var(--mkf-ui-shadow, rgba(0, 0, 0, .04));
+}
+
+.subcheck-card--narrow {
+    width: 100%;
+    max-width: 680px;
+    margin: 0 auto;
+}
+
+.subcheck-card--center {
+    max-width: 480px;
+    margin: 40px auto 0;
+    align-items: center;
+    text-align: center;
+}
+
+.subcheck-card--center h2 {
+    margin: 0;
+    font-size: var(--mkf-font-xl);
+}
+
+.subcheck-card--center p {
+    margin: 0;
+    color: var(--mkf-text-secondary);
+    line-height: 1.55;
+}
+
+.subcheck-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.subcheck-eyebrow {
+    color: var(--mkf-ui-primary);
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+}
+
+.subcheck-heading h1 {
+    margin: 0;
+    font-size: var(--mkf-font-2xl);
+    font-weight: var(--mkf-font-bold, 700);
+    letter-spacing: -.02em;
+    line-height: 1.2;
+}
+
+.subcheck-heading p {
+    margin: 0;
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-sm);
+    line-height: 1.5;
+}
+
+
+/* =============================================================================
+   1. PLANO
+============================================================================= */
+
+.subcheck-plan {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    padding: 16px;
+
+    border-radius: var(--mkf-radius-md, 16px);
+    background: var(--mkf-ui-background-secondary);
+}
+
+.subcheck-plan-image {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 56px;
+
+    border-radius: 14px;
+    object-fit: cover;
+}
+
+.subcheck-plan-image--empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: var(--mkf-ui-primary-light);
+    color: var(--mkf-ui-primary);
+    font-size: 26px;
+}
+
+.subcheck-plan-info {
+    min-width: 0;
+    flex: 1;
+
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.subcheck-plan-info strong {
+    font-size: var(--mkf-font-md);
+    font-weight: var(--mkf-font-semibold);
+    overflow-wrap: anywhere;
+}
+
+.subcheck-plan-info span {
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-xs);
+}
+
+.subcheck-plan-price {
+    display: flex;
+    align-items: baseline;
+    gap: 2px;
+    white-space: nowrap;
+}
+
+.subcheck-plan-price strong {
+    font-size: var(--mkf-font-xl);
+    font-weight: var(--mkf-font-bold, 700);
+    letter-spacing: -.02em;
+}
+
+.subcheck-plan-price span {
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-sm);
+}
+
+.subcheck-highlights {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.subcheck-highlights li {
+    display: flex;
+    gap: 10px;
+
+    padding: 12px;
+
+    border: 1px solid var(--mkf-ui-border-light, var(--mkf-ui-border));
+    border-radius: 14px;
+}
+
+.subcheck-highlights svg {
+    flex: 0 0 auto;
+    margin-top: 2px;
+    color: var(--mkf-ui-primary);
+    font-size: 18px;
+}
+
+.subcheck-highlights div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.subcheck-highlights span {
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-xs);
+}
+
+.subcheck-highlights strong {
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+    line-height: 1.35;
+}
+
+.subcheck-booking {
+    display: flex;
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border-radius: 14px;
+    background: var(--mkf-ui-primary-lighter);
+    border: 1px solid var(--mkf-ui-primary-light);
+}
+
+.subcheck-booking > svg {
+    flex: 0 0 auto;
+    color: var(--mkf-ui-primary);
+    font-size: 22px;
+}
+
+.subcheck-booking div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.subcheck-booking strong {
+    font-size: var(--mkf-font-sm);
+}
+
+.subcheck-booking span {
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.45;
+}
+
+.subcheck-timeline-card h2 {
+    margin: 0;
+    font-size: var(--mkf-font-lg);
+}
+
+.subcheck-timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.subcheck-timeline li {
+    position: relative;
+    display: flex;
+    gap: 12px;
+}
+
+.subcheck-timeline li:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    left: 13px;
+    top: 30px;
+    bottom: -14px;
+    width: 2px;
+    background: var(--mkf-ui-border);
+}
+
+.subcheck-timeline-dot {
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 999px;
+    background: var(--mkf-ui-primary-light);
+    color: var(--mkf-ui-primary);
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.subcheck-timeline div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding-top: 4px;
+}
+
+.subcheck-timeline strong {
+    font-size: var(--mkf-font-sm);
+}
+
+.subcheck-timeline span {
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.5;
+}
+
+.subcheck-note {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.5;
+}
+
+.subcheck-note svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    font-size: 16px;
+}
+
+
+/* =============================================================================
+   2. AUTORIZAÇÃO
+============================================================================= */
+
+.subcheck-terms {
+    margin: 0;
+
+    display: flex;
+    flex-direction: column;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: var(--mkf-radius-md, 16px);
+    overflow: hidden;
+}
+
+.subcheck-terms div {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 12px;
+
+    padding: 12px 16px;
+}
+
+.subcheck-terms div + div {
+    border-top: 1px solid var(--mkf-ui-border-light, var(--mkf-ui-border));
+}
+
+.subcheck-terms dt {
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+    padding-top: 1px;
+}
+
+.subcheck-terms dd {
+    margin: 0;
+    font-size: var(--mkf-font-sm);
+    line-height: 1.5;
+}
+
+.subcheck-privacy {
+    border-radius: var(--mkf-radius-md, 16px);
+    background: var(--mkf-ui-background-secondary);
+    padding: 14px 16px;
+}
+
+.subcheck-privacy summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    cursor: pointer;
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+    list-style: none;
+}
+
+.subcheck-privacy summary::-webkit-details-marker {
+    display: none;
+}
+
+.subcheck-privacy summary svg {
+    color: var(--mkf-ui-primary);
+    font-size: 18px;
+}
+
+.subcheck-privacy ul {
+    margin: 12px 0 0;
+    padding-left: 18px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.55;
+}
+
+.subcheck-privacy a,
+.subcheck-check a {
+    color: var(--mkf-ui-primary);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.subcheck-checks {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.subcheck-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border: 1.5px solid var(--mkf-ui-border);
+    border-radius: 14px;
+
+    cursor: pointer;
+    font-size: var(--mkf-font-sm);
+    line-height: 1.5;
+
+    transition: border-color .2s ease, background .2s ease;
+}
+
+.subcheck-check.is-checked {
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary-lighter);
+}
+
+.subcheck-check input {
+    width: 18px;
+    height: 18px;
+    flex: 0 0 18px;
+    margin-top: 2px;
+    accent-color: var(--mkf-ui-primary);
+    cursor: pointer;
+}
+
+
+/* =============================================================================
+   3. PAGAMENTO
+============================================================================= */
+
+.subcheck-methods {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.subcheck-method {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+
+    padding: 16px;
+
+    border: 1.5px solid var(--mkf-ui-border);
+    border-radius: var(--mkf-radius-md, 16px);
+    background: var(--mkf-ui-white);
+    color: inherit;
+
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    transition: border-color .2s ease, box-shadow .2s ease, background .2s ease;
+}
+
+.subcheck-method:hover {
+    border-color: var(--mkf-ui-border-dark, var(--mkf-ui-border));
+}
+
+.subcheck-method.is-selected {
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary-lighter);
+    box-shadow: 0 0 0 3px var(--mkf-ui-primary-light);
+}
+
+.subcheck-method-icon {
+    font-size: 26px;
+    color: var(--mkf-ui-primary);
+}
+
+.subcheck-method-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-right: 22px;
+}
+
+.subcheck-method-text strong {
+    font-size: var(--mkf-font-md);
+}
+
+.subcheck-method-text span {
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.45;
+}
+
+.subcheck-method-radio {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+
+    width: 18px;
+    height: 18px;
+
+    border-radius: 999px;
+    border: 2px solid var(--mkf-ui-border-dark, var(--mkf-ui-border));
+}
+
+.subcheck-method.is-selected .subcheck-method-radio {
+    border-color: var(--mkf-ui-primary);
+    box-shadow: inset 0 0 0 3px var(--mkf-ui-white), inset 0 0 0 10px var(--mkf-ui-primary);
+}
+
+.subcheck-method-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.subcheck-mini-steps {
+    margin: 0;
+    padding: 12px 16px 12px 34px;
+
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    border-radius: 14px;
+    background: var(--mkf-ui-background-secondary);
+
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.5;
+}
+
+.subcheck-brick {
+    min-height: 300px;
+}
+
+.subcheck-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.subcheck-field span {
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.subcheck-field input {
+    height: 48px;
+    padding: 0 14px;
+
+    border: 1.5px solid var(--mkf-ui-border);
+    border-radius: 12px;
+    background: var(--mkf-ui-white);
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    font-size: var(--mkf-font-md);
+}
+
+.subcheck-field input:focus {
+    outline: none;
+    border-color: var(--mkf-ui-primary);
+    box-shadow: 0 0 0 3px var(--mkf-ui-primary-light);
+}
+
+.subcheck-field small {
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.45;
+}
+
+.subcheck-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+
+    min-height: 120px;
+
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-sm);
+}
+
+.subcheck-loading svg {
+    font-size: 22px;
+    color: var(--mkf-ui-primary);
+}
+
+.subcheck-error {
+    display: flex;
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border-radius: 14px;
+    background: var(--mkf-error-light, #fee2e2);
+    color: var(--mkf-error-text, #991b1b);
+}
+
+.subcheck-error.is-owner {
+    background: var(--mkf-ui-warning-soft, #fff8e8);
+    border: 1px solid var(--mkf-ui-warning-border, #f3ddb0);
+    color: var(--mkf-warning-text, #92400e);
+}
+
+.subcheck-error > svg {
+    flex: 0 0 auto;
+    font-size: 22px;
+}
+
+.subcheck-error div {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: var(--mkf-font-sm);
+    line-height: 1.45;
+}
+
+.subcheck-error-hint {
+    font-size: var(--mkf-font-xs);
+    opacity: .9;
+}
+
+.subcheck-secure {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-xs);
+}
+
+.subcheck-secure svg {
+    flex: 0 0 auto;
+    color: var(--mkf-success, #22c55e);
+    font-size: 16px;
+}
+
+
+/* =============================================================================
+   BOTÕES
+============================================================================= */
+
+.subcheck-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.subcheck-card--center .subcheck-actions,
+.subcheck-result .subcheck-actions {
+    justify-content: center;
+}
+
+.subcheck-button {
+    min-height: 46px;
+    padding: 0 20px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    border-radius: 12px;
+    border: 1px solid transparent;
+
+    font: inherit;
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+    cursor: pointer;
+
+    transition: background .2s ease, opacity .2s ease, transform .15s ease;
+}
+
+.subcheck-button:active:not(:disabled) {
+    transform: scale(.98);
+}
+
+.subcheck-button:disabled {
+    opacity: .5;
+    cursor: not-allowed;
+}
+
+.subcheck-button--primary {
+    margin-left: auto;
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary, #fff);
+}
+
+.subcheck-button--primary:hover:not(:disabled) {
+    background: var(--mkf-ui-primary-hover, var(--mkf-ui-primary));
+}
+
+.subcheck-button--ghost {
+    background: var(--mkf-ui-white);
+    border-color: var(--mkf-ui-border);
+    color: var(--mkf-text-secondary);
+}
+
+.subcheck-button--block {
+    width: 100%;
+    margin-left: 0;
+}
+
+.subcheck-button svg {
+    font-size: 18px;
+}
+
+
+/* =============================================================================
+   4. RESULTADO
+============================================================================= */
+
+.subcheck-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+
+    text-align: center;
+}
+
+.subcheck-result h2 {
+    margin: 0;
+    font-size: var(--mkf-font-2xl);
+    letter-spacing: -.02em;
+}
+
+.subcheck-result > p {
+    margin: 0;
+    max-width: 460px;
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-sm);
+    line-height: 1.55;
+}
+
+.subcheck-result-icon {
+    width: 64px;
+    height: 64px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    border-radius: 999px;
+    font-size: 34px;
+}
+
+.subcheck-result-icon.is-success {
+    background: var(--mkf-success-light, #dcfce7);
+    color: var(--mkf-success, #22c55e);
+}
+
+.subcheck-result-icon.is-pending {
+    background: var(--mkf-ui-primary-light);
+    color: var(--mkf-ui-primary);
+}
+
+.subcheck-result-icon.is-error {
+    background: var(--mkf-error-light, #fee2e2);
+    color: var(--mkf-error, #ef4444);
+}
+
+.subcheck-result-facts {
+    width: 100%;
+    margin: 4px 0 0;
+
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.subcheck-result-facts div {
+    padding: 12px;
+    border-radius: 14px;
+    background: var(--mkf-ui-background-secondary);
+    text-align: left;
+}
+
+.subcheck-result-facts dt {
+    color: var(--mkf-text-tertiary);
+    font-size: var(--mkf-font-xs);
+}
+
+.subcheck-result-facts dd {
+    margin: 4px 0 0;
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+    overflow-wrap: anywhere;
+}
+
+.subcheck-result-booking {
+    width: 100%;
+
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 14px 16px;
+
+    border-radius: 14px;
+    border: 1px solid var(--mkf-ui-border);
+    text-align: left;
+}
+
+.subcheck-result-booking > svg {
+    flex: 0 0 auto;
+    font-size: 24px;
+    color: var(--mkf-ui-primary);
+}
+
+.subcheck-result-booking div {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.subcheck-result-booking strong {
+    font-size: var(--mkf-font-sm);
+}
+
+.subcheck-result-booking span {
+    color: var(--mkf-text-secondary);
+    font-size: var(--mkf-font-xs);
+    line-height: 1.45;
+}
+
+.subcheck-result-booking button {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 0 14px;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: 10px;
+    background: var(--mkf-ui-white);
+    color: var(--mkf-text-primary);
+
+    font: inherit;
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+    cursor: pointer;
+}
+
+.subcheck-result-booking.is-ok {
+    border-color: var(--mkf-success-light, #dcfce7);
+    background: var(--mkf-success-light, #dcfce7);
+}
+
+.subcheck-result-booking.is-ok > svg {
+    color: var(--mkf-success, #22c55e);
+}
+
+.subcheck-result-booking.is-warning {
+    border-color: var(--mkf-ui-warning-border, #f3ddb0);
+    background: var(--mkf-ui-warning-soft, #fff8e8);
+}
+
+.subcheck-result-booking.is-warning > svg {
+    color: var(--mkf-warning, #f59e0b);
+}
+
+.subcheck-result-alert,
+.subcheck-result-note {
+    display: flex;
+    gap: 8px;
+    margin: 0;
+
+    max-width: 460px;
+    font-size: var(--mkf-font-xs);
+    line-height: 1.5;
+    text-align: left;
+}
+
+.subcheck-result-alert {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--mkf-ui-warning-soft, #fff8e8);
+    color: var(--mkf-warning-text, #92400e);
+}
+
+.subcheck-result-note {
+    color: var(--mkf-text-tertiary);
+}
+
+.subcheck-result-alert svg,
+.subcheck-result-note svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    font-size: 16px;
+}
+
+.subcheck-result .subcheck-button--primary {
+    margin-left: 0;
+}
+
+
+/* =============================================================================
+   CELULAR
+============================================================================= */
+
+@media (max-width: 860px) {
+
+    .subcheck-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 600px) {
+
+    .subcheck {
+        padding: 18px 16px 48px;
+        gap: 16px;
+    }
+
+    .subcheck-card {
+        padding: 20px 16px;
+        border-radius: var(--mkf-radius-md, 16px);
+    }
+
+    .subcheck-heading h1 {
+        font-size: var(--mkf-font-xl);
+    }
+
+    .subcheck-stepper-label {
+        font-size: var(--mkf-font-3xs);
+    }
+
+    .subcheck-stepper-dot {
+        width: 30px;
+        height: 30px;
+    }
+
+    .subcheck-stepper-item:not(:last-child)::after {
+        top: 14px;
+        left: calc(50% + 19px);
+        right: calc(-50% + 19px);
+    }
+
+    .subcheck-highlights,
+    .subcheck-methods,
+    .subcheck-result-facts {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .subcheck-terms div {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 2px;
+    }
+
+    .subcheck-plan {
+        flex-wrap: wrap;
+    }
+
+    .subcheck-plan-price {
+        width: 100%;
+        padding-left: 70px;
+    }
+
+    .subcheck-actions {
+        flex-direction: column-reverse;
+    }
+
+    .subcheck-actions .subcheck-button {
+        width: 100%;
+        margin-left: 0;
+    }
+
+    .subcheck-result-booking {
+        flex-wrap: wrap;
+    }
+
+    .subcheck-result-booking button {
+        width: 100%;
+    }
+}

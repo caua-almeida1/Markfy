@@ -283,3 +283,243 @@
     --mkf-link-color: #a99dff;
 }
 
+
+
+/* ---------------------------------------------------------
+   Floresta — Verde profundo, natural e confiável.
+--------------------------------------------------------- */
+
+:root[data-company-theme="floresta"] {
+    --mkf-ui-primary: #2f7d4f;
+    --mkf-ui-primary-hover: #276941;
+    --mkf-ui-primary-light: #dcefe3;
+    --mkf-ui-primary-lighter: #f0f8f3;
+    --mkf-ui-background: #f5faf7;
+    --mkf-ui-surface-soft: #e9f4ee;
+    --mkf-link-color: #2a7048;
+}
+
+:root[data-theme="dark"][data-company-theme="floresta"],
+:root.dark-mode[data-company-theme="floresta"] {
+    --mkf-ui-primary: #6fcf97;
+    --mkf-ui-primary-hover: #8fdcb0;
+    --mkf-ui-primary-light: #16301f;
+    --mkf-ui-primary-lighter: #102319;
+    --mkf-ui-background: #0f1512;
+    --mkf-ui-surface-soft: #1b251f;
+    --mkf-link-color: #9fe3bb;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="floresta"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #6fcf97;
+        --mkf-ui-primary-hover: #8fdcb0;
+        --mkf-ui-primary-light: #16301f;
+        --mkf-ui-primary-lighter: #102319;
+        --mkf-ui-background: #0f1512;
+        --mkf-ui-surface-soft: #1b251f;
+        --mkf-link-color: #9fe3bb;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Lavanda — Lilás leve, calmo e elegante.
+--------------------------------------------------------- */
+
+:root[data-company-theme="lavanda"] {
+    --mkf-ui-primary: #7c5cc4;
+    --mkf-ui-primary-hover: #6a49b0;
+    --mkf-ui-primary-light: #ece5fa;
+    --mkf-ui-primary-lighter: #f6f2fd;
+    --mkf-ui-background: #f9f7fd;
+    --mkf-ui-surface-soft: #f1ecfa;
+    --mkf-link-color: #6a49b0;
+}
+
+:root[data-theme="dark"][data-company-theme="lavanda"],
+:root.dark-mode[data-company-theme="lavanda"] {
+    --mkf-ui-primary: #b49cf0;
+    --mkf-ui-primary-hover: #c6b4f5;
+    --mkf-ui-primary-light: #2a2142;
+    --mkf-ui-primary-lighter: #201933;
+    --mkf-ui-background: #131018;
+    --mkf-ui-surface-soft: #211c2b;
+    --mkf-link-color: #c6b4f5;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="lavanda"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #b49cf0;
+        --mkf-ui-primary-hover: #c6b4f5;
+        --mkf-ui-primary-light: #2a2142;
+        --mkf-ui-primary-lighter: #201933;
+        --mkf-ui-background: #131018;
+        --mkf-ui-surface-soft: #211c2b;
+        --mkf-link-color: #c6b4f5;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Pôr do sol — Laranja quente, cheio de energia.
+--------------------------------------------------------- */
+
+:root[data-company-theme="por-do-sol"] {
+    --mkf-ui-primary: #e0662a;
+    --mkf-ui-primary-hover: #c7561e;
+    --mkf-ui-primary-light: #fde8dc;
+    --mkf-ui-primary-lighter: #fef4ee;
+    --mkf-ui-background: #fffaf6;
+    --mkf-ui-surface-soft: #fdf0e8;
+    --mkf-link-color: #c7561e;
+}
+
+:root[data-theme="dark"][data-company-theme="por-do-sol"],
+:root.dark-mode[data-company-theme="por-do-sol"] {
+    --mkf-ui-primary: #ff9a62;
+    --mkf-ui-primary-hover: #ffb48a;
+    --mkf-ui-primary-light: #40240f;
+    --mkf-ui-primary-lighter: #2f1a0b;
+    --mkf-ui-background: #171009;
+    --mkf-ui-surface-soft: #271c14;
+    --mkf-link-color: #ffb48a;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="por-do-sol"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #ff9a62;
+        --mkf-ui-primary-hover: #ffb48a;
+        --mkf-ui-primary-light: #40240f;
+        --mkf-ui-primary-lighter: #2f1a0b;
+        --mkf-ui-background: #171009;
+        --mkf-ui-surface-soft: #271c14;
+        --mkf-link-color: #ffb48a;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Vinho — Bordô intenso, sofisticado.
+--------------------------------------------------------- */
+
+:root[data-company-theme="vinho"] {
+    --mkf-ui-primary: #8e2f4a;
+    --mkf-ui-primary-hover: #762640;
+    --mkf-ui-primary-light: #f6dfe6;
+    --mkf-ui-primary-lighter: #fbf0f3;
+    --mkf-ui-background: #fcf6f8;
+    --mkf-ui-surface-soft: #f7e9ee;
+    --mkf-link-color: #8e2f4a;
+}
+
+:root[data-theme="dark"][data-company-theme="vinho"],
+:root.dark-mode[data-company-theme="vinho"] {
+    --mkf-ui-primary: #e07a98;
+    --mkf-ui-primary-hover: #eb9bb2;
+    --mkf-ui-primary-light: #3b1824;
+    --mkf-ui-primary-lighter: #2c111b;
+    --mkf-ui-background: #160d10;
+    --mkf-ui-surface-soft: #251a1e;
+    --mkf-link-color: #eb9bb2;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="vinho"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #e07a98;
+        --mkf-ui-primary-hover: #eb9bb2;
+        --mkf-ui-primary-light: #3b1824;
+        --mkf-ui-primary-lighter: #2c111b;
+        --mkf-ui-background: #160d10;
+        --mkf-ui-surface-soft: #251a1e;
+        --mkf-link-color: #eb9bb2;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Menta — Verde-água fresco e leve.
+--------------------------------------------------------- */
+
+:root[data-company-theme="menta"] {
+    --mkf-ui-primary: #1f9d8a;
+    --mkf-ui-primary-hover: #17836f;
+    --mkf-ui-primary-light: #d9f4ee;
+    --mkf-ui-primary-lighter: #eefaf7;
+    --mkf-ui-background: #f3fbf9;
+    --mkf-ui-surface-soft: #e6f6f2;
+    --mkf-link-color: #17836f;
+}
+
+:root[data-theme="dark"][data-company-theme="menta"],
+:root.dark-mode[data-company-theme="menta"] {
+    --mkf-ui-primary: #4fd1bb;
+    --mkf-ui-primary-hover: #7de0cf;
+    --mkf-ui-primary-light: #10332d;
+    --mkf-ui-primary-lighter: #0c2622;
+    --mkf-ui-background: #0e1514;
+    --mkf-ui-surface-soft: #192422;
+    --mkf-link-color: #7de0cf;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="menta"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #4fd1bb;
+        --mkf-ui-primary-hover: #7de0cf;
+        --mkf-ui-primary-light: #10332d;
+        --mkf-ui-primary-lighter: #0c2622;
+        --mkf-ui-background: #0e1514;
+        --mkf-ui-surface-soft: #192422;
+        --mkf-link-color: #7de0cf;
+    }
+
+}
+
+
+/* ---------------------------------------------------------
+   Índigo — Azul-arroxeado moderno e marcante.
+--------------------------------------------------------- */
+
+:root[data-company-theme="indigo"] {
+    --mkf-ui-primary: #4338ca;
+    --mkf-ui-primary-hover: #372fa8;
+    --mkf-ui-primary-light: #e4e2fb;
+    --mkf-ui-primary-lighter: #f2f1fd;
+    --mkf-ui-background: #f7f7fd;
+    --mkf-ui-surface-soft: #ecebfa;
+    --mkf-link-color: #372fa8;
+}
+
+:root[data-theme="dark"][data-company-theme="indigo"],
+:root.dark-mode[data-company-theme="indigo"] {
+    --mkf-ui-primary: #8b84f5;
+    --mkf-ui-primary-hover: #a9a4f8;
+    --mkf-ui-primary-light: #1f1c4a;
+    --mkf-ui-primary-lighter: #171538;
+    --mkf-ui-background: #101018;
+    --mkf-ui-surface-soft: #1d1d2b;
+    --mkf-link-color: #a9a4f8;
+}
+
+@media (prefers-color-scheme: dark) {
+
+    :root[data-company-theme="indigo"]:not([data-theme="light"]):not([data-theme="dark"]) {
+        --mkf-ui-primary: #8b84f5;
+        --mkf-ui-primary-hover: #a9a4f8;
+        --mkf-ui-primary-light: #1f1c4a;
+        --mkf-ui-primary-lighter: #171538;
+        --mkf-ui-background: #101018;
+        --mkf-ui-surface-soft: #1d1d2b;
+        --mkf-link-color: #a9a4f8;
+    }
+
+}

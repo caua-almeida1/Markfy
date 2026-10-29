@@ -148,9 +148,12 @@ const TermsOfUse = () => {
                     type: "list",
                     items: [
                         { term: "Produtos avulsos", text: "cobrança única, no valor exibido no momento do agendamento." },
-                        { term: "Planos de mensalidade", text: "cobrança recorrente no ciclo informado na página do plano (mensal, trimestral, semestral ou anual), com renovação automática quando indicado." },
+                        { term: "Planos de mensalidade", text: "cobrança recorrente no ciclo informado na página do plano (mensal, trimestral, semestral ou anual), com renovação automática quando indicado, feita pelo Mercado Pago no cartão de crédito ou na conta Mercado Pago que você autorizar. A cobrança só começa depois do seu aceite expresso, registrado com data e versão destes termos." },
                         { term: "Teste gratuito", text: "quando oferecido, a primeira cobrança só ocorre depois do período informado." },
-                        { term: "Permanência mínima e aviso de cancelamento", text: "quando existirem, são definidos pela empresa e exibidos antes da contratação." }
+                        { term: "Permanência mínima e aviso de cancelamento", text: "quando existirem, são definidos pela empresa e exibidos antes da contratação." },
+                        { term: "Cancelamento", text: "pela aba Reservas, a qualquer momento e sem intermediários. As cobranças futuras param e os atendimentos continuam valendo até o fim do período já pago; horários marcados depois disso são desmarcados." },
+                        { term: "Arrependimento", text: "em até 7 dias da contratação você pode desistir pela mesma tela e receber de volta o que foi cobrado nesse período (Código de Defesa do Consumidor, art. 49). Depois desse prazo, não há devolução proporcional do ciclo em andamento." },
+                        { term: "Falha na cobrança", text: "o Mercado Pago tenta cobrar de novo automaticamente; se não conseguir, a assinatura é encerrada." }
                     ]
                 },
                 {

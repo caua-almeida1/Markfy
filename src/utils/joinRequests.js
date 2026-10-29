@@ -212,17 +212,32 @@ export const approveJoinRequest = async ({
         }
     );
 
-    /* É por este campo que o app descobre, no próximo login,
-       a qual empresa a pessoa pertence — e é ele que a tela
-       de espera observa para saber que foi aprovada. */
-    await update(
-        ref(db, `users/${request.uid}`),
-        {
-            companyHandle: handle,
-            pendingJoinHandle: null,
-            ...(nome ? { name: nome } : {})
-        }
-    );
+    /*
+     * users/{uid} é de OUTRA pessoa: as regras só deixam o
+     * próprio dono gravar ali (inclusive companyHandle — antes,
+     * aprovar um pedido falso permitia trocar a empresa de
+     * qualquer usuário e passar a ler o perfil dele). Quem
+     * grava o vínculo agora é a própria pessoa, na tela de
+     * espera, ao ver a entrada dela em members
+     * (watchMyMembership). Esta gravação fica como tentativa
+     * para o painel master; negada, não atrapalha a aprovação.
+     */
+    try {
+
+        await update(
+            ref(db, `users/${request.uid}`),
+            {
+                companyHandle: handle,
+                pendingJoinHandle: null,
+                ...(nome ? { name: nome } : {})
+            }
+        );
+
+    } catch {
+
+        /* esperado para quem não é o dono do perfil */
+
+    }
 
     await remove(
         requestRef(handle, request.uid)
@@ -267,6 +282,29 @@ export const watchCompanyHandle = (uid, callback) =>
                     : null
             )
     );
+
+
+/**
+ * Observa a PRÓPRIA entrada em companys/{handle}/members.
+ *
+ * É o sinal de aprovação que a pessoa consegue ler (members é
+ * privado; cada um lê só a sua entrada). Ao aparecer, quem
+ * grava o vínculo em users/{uid} é a própria pessoa — o único
+ * caminho que as regras aceitam.
+ */
+export const watchMyMembership = (handle, uid, callback) =>
+    onValue(
+        ref(getDatabase(), `companys/${handle}/members/${uid}`),
+        (snapshot) => callback(snapshot.exists() ? snapshot.val() : null),
+        () => callback(null)
+    );
+
+/** Grava o vínculo com a empresa no próprio perfil (depois da aprovação). */
+export const linkMyCompany = (uid, handle) =>
+    update(ref(getDatabase(), `users/${uid}`), {
+        companyHandle: handle,
+        pendingJoinHandle: null
+    });
 
 
 /** O handle da empresa cujo pedido está pendente, se houver. */

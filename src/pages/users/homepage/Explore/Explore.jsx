@@ -1,4 +1,5 @@
 import React, {
+    useDeferredValue,
     useEffect,
     useMemo,
     useState
@@ -6,16 +7,8 @@ import React, {
 
 import { Icon } from "@iconify/react";
 
-import {
-    getDatabase,
-    onValue,
-    ref
-} from "firebase/database";
-
-import { getAuth } from "firebase/auth";
-
-import { fetchCompaniesFromSource }
-    from "../../../../firebase/companiesIndex";
+import { useCompaniesIndex }
+    from "../../../../firebase/useCompaniesIndex";
 
 import { useCompanyLogos }
     from "../../../../firebase/companyLogo";
@@ -33,15 +26,27 @@ import CompanyInfoModal
 
 const Explore = () => {
 
-    const [companies, setCompanies] = useState([]);
+    /*
+     * Mesma fonte e mesmo critério da central do usuário:
+     * só empresas elegíveis (plano ativo com Bookings), em
+     * destaque primeiro. Ver firebase/useCompaniesIndex.js e
+     * utils/companyEligibility.js.
+     */
+    const {
+        companies,
+        loading,
+        error: loadError,
+        reload: reloadCompanies
+    } = useCompaniesIndex();
 
     const [searchTerm, setSearchTerm] = useState("");
+
+    /* Digitação sem travar: o filtro segue um passo atrás. */
+    const deferredSearchTerm = useDeferredValue(searchTerm);
 
     const [searchFocused, setSearchFocused] =
         useState(false);
 
-    const [loading, setLoading] =
-        useState(true);
 
     const [nearbyLoading, setNearbyLoading] = useState(false);
 
@@ -87,128 +92,6 @@ const Explore = () => {
     const [categorySearch, setCategorySearch] = useState('');
 
 
-    useEffect(() => {
-
-        const database = getDatabase();
-
-        /*
-         * Índice leve: só os campos do card.
-         *
-         * Escutar "companys" aqui baixaria produtos,
-         * agendamentos e pedidos de todas as empresas.
-         */
-
-        const companiesRef = ref(
-            database,
-            "companiesIndex"
-        );
-
-        let cancelled = false;
-
-        /*
-         * Empresas criadas antes do índice existir não têm
-         * entrada em companiesIndex e sumiam da tela — tanto
-         * de "Perto de você" quanto da lista completa.
-         *
-         * Quando o índice vem vazio, montamos as mesmas
-         * entradas a partir de companys/, lendo só os campos
-         * do card (ver firebase/companiesIndex.js).
-         */
-        const loadFromSource = async () => {
-
-            let authToken = null;
-
-            try {
-
-                authToken =
-                    await getAuth()
-                        .currentUser
-                        ?.getIdToken();
-
-            } catch (error) {
-
-                authToken = null;
-
-            }
-
-            const fallback =
-                await fetchCompaniesFromSource(authToken);
-
-            if (cancelled) {
-                return;
-            }
-
-            setCompanies(fallback);
-
-            setLoading(false);
-
-        };
-
-        const unsubscribe = onValue(
-            companiesRef,
-            (snapshot) => {
-
-                const data = snapshot.val();
-
-                if (!data) {
-
-                    loadFromSource();
-
-                    return;
-                }
-
-                const companiesArray =
-                    Object.entries(data)
-                        .map(
-                            ([handle, company]) => ({
-                                handle,
-                                ...company
-                            })
-                        )
-                        .filter(
-                            (company) =>
-                                company &&
-                                company.name
-                        );
-
-                /* Índice existe mas está incompleto: ainda
-                   assim é melhor mostrar o que há do que
-                   uma tela vazia. */
-                if (!companiesArray.length) {
-
-                    loadFromSource();
-
-                    return;
-                }
-
-                setCompanies(
-                    companiesArray
-                );
-
-                setLoading(false);
-
-            },
-            (error) => {
-
-                console.error(
-                    "Erro ao carregar empresas:",
-                    error
-                );
-
-                loadFromSource();
-
-            }
-        );
-
-        return () => {
-
-            cancelled = true;
-
-            unsubscribe();
-
-        };
-
-    }, []);
 
 
     /*
@@ -220,7 +103,7 @@ const Explore = () => {
     const filteredCompanies = useMemo(() => {
 
         const term =
-            searchTerm
+            deferredSearchTerm
                 .trim()
                 .toLowerCase();
 
@@ -258,7 +141,7 @@ const Explore = () => {
 
     }, [
         companies,
-        searchTerm
+        deferredSearchTerm
     ]);
 
 
@@ -275,6 +158,8 @@ const Explore = () => {
             return [];
         }
 
+        /* A lista já vem ordenada pela regra central
+           (destaque do plano, perfil completo, nome). */
         return companies.slice(0, 3);
 
     }, [
@@ -1629,7 +1514,36 @@ LOCALIZAÇÃO
                     </div>
 
 
-                    {loading ? (
+                    {loadError && !companies.length ? (
+
+                        <div className="explore-empty" role="alert">
+
+                            <div className="explore-empty-icon">
+
+                                <Icon
+                                    icon="solar:wifi-router-minimalistic-outline"
+                                />
+
+                            </div>
+
+                            <h3>
+                                Não foi possível carregar as empresas
+                            </h3>
+
+                            <p>
+                                Confira sua conexão e tente de novo.
+                            </p>
+
+                            <button
+                                type="button"
+                                onClick={reloadCompanies}
+                            >
+                                Tentar de novo
+                            </button>
+
+                        </div>
+
+                    ) : loading ? (
 
                         <div className="explore-loading">
 
@@ -1719,6 +1633,15 @@ LOCALIZAÇÃO
                                             Em destaque
                                         </h2>
 
+                                        {featuredCompanies.some(
+                                            (company) => company.featured
+                                        ) && (
+                                            <small className="explore-featured-disclosure">
+                                                "Destaque" indica empresa com plano Pro ou Premium.
+                                                As demais aparecem pela completude do perfil.
+                                            </small>
+                                        )}
+
                                     </div>
 
                                 </div>
@@ -1802,7 +1725,9 @@ LOCALIZAÇÃO
                                                         <div className="explore-featured-content">
 
                                                             <span>
-                                                                Empresa
+                                                                {company.featured
+                                                                    ? "Destaque"
+                                                                    : "Empresa"}
                                                             </span>
 
                                                             <strong>

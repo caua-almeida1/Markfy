@@ -1,14 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
     useParams,
     useSearchParams
 } from "react-router-dom";
 import { Icon } from "@iconify/react";
-import { getDatabase, ref, onValue } from "firebase/database";
+import { watchPublicCompany } from "../../../../firebase/publicCompany";
 
 import ProductDetails from "../ProductDetails/ProductDetails";
 import PriceTag from "../../../../components/price-tag/PriceTag";
-import Thumb1 from "../../../../img/1.jpg";
+import Thumb1 from "../../../../img/adm-content/image-not-found.svg";
 
 import {
     getPlanHighlights,
@@ -46,6 +46,11 @@ const Catalog = () => {
     const [selectedProduct, setSelectedProduct] = useState(null);
 
     const [searchTerm, setSearchTerm] = useState("");
+
+    /* O campo responde na hora; o filtro e a lista seguem
+       um passo atrás (React adia o trabalho pesado sem
+       travar a digitação). */
+    const deferredSearchTerm = useDeferredValue(searchTerm);
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [categoryLoading, setCategoryLoading] = useState(false);
 
@@ -89,18 +94,14 @@ const Catalog = () => {
 
         if (!handle) return;
 
-        const db = getDatabase();
+        /* Cabeçalho + produtos, campo a campo (ver
+           firebase/publicCompany.js). */
+        const unsubscribe = watchPublicCompany(
+            handle,
+            ["name", "handle", "logoPreview"],
+            (company) => {
 
-        const companyRef = ref(
-            db,
-            `companys/${handle}`
-        );
-
-        const unsubscribe = onValue(
-            companyRef,
-            (snapshot) => {
-
-                const data = snapshot.val();
+                const data = company;
 
                 if (!data) {
 
@@ -421,7 +422,7 @@ const Catalog = () => {
     const filteredProducts = useMemo(() => {
 
         const search =
-            searchTerm
+            deferredSearchTerm
                 .trim()
                 .toLowerCase();
 
@@ -609,7 +610,7 @@ const Catalog = () => {
 
     }, [
         products,
-        searchTerm,
+        deferredSearchTerm,
         selectedCategory,
         sortOption
     ]);

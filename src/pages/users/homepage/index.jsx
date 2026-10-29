@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { getDatabase, onValue, ref } from "firebase/database";
+import { usePageMeta } from "../../../hooks/usePageMeta";
+import { watchPublicCompany } from "../../../firebase/publicCompany";
 
 import { Icon } from "@iconify/react";
 
@@ -45,6 +46,15 @@ const HomePage = () => {
 
     const [companyName, setCompanyName] = useState("");
     const [companyHandle, setCompanyHandle] = useState("");
+
+    /* Página pública da empresa: o nome dela no título. */
+    usePageMeta({
+        title: companyName ? `${companyName} — agendamento online` : undefined,
+        description: companyName
+            ? `Veja os serviços de ${companyName} e agende online pela Markfy.`
+            : undefined,
+        path: handle ? `/central-user/${handle}` : undefined
+    });
     /* A logo vive em companys/{handle}/logo.png. O estado
        abaixo só guarda o valor legado do RTDB, usado como
        dica enquanto a empresa não foi migrada. */
@@ -173,12 +183,10 @@ const HomePage = () => {
         setProductNotFound(false);
 
 
-        const db = getDatabase();
-
-        const companyRef = ref(
-            db,
-            `companys/${handle}`
-        );
+        /* Só o cabeçalho e os produtos: o nó inteiro da
+           empresa traz a agenda dos clientes (privada) e
+           pedidos — e era baixado de novo a cada troca de
+           aba. */
 
 
         let finished = false;
@@ -209,17 +217,18 @@ const HomePage = () => {
         ============================================================
         */
 
-        const unsubscribe = onValue(
-            companyRef,
+        const unsubscribe = watchPublicCompany(
+            handle,
+            ["name", "handle", "logoPreview"],
 
-            (snapshot) => {
+            (company) => {
 
                 if (finished) {
                     return;
                 }
 
 
-                const data = snapshot.val();
+                const data = company;
 
 
                 /*
