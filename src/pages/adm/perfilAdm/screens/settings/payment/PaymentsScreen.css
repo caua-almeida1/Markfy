@@ -1,0 +1,377 @@
+/* =========================================================
+   CONFIGURAÇÕES → PAGAMENTOS
+
+   Completa PaymentScreen.css (payment-info, payment-methods-
+   card, payment-method...) com o que a tela nova precisa.
+   Só tokens --mkf-*: claro e escuro já resolvidos em
+   src/index.css.
+========================================================= */
+
+.pay-screen {
+    padding-bottom: 2rem;
+}
+
+/* ---------------- PILL DE STATUS ---------------- */
+
+.pay-pill {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+
+    padding: .3rem .6rem;
+    border-radius: 999px;
+
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-semibold);
+    white-space: nowrap;
+}
+
+.pay-pill.is-on {
+    background: var(--mkf-success-light);
+    color: var(--mkf-success-text);
+}
+
+.pay-pill.is-off {
+    background: var(--mkf-ui-background-tertiary);
+    color: var(--mkf-text-secondary);
+}
+
+.pay-pill.is-danger {
+    background: var(--mkf-ui-danger-soft);
+    color: var(--mkf-ui-danger);
+}
+
+/* ---------------- CONTA ---------------- */
+
+.pay-account {
+    padding: 1.1rem 1.25rem;
+    gap: .9rem;
+}
+
+.pay-account-head {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+}
+
+.pay-account-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.pay-account-text h3 {
+    margin: 0;
+    font-size: var(--mkf-font-sm);
+    font-weight: var(--mkf-font-semibold);
+    color: var(--mkf-text-primary);
+}
+
+.pay-account-text p,
+.pay-account-meta {
+    margin: .2rem 0 0;
+    font-size: var(--mkf-font-xxs);
+    line-height: 1.45;
+    color: var(--mkf-text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.pay-account-meta {
+    margin: 0;
+}
+
+/* ---------------- BOTÕES ---------------- */
+
+.pay-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem;
+}
+
+.pay-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+
+    min-height: 42px;
+    padding: .6rem 1rem;
+
+    border: 1px solid var(--mkf-ui-border);
+    border-radius: .85rem;
+
+    background: var(--mkf-ui-surface);
+    color: var(--mkf-text-primary);
+
+    font-family: "Poppins", sans-serif;
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+
+    cursor: pointer;
+    transition: background .2s ease, border-color .2s ease, opacity .2s ease;
+}
+
+.pay-button svg {
+    font-size: 1.05rem;
+}
+
+.pay-button:hover:not(:disabled) {
+    background: var(--mkf-ui-surface-hover);
+}
+
+.pay-button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mkf-ui-primary) 38%, transparent);
+}
+
+.pay-button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.pay-button--primary {
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary);
+    color: var(--mkf-on-primary);
+}
+
+.pay-button--primary:hover:not(:disabled) {
+    background: var(--mkf-ui-primary-hover);
+}
+
+.pay-button--ghost {
+    border-color: transparent;
+    background: transparent;
+    color: var(--mkf-text-secondary);
+}
+
+.pay-button--danger {
+    border-color: var(--mkf-ui-danger);
+    background: var(--mkf-ui-danger);
+    color: #fff;
+}
+
+.pay-button--danger:hover:not(:disabled) {
+    background: var(--mkf-ui-danger);
+    opacity: .9;
+}
+
+/* ---------------- CONFIRMAÇÃO ---------------- */
+
+.pay-confirm {
+    display: flex;
+    flex-direction: column;
+    gap: .7rem;
+
+    padding: .9rem 1rem;
+    border-radius: .9rem;
+
+    background: var(--mkf-ui-danger-soft);
+}
+
+.pay-confirm p {
+    margin: 0;
+    font-size: var(--mkf-font-xxs);
+    line-height: 1.5;
+    color: var(--mkf-text-primary);
+}
+
+/* ---------------- CHECKLIST DO TESTE ---------------- */
+
+.pay-checklist {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+
+    margin: 0;
+    padding: .85rem 0 0;
+
+    list-style: none;
+    border-top: 1px solid var(--mkf-ui-border-light);
+}
+
+.pay-checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: .5rem;
+
+    font-size: var(--mkf-font-xxs);
+    line-height: 1.45;
+    color: var(--mkf-text-primary);
+}
+
+.pay-checklist li svg {
+    flex-shrink: 0;
+    margin-top: .1rem;
+    font-size: 1rem;
+}
+
+.pay-checklist .is-ok svg {
+    color: var(--mkf-success);
+}
+
+.pay-checklist .is-bad svg {
+    color: var(--mkf-ui-danger);
+}
+
+.pay-checklist .is-info svg {
+    color: var(--mkf-ui-primary);
+}
+
+.pay-checklist .pay-checklist-at {
+    color: var(--mkf-text-light);
+    font-size: var(--mkf-font-2xs);
+}
+
+/* ---------------- AVISOS ---------------- */
+
+.pay-banner {
+    display: flex;
+    align-items: flex-start;
+    gap: .7rem;
+
+    padding: .9rem 1rem;
+    border-radius: 1.1rem;
+    border: 1px solid transparent;
+}
+
+.pay-banner > svg {
+    flex-shrink: 0;
+    margin-top: .1rem;
+    font-size: 1.2rem;
+}
+
+.pay-banner > div {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: .2rem;
+    min-width: 0;
+}
+
+.pay-banner strong {
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-semibold);
+    color: var(--mkf-text-primary);
+}
+
+.pay-banner span,
+.pay-banner small {
+    font-size: var(--mkf-font-xxs);
+    line-height: 1.5;
+    color: var(--mkf-text-secondary);
+}
+
+.pay-banner small {
+    color: var(--mkf-text-light);
+}
+
+.pay-banner.is-success {
+    background: var(--mkf-success-light);
+}
+
+.pay-banner.is-success > svg {
+    color: var(--mkf-success-text);
+}
+
+.pay-banner.is-warning {
+    background: var(--mkf-ui-warning-soft);
+    border-color: var(--mkf-ui-warning-border);
+}
+
+.pay-banner.is-warning > svg {
+    color: #b7791f;
+}
+
+.pay-banner.is-danger {
+    background: var(--mkf-ui-danger-soft);
+}
+
+.pay-banner.is-danger > svg {
+    color: var(--mkf-ui-danger);
+}
+
+.pay-banner-close {
+    display: inline-flex;
+    flex-shrink: 0;
+
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--mkf-text-light);
+
+    font-size: 1.15rem;
+    cursor: pointer;
+}
+
+/* ---------------- MODALIDADES ---------------- */
+
+.pay-modality {
+    cursor: default;
+}
+
+.pay-modality .payment-method-content p {
+    margin: .2rem 0 0;
+    line-height: 1.45;
+}
+
+.pay-footnote {
+    margin: .1rem .25rem 0;
+    font-size: var(--mkf-font-2xs);
+    line-height: 1.5;
+    color: var(--mkf-text-light);
+}
+
+.pay-footnote.is-danger {
+    color: var(--mkf-ui-danger);
+}
+
+/* ---------------- COMO TESTAR ---------------- */
+
+.pay-howto {
+    padding: .9rem 1.1rem;
+    border-radius: 1.1rem;
+    background: var(--mkf-ui-surface);
+    box-shadow: 0px 0px 40px -19px rgba(66, 68, 90, .6);
+}
+
+.pay-howto summary {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+    color: var(--mkf-text-primary);
+
+    cursor: pointer;
+    list-style: none;
+}
+
+.pay-howto summary::-webkit-details-marker {
+    display: none;
+}
+
+.pay-howto summary svg {
+    color: var(--mkf-ui-primary);
+    font-size: 1.1rem;
+}
+
+.pay-howto ol {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+
+    margin: .8rem 0 0;
+    padding-left: 1.1rem;
+
+    font-size: var(--mkf-font-xxs);
+    line-height: 1.55;
+    color: var(--mkf-text-secondary);
+}
+
+.pay-howto code {
+    padding: 0 .3rem;
+    border-radius: .3rem;
+    background: var(--mkf-ui-background-tertiary);
+    font-size: .95em;
+}

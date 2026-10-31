@@ -84,3 +84,178 @@
     font-weight: var(--mkf-font-semibold);
     text-decoration: none;
 }
+
+
+/* =========================================================
+   PASSO 2 — MODALIDADE (pagamento antecipado / mensalidade)
+   e PASSO 2.5 — resumo da cobrança e "Mais opções"
+========================================================= */
+
+/* "Sem pagamento online": opção discreta, abaixo das duas
+   modalidades. Quem já cobra no local continua podendo. */
+.adm-product-type-onsite {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 12px;
+    padding: 12px 14px;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    border: 1px dashed var(--mkf-ui-border-dark);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--mkf-text-secondary);
+
+    font-family: "Poppins", sans-serif;
+    font-size: var(--mkf-font-2xs);
+    line-height: 1.45;
+    text-align: left;
+
+    cursor: pointer;
+    transition: border-color .2s ease, background .2s ease;
+}
+
+.adm-product-type-onsite svg {
+    flex: 0 0 auto;
+    font-size: 18px;
+    color: var(--mkf-text-tertiary);
+}
+
+.adm-product-type-onsite span {
+    flex: 1;
+}
+
+.adm-product-type-onsite strong {
+    color: var(--mkf-text-primary);
+    font-weight: var(--mkf-font-semibold);
+}
+
+.adm-product-type-onsite.selected {
+    border-style: solid;
+    border-color: var(--mkf-ui-primary);
+    background: var(--mkf-ui-primary-lighter);
+}
+
+.adm-product-type-onsite.selected svg:last-child {
+    color: var(--mkf-ui-primary);
+}
+
+.adm-product-type-onsite:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--mkf-ui-primary) 38%, transparent);
+}
+
+.adm-product-type-warning {
+    box-sizing: border-box;
+    text-align: left;
+    width: 100%;
+    margin-top: 12px;
+    padding: 10px 12px;
+
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+
+    border: 1px solid var(--mkf-ui-warning-border);
+    border-radius: 10px;
+    background: var(--mkf-ui-warning-soft);
+    color: var(--mkf-text-secondary);
+}
+
+.adm-product-type-warning svg {
+    flex: 0 0 auto;
+    margin-top: 1px;
+    font-size: 16px;
+    color: #b7791f;
+}
+
+.adm-product-type-warning span {
+    font-size: var(--mkf-font-2xs);
+    line-height: 1.5;
+}
+
+.adm-product-type-warning strong {
+    color: var(--mkf-text-primary);
+}
+
+/* Periodicidade sempre à vista. */
+.adm-monthly-summary {
+    box-sizing: border-box;
+    text-align: left;
+    width: 100%;
+    margin-top: 4px;
+    padding: 14px 16px;
+
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+
+    border-radius: 14px;
+    background: var(--mkf-ui-primary-lighter);
+    border: 1px solid var(--mkf-ui-primary-light);
+}
+
+.adm-monthly-summary > svg {
+    flex: 0 0 auto;
+    font-size: 22px;
+    color: var(--mkf-ui-primary);
+}
+
+.adm-monthly-summary div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.adm-monthly-summary strong {
+    font-size: var(--mkf-font-sm);
+    color: var(--mkf-text-primary);
+}
+
+.adm-monthly-summary span {
+    font-size: var(--mkf-font-2xs);
+    line-height: 1.5;
+    color: var(--mkf-text-secondary);
+}
+
+.adm-monthly-advanced {
+    box-sizing: border-box;
+    width: 100%;
+    margin-top: 14px;
+}
+
+.adm-monthly-advanced summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 2px;
+
+    font-size: var(--mkf-font-xs);
+    font-weight: var(--mkf-font-medium);
+    color: var(--mkf-text-primary);
+
+    cursor: pointer;
+    list-style: none;
+}
+
+.adm-monthly-advanced summary::-webkit-details-marker {
+    display: none;
+}
+
+.adm-monthly-advanced summary svg {
+    font-size: 16px;
+    color: var(--mkf-text-tertiary);
+}
+
+.adm-monthly-advanced summary small {
+    font-size: var(--mkf-font-2xs);
+    font-weight: var(--mkf-font-regular);
+    color: var(--mkf-text-light);
+}
+
+.adm-monthly-setting-row--stack {
+    flex-direction: column;
+    align-items: stretch;
+}

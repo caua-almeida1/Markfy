@@ -70,16 +70,24 @@ const fail = (status, message, code) => {
    nunca cresce. Não é um WAF: segura robô e clique repetido.
 ----------------------------------------------------- */
 
-/* subscribe/subscriptionSync/subscriptionCancel são da
-   subscriptionsApi (subscriptions.js), que usa o mesmo freio. */
+/* subscribe/subscriptionSync/subscriptionCancel/subscriptionManage
+   são da subscriptionsApi (subscriptions.js); payment* da
+   paymentsApi e do createMercadoPagoPayment. Mesmo freio. */
 const RATE_LIMITS = {
     availability: 60,
     create: 8,
     mine: 30,
     cancel: 10,
+    paymentInfo: 60,
     subscribe: 6,
     subscriptionSync: 30,
-    subscriptionCancel: 10
+    subscriptionCancel: 10,
+    subscriptionManage: 10,
+    paymentCreate: 8,
+    paymentStatus: 30,
+    paymentsConnect: 10,
+    paymentsVerify: 10,
+    paymentsDisconnect: 5
 };
 
 const throttle = async (req, action) => {
@@ -236,8 +244,14 @@ const availability = async (body) => {
  * trava dos 30 minutos — a pessoa pode ter agendado outro
  * serviço agora há pouco, e esse horário já foi escolhido
  * antes de pagar.
+ *
+ * `payment` ({ orderId, paymentId, amount }): o agendamento de
+ * um pagamento antecipado aprovado (advance-payments.js). Pula
+ * a trava dos 30 minutos e a antecedência mínima (as duas
+ * foram conferidas quando o pedido foi criado; um Pix pode ser
+ * pago horas depois), mas NÃO pula o conflito de horário.
  */
-const create = async (body, uid, { fromSubscription = false } = {}) => {
+const create = async (body, uid, { fromSubscription = false, payment = null } = {}) => {
 
     const parsed = core.parseCreate(body);
 
@@ -248,11 +262,12 @@ const create = async (body, uid, { fromSubscription = false } = {}) => {
 
     await assertOpen(handle);
 
-    const [product, isMember, professionalName, paymentSettings] = await Promise.all([
+    const [product, isMember, professionalName, companyPrepayment, productPrepayment] = await Promise.all([
         readProduct(handle, request.productId),
         read(`companys/${handle}/members/${request.professionalId}`),
         read(`users/${request.professionalId}/name`),
-        read(`companys/${handle}/paymentSettings/receiveBeforeBooking`)
+        read(`companys/${handle}/paymentSettings/receiveBeforeBooking`),
+        read(`companys/${handle}/products/${request.productId}/settings/prepayment`)
     ]);
 
     if (!product || product.status === "arquivados") fail(404, "Este serviço não está mais disponível.", "product_unavailable");
@@ -263,7 +278,7 @@ const create = async (body, uid, { fromSubscription = false } = {}) => {
 
     const bookingAdvanceMs = core.advanceToMs(product.bookingAdvance);
 
-    if (bookingAdvanceMs && request.date.getTime() < Date.now() + bookingAdvanceMs - 5 * 60 * 1000) {
+    if (!payment && bookingAdvanceMs && request.date.getTime() < Date.now() + bookingAdvanceMs - 5 * 60 * 1000) {
         fail(400, "Este horário precisa ser reservado com mais antecedência.", "too_soon");
     }
 
@@ -299,12 +314,22 @@ const create = async (body, uid, { fromSubscription = false } = {}) => {
         request.subscriptionId = subscriptionId;
     }
 
-    /* Pagamento antes de agendar: o agendamento nasce no
-       webhook, depois do pagamento confirmado. Sem esta
+    /* Pagamento antes de agendar: o agendamento nasce quando o
+       pagamento é aprovado (advance-payments.js). Sem esta
        checagem, bastava chamar a API para pular a cobrança. */
-    if (paymentSettings === true && !subscription) {
+    if (
+        !payment &&
+        !subscription &&
+        core.advancePaymentRequired({
+            companyFlag: companyPrepayment,
+            productFlag: productPrepayment,
+            productType: product.type
+        })
+    ) {
         fail(402, "Esta empresa pede o pagamento antes de confirmar o horário.", "payment_required");
     }
+
+    if (payment) request.payment = payment;
 
     const extras = (await Promise.all(
         request.extraProductIds.map((id) => readProduct(handle, id))
@@ -331,6 +356,7 @@ const create = async (body, uid, { fromSubscription = false } = {}) => {
 
         if (
             !fromSubscription &&
+            !payment &&
             core.bookedRecently({ ...byClient, ...byUser }, { uid, clientId: request.clientId }, now)
         ) {
             fail(429, "Você já realizou um agendamento recentemente. Tente novamente em 30 minutos.", "recent_booking");
@@ -435,7 +461,56 @@ const cancel = async (body, uid) => {
 };
 
 
-const ACTIONS = { availability, create, mine, cancel };
+/*
+ * Como este produto é pago — a página do produto pergunta
+ * aqui em vez de ler as configurações da empresa (que são
+ * privadas). A regra é a mesma que o `create` aplica.
+ *
+ *   advancePayment   o cliente paga online antes de agendar
+ *   monthly          mensalidade (assinatura)
+ *   onlinePayments   a empresa está com o Mercado Pago
+ *                    conectado; sem isso, quem exige
+ *                    pagamento não consegue receber, e a tela
+ *                    explica em vez de abrir um pagamento que
+ *                    vai falhar
+ */
+const paymentInfo = async (body) => {
+
+    const { handle, productId } = body;
+
+    if (!core.isHandle(handle) || !core.isKey(productId)) fail(400, "Dados inválidos.");
+
+    const [type, status, productPrepayment, companyPrepayment, connected] = await Promise.all([
+        read(`companys/${handle}/products/${productId}/type`),
+        read(`companys/${handle}/products/${productId}/status`),
+        read(`companys/${handle}/products/${productId}/settings/prepayment`),
+        read(`companys/${handle}/paymentSettings/receiveBeforeBooking`),
+        read(`companys/${handle}/paymentSettings/mercadoPago/connected`)
+    ]);
+
+    if (!type || status === "arquivados") fail(404, "Este serviço não está mais disponível.", "product_unavailable");
+
+    return {
+        advancePayment: core.advancePaymentRequired({
+            companyFlag: companyPrepayment,
+            productFlag: productPrepayment,
+            productType: type
+        }),
+        monthly: type === "monthly",
+        onlinePayments: connected === true
+    };
+};
+
+/** O horário ainda está livre? Conferido antes de cobrar (sem trava: a trava é no agendamento). */
+const slotFree = async (handle, { professionalId, day, hour, duration }) => {
+
+    const sameDay = await schedulesWhere(handle, "day", day);
+    const busy = core.busySlots(sameDay, professionalId);
+
+    return !core.hasConflict(busy, day, hour, Number(duration) || 30);
+};
+
+const ACTIONS = { availability, create, mine, cancel, paymentInfo };
 
 exports.bookingsApi = onRequest({ maxInstances: 10 }, async (req, res) => {
 
@@ -479,9 +554,12 @@ exports.bookingsApi = onRequest({ maxInstances: 10 }, async (req, res) => {
 
 exports.bookingsCore = core;
 
-/* Peças usadas pela subscriptionsApi (subscriptions.js). */
+/* Peças usadas pela subscriptionsApi (subscriptions.js) e
+   pelo pagamento antecipado (payments/advance-payments.js). */
 exports.createBooking = create;
 exports.throttle = throttle;
 exports.BookingError = BookingError;
 exports.schedulesWhere = schedulesWhere;
 exports.readProduct = readProduct;
+exports.assertOpen = assertOpen;
+exports.slotFree = slotFree;

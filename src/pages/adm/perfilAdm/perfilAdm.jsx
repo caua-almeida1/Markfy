@@ -21,7 +21,6 @@ import "./perfilAdm.css";
 import ProfileScreen from "./screens/ProfileScreen";
 import SettingsScreen from "./screens/SettingsScreen";
 import SubscriptionScreen from "./screens/SubscriptionScreen";
-import PaymentScreen from "./screens/PaymentScreen";
 import PreferencesScreen from "./screens/PreferencesScreen";
 import PrivacyScreen from "./screens/PrivacyScreen";
 import SupportScreen from "./screens/SupportScreen";
@@ -36,12 +35,15 @@ import BusinessHoursScreen from "./screens/settings/BusinessHoursScreen";
 import IntegrationsScreen from "./screens/settings/IntegrationsScreen";
 
 
-import PixConfigScreen from "./screens/settings/payment/PixConfigScreen";
-import CardConfigScreen from "./screens/settings/payment/CardConfigScreen";
-import CardCreditScreen from "./screens/settings/payment/CardCreditScreen";
+import PaymentsScreen from "./screens/settings/payment/PaymentsScreen";
 import { productLabel } from "../../../plans/planDefaults";
 
-const PerfilAdm = ({ initialScreen = "home" }) => {
+/* Telas antigas de pagamento (Cartões, Pix, cartão de crédito)
+   viraram uma só. Os nomes continuam valendo para links já
+   publicados (?tab=perfil&screen=payment-card). */
+const PAYMENT_SCREENS = ["payment", "payment-card", "payment-pix", "payment-card-credit"];
+
+const PerfilAdm = ({ initialScreen = "home", paymentReturn = null }) => {
     const { openPreferences: openConsentPreferences } = useConsent();
 
     const { isDark, toggleTheme } = useTheme();
@@ -176,6 +178,11 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
     };
 
     const renderScreen = () => {
+
+        if (PAYMENT_SCREENS.includes(screen)) {
+            return <PaymentsScreen returnStatus={paymentReturn} />;
+        }
+
         switch (screen) {
             case "profile":
                 return <ProfileScreen user={userData} />;
@@ -188,35 +195,6 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
                 );
             case "subscriptions":
                 return <SubscriptionScreen />;
-
-            case "payment":
-                return (
-                    <PaymentScreen
-                        openScreen={openScreen}
-                    />
-                );
-
-            case "payment-pix":
-                return (
-                    <PixConfigScreen
-                        onBack={goBack}
-                    />
-                );
-
-            case "payment-card":
-                return (
-                    <CardConfigScreen
-                        openScreen={openScreen}
-                        onBack={goBack}
-                    />
-                );
-
-            case "payment-card-credit":
-                return (
-                    <CardCreditScreen
-                        onBack={goBack}
-                    />
-                );
 
             case "qr-login":
                 return (
@@ -423,7 +401,7 @@ const PerfilAdm = ({ initialScreen = "home" }) => {
                                         <div className="adm-perfil-details">
 
                                             <p className="adm-perfil-name">
-                                                Formas de Pagamento
+                                                Pagamentos
                                             </p>
 
                                         </div>

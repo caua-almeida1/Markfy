@@ -82,3 +82,46 @@ describe("mensalidade — regras mostradas ao cliente", () => {
         expect(getSubscriptionStatusInfo({ status: "cancelled", accessUntil: now - DAY }, now).label).toBe("Encerrada");
     });
 });
+
+
+describe("mensalidade — situação do pagamento (separada do status)", () => {
+
+    // eslint-disable-next-line global-require
+    const core = require("../../../functions-backend/subscriptions-core");
+    // eslint-disable-next-line global-require
+    const { getPaymentStatusCode, getPaymentStatusInfo, getRecentCharges } = require("../subscriptionRuntime");
+
+    const now = NOW.getTime();
+
+    const CASES = [
+        { status: "pending" },
+        { status: "authorized" },
+        { status: "authorized", trialEndsAt: now + 3 * DAY },
+        { status: "authorized", charges: { a: { paid: true, chargedAt: now - DAY } } },
+        { status: "past_due", charges: { a: { paid: true, chargedAt: now - 40 * DAY }, b: { failed: true, chargedAt: now - DAY } } }
+    ];
+
+    it("a tela calcula igual ao backend (paymentStatusOf) quando o campo ainda não foi gravado", () => {
+        CASES.forEach((subscription) => {
+            expect(getPaymentStatusCode(subscription, now)).toBe(core.paymentStatusOf(subscription, now));
+        });
+    });
+
+    it("ativa não é paga: só 'Em dia' com cobrança aprovada", () => {
+        expect(getPaymentStatusInfo({ status: "authorized" }, now).label).toBe("1ª cobrança em processamento");
+        expect(getPaymentStatusInfo({ status: "authorized", paymentStatus: "paid", lastPaidAt: now }, now).label).toMatch(/^Em dia/);
+        expect(getPaymentStatusInfo({ status: "past_due", paymentStatus: "failed" }, now).tone).toBe("late");
+    });
+
+    it("histórico: as cobranças mais recentes primeiro", () => {
+        const recent = getRecentCharges({
+            charges: {
+                velha: { chargedAt: now - 60 * DAY, paid: true },
+                nova: { chargedAt: now - DAY, failed: true },
+                meio: { chargedAt: now - 30 * DAY, paid: true }
+            }
+        }, 2);
+
+        expect(recent.map((item) => item.id)).toEqual(["nova", "meio"]);
+    });
+});

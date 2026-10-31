@@ -2,6 +2,8 @@
 
 Branch: `fix/auditoria-empresas-seguranca` · 24/10/2026 · nada publicado, nada commitado.
 
+> **31/10/2026 — veja [PAGAMENTOS.md](PAGAMENTOS.md).** A causa real do erro (`CC_VAL_433` em contas reais), a tela nova de Pagamentos, o teste grátis via `start_date` e o roteiro de teste com contas de teste estão lá. Aqui seguem valendo LGPD, cancelamento e arrependimento; os passos "Verificar assinaturas" (seções 3 e 10) foram substituídos pelo "Testar conexão".
+
 ---
 
 ## 1. Decisão: Mercado Pago (InfinitePay fica de fora)

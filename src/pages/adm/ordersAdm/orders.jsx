@@ -18,10 +18,32 @@ import Modal from "../../../components/modal/Modal";
 import useLastValue from "../../../hooks/useLastValue";
 
 import {
+    getPaymentStatusInfo,
+    getRecentCharges,
     getSubscriptionSummary,
     isSubscriptionUsable,
     watchCompanySubscriptions
 } from "../../../utils/subscriptionRuntime";
+import {
+    cancelSubscription,
+    pauseSubscription,
+    resumeSubscription
+} from "../../../firebase/subscriptionsApi";
+import { useUserCompany } from "../../../contexts/companyContext/UserCompanyContext";
+
+/* Quem pode pausar, reativar e cancelar pela empresa (o
+   backend confere de novo). */
+const SUBSCRIPTION_MANAGERS = ["master", "administrator", "administrador"];
+
+const CHARGE_LABELS = {
+    approved: "Paga",
+    rejected: "Recusada",
+    cancelled: "Cancelada",
+    in_process: "Em análise",
+    scheduled: "Agendada",
+    recycling: "Nova tentativa",
+    processed: "Processada"
+};
 
 const Orders = ({ company, initialOrder }) => {
 
@@ -61,13 +83,60 @@ const Orders = ({ company, initialOrder }) => {
 
 
     /* Inclui as canceladas que ainda valem até o fim do período
-       pago — o profissional ainda atende essas pessoas. */
+       pago — o profissional ainda atende essas pessoas — e as
+       pausadas (senão sumiam da tela e ninguém reativava). */
     const activeSubscriptions =
-        subscriptions.filter(isSubscriptionUsable);
+        subscriptions.filter((item) => isSubscriptionUsable(item) || item?.status === "paused");
 
     /* Só o que volta a cobrar entra na receita por ciclo. */
     const recurringSubscriptions =
-        activeSubscriptions.filter((item) => item.status !== "cancelled");
+        activeSubscriptions.filter((item) => item.status !== "cancelled" && item.status !== "paused");
+
+    const { companies } = useUserCompany() || {};
+
+    const canManageSubscriptions = SUBSCRIPTION_MANAGERS.includes(
+        (companies || []).find((item) => item.handle === company?.handle)?.role
+    );
+
+    const [subscriptionBusy, setSubscriptionBusy] = useState(null);
+
+    /* O espelho só muda com o gateway confirmando; o listener
+       de watchCompanySubscriptions atualiza o cartão sozinho. */
+    const manageSubscription = async (action, assinatura) => {
+
+        if (subscriptionBusy) return;
+
+        const nome = assinatura.userName || "este cliente";
+
+        const perguntas = {
+            pause: `Pausar a cobrança de ${nome}? O Mercado Pago para de cobrar e a pessoa não agenda pela mensalidade até você reativar.`,
+            cancel: `Cancelar a assinatura de ${nome}? A cobrança para no Mercado Pago; os atendimentos valem até o fim do período já pago.`
+        };
+
+        if (perguntas[action] && !window.confirm(perguntas[action])) return;
+
+        setSubscriptionBusy(`${action}:${assinatura.id}`);
+
+        try {
+
+            if (action === "pause") await pauseSubscription(company.handle, assinatura.id);
+            if (action === "resume") await resumeSubscription(company.handle, assinatura.id);
+            if (action === "cancel") await cancelSubscription(company.handle, assinatura.id);
+
+            openToast(
+                "success",
+                action === "pause" ? "Assinatura pausada" : action === "resume" ? "Assinatura reativada" : "Assinatura cancelada",
+                "O Mercado Pago confirmou a mudança."
+            );
+
+        } catch (error) {
+
+            openToast("error", "Não foi possível concluir", error?.message || "Tente de novo em instantes.");
+
+        } finally {
+            setSubscriptionBusy(null);
+        }
+    };
 
     const [orders, setOrders] = useState([]);
 
@@ -2256,12 +2325,87 @@ const Orders = ({ company, initialOrder }) => {
                                                 <div>
                                                     <span>Cliente desde</span>
                                                     <strong>
-                                                        {new Date(assinatura.startedAt)
-                                                            .toLocaleDateString("pt-BR")}
+                                                        {assinatura.startedAt
+                                                            ? new Date(assinatura.startedAt)
+                                                                .toLocaleDateString("pt-BR")
+                                                            : "—"}
                                                     </strong>
                                                 </div>
 
                                             </div>
+
+                                            {/* Pagamento, separado do status: "ativa"
+                                                não quer dizer "paga". */}
+                                            {(() => {
+
+                                                const pagamento = getPaymentStatusInfo(assinatura);
+                                                const cobrancas = getRecentCharges(assinatura);
+
+                                                return (
+                                                    <div className="orders-subscription-billing">
+
+                                                        <span className={`orders-subscription-payment is-${pagamento.tone}`}>
+                                                            <Icon icon={pagamento.tone === "active" ? "lucide:circle-check" : pagamento.tone === "late" ? "lucide:circle-alert" : "lucide:clock"} />
+                                                            {pagamento.label}
+                                                        </span>
+
+                                                        {cobrancas.length > 0 && (
+                                                            <ul className="orders-subscription-charges" aria-label="Últimas cobranças">
+                                                                {cobrancas.map((cobranca) => (
+                                                                    <li key={cobranca.id} className={cobranca.paid ? "is-paid" : cobranca.failed ? "is-failed" : ""}>
+                                                                        <span>
+                                                                            {cobranca.chargedAt
+                                                                                ? new Date(cobranca.chargedAt).toLocaleDateString("pt-BR")
+                                                                                : "—"}
+                                                                        </span>
+                                                                        <strong>
+                                                                            {Number(cobranca.amount || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                                                                        </strong>
+                                                                        <em>{CHARGE_LABELS[cobranca.status] || cobranca.status}</em>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+
+                                                    </div>
+                                                );
+                                            })()}
+
+                                            {canManageSubscriptions && assinatura.status !== "cancelled" && (
+                                                <div className="orders-subscription-actions">
+
+                                                    {assinatura.status === "paused" ? (
+                                                        <button
+                                                            type="button"
+                                                            disabled={Boolean(subscriptionBusy)}
+                                                            onClick={() => manageSubscription("resume", assinatura)}
+                                                        >
+                                                            <Icon icon="lucide:play" />
+                                                            Reativar cobrança
+                                                        </button>
+                                                    ) : (assinatura.status === "authorized" || assinatura.status === "past_due") && !assinatura.cancelScheduledFor ? (
+                                                        <button
+                                                            type="button"
+                                                            disabled={Boolean(subscriptionBusy)}
+                                                            onClick={() => manageSubscription("pause", assinatura)}
+                                                        >
+                                                            <Icon icon="lucide:pause" />
+                                                            Pausar cobrança
+                                                        </button>
+                                                    ) : null}
+
+                                                    <button
+                                                        type="button"
+                                                        className="is-danger"
+                                                        disabled={Boolean(subscriptionBusy)}
+                                                        onClick={() => manageSubscription("cancel", assinatura)}
+                                                    >
+                                                        <Icon icon="lucide:x" />
+                                                        Cancelar assinatura
+                                                    </button>
+
+                                                </div>
+                                            )}
 
                                             {/* Arrependimento (7 dias) com estorno que o
                                                 Mercado Pago não aceitou: a empresa precisa

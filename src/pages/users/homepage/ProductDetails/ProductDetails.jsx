@@ -71,6 +71,8 @@ import {
     fetchMyBookings
 } from "../../../../firebase/bookingsApi";
 
+import { fetchProductPaymentInfo } from "../../../../firebase/paymentsApi";
+
 import { trackEvent } from "../../../../analytics/analytics";
 
 import { useExitTransition } from "../../../../hooks/useExitTransition";
@@ -142,6 +144,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
     const [toastTitle, setToastTitle] = useState("");
     const [toastMessage, setToastMessage] = useState("");
     const [requiresPayment, setRequiresPayment] = useState(false);
+
+    /* A empresa está recebendo online? null = ainda não sabemos. */
+    const [onlinePaymentsReady, setOnlinePaymentsReady] = useState(null);
 
     const [showMercadoPagoPayment, setShowMercadoPagoPayment] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
@@ -579,39 +584,60 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
     useEffect(() => {
 
+        let cancelled = false;
+
         const fetchPaymentSettings = async () => {
 
-            if (!companyHandle) {
+            if (!companyHandle || !product?.id) {
                 setRequiresPayment(false);
                 return;
             }
 
             try {
 
-                const db = getDatabase();
-
-                /* Só a chave pública: o resto de paymentSettings
-                   (conexão do Mercado Pago) é privado. */
-                const snapshot =
-                    await get(
-                        ref(
-                            db,
-                            `companys/${companyHandle}/paymentSettings/receiveBeforeBooking`
-                        )
+                /*
+                 * Mesma regra que o backend aplica ao agendar:
+                 * "todos os serviços" (empresa) OU o pagamento
+                 * antecipado escolhido no produto. Antes só o
+                 * da empresa era lido aqui, e o do produto não
+                 * valia em lugar nenhum.
+                 */
+                const info =
+                    await fetchProductPaymentInfo(
+                        companyHandle,
+                        product.id
                     );
 
-                setRequiresPayment(
-                    snapshot.val() === true
-                );
+                if (cancelled) return;
+
+                setRequiresPayment(info?.advancePayment === true);
+                setOnlinePaymentsReady(info?.onlinePayments === true);
 
             } catch (error) {
 
-                console.error(
-                    "Erro ao carregar configurações de pagamento:",
-                    error
-                );
+                /* Backend antigo (sem paymentInfo): só o
+                   interruptor da empresa, como antes. */
+                try {
 
-                setRequiresPayment(false);
+                    const snapshot =
+                        await get(
+                            ref(
+                                getDatabase(),
+                                `companys/${companyHandle}/paymentSettings/receiveBeforeBooking`
+                            )
+                        );
+
+                    if (!cancelled) setRequiresPayment(snapshot.val() === true);
+
+                } catch (fallbackError) {
+
+                    console.error(
+                        "Erro ao carregar configurações de pagamento:",
+                        fallbackError
+                    );
+
+                    if (!cancelled) setRequiresPayment(false);
+                }
 
             }
 
@@ -619,7 +645,11 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
 
         fetchPaymentSettings();
 
-    }, [companyHandle]);
+        return () => {
+            cancelled = true;
+        };
+
+    }, [companyHandle, product?.id]);
 
     const groupedByMonth = {};
 
@@ -3671,8 +3701,9 @@ const ProductDetails = ({ product, companyName, companyHandle, companyLogo, onCl
                                                             </strong>
 
                                                             <span>
-                                                                Para confirmar este agendamento, o pagamento
-                                                                deverá ser realizado antecipadamente.
+                                                                {onlinePaymentsReady === false
+                                                                    ? "Esta empresa pede o pagamento antes do horário, mas ainda não está recebendo online. Fale com a empresa para agendar."
+                                                                    : "Para confirmar este agendamento, o pagamento deverá ser realizado antecipadamente."}
                                                             </span>
 
                                                         </div>

@@ -446,7 +446,7 @@ export const getSubscriptionStatusInfo = (subscription, now = Date.now()) => {
                 : {
                     label: "Ativa",
                     tone: "active",
-                    description: "Cobrança automática em dia."
+                    description: "Cobrança automática ligada."
                 };
 
         default:
@@ -454,6 +454,73 @@ export const getSubscriptionStatusInfo = (subscription, now = Date.now()) => {
     }
 
 };
+
+
+/* ---------------------------------------------------------
+   SITUAÇÃO DO PAGAMENTO
+
+   Separada do status: "ativa" (autorizada) não quer dizer
+   "paga". O backend grava paymentStatus com os mesmos códigos
+   de functions-backend/subscriptions-core.js (paymentStatusOf):
+
+     awaiting_authorization | trial | processing | paid | failed
+--------------------------------------------------------- */
+
+const lastSettledCharge = (charges) =>
+    Object.values(charges || {})
+        .filter((item) => item && (item.paid || item.failed))
+        .sort((a, b) => (b.chargedAt || 0) - (a.chargedAt || 0))[0] || null;
+
+export const getPaymentStatusCode = (subscription, now = Date.now()) => {
+
+    if (!subscription) return null;
+    if (subscription.paymentStatus) return subscription.paymentStatus;
+    if (subscription.status === SUBSCRIPTION_STATUS.PENDING) return "awaiting_authorization";
+
+    const last = lastSettledCharge(subscription.charges);
+
+    if (last?.failed) return "failed";
+    if (last?.paid) return "paid";
+    if (Number(subscription.trialEndsAt) > now) return "trial";
+
+    return "processing";
+};
+
+export const getPaymentStatusInfo = (subscription, now = Date.now()) => {
+
+    const data = (ms) => new Date(Number(ms)).toLocaleDateString("pt-BR");
+
+    switch (getPaymentStatusCode(subscription, now)) {
+
+        case "awaiting_authorization":
+            return { label: "Aguardando autorização", tone: "pending" };
+
+        case "trial":
+            return { label: `Teste grátis até ${data(subscription.trialEndsAt)}`, tone: "pending" };
+
+        case "processing":
+            return { label: "1ª cobrança em processamento", tone: "pending" };
+
+        case "paid":
+            return {
+                label: subscription.lastPaidAt ? `Em dia · pago em ${data(subscription.lastPaidAt)}` : "Em dia",
+                tone: "active"
+            };
+
+        case "failed":
+            return { label: "Cobrança recusada · o Mercado Pago tenta de novo", tone: "late" };
+
+        default:
+            return { label: "—", tone: "ended" };
+    }
+};
+
+/** As últimas cobranças (mais recente primeiro), para o histórico. */
+export const getRecentCharges = (subscription, limit = 3) =>
+    Object.entries(subscription?.charges || {})
+        .map(([id, item]) => ({ id, ...item }))
+        .sort((a, b) => (b.chargedAt || 0) - (a.chargedAt || 0))
+        .slice(0, limit);
 
 
 /* ---------------------------------------------------------

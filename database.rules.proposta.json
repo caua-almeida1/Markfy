@@ -156,13 +156,34 @@
         "paymentSettings": {
           "receiveBeforeBooking": {
             ".read": true
+          },
+          "mercadoPago": {
+            "_comentario": [
+              "Espelho da conexao com o Mercado Pago (conectado, conta, ambiente, ultima verificacao).",
+              "Sem token nenhum: os tokens ficam em mercadoPagoConnections, fechado para todos.",
+              "So o backend grava (.validate barra o navegador; o Admin SDK ignora as regras)."
+            ],
+            ".validate": "false"
           }
         },
         "paymentOrders": {
-          "_comentario": "Acompanhamento do pagamento pelo id (impossivel listar). Grava o backend.",
+          "_comentario": [
+            "Pagamento antecipado. Le quem pagou (o pedido nasce com o uid do token) e a equipe.",
+            "Antes: qualquer pessoa com o id lia nome, recado e horario do cliente.",
+            "So o backend grava: valor, status e agendamento vem do gateway, nunca do navegador."
+          ],
+          ".indexOn": [
+            "createdAt"
+          ],
+          ".validate": "false",
           "$orderId": {
-            ".read": true
+            ".read": "auth != null && data.child('userId').val() === auth.uid",
+            ".validate": "false"
           }
+        },
+        "subscriptionHistory": {
+          "_comentario": "Assinaturas encerradas (prova do contrato). So o backend grava.",
+          ".validate": "false"
         },
         "schedules": {
           "_comentario": "Privado: nome e telefone dos clientes. Cliente final usa a bookingsApi.",
@@ -183,8 +204,10 @@
           ".indexOn": [
             "uid"
           ],
+          ".validate": "false",
           "$subscriptionId": {
-            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)"
+            ".read": "auth != null && ($subscriptionId.beginsWith(auth.uid + '_') || data.child('uid').val() === auth.uid)",
+            ".validate": "false"
           }
         },
         "joinRequests": {

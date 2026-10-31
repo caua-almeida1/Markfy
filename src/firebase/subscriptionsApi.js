@@ -27,6 +27,13 @@ export const syncSubscription = (handle, subscriptionId) =>
 export const cancelSubscription = (handle, subscriptionId, { withdrawal = false } = {}) =>
     callApi(ENDPOINT, "cancel", { handle, subscriptionId, withdrawal });
 
+/** Só o administrador da empresa: para de cobrar até reativar. */
+export const pauseSubscription = (handle, subscriptionId) =>
+    callApi(ENDPOINT, "pause", { handle, subscriptionId });
+
+export const resumeSubscription = (handle, subscriptionId) =>
+    callApi(ENDPOINT, "resume", { handle, subscriptionId });
+
 
 /* ---------------------------------------------------------
    TENTATIVA PELA CONTA MERCADO PAGO
