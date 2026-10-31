@@ -25,7 +25,20 @@ import {
     Icon
 } from "@iconify/react";
 
+import { fetchPaymentOrderStatus } from "../../firebase/paymentsApi";
+
 import "./MercadoPagoPayment.css";
+
+/* Pagamento aprovado, mas o horário não pôde ser reservado
+   (ocupado no meio-tempo): o dinheiro entrou e a empresa
+   precisa remarcar ou devolver. */
+const NEEDS_ATTENTION_MESSAGE =
+    "Seu pagamento foi aprovado, mas o horário escolhido acabou de ser ocupado. " +
+    "A empresa já foi avisada e vai remarcar com você ou devolver o valor.";
+
+/* Enquanto o QR do Pix está na tela, confere no gateway a
+   cada 10 s (o webhook é o caminho rápido, isto é a garantia). */
+const PIX_SYNC_MS = 10000;
 
 
 const FUNCTIONS_URL =
@@ -89,6 +102,10 @@ const MercadoPagoPayment = ({
        pagamento é aprovado. */
     notes,
 
+    /* Serviços emendados no mesmo horário: o backend soma o
+       preço deles ao total (antes eram mostrados e não cobrados). */
+    extraProductIds,
+
     /* Mensalidade não passa por aqui: tem fluxo próprio em
        components/subscription-checkout. */
 
@@ -120,6 +137,9 @@ const MercadoPagoPayment = ({
 
     /* Virou "pago" enquanto a pessoa olhava o QR. */
     const [pixPaid, setPixPaid] = useState(false);
+
+    /* Pago, mas sem horário (needs_attention). */
+    const [needsAttention, setNeedsAttention] = useState(false);
 
 
     /* =====================================================
@@ -255,9 +275,10 @@ const MercadoPagoPayment = ({
 
                 if (!ordem) return;
 
+                /* "Pago" é aprovado E agendado. Aprovado sem
+                   horário é outro caso (needs_attention). */
                 const pago =
                     ordem.status === "paid" ||
-                    ordem.mercadoPagoStatus === "approved" ||
                     ordem.scheduleCreated === true;
 
                 if (pago) {
@@ -266,12 +287,29 @@ const MercadoPagoPayment = ({
                     limparPixPendente();
                     onSuccessRef.current?.(ordem);
 
+                } else if (ordem.status === "needs_attention") {
+
+                    setNeedsAttention(true);
+                    limparPixPendente();
+
                 }
 
             }
         );
 
-        return () => unsubscribe();
+        /* Garantia para quando o webhook não chega: pergunta
+           ao backend, que confere no gateway e grava — o
+           listener acima recebe o resultado. */
+        const timer = setInterval(() => {
+            fetchPaymentOrderStatus(companyHandle, paymentId).catch(() => {
+                /* Sem rede agora: tenta no próximo ciclo. */
+            });
+        }, PIX_SYNC_MS);
+
+        return () => {
+            unsubscribe();
+            clearInterval(timer);
+        };
 
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [result?.paymentId, result?.status, companyHandle]);
@@ -531,6 +569,11 @@ const MercadoPagoPayment = ({
 
                 notes,
 
+                extraProductIds:
+                    Array.isArray(extraProductIds) && extraProductIds.length
+                        ? extraProductIds
+                        : undefined,
+
                 userId:
                     currentUser.uid,
 
@@ -659,6 +702,13 @@ const MercadoPagoPayment = ({
             }
 
             setResult(data);
+
+            /* Cartão aprovado, mas o horário foi ocupado entre a
+               escolha e o pagamento: não é "confirmado". */
+            if (data.orderStatus === "needs_attention") {
+                setNeedsAttention(true);
+                return;
+            }
 
             if (data?.pix?.qrCode) {
                 guardarPixPendente(data);
@@ -836,6 +886,36 @@ const MercadoPagoPayment = ({
 
         const pix =
             result.pix;
+
+        if (needsAttention) {
+
+            return (
+                <div className="mercado-pago-payment-result">
+
+                    <Icon
+                        icon="solar:danger-triangle-outline"
+                        className="mercado-pago-payment-result-icon"
+                    />
+
+                    <h3>Pagamento aprovado, horário ocupado</h3>
+
+                    <p>{NEEDS_ATTENTION_MESSAGE}</p>
+
+                    <button
+                        type="button"
+                        className="mercado-pago-payment-primary"
+                        onClick={() =>
+                            window.location.assign(
+                                `/central-user/${companyHandle}?tab=reservas`
+                            )
+                        }
+                    >
+                        Ver minhas reservas
+                    </button>
+
+                </div>
+            );
+        }
 
         /* Caiu enquanto a pessoa esperava. */
         if (pixPaid) {

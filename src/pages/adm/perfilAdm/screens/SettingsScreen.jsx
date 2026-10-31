@@ -185,6 +185,35 @@ const SettingsScreen = ({ openScreen }) => {
 
                 <div
                     className="adm-perfil-row"
+                    onClick={() => openScreen("payment")}
+                >
+
+                    <div className="adm-perfil-row-left">
+
+                        <Icon
+                            icon="solar:wallet-money-outline"
+                            className="adm-perfil-row-icon"
+                        />
+
+                        <div className="adm-perfil-details">
+
+                            <p className="adm-perfil-name">
+                                Pagamentos
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                    <Icon
+                        icon="iconamoon:arrow-right-2"
+                        className="adm-perfil-arrow"
+                    />
+
+                </div>
+
+                <div
+                    className="adm-perfil-row"
                     onClick={() => openScreen("settings-integrations")}
                 >
 

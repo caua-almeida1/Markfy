@@ -79,74 +79,6 @@ async function loadCompaniesChildren(children) {
 }
 
 
-/* =====================================================
-   CONVERTER PREÇO
-
-   Os preços são gravados como texto ("R$ 1.234,56"), que é
-   o formato que as telas mostram. `Number()` nesse texto dá
-   NaN — foi assim que a assinatura passou a recusar todo
-   plano com "O plano possui um valor inválido": ela lia
-   `Number(plan.price)` em vez de converter.
-
-   Esta função vivia dentro de createMercadoPagoPayment, onde
-   só ela enxergava. No escopo do módulo, todo endpoint que
-   lida com dinheiro usa a mesma conversão.
-===================================================== */
-
-function parseMoney(value) {
-
-    if (typeof value === "number") {
-        return Number.isFinite(value) ? value : null;
-    }
-
-    if (typeof value !== "string") {
-        return null;
-    }
-
-    let normalized =
-        value
-            .trim()
-            .replace(/[^\d,.-]/g, "");
-
-    /* Com ponto E vírgula, o ponto é separador de milhar. */
-    if (
-        normalized.includes(",") &&
-        normalized.includes(".")
-    ) {
-
-        normalized =
-            normalized
-                .replace(/\./g, "")
-                .replace(",", ".");
-
-    } else if (
-        normalized.includes(",")
-    ) {
-
-        normalized =
-            normalized.replace(",", ".");
-    }
-
-    /*
-     * Texto sem dígito nenhum não é zero, é ausência.
-     *
-     * `Number("")` devolve 0, e com isso um preço vazio
-     * passaria como válido — pior, quebraria o encadeamento
-     * `parseMoney(plan.price) ?? parseMoney(product.value)`,
-     * já que 0 não aciona o `??`.
-     */
-    if (!normalized || !/\d/.test(normalized)) {
-        return null;
-    }
-
-    const amount = Number(normalized);
-
-    return Number.isFinite(amount)
-        ? amount
-        : null;
-
-}
-
 setGlobalOptions({
     maxInstances: 10
 });
@@ -400,15 +332,10 @@ exports.saveMercadoPagoCard = onRequest(
                 }
 
 
+                /* Só o status: a resposta traz o e-mail do cliente. */
                 console.log(
                     "👤 Mercado Pago Customer:",
-                    {
-                        status:
-                            customerResponse.status,
-
-                        response:
-                            customerResult
-                    }
+                    customerResponse.status
                 );
 
 
@@ -518,15 +445,10 @@ exports.saveMercadoPagoCard = onRequest(
             }
 
 
+            /* Só o status: a resposta traz dados do cartão e do titular. */
             console.log(
                 "💳 Mercado Pago Card:",
-                {
-                    status:
-                        cardResponse.status,
-
-                    response:
-                        cardData
-                }
+                cardResponse.status
             );
 
 
@@ -657,13 +579,10 @@ exports.saveMercadoPagoCard = onRequest(
 /**
  * Procura em qual empresa o usuário está cadastrado.
  *
- * Estrutura:
- *
- * companys/
- *   empresa/
- *     members/
- *       UID/
- *         role: "master"
+ * Só para as rotas antigas, que não dizem a empresa (telas
+ * publicadas antes da paymentsApi). As novas recebem o handle
+ * e conferem o papel nele — com duas empresas, "a primeira"
+ * podia ser a errada.
  */
 async function findUserCompany(uid) {
 
@@ -703,274 +622,132 @@ async function findUserCompany(uid) {
     return tryHandles(await listCompanyHandles());
 }
 
-/**
- * Verifica se o usuário possui permissão
- * para conectar o Mercado Pago.
- */
-function hasMercadoPagoPermission(role) {
 
-    return (
-        role === "master" ||
-        role === "administrador"
-    );
-}
-async function refreshMercadoPagoAccessToken(
-    companyHandle,
-    connection
-) {
+/* =====================================================
+   PAGAMENTOS — MONTAGEM
 
-    if (!connection?.refreshToken) {
+   payments/providers.js         contrato e registro dos
+                                 gateways (hoje: Mercado Pago)
+   payments/mercadopago.js       o provedor Mercado Pago
+   payments/connections.js       tokens da empresa (OAuth),
+                                 renovação e "Testar conexão"
+   payments/advance-payments.js  pagamento antecipado
+   payments/payments-api.js      paymentsApi + OAuth
+   subscriptions.js              mensalidade
 
-        throw new Error(
-            "Refresh token do Mercado Pago não encontrado."
-        );
+   Os tokens da empresa nunca saem do backend nem vão para
+   log: antes, a renovação registrava a resposta inteira do
+   Mercado Pago — access e refresh token — no Cloud Logging.
+===================================================== */
 
-    }
+/* Assinatura secreta dos webhooks (Suas integrações →
+   Webhooks → "Assinatura secreta"). */
+const mercadoPagoWebhookSecret =
+    defineSecret("MERCADOPAGO_WEBHOOK_SECRET");
 
-    console.log(
-        "========================================"
-    );
+const MERCADO_PAGO_WEBHOOK_URL =
+    "https://us-central1-markfy-96942.cloudfunctions.net/mercadoPagoWebhook";
 
-    console.log(
-        "🔄 INICIANDO RENOVAÇÃO MERCADO PAGO"
-    );
+/* Origens que podem receber o retorno do OAuth. */
+const ALLOWED_ORIGINS = [
+    "https://markfy.vercel.app",
+    "http://localhost:3000"
+];
 
-    console.log(
-        "🏢 Empresa:",
-        companyHandle
-    );
+const bookings = require("./bookings");
 
-    console.log(
-        "👤 Mercado Pago User ID:",
-        connection.mercadoPagoUserId
-    );
+const paymentProvider =
+    require("./payments/providers").getProvider("mercadopago");
 
-    console.log(
-        "🔑 Possui Access Token:",
-        Boolean(connection.accessToken)
-    );
+const appCredentials = () => ({
+    clientId: mercadoPagoClientId.value(),
+    clientSecret: mercadoPagoClientSecret.value()
+});
 
-    console.log(
-        "🔄 Possui Refresh Token:",
-        Boolean(connection.refreshToken)
-    );
+const connections = require("./payments/connections")({
+    db: () => admin.database(),
+    provider: paymentProvider,
+    credentials: appCredentials
+});
 
-    console.log(
-        "📅 Expires At:",
-        connection.expiresAt
-            ? new Date(connection.expiresAt).toISOString()
+/* Definido logo abaixo; o pagamento antecipado usa para
+   atualizar a mensalidade quando o aviso chega como "payment". */
+let subscriptions = null;
+
+const advancePayments = require("./payments/advance-payments")({
+    admin,
+    connections,
+    provider: paymentProvider,
+    notificationUrl: MERCADO_PAGO_WEBHOOK_URL,
+    onUnmatchedPayment: (handle, payment) =>
+        payment.recurring && payment.externalReference
+            ? subscriptions.syncByReference(handle, payment.externalReference)
             : null
-    );
+});
 
-    console.log(
-        "📋 Scope:",
-        connection.scope
-    );
+const payments = require("./payments/payments-api")({
+    admin,
+    secrets: [mercadoPagoClientId, mercadoPagoClientSecret],
+    connections,
+    provider: paymentProvider,
+    credentials: appCredentials,
+    advance: advancePayments,
+    redirectUri: MERCADO_PAGO_REDIRECT_URI,
+    frontendUrl: MARKFY_FRONTEND_URL,
+    allowedOrigins: ALLOWED_ORIGINS
+});
 
-    console.log(
-        "========================================"
-    );
+subscriptions = require("./subscriptions")({
+    admin,
+    secrets: [mercadoPagoClientId, mercadoPagoClientSecret],
+    connections,
+    provider: paymentProvider,
+    loadCompaniesChildren,
+    /* Junto da sincronização das 06:00: renovar tokens que
+       vencem em 30 dias, conferir pagamentos antecipados em
+       aberto e limpar tentativas de OAuth abandonadas. */
+    dailyTasks: [
+        { name: "tokens", run: () => connections.refreshExpiring() },
+        { name: "advancePayments", run: () => advancePayments.syncPending() },
+        { name: "oauthStates", run: () => payments.cleanupStates() }
+    ]
+});
 
+/*
+ *   paymentsApi             connect | verify | disconnect | orderStatus
+ *   subscriptionsApi        create | sync | cancel | pause | resume
+ *   subscriptionsDailySync  todo dia às 06:00 (Brasília)
+ *
+ * O nó companys/{handle}/subscriptions/{uid}_{productId} é o
+ * espelho local: o gateway é a fonte da verdade da cobrança,
+ * e o nó é o que as telas leem.
+ */
+exports.paymentsApi = payments.paymentsApi;
+exports.subscriptionsApi = subscriptions.subscriptionsApi;
+exports.subscriptionsDailySync = subscriptions.subscriptionsDailySync;
 
-    const clientId =
-        mercadoPagoClientId.value();
+const legacyCors = (req, res, methods) => {
 
-    const clientSecret =
-        mercadoPagoClientSecret.value();
+    res.set("Access-Control-Allow-Origin", "*");
+    res.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
+    res.set("Access-Control-Allow-Methods", `${methods}, OPTIONS`);
 
-
-    if (!clientId) {
-
-        throw new Error(
-            "MERCADOPAGO_CLIENT_ID não configurado."
-        );
-
+    if (req.method === "OPTIONS") {
+        res.status(204).send("");
+        return true;
     }
 
-    if (!clientSecret) {
-
-        throw new Error(
-            "MERCADOPAGO_CLIENT_SECRET não configurado."
-        );
-
-    }
-
-
-    const response =
-        await fetch(
-            "https://api.mercadopago.com/oauth/token",
-            {
-
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify({
-
-                    client_id:
-                        clientId,
-
-                    client_secret:
-                        clientSecret,
-
-                    grant_type:
-                        "refresh_token",
-
-                    refresh_token:
-                        connection.refreshToken
-
-                })
-
-            }
-        );
-
-
-    /*
-     * O corpo só pode ser lido uma vez: lemos como texto e
-     * convertemos depois, para não quebrar se vier algo
-     * que não seja JSON.
-     */
-    const responseText =
-        await response.text();
-
-    let data;
-
-    try {
-
-        data =
-            JSON.parse(responseText);
-
-    } catch {
-
-        data = {
-            raw: responseText
-        };
-
-    }
-
-
-    console.log(
-        "========================================"
-    );
-
-    console.log(
-        "🔄 RESPOSTA REFRESH MERCADO PAGO"
-    );
-
-    console.log(
-        "HTTP:",
-        response.status
-    );
-
-    console.log(
-        "Resposta:",
-        data
-    );
-
-    console.log(
-        "========================================"
-    );
-
-
-    if (!response.ok) {
-
-        throw new Error(
-            `Mercado Pago refresh ${response.status}: ${data?.message ||
-            data?.error_description ||
-            data?.error ||
-            "erro desconhecido"
-            }`
-        );
-
-    }
-
-
-    if (!data.access_token) {
-
-        throw new Error(
-            "Mercado Pago não retornou um novo Access Token."
-        );
-
-    }
-
-
-    const expiresInSeconds =
-        Number(data.expires_in) || 0;
-
-
-    const expiresAt =
-        Date.now() +
-        expiresInSeconds * 1000;
-
-
-    const updatedConnection = {
-
-        ...connection,
-
-        accessToken:
-            data.access_token,
-
-        refreshToken:
-            data.refresh_token ||
-            connection.refreshToken,
-
-        expiresIn:
-            expiresInSeconds,
-
-        expiresAt,
-
-        publicKey:
-            data.public_key ||
-            connection.publicKey,
-
-        updatedAt:
-            Date.now()
-
-    };
-
-
-    await db
-        .ref(
-            `mercadoPagoConnections/${companyHandle}`
-        )
-        .update({
-
-            accessToken:
-                updatedConnection.accessToken,
-
-            refreshToken:
-                updatedConnection.refreshToken,
-
-            expiresIn:
-                updatedConnection.expiresIn,
-
-            expiresAt:
-                updatedConnection.expiresAt,
-
-            publicKey:
-                updatedConnection.publicKey,
-
-            updatedAt:
-                updatedConnection.updatedAt
-
-        });
-
-
-    console.log(
-        "✅ ACCESS TOKEN RENOVADO COM SUCESSO"
-    );
-
-
-    return updatedConnection;
-
-}
+    return false;
+};
 
 
 /* =====================================================
    OAUTH — INICIAR
+
+   A tela de Pagamentos usa paymentsApi.connect; esta rota
+   fica para a tela antiga (Formas de Pagamento → Cartões)
+   até o frontend novo ser publicado. Aceita ?handle= e só
+   sem ele cai na "primeira empresa" do usuário.
 ===================================================== */
 
 exports.mercadoPagoOAuthStart = onRequest(
@@ -984,226 +761,51 @@ exports.mercadoPagoOAuthStart = onRequest(
 
         try {
 
-            /* =========================================
-               CORS
-            ========================================= */
+            if (legacyCors(req, res, "GET")) return;
 
-            res.set(
-                "Access-Control-Allow-Origin",
-                "*"
-            );
+            const user = await payments.resolveUser(req);
 
-            res.set(
-                "Access-Control-Allow-Headers",
-                "Authorization, Content-Type"
-            );
+            const requested =
+                typeof req.query.handle === "string"
+                    ? req.query.handle.trim()
+                    : "";
 
-            if (req.method === "OPTIONS") {
+            const handle =
+                requested ||
+                (await findUserCompany(user.uid))?.handle;
 
-                return res.status(204).send("");
-            }
-
-
-            /* =========================================
-               TOKEN DO FIREBASE
-            ========================================= */
-
-            const authorization =
-                req.headers.authorization || "";
-
-            if (!authorization.startsWith("Bearer ")) {
-
-                return res.status(401).json({
-                    success: false,
-                    message:
-                        "Usuário não autenticado."
-                });
-            }
-
-
-            const idToken =
-                authorization.replace(
-                    "Bearer ",
-                    ""
-                );
-
-            /* =========================================
-               VALIDAR FIREBASE AUTH
-            ========================================= */
-
-            const decodedToken =
-                await admin
-                    .auth()
-                    .verifyIdToken(idToken);
-
-            const uid =
-                decodedToken.uid;
-
-            console.log("=================================");
-            console.log("🔥 MERCADO PAGO OAUTH START");
-            console.log("🔥 Firebase UID:", uid);
-            console.log("🔥 Email:", decodedToken.email);
-            console.log("=================================");
-
-            /* =========================================
-               ENCONTRAR EMPRESA
-            ========================================= */
-
-            const userCompany =
-                await findUserCompany(uid);
-
-            if (!userCompany) {
-
+            if (!handle) {
                 return res.status(403).json({
                     success: false,
-                    message:
-                        "Usuário não pertence a nenhuma empresa."
+                    message: "Usuário não pertence a nenhuma empresa."
                 });
             }
 
+            await payments.requireManager(handle, user.uid);
 
-            const {
-                handle,
-                member
-            } = userCompany;
-
-
-            /* =========================================
-               VERIFICAR ROLE
-            ========================================= */
-
-            const role =
-                member.role;
-
-
-            if (!hasMercadoPagoPermission(role)) {
-
-                return res.status(403).json({
-                    success: false,
-                    message:
-                        "Você não possui permissão para conectar o Mercado Pago."
-                });
-            }
-
-            /* =========================================
-               URL DE RETORNO
-            ========================================= */
-
-            const allowedReturnUrls = [
-                "https://markfy.vercel.app/central-adm",
-                "http://localhost:3000/central-adm"
-            ];
+            const allowedReturnUrls =
+                ALLOWED_ORIGINS.map((origin) => `${origin}/central-adm`);
 
             const returnUrl =
-                req.query.returnUrl;
-
-            const safeReturnUrl =
-                allowedReturnUrls.includes(returnUrl)
-                    ? returnUrl
-                    : "https://markfy.vercel.app/central-adm";
-
-            /* =========================================
-               GERAR STATE
-            ========================================= */
-
-            const state =
-                crypto.randomBytes(32).toString("hex");
-
-
-            /* =========================================
-               SALVAR STATE
-            ========================================= */
-
-            await db
-                .ref(
-                    `mercadoPagoOAuthStates/${state}`
-                )
-                .set({
-
-                    uid,
-
-                    companyHandle:
-                        handle,
-
-                    returnUrl:
-                        safeReturnUrl,
-
-                    createdAt:
-                        Date.now()
-
-                });
-
-            /* =========================================
-               URL DO MERCADO PAGO
-            ========================================= */
-
-            const clientId =
-                mercadoPagoClientId.value();
-
+                allowedReturnUrls.includes(req.query.returnUrl)
+                    ? req.query.returnUrl
+                    : `${MARKFY_FRONTEND_URL}/central-adm`;
 
             const authorizationUrl =
-                new URL(
-                    "https://auth.mercadopago.com/authorization"
-                );
-
-
-            authorizationUrl.searchParams.set(
-                "client_id",
-                clientId
-            );
-
-            authorizationUrl.searchParams.set(
-                "response_type",
-                "code"
-            );
-
-            authorizationUrl.searchParams.set(
-                "platform_id",
-                "mp"
-            );
-
-            authorizationUrl.searchParams.set(
-                "state",
-                state
-            );
-
-            authorizationUrl.searchParams.set(
-                "redirect_uri",
-                MERCADO_PAGO_REDIRECT_URI
-            );
-
-            authorizationUrl.searchParams.set(
-                "scope",
-                "offline_access write read"
-            );
-            /* =========================================
-               RETORNAR URL
-            ========================================= */
+                await payments.startAuthorization({
+                    handle,
+                    uid: user.uid,
+                    returnUrl
+                });
 
             return res.status(200).json({
-
                 success: true,
-
-                authorizationUrl:
-                    authorizationUrl.toString()
-
+                authorizationUrl
             });
 
         } catch (error) {
 
-            console.error(
-                "Erro ao iniciar OAuth Mercado Pago:",
-                error
-            );
-
-            return res.status(500).json({
-
-                success: false,
-
-                message:
-                    "Não foi possível iniciar a conexão com o Mercado Pago."
-
-            });
+            return payments.sendError(res, error, "mercadoPagoOAuthStart");
         }
     }
 );
@@ -1211,6 +813,11 @@ exports.mercadoPagoOAuthStart = onRequest(
 
 /* =====================================================
    OAUTH — CALLBACK
+
+   É o redirect_uri registrado na aplicação do Mercado Pago:
+   a URL não pode mudar. Troca o code por tokens (com o
+   client_secret, só aqui), descobre qual conta conectou e
+   volta para a tela de Pagamentos.
 ===================================================== */
 
 exports.mercadoPagoOAuthCallback = onRequest(
@@ -1225,325 +832,44 @@ exports.mercadoPagoOAuthCallback = onRequest(
 
         try {
 
-            const {
-                code,
-                state,
-                error,
-                error_description
-            } = req.query;
+            const outcome =
+                await payments.completeAuthorization(req.query);
 
-
-            /* =========================================
-               USUÁRIO NEGOU
-            ========================================= */
-
-            if (error) {
-
-                console.error(
-                    "Mercado Pago OAuth recusado:",
-                    error,
-                    error_description
-                );
-
-                return res
-                    .status(400)
-                    .send(`
-                        <!DOCTYPE html>
-
-                        <html lang="pt-BR">
-
-                        <head>
-                            <meta charset="UTF-8">
-                            <title>Markfy</title>
-                        </head>
-
-                        <body>
-
-                            <h1>Conexão cancelada</h1>
-
-                            <p>
-                                A conexão com o Mercado Pago
-                                não foi autorizada.
-                            </p>
-
-                        </body>
-
-                        </html>
-                    `);
+            if (outcome.redirect) {
+                return res.redirect(outcome.redirect);
             }
 
+            return res
+                .status(outcome.status || 400)
+                .send(outcome.html);
 
-            /* =========================================
-               VALIDAR CODE
-            ========================================= */
-
-            if (!code || !state) {
-
-                return res
-                    .status(400)
-                    .send(`
-                        <h1>Erro na conexão</h1>
-                        <p>
-                            O Mercado Pago não retornou
-                            os dados necessários.
-                        </p>
-                    `);
-            }
-
-
-            /* =========================================
-               BUSCAR STATE
-            ========================================= */
-
-            const stateRef =
-                db.ref(
-                    `mercadoPagoOAuthStates/${state}`
-                );
-
-            const stateSnapshot =
-                await stateRef.once("value");
-
-            const stateData =
-                stateSnapshot.val();
-
-
-            if (!stateData) {
-
-                return res
-                    .status(400)
-                    .send(`
-                        <h1>Conexão inválida</h1>
-                        <p>
-                            A solicitação de conexão
-                            não é válida ou já expirou.
-                        </p>
-                    `);
-            }
-
-
-            /* =========================================
-               EXPIRAÇÃO DO STATE
-            ========================================= */
-
-            const STATE_MAX_AGE =
-                10 * 60 * 1000;
-
-
-            const stateExpired =
-                Date.now() -
-                stateData.createdAt >
-                STATE_MAX_AGE;
-
-
-            if (stateExpired) {
-
-                await stateRef.remove();
-
-                return res
-                    .status(400)
-                    .send(`
-                        <h1>Solicitação expirada</h1>
-                        <p>
-                            Inicie novamente a conexão
-                            com o Mercado Pago.
-                        </p>
-                    `);
-            }
-
-
-            /* =========================================
-               REMOVER STATE
-               Evita reutilização
-            ========================================= */
-
-            await stateRef.remove();
-
-
-            /* =========================================
-               TROCAR CODE POR TOKEN
-            ========================================= */
-
-            const response =
-                await fetch(
-                    "https://api.mercadopago.com/oauth/token",
-                    {
-
-                        method: "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-
-                        body: JSON.stringify({
-
-                            client_id:
-                                mercadoPagoClientId.value(),
-
-                            client_secret:
-                                mercadoPagoClientSecret.value(),
-
-                            code,
-
-                            grant_type:
-                                "authorization_code",
-
-                            redirect_uri:
-                                MERCADO_PAGO_REDIRECT_URI
-
-                        })
-
-                    }
-                );
-
-
-            const tokenData =
-                await response.json();
-
-
-            if (!response.ok) {
-
-                console.error(
-                    "Erro Mercado Pago OAuth:",
-                    tokenData
-                );
-
-                return res
-                    .status(response.status)
-                    .send(`
-                        <h1>Erro ao conectar</h1>
-                        <p>
-                            Não foi possível concluir
-                            a conexão com o Mercado Pago.
-                        </p>
-                    `);
-            }
-
-
-            /* =========================================
-               DADOS RECEBIDOS
-            ========================================= */
-
-            const {
-                access_token,
-                refresh_token,
-                user_id,
-                public_key,
-                expires_in,
-                scope,
-                live_mode
-            } = tokenData;
-
-
-            if (
-                !access_token ||
-                !refresh_token ||
-                !user_id
-            ) {
-
-                console.error(
-                    "Resposta OAuth incompleta:",
-                    tokenData
-                );
-
-                return res
-                    .status(500)
-                    .send(`
-                        <h1>Erro ao conectar</h1>
-                        <p>
-                            O Mercado Pago não retornou
-                            todas as credenciais necessárias.
-                        </p>
-                    `);
-            }
-
-
-            /* =========================================
-               SALVAR CONEXÃO
-            ========================================= */
-
-            const expiresInSeconds =
-                Number(expires_in) || 0;
-
-            const expiresAt =
-                Date.now() +
-                (expiresInSeconds * 1000);
-
-            await db
-                .ref(
-                    `mercadoPagoConnections/${stateData.companyHandle}`
-                )
-                .set({
-
-                    connected: true,
-
-                    mercadoPagoUserId:
-                        user_id,
-
-                    publicKey:
-                        public_key || null,
-
-                    accessToken:
-                        access_token,
-
-                    refreshToken:
-                        refresh_token,
-
-                    expiresIn:
-                        expiresInSeconds,
-
-                    expiresAt,
-
-                    connectedAt:
-                        Date.now(),
-
-                    scope:
-                        scope || null,
-
-                    liveMode:
-                        live_mode === true,
-
-                    connectedBy:
-                        stateData.uid
-
-                });
-
-            await db
-                .ref(
-                    `companys/${stateData.companyHandle}/paymentSettings/mercadoPago`
-                )
-                .update({
-                    connected: true,
-                    mercadoPagoUserId: user_id,
-                    connectedAt: Date.now()
-                });
-
-            return res.redirect(
-                `${stateData.returnUrl}?mercadoPago=connected`
-            );
         } catch (error) {
 
             console.error(
                 "Erro no callback OAuth:",
-                error
+                error && error.message
             );
 
             return res
                 .status(500)
-                .send(`
-                    <h1>Erro interno</h1>
-
-                    <p>
-                        Não foi possível concluir
-                        a conexão com o Mercado Pago.
-                    </p>
-                `);
+                .send(
+                    "<!DOCTYPE html><html lang=\"pt-BR\"><meta charset=\"UTF-8\"><title>Markfy</title>" +
+                    "<h1>Erro interno</h1><p>Não foi possível concluir a conexão com o Mercado Pago. " +
+                    `<a href="${MARKFY_FRONTEND_URL}/central-adm?tab=perfil&amp;screen=payment">Voltar</a></p></html>`
+                );
         }
     }
 );
 
+
 /* =====================================================
-   MERCADO PAGO — CRIAR PAGAMENTO
+   MERCADO PAGO — PAGAMENTO ANTECIPADO
+
+   Mesmo contrato de antes (o checkout não muda), com a regra
+   nova em payments/advance-payments.js: valor calculado no
+   servidor com a promoção e os extras que a tela mostra,
+   horário conferido antes de cobrar e agendamento criado
+   na hora quando o cartão é aprovado.
 ===================================================== */
 
 exports.createMercadoPagoPayment = onRequest(
@@ -1562,23 +888,7 @@ exports.createMercadoPagoPayment = onRequest(
 
         try {
 
-            /* =========================================
-               CORS
-            ========================================= */
-
-            res.set(
-                "Access-Control-Allow-Origin",
-                "*"
-            );
-
-            res.set(
-                "Access-Control-Allow-Headers",
-                "Authorization, Content-Type"
-            );
-
-            if (req.method === "OPTIONS") {
-                return res.status(204).send("");
-            }
+            if (legacyCors(req, res, "POST")) return;
 
             if (req.method !== "POST") {
                 return res.status(405).json({
@@ -1587,845 +897,43 @@ exports.createMercadoPagoPayment = onRequest(
                 });
             }
 
-
-            /* =========================================
-               FIREBASE AUTH
-            ========================================= */
-
-            const authorization =
-                req.headers.authorization || "";
-
-            if (!authorization.startsWith("Bearer ")) {
-
-                return res.status(401).json({
+            if (!(await bookings.throttle(req, "paymentCreate"))) {
+                return res.status(429).json({
                     success: false,
-                    message: "Usuário não autenticado."
+                    message: "Muitas tentativas seguidas. Aguarde um minuto."
                 });
             }
 
-            const idToken =
-                authorization.replace("Bearer ", "");
+            const user = await payments.resolveUser(req);
 
-            const decodedToken =
-                await admin
-                    .auth()
-                    .verifyIdToken(idToken);
-
-            const uid =
-                decodedToken.uid;
-
-
-            /* =========================================
-               DADOS RECEBIDOS
-            ========================================= */
-
-            const {
-                companyHandle,
-                productId,
-                professionalId,
-                professionalName,
-                day,
-                dayLabel,
-                hour,
-                userName,
-                clientId,
-                notes,
-
-                paymentMethodId,
-                token,
-                issuerId,
-                installments,
-                payer
-            } = req.body || {};
-
-
-            if (
-                !companyHandle ||
-                !productId ||
-                !professionalId ||
-                !day ||
-                !hour ||
-                !userName ||
-                !clientId
-            ) {
-
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "Dados insuficientes para criar o pagamento."
-                });
-            }
-
-
-            /* =========================================
-               VERIFICAR EMPRESA
-            ========================================= */
-
-            const companySnapshot =
-                await db
-                    .ref(`companys/${companyHandle}`)
-                    .once("value");
-
-            const company =
-                companySnapshot.val();
-
-            if (!company) {
-
-                return res.status(404).json({
-                    success: false,
-                    message: "Empresa não encontrada."
-                });
-            }
-
-
-            /* =========================================
-               PRODUTO
-            ========================================= */
-
-            const productSnapshot =
-                await db
-                    .ref(
-                        `companys/${companyHandle}/products/${productId}`
-                    )
-                    .once("value");
-
-            const product =
-                productSnapshot.val();
-
-            if (!product) {
-
-                return res.status(404).json({
-                    success: false,
-                    message: "Produto não encontrado."
-                });
-            }
-
-
-            const amount =
-                parseMoney(product.value);
-
-
-            if (
-                amount === null ||
-                amount <= 0
-            ) {
-
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "O produto possui um valor inválido."
-                });
-            }
-
-
-            /* =========================================
-               CONEXÃO MERCADO PAGO
-            ========================================= */
-
-            const connectionSnapshot =
-                await db
-                    .ref(
-                        `mercadoPagoConnections/${companyHandle}`
-                    )
-                    .once("value");
-
-            const connection =
-                connectionSnapshot.val();
-
-
-            if (
-                !connection ||
-                !connection.connected ||
-                !connection.accessToken
-            ) {
-
-                return res.status(400).json({
-                    success: false,
-                    message:
-                        "O Mercado Pago ainda não está conectado para esta empresa."
-                });
-            }
-
-
-            /* =========================================
-               ID DO PAGAMENTO
-            ========================================= */
-
-            const paymentRef =
-                db
-                    .ref(
-                        `companys/${companyHandle}/paymentOrders`
-                    )
-                    .push();
-
-            const paymentId =
-                paymentRef.key;
-
-            /* =========================================
-               CRIAR PAYMENT ORDER
-            ========================================= */
-
-            await paymentRef.set({
-
-                id:
-                    paymentId,
-
-                status:
-                    "pending",
-
-                companyHandle,
-
-                userId:
-                    uid,
-
-                clientId,
-
-                productId,
-
-                productName:
-                    product.name || null,
-
-                productPrice:
-                    amount,
-
-                professionalId,
-
-                professionalName:
-                    professionalName || null,
-
-                day,
-
-                dayLabel:
-                    dayLabel || null,
-
-                hour,
-
-                userName,
-
-                /* Recado do cliente. Fica aqui porque o
-                   agendamento só nasce quando o pagamento é
-                   aprovado, lá no webhook. */
-                notes:
-                    (typeof notes === "string" && notes.trim())
-                        ? notes.trim().slice(0, 300)
-                        : null,
-
-                createdAt:
-                    Date.now()
-
-            });
-
-
-            /* =========================================
-               DADOS DO PAGAMENTO
-            ========================================= */
-
-            const paymentData = {
-
-                transaction_amount:
-                    Number(amount.toFixed(2)),
-
-                description:
-                    product.name ||
-                    "Agendamento Markfy",
-
-                payment_method_id:
-                    paymentMethodId,
-
-                external_reference:
-                    paymentId,
-
-                notification_url:
-                    "https://us-central1-markfy-96942.cloudfunctions.net/mercadoPagoWebhook",
-
-                payer:
-                    payer || {},
-
-                metadata: {
-
-                    companyHandle,
-
-                    productId,
-
-                    professionalId,
-
-                    professionalName:
-                        professionalName || null,
-
-                    day,
-
-                    dayLabel:
-                        dayLabel || null,
-
-                    hour,
-
-                    userName,
-
-                    clientId,
-
-                    userId:
-                        uid
-                }
-            };
-
-
-            /* =========================================
-               CARTÃO
-            ========================================= */
-
-            if (token) {
-
-                paymentData.token =
-                    token;
-
-            }
-
-            if (issuerId) {
-
-                paymentData.issuer_id =
-                    issuerId;
-
-            }
-
-            if (
-                installments &&
-                Number(installments) > 0
-            ) {
-
-                paymentData.installments =
-                    Number(installments);
-
-            }
-
-
-            /* =========================================
-               VALIDAR MÉTODO
-            ========================================= */
-
-            if (!paymentMethodId) {
-
-                await paymentRef.update({
-
-                    status:
-                        "error",
-
-                    error:
-                        "Método de pagamento não informado.",
-
-                    updatedAt:
-                        Date.now()
-
-                });
-
-                return res.status(400).json({
-
-                    success: false,
-
-                    message:
-                        "Método de pagamento não informado."
-
-                });
-
-            }
-
-
-            /* =========================================
-               CRIAR PAGAMENTO NO MERCADO PAGO
-            ========================================= */
-
-            let mercadoPagoResponse =
-                await fetch(
-                    "https://api.mercadopago.com/v1/payments",
-                    {
-
-                        method: "POST",
-
-                        headers: {
-
-                            "Content-Type":
-                                "application/json",
-
-                            "Authorization":
-                                `Bearer ${connection.accessToken}`,
-
-                            "X-Idempotency-Key":
-                                paymentId
-
-                        },
-
-                        body:
-                            JSON.stringify(
-                                paymentData
-                            )
-
-                    }
-                );
-            let mercadoPagoData =
-                await mercadoPagoResponse.json();
-
-            console.log(
-                "========================================"
-            );
-
-            console.log(
-                "💳 RESPOSTA INICIAL MERCADO PAGO"
-            );
-
-            console.log(
-                "HTTP:",
-                mercadoPagoResponse.status
-            );
-
-            console.log(
-                "Resposta:",
-                mercadoPagoData
-            );
-
-            console.log(
-                "========================================"
-            );
-
-            /* =====================================================
-               RENOVAR TOKEN SE CREDENCIAL ESTIVER INVÁLIDA
-            ===================================================== */
-
-            if (
-                mercadoPagoResponse.status === 401 ||
-                (
-                    mercadoPagoResponse.status === 400 &&
-                    (
-                        mercadoPagoData?.message
-                            ?.toLowerCase()
-                            ?.includes("credential")
-                        ||
-                        mercadoPagoData?.error
-                            ?.toLowerCase()
-                            ?.includes("credential")
-                    )
-                )
-            ) {
-
-                console.warn(
-                    "⚠️ Access Token Mercado Pago inválido. Renovando..."
-                );
-
-
-                try {
-
-                    const refreshedConnection =
-                        await refreshMercadoPagoAccessToken(
-                            companyHandle,
-                            connection
-                        );
-
-
-                    mercadoPagoResponse =
-                        await fetch(
-                            "https://api.mercadopago.com/v1/payments",
-                            {
-
-                                method: "POST",
-
-                                headers: {
-
-                                    "Content-Type":
-                                        "application/json",
-
-                                    "Authorization":
-                                        `Bearer ${refreshedConnection.accessToken}`,
-
-                                    /*
-                                     * Chave nova: com a mesma chave o
-                                     * Mercado Pago pode devolver a
-                                     * resposta já registrada da
-                                     * tentativa que falhou.
-                                     */
-                                    "X-Idempotency-Key":
-                                        `${paymentId}-retry`
-
-                                },
-
-                                body:
-                                    JSON.stringify(
-                                        paymentData
-                                    )
-
-                            }
-                        );
-
-
-                    mercadoPagoData =
-                        await mercadoPagoResponse.json();
-
-
-                } catch (refreshError) {
-
-                    console.error(
-                        "❌ Não foi possível renovar o token:",
-                        refreshError
-                    )
-
-                    await paymentRef.update({
-
-                        status:
-                            "error",
-
-                        error:
-                            refreshError.message,
-
-                        updatedAt:
-                            Date.now()
-
-                    });
-
-
-                    return res.status(401).json({
-
-                        success: false,
-
-                        message:
-                            "Não foi possível autenticar a conta Mercado Pago.",
-
-                        code:
-                            "MERCADO_PAGO_AUTH_ERROR",
-
-                        details:
-                            refreshError.message
-
-                    });
-
-                }
-
-            }
-
-            /* =========================================
-               MERCADO PAGO RECUSOU A REQUISIÇÃO
-            =========================================
-
-               Sem esta checagem a função devolvia
-               success:true com um id "undefined" e o
-               erro real sumia.
-            ========================================= */
-
-            if (
-                !mercadoPagoResponse.ok ||
-                !mercadoPagoData?.id
-            ) {
-
-                const causeDescription =
-                    Array.isArray(mercadoPagoData?.cause)
-                        ? mercadoPagoData.cause
-                            .map((cause) =>
-                                cause?.description
-                            )
-                            .filter(Boolean)
-                            .join("; ")
-                        : null;
-
-                const mercadoPagoMessage =
-                    causeDescription ||
-                    mercadoPagoData?.message ||
-                    mercadoPagoData?.error ||
-                    "Erro desconhecido do Mercado Pago.";
-
-                console.error(
-                    "❌ Mercado Pago recusou o pagamento:",
-                    mercadoPagoResponse.status,
-                    mercadoPagoMessage
-                );
-
-                await paymentRef.update({
-
-                    status:
-                        "error",
-
-                    error:
-                        mercadoPagoMessage,
-
-                    mercadoPagoHttpStatus:
-                        mercadoPagoResponse.status,
-
-                    updatedAt:
-                        Date.now()
-
-                });
-
-                /* =========================================
-                   DE QUEM É O PROBLEMA
-
-                   Nem toda recusa é do cliente. Boa parte
-                   vem da conta que RECEBE: Pix sem chave
-                   cadastrada, conta sem validação de
-                   identidade, conta sem permissão para
-                   cobrar de terceiros.
-
-                   Tratar tudo como "confira os dados" manda
-                   o cliente tentar de novo para sempre num
-                   pagamento que nunca vai passar, e o dono
-                   da empresa nunca descobre que a pendência
-                   é dele. Aqui cada caso vira uma frase que
-                   diz o que fazer, e `ownerAction` marca as
-                   que só o dono resolve.
-                ========================================= */
-
-                const problemasDaConta = [
-
-                    {
-                        teste: /without key enabled for QR render|key.*not.*found|pix.*key/i,
-                        codigo: "MERCADO_PAGO_PIX_SEM_CHAVE",
-                        mensagem:
-                            "O Pix ainda não está liberado na conta Mercado Pago desta empresa. " +
-                            "O responsável precisa cadastrar uma chave Pix no app do Mercado Pago. " +
-                            "Enquanto isso, pague com cartão."
-                    },
-
-                    {
-                        teste: /identity|identification.*validat|documenta[cç][aã]o|compliance|kyc/i,
-                        codigo: "MERCADO_PAGO_CONTA_NAO_VALIDADA",
-                        mensagem:
-                            "A conta Mercado Pago desta empresa está com a validação de identidade " +
-                            "pendente e por isso não pode receber. O responsável precisa concluir a " +
-                            "verificação no Mercado Pago."
-                    },
-
-                    {
-                        teste: /not authorized|unauthorized|forbidden|operator/i,
-                        codigo: "MERCADO_PAGO_SEM_PERMISSAO",
-                        mensagem:
-                            "A conta Mercado Pago desta empresa não tem permissão para receber este " +
-                            "pagamento. O responsável precisa reconectar a conta em Perfil → Pagamentos."
-                    },
-
-                    {
-                        teste: /invalid users involved/i,
-                        codigo: "MERCADO_PAGO_MESMA_CONTA",
-                        mensagem:
-                            "Não dá para pagar com a mesma conta Mercado Pago que recebe. " +
-                            "Use outro e-mail ou outro cartão."
-                    }
-
-                ];
-
-                const problemaDaConta =
-                    problemasDaConta.find(
-                        (item) =>
-                            item.teste.test(mercadoPagoMessage)
-                    ) || null;
-
-                const isCredentialError =
-                    mercadoPagoResponse.status === 401 ||
-                    /credential/i.test(mercadoPagoMessage);
-
-                if (problemaDaConta || isCredentialError) {
-
-                    console.error(
-                        "⚠️ Recusa ligada à CONTA DE RECEBIMENTO de",
-                        companyHandle,
-                        "->",
-                        mercadoPagoMessage
-                    );
-
-                }
-
-                return res.status(
-                    (isCredentialError || problemaDaConta) ? 502 : 400
-                ).json({
-
-                    success: false,
-
-                    code:
-                        problemaDaConta
-                            ? problemaDaConta.codigo
-                            : isCredentialError
-                                ? "MERCADO_PAGO_AUTH_ERROR"
-                                : "MERCADO_PAGO_REJECTED",
-
-                    /* Marca as recusas que o cliente não tem
-                       como resolver sozinho. */
-                    ownerAction:
-                        Boolean(problemaDaConta) ||
-                        isCredentialError,
-
-                    message:
-                        problemaDaConta
-                            ? problemaDaConta.mensagem
-                            : isCredentialError
-                                ? "A conta Mercado Pago desta empresa precisa ser conectada novamente."
-                                : "O Mercado Pago não aceitou o pagamento. Confira os dados e tente de novo.",
-
-                    details:
-                        mercadoPagoMessage
-
-                });
-            }
-
-
-            /* =========================================
-               PIX — DADOS PARA O CLIENTE PAGAR
-            ========================================= */
-
-            const transactionData =
-                mercadoPagoData
-                    ?.point_of_interaction
-                    ?.transaction_data || null;
-
-            const pix =
-                transactionData
-                    ? {
-
-                        qrCode:
-                            transactionData.qr_code ||
-                            null,
-
-                        qrCodeBase64:
-                            transactionData.qr_code_base64 ||
-                            null,
-
-                        ticketUrl:
-                            transactionData.ticket_url ||
-                            null,
-
-                        expiresAt:
-                            mercadoPagoData.date_of_expiration ||
-                            null
-
-                    }
-                    : null;
-
-
-            /* =========================================
-               SALVAR DADOS DO MERCADO PAGO
-            ========================================= */
-
-            await paymentRef.update({
-
-                mercadoPagoPaymentId:
-                    String(mercadoPagoData.id),
-
-                mercadoPagoStatus:
-                    mercadoPagoData.status ||
-                    "pending",
-
-                paymentStatusDetail:
-                    mercadoPagoData.status_detail ||
-                    null,
-
-                paymentMethodId:
-                    mercadoPagoData.payment_method_id ||
-                    paymentMethodId,
-
-                updatedAt:
-                    Date.now()
-
-            });
-
-
-            /* =========================================
-               RETORNAR RESULTADO
-            ========================================= */
+            const result =
+                await advancePayments.create(req.body, user);
 
             return res.status(200).json({
-
                 success: true,
-
-                paymentId,
-
-                mercadoPagoPaymentId:
-                    String(mercadoPagoData.id),
-
-                status:
-                    mercadoPagoData.status,
-
-                statusDetail:
-                    mercadoPagoData.status_detail ||
-
-                    null,
-
-                paymentMethodId:
-                    mercadoPagoData.payment_method_id ||
-
-                    paymentMethodId,
-
-                pix
-
+                ...result
             });
 
         } catch (error) {
 
-            console.error(
-                "Erro createMercadoPagoPayment:",
-                error
-            );
-
-            return res.status(500).json({
-
-                success: false,
-
-                message:
-                    "Erro interno ao criar pagamento."
-
-            });
+            return payments.sendError(res, error, "createMercadoPagoPayment");
         }
     }
 );
 
-/* =====================================================
-   ASSINATURAS — MERCADO PAGO (PREAPPROVAL)
-
-   Cobrança recorrente não passa por /v1/payments (que cobra
-   uma vez): é /preapproval, que guarda a autorização e cobra
-   sozinha a cada ciclo, na conta da empresa.
-
-   Tudo de mensalidade mora em subscriptions.js (endpoints,
-   webhook, sincronização diária) e subscriptions-core.js
-   (regras puras, com testes). Aqui fica só a ligação com o
-   que é deste arquivo: os secrets e a renovação do token.
-
-     subscriptionsApi        create | sync | cancel
-     subscriptionsDailySync  todo dia às 06:00 (Brasília)
-
-   O nó companys/{handle}/subscriptions/{uid}_{productId} é
-   o espelho local: o Mercado Pago é a fonte da verdade da
-   cobrança, e o nó é o que as telas leem.
-===================================================== */
-
-const carregarConexao = async (companyHandle) => {
-
-    const connection =
-        (await db.ref(`mercadoPagoConnections/${companyHandle}`).once("value")).val();
-
-    if (
-        !connection ||
-        !connection.connected ||
-        !connection.accessToken
-    ) {
-        return null;
-    }
-
-    return connection;
-
-};
-
-const subscriptions = require("./subscriptions")({
-    admin,
-    secrets: [mercadoPagoClientId, mercadoPagoClientSecret],
-    refreshAccessToken: (handle, connection) =>
-        refreshMercadoPagoAccessToken(handle, connection),
-    loadCompaniesChildren
-});
-
-exports.subscriptionsApi = subscriptions.subscriptionsApi;
-exports.subscriptionsDailySync = subscriptions.subscriptionsDailySync;
-
 
 /* =====================================================
-   MERCADO PAGO — VERIFICAR ASSINATURAS
+   MERCADO PAGO — VERIFICAR ASSINATURAS (tela antiga)
 
-   O Mercado Pago libera assinaturas por conta, e essa
-   liberação não pode ser feita por aqui. O que dá para fazer
-   é descobrir se a conta já pode: cria uma assinatura
-   "pending" (sem cartão, portanto sem cobrança nenhuma) e a
-   cancela em seguida.
+   Antes criava uma assinatura "pending" de R$ 10 na conta do
+   vendedor e cancelava. Uma assinatura pendente não valida
+   cartão nenhum — a resposta era sempre "pronta", mesmo com
+   toda assinatura real falhando na validação do cartão. E o
+   "modo teste" vinha do prefixo TEST- da chave, que contas
+   de teste conectadas por OAuth não têm.
+
+   Agora é a mesma verificação só de leitura do "Testar
+   conexão" (connections.verify), no formato antigo.
 ===================================================== */
 
 exports.checkMercadoPagoSubscriptions = onRequest(
@@ -2439,15 +947,7 @@ exports.checkMercadoPagoSubscriptions = onRequest(
 
         try {
 
-            res.set("Access-Control-Allow-Origin", "*");
-            res.set(
-                "Access-Control-Allow-Headers",
-                "Authorization, Content-Type"
-            );
-
-            if (req.method === "OPTIONS") {
-                return res.status(204).send("");
-            }
+            if (legacyCors(req, res, "POST")) return;
 
             if (req.method !== "POST") {
                 return res.status(405).json({
@@ -2456,25 +956,10 @@ exports.checkMercadoPagoSubscriptions = onRequest(
                 });
             }
 
-            const authorization =
-                req.headers.authorization || "";
-
-            if (!authorization.startsWith("Bearer ")) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Usuário não autenticado."
-                });
-            }
-
-            const decodedToken =
-                await admin
-                    .auth()
-                    .verifyIdToken(
-                        authorization.replace("Bearer ", "")
-                    );
+            const user = await payments.resolveUser(req);
 
             const userCompany =
-                await findUserCompany(decodedToken.uid);
+                await findUserCompany(user.uid);
 
             if (!userCompany) {
                 return res.status(403).json({
@@ -2483,12 +968,7 @@ exports.checkMercadoPagoSubscriptions = onRequest(
                 });
             }
 
-            const companyHandle = userCompany.handle;
-
-            const connection =
-                await carregarConexao(companyHandle);
-
-            if (!connection) {
+            if (!(await connections.load(userCompany.handle))) {
                 return res.status(400).json({
                     success: false,
                     code: "NOT_CONNECTED",
@@ -2497,126 +977,19 @@ exports.checkMercadoPagoSubscriptions = onRequest(
                 });
             }
 
-            /* Teste ou produção, pelo prefixo da chave. */
-            const mode =
-                String(connection.publicKey || "").startsWith("TEST-")
-                    ? "test"
-                    : "production";
-
-            const corpo = {
-                reason: "Verificação Markfy",
-                payer_email:
-                    decodedToken.email || "markfy.suporte@gmail.com" /* markfy.app é domínio de outra empresa */,
-                status: "pending",
-                auto_recurring: {
-                    frequency: 1,
-                    frequency_type: "months",
-                    transaction_amount: 10,
-                    currency_id: "BRL"
-                },
-                back_url:
-                    "https://markfy.vercel.app/central-adm"
-            };
-
-            const criar = (token) =>
-                fetch(
-                    "https://api.mercadopago.com/preapproval",
-                    {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${token}`
-                        },
-                        body: JSON.stringify(corpo)
-                    }
-                );
-
-            let accessToken = connection.accessToken;
-
-            let resposta = await criar(accessToken);
-            let dados = await resposta.json().catch(() => ({}));
-
-            /* Token vencido: renova e tenta uma vez. */
-            if (
-                resposta.status === 401 ||
-                /credential/i.test(dados?.message || "")
-            ) {
-
-                const renovada =
-                    await refreshMercadoPagoAccessToken(
-                        companyHandle,
-                        connection
-                    );
-
-                accessToken = renovada.accessToken;
-
-                resposta = await criar(accessToken);
-                dados = await resposta.json().catch(() => ({}));
-            }
-
-            if (resposta.ok && dados?.id) {
-
-                /* Não deixa a assinatura de teste pendurada. */
-                const cancelou = await fetch(
-                    `https://api.mercadopago.com/preapproval/${dados.id}`,
-                    {
-                        method: "PUT",
-                        headers: {
-                            "Content-Type": "application/json",
-                            Authorization: `Bearer ${accessToken}`
-                        },
-                        body: JSON.stringify({ status: "cancelled" })
-                    }
-                ).catch(() => null);
-
-                if (!cancelou?.ok) {
-                    console.error(
-                        "⚠️ Assinatura de verificação não cancelada:",
-                        dados.id
-                    );
-                }
-
-                return res.status(200).json({
-                    success: true,
-                    ready: true,
-                    mode
-                });
-            }
-
-            const motivo =
-                (Array.isArray(dados?.cause)
-                    ? dados.cause
-                        .map(c => c?.description)
-                        .filter(Boolean)
-                        .join("; ")
-                    : null) ||
-                dados?.message ||
-                "O Mercado Pago não aceitou a verificação.";
-
-            console.error(
-                "❌ Verificação de assinaturas recusada:",
-                resposta.status,
-                motivo
-            );
+            const check =
+                await connections.verify(userCompany.handle);
 
             return res.status(200).json({
                 success: true,
-                ready: false,
-                mode,
-                details: motivo
+                ready: check.ok,
+                mode: check.environment === "test" ? "test" : "production",
+                details: check.problem || null
             });
 
         } catch (error) {
 
-            console.error(
-                "Erro checkMercadoPagoSubscriptions:",
-                error
-            );
-
-            return res.status(500).json({
-                success: false,
-                message: "Não foi possível verificar agora."
-            });
+            return payments.sendError(res, error, "checkMercadoPagoSubscriptions");
         }
     }
 );
@@ -2631,19 +1004,7 @@ exports.getMercadoPagoPublicKey = onRequest(
 
         try {
 
-            res.set(
-                "Access-Control-Allow-Origin",
-                "*"
-            );
-
-            res.set(
-                "Access-Control-Allow-Headers",
-                "Authorization, Content-Type"
-            );
-
-            if (req.method === "OPTIONS") {
-                return res.status(204).send("");
-            }
+            if (legacyCors(req, res, "GET")) return;
 
             if (req.method !== "GET") {
                 return res.status(405).json({
@@ -2652,26 +1013,7 @@ exports.getMercadoPagoPublicKey = onRequest(
                 });
             }
 
-            const authorization =
-                req.headers.authorization || "";
-
-            if (!authorization.startsWith("Bearer ")) {
-                return res.status(401).json({
-                    success: false,
-                    message: "Usuário não autenticado."
-                });
-            }
-
-            const idToken =
-                authorization.replace("Bearer ", "");
-
-            const decodedToken =
-                await admin
-                    .auth()
-                    .verifyIdToken(idToken);
-
-            const uid =
-                decodedToken.uid;
+            const user = await payments.resolveUser(req);
 
             /*
              * No checkout quem chama é o CLIENTE, que não é
@@ -2691,7 +1033,7 @@ exports.getMercadoPagoPublicKey = onRequest(
             if (!companyHandle) {
 
                 const userCompany =
-                    await findUserCompany(uid);
+                    await findUserCompany(user.uid);
 
                 if (!userCompany) {
                     return res.status(403).json({
@@ -2713,19 +1055,11 @@ exports.getMercadoPagoPublicKey = onRequest(
                 });
             }
 
-            const connectionSnapshot =
-                await db
-                    .ref(
-                        `mercadoPagoConnections/${companyHandle}`
-                    )
-                    .once("value");
-
             const connection =
-                connectionSnapshot.val();
+                await connections.load(companyHandle);
 
             if (
-                !connection ||
-                !connection.connected ||
+                !connections.isUsable(connection) ||
                 !connection.publicKey
             ) {
                 return res.status(400).json({
@@ -2742,855 +1076,124 @@ exports.getMercadoPagoPublicKey = onRequest(
 
         } catch (error) {
 
-            console.error(
-                "Erro getMercadoPagoPublicKey:",
-                error
-            );
-
-            return res.status(500).json({
-                success: false,
-                message:
-                    "Não foi possível obter a configuração do pagamento."
-            });
+            return payments.sendError(res, error, "getMercadoPagoPublicKey");
         }
     }
 );
 
+
 /* =====================================================
    MERCADO PAGO — WEBHOOK
+
+   Uma URL para tudo (configurar em Suas integrações →
+   Webhooks: Pagamentos, Planos e assinaturas e, se quiser,
+   Vinculação de aplicações):
+
+     payment                          pagamento antecipado
+     subscription_preapproval         estado da mensalidade
+     subscription_authorized_payment  cobrança da mensalidade
+     mp-connect                       vendedor desvinculou a conta
+
+   1. Assinatura (x-signature) conferida com a assinatura
+      secreta. Assinada e inválida → 401. Sem assinatura
+      (IPN antigo) segue, porque o passo 2 não confia nela.
+   2. A notificação só diz "olhe de novo": o estado é lido do
+      Mercado Pago com o token da empresa e aplicado de forma
+      idempotente — aviso repetido não agenda nem cobra duas
+      vezes.
+   3. Falha passageira → 500, e o Mercado Pago reenvia (a
+      cada 15 min). Antes era sempre 200: o aviso se perdia.
 ===================================================== */
+
+const handleAccountNotification = async ({ sellerId }) => {
+
+    /* O aviso não prova nada: confere se o token ainda vale
+       (withSeller renova ou marca "reconectar"). */
+    for (const handle of await connections.handlesForSeller(sellerId)) {
+        await connections
+            .withSeller(handle, (token) => paymentProvider.getAccount(token))
+            .catch(() => null);
+    }
+};
 
 exports.mercadoPagoWebhook = onRequest(
     {
-        /* A sincronização de assinaturas pode precisar renovar
-           o token da empresa. */
+        /* A sincronização pode precisar renovar o token da
+           empresa. */
         secrets: [
             mercadoPagoClientId,
-            mercadoPagoClientSecret
+            mercadoPagoClientSecret,
+            mercadoPagoWebhookSecret
         ]
     },
     async (req, res) => {
 
+        if (
+            req.method !== "POST" &&
+            req.method !== "GET"
+        ) {
+            return res.status(405).send(
+                "Method Not Allowed"
+            );
+        }
+
+        const notification =
+            paymentProvider.parseNotification({
+                body: req.body,
+                query: req.query
+            });
+
+        if (!notification.id) {
+            return res.status(200).send("OK");
+        }
+
+        const signature =
+            paymentProvider.verifyWebhookSignature({
+                headers: req.headers,
+                dataId: notification.signedId,
+                secret: mercadoPagoWebhookSecret.value()
+            });
+
+        if (signature.signed && !signature.valid) {
+
+            console.warn(
+                "mercadoPagoWebhook: assinatura inválida",
+                notification.type,
+                signature.reason
+            );
+
+            return res.status(401).send("Invalid signature");
+        }
+
         try {
 
-            /* =========================================
-               CORS
-            ========================================= */
+            if (notification.topic === "payment") {
 
-            res.set(
-                "Access-Control-Allow-Origin",
-                "*"
-            );
+                await advancePayments.handleNotification(notification);
 
-            if (req.method === "OPTIONS") {
-                return res.status(204).send("");
-            }
-
-            if (
-                req.method !== "POST" &&
-                req.method !== "GET"
-            ) {
-                return res.status(405).send(
-                    "Method Not Allowed"
-                );
-            }
-
-
-            /* =========================================
-               DADOS DA NOTIFICAÇÃO
-            ========================================= */
-
-            /* Webhook manda type + data.id no corpo; o IPN antigo
-               manda topic + id na URL. */
-            const type =
-                req.body?.type ||
-                req.query?.type ||
-                req.query?.topic;
-
-            const dataId =
-                req.body?.data?.id ||
-                req.query?.["data.id"] ||
-                req.query?.id;
-
-
-            if (!dataId) {
-                return res.status(200).send("OK");
-            }
-
-
-            /* =========================================
-               ASSINATURAS
-
-                 subscription_preapproval   mudou o estado
-                 subscription_authorized_payment
-                                            cobrança agendada,
-                                            paga ou recusada
-
-               Ver subscriptions.js. `user_id` é a conta
-               Mercado Pago da empresa: diz de quem é a
-               cobrança sem varrer todas as conexões.
-            ========================================= */
-
-            if (
-                type === "preapproval" ||
-                type === "subscription_preapproval" ||
-                type === "subscription_authorized_payment" ||
-                type === "authorized_payment"
+            } else if (
+                notification.topic === "subscription" ||
+                notification.topic === "subscription_charge"
             ) {
 
-                await subscriptions.handleNotification({
-                    type,
-                    id: String(dataId),
-                    collectorId: req.body?.user_id || null
-                });
+                await subscriptions.handleNotification(notification);
 
-                return res.status(200).send("OK");
+            } else if (notification.topic === "account") {
 
+                await handleAccountNotification(notification);
             }
 
-            if (type !== "payment") {
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            const mercadoPagoPaymentId =
-                String(dataId);
-
-
-            /* =========================================
-               BUSCAR PAYMENT ORDER
-            ========================================= */
-
-            /* Só paymentOrders de cada empresa (ver
-               loadCompaniesChildren). */
-            const companies =
-                await loadCompaniesChildren(["paymentOrders"]);
-
-            let paymentOrder = null;
-            let companyHandle = null;
-            let paymentOrderKey = null;
-
-
-            /*
-             * O pagamento foi criado com:
-             *
-             * external_reference = paymentId
-             *
-             * Portanto, primeiro consultamos o
-             * pagamento diretamente no Mercado Pago
-             * para descobrir essa referência.
-             */
-
-            for (
-                const [handle, company]
-                of Object.entries(companies)
-            ) {
-
-                if (
-                    !company ||
-                    !company.paymentOrders
-                ) {
-                    continue;
-                }
-
-
-                const connectionSnapshot =
-                    await db
-                        .ref(
-                            `mercadoPagoConnections/${handle}`
-                        )
-                        .once("value");
-
-                const connection =
-                    connectionSnapshot.val();
-
-
-                if (
-                    !connection ||
-                    !connection.accessToken
-                ) {
-                    continue;
-                }
-
-
-                /*
-                 * Verificamos somente orders que
-                 * ainda não possuem o ID do Mercado Pago.
-                 *
-                 * Isso evita consultas desnecessárias.
-                 */
-
-                const pendingOrders =
-                    Object.entries(
-                        company.paymentOrders
-                    ).filter(
-                        ([, order]) =>
-                            order &&
-                            !order.mercadoPagoPaymentId
-                    );
-
-
-                if (
-                    pendingOrders.length === 0
-                ) {
-                    continue;
-                }
-
-
-                const paymentResponse =
-                    await fetch(
-                        `https://api.mercadopago.com/v1/payments/${mercadoPagoPaymentId}`,
-                        {
-                            headers: {
-                                "Authorization":
-                                    `Bearer ${connection.accessToken}`
-                            }
-                        }
-                    );
-
-
-                if (
-                    !paymentResponse.ok
-                ) {
-                    continue;
-                }
-
-
-                const mercadoPagoData =
-                    await paymentResponse.json();
-
-
-                /*
-                 * external_reference contém
-                 * o ID interno da nossa paymentOrder.
-                 */
-
-                const externalReference =
-                    mercadoPagoData.external_reference;
-
-
-                if (!externalReference) {
-                    continue;
-                }
-
-
-                const matchingOrder =
-                    company.paymentOrders[
-                    externalReference
-                    ];
-
-
-                if (!matchingOrder) {
-                    continue;
-                }
-
-
-                paymentOrder =
-                    matchingOrder;
-
-                companyHandle =
-                    handle;
-
-                paymentOrderKey =
-                    externalReference;
-
-                break;
-            }
-
-
-            /* =========================================
-               FALLBACK — ID JÁ SALVO
-            ========================================= */
-
-            if (!paymentOrder) {
-
-                for (
-                    const [handle, company]
-                    of Object.entries(companies)
-                ) {
-
-                    if (
-                        !company ||
-                        !company.paymentOrders
-                    ) {
-                        continue;
-                    }
-
-
-                    for (
-                        const [key, order]
-                        of Object.entries(
-                            company.paymentOrders
-                        )
-                    ) {
-
-                        if (
-                            order?.mercadoPagoPaymentId &&
-                            String(
-                                order.mercadoPagoPaymentId
-                            ) ===
-                            mercadoPagoPaymentId
-                        ) {
-
-                            paymentOrder =
-                                order;
-
-                            companyHandle =
-                                handle;
-
-                            paymentOrderKey =
-                                key;
-
-                            break;
-                        }
-                    }
-
-
-                    if (paymentOrder) {
-                        break;
-                    }
-                }
-            }
-
-
-            /* =========================================
-               PAGAMENTO NÃO ENCONTRADO
-            ========================================= */
-
-            if (
-                !paymentOrder ||
-                !companyHandle ||
-                !paymentOrderKey
-            ) {
-
-                console.warn(
-                    "PaymentOrder não encontrada para pagamento:",
-                    mercadoPagoPaymentId
-                );
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               CONEXÃO DA EMPRESA
-            ========================================= */
-
-            const connectionSnapshot =
-                await db
-                    .ref(
-                        `mercadoPagoConnections/${companyHandle}`
-                    )
-                    .once("value");
-
-            const connection =
-                connectionSnapshot.val();
-
-
-            if (
-                !connection ||
-                !connection.accessToken
-            ) {
-
-                console.error(
-                    "Conexão Mercado Pago não encontrada:",
-                    companyHandle
-                );
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               CONSULTAR PAGAMENTO REAL
-            ========================================= */
-
-            const paymentResponse =
-                await fetch(
-                    `https://api.mercadopago.com/v1/payments/${mercadoPagoPaymentId}`,
-                    {
-                        headers: {
-                            "Authorization":
-                                `Bearer ${connection.accessToken}`
-                        }
-                    }
-                );
-
-
-            const paymentData =
-                await paymentResponse.json();
-
-
-            if (!paymentResponse.ok) {
-
-                console.error(
-                    /* Sem o corpo: ele traz os dados do pagador. */
-                    "Erro ao consultar pagamento Mercado Pago:",
-                    paymentResponse.status,
-                    paymentData?.message || null
-                );
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               VALIDAR EXTERNAL REFERENCE
-            ========================================= */
-
-            if (
-                String(
-                    paymentData.external_reference || ""
-                ) !==
-                String(paymentOrderKey)
-            ) {
-
-                console.error(
-                    "external_reference incompatível:",
-                    {
-                        paymentId:
-                            mercadoPagoPaymentId,
-
-                        externalReference:
-                            paymentData.external_reference,
-
-                        paymentOrderKey
-                    }
-                );
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               STATUS
-            ========================================= */
-
-            const paymentStatus =
-                paymentData.status;
-
-
-            console.log(
-                "💳 Status Mercado Pago:",
-                {
-                    paymentId:
-                        mercadoPagoPaymentId,
-
-                    status:
-                        paymentStatus,
-
-                    detail:
-                        paymentData.status_detail
-                }
-            );
-
-
-            /* =========================================
-               ATUALIZAR PAYMENT ORDER
-            ========================================= */
-
-            const paymentOrderRef =
-                db.ref(
-                    `companys/${companyHandle}/paymentOrders/${paymentOrderKey}`
-                );
-
-
-            await paymentOrderRef.update({
-
-                status:
-                    paymentStatus,
-
-                mercadoPagoPaymentId:
-                    mercadoPagoPaymentId,
-
-                mercadoPagoStatus:
-                    paymentStatus,
-
-                paymentStatusDetail:
-                    paymentData.status_detail ||
-                    null,
-
-                updatedAt:
-                    Date.now()
-
-            });
-
-
-            /* =========================================
-               PAGAMENTO NÃO APROVADO
-            ========================================= */
-
-            if (
-                paymentStatus !== "approved"
-            ) {
-
-                /*
-                 * pending:
-                 * ainda aguardando processamento.
-                 *
-                 * rejected:
-                 * pagamento recusado.
-                 *
-                 * cancelled:
-                 * pagamento cancelado.
-                 *
-                 * Não criamos agendamento
-                 * em nenhum desses casos.
-                 */
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               RECARREGAR ORDER ATUALIZADA
-            ========================================= */
-
-            const freshOrderSnapshot =
-                await paymentOrderRef.once(
-                    "value"
-                );
-
-            const freshPaymentOrder =
-                freshOrderSnapshot.val();
-
-
-            if (!freshPaymentOrder) {
-
-                console.error(
-                    "PaymentOrder desapareceu:",
-                    paymentOrderKey
-                );
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               EVITAR DUPLICAÇÃO
-            ========================================= */
-
-            if (
-                freshPaymentOrder.scheduleCreated === true
-            ) {
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               DADOS DO AGENDAMENTO
-            ========================================= */
-
-            const {
-                productId,
-                productName,
-                productPrice,
-                professionalId,
-                professionalName,
-                day,
-                dayLabel,
-                hour,
-                userName,
-                clientId,
-                userId
-            } = freshPaymentOrder;
-
-
-            if (
-                !productId ||
-                !professionalId ||
-                !day ||
-                !hour ||
-                !clientId
-            ) {
-
-                console.error(
-                    /* Só a chave: o pedido tem nome e telefone. */
-                    "PaymentOrder sem dados suficientes:",
-                    paymentOrderKey
-                );
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               VERIFICAR AGENDAMENTO EXISTENTE
-            ========================================= */
-
-            const schedulesSnapshot =
-                await db
-                    .ref(
-                        `companys/${companyHandle}/schedules`
-                    )
-                    .once("value");
-
-            const schedules =
-                schedulesSnapshot.val() || {};
-
-
-            const scheduleAlreadyExists =
-                Object.values(
-                    schedules
-                ).some(
-                    schedule =>
-                        schedule &&
-                        schedule.clientId === clientId &&
-                        schedule.productId === productId &&
-                        schedule.professionalId === professionalId &&
-                        schedule.day === day &&
-                        schedule.hour === hour
-                );
-
-
-            if (
-                scheduleAlreadyExists
-            ) {
-
-                await paymentOrderRef.update({
-
-                    status:
-                        "paid",
-
-                    scheduleCreated:
-                        true,
-
-                    updatedAt:
-                        Date.now()
-
-                });
-
-                return res
-                    .status(200)
-                    .send("OK");
-            }
-
-
-            /* =========================================
-               CRIAR AGENDAMENTO
-            ========================================= */
-
-            const scheduleRef =
-                db
-                    .ref(
-                        `companys/${companyHandle}/schedules`
-                    )
-                    .push();
-
-
-            const scheduleId =
-                scheduleRef.key;
-
-
-            const agendamento = {
-
-                id:
-                    scheduleId,
-
-                productId,
-
-                productName,
-
-                productPrice,
-
-                professionalId,
-
-                professionalName,
-
-                day,
-
-                dayLabel,
-
-                hour,
-
-                userName,
-
-                clientId,
-
-                userId:
-                    userId || null,
-
-                /* O recado que o cliente deixou no
-                   agendamento; o painel mostra no pedido. */
-                notes:
-                    paymentOrder.notes || null,
-
-                status:
-                    "pending",
-
-                paymentStatus:
-                    "approved",
-
-                paymentId:
-                    mercadoPagoPaymentId,
-
-                paymentOrderId:
-                    paymentOrderKey,
-
-                timestamp:
-                    new Date().toISOString()
-
-            };
-
-
-            await scheduleRef.set(
-                agendamento
-            );
-
-
-            /* =========================================
-               ATUALIZAR HORÁRIOS DO PROFISSIONAL
-            ========================================= */
-
-            const professionalRef =
-                db.ref(
-                    `users/${professionalId}/scheduledTimes`
-                );
-
-
-            const professionalSnapshot =
-                await professionalRef.once(
-                    "value"
-                );
-
-
-            const scheduledTimes =
-                professionalSnapshot.val() || {};
-
-
-            const scheduledTimesArray =
-                Array.isArray(
-                    scheduledTimes
-                )
-                    ? scheduledTimes
-                    : Object.values(
-                        scheduledTimes
-                    );
-
-
-            scheduledTimesArray.push({
-
-                day,
-
-                hour,
-
-                clientId,
-
-                productId,
-
-                scheduleId
-
-            });
-
-
-            await professionalRef.set(
-                scheduledTimesArray
-            );
-
-
-            /* =========================================
-               PAYMENT ORDER → PAGO
-            ========================================= */
-
-            await paymentOrderRef.update({
-
-                status:
-                    "paid",
-
-                scheduleCreated:
-                    true,
-
-                scheduleId,
-
-                paidAt:
-                    Date.now(),
-
-                updatedAt:
-                    Date.now()
-
-            });
-
-
-            /* =========================================
-               ATUALIZAR ORDERS DO PRODUTO
-            ========================================= */
-
-            const productRef =
-                db
-                    .ref(
-                        `companys/${companyHandle}/products/${productId}/orders`
-                    );
-
-
-            const productOrdersSnapshot =
-                await productRef.once(
-                    "value"
-                );
-
-
-            const currentOrders =
-                Number(
-                    productOrdersSnapshot.val()
-                ) || 0;
-
-
-            await productRef.set(
-                currentOrders + 1
-            );
-
-
-            /* =========================================
-               FINALIZADO
-            ========================================= */
-
-            console.log(
-                "✅ Pagamento aprovado e agendamento criado:",
-                {
-                    companyHandle,
-
-                    mercadoPagoPaymentId,
-
-                    paymentOrderKey,
-
-                    scheduleId
-                }
-            );
-
-
-            return res
-                .status(200)
-                .send("OK");
+            return res.status(200).send("OK");
 
         } catch (error) {
 
             console.error(
                 "❌ Erro mercadoPagoWebhook:",
-                error
+                notification.topic,
+                error && error.message
             );
 
-            return res
-                .status(200)
-                .send("OK");
+            return res.status(500).send("Retry");
         }
     }
 );

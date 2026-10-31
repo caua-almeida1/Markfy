@@ -5471,3 +5471,122 @@
     }
 
 }
+
+
+/* =========================================================
+   ASSINATURAS — PAGAMENTO, COBRANÇAS E AÇÕES
+   (situação do pagamento separada do status da assinatura)
+========================================================= */
+
+.orders-subscription-billing {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.orders-subscription-payment {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+
+    padding: 5px 10px;
+    border-radius: 999px;
+
+    font-size: .78rem;
+    font-weight: 600;
+
+    background: var(--mkf-ui-background-secondary, #f4f6fb);
+    color: var(--mkf-text-secondary, #5f626b);
+}
+
+.orders-subscription-payment.is-active {
+    background: var(--mkf-success-light, #dcfce7);
+    color: var(--mkf-success-text, #166534);
+}
+
+.orders-subscription-payment.is-late {
+    background: var(--mkf-ui-danger-soft, #fdecea);
+    color: var(--mkf-ui-danger, #c0392b);
+}
+
+.orders-subscription-charges {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.orders-subscription-charges li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: center;
+    gap: 10px;
+
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: var(--mkf-ui-background-secondary, #f4f6fb);
+
+    font-size: .78rem;
+    color: var(--mkf-text-secondary, #5f626b);
+}
+
+.orders-subscription-charges strong {
+    color: var(--mkf-text-primary, #17181c);
+    font-weight: 600;
+}
+
+.orders-subscription-charges em {
+    font-style: normal;
+    font-weight: 600;
+}
+
+.orders-subscription-charges .is-paid em {
+    color: var(--mkf-success-text, #166534);
+}
+
+.orders-subscription-charges .is-failed em {
+    color: var(--mkf-ui-danger, #c0392b);
+}
+
+.orders-subscription-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.orders-subscription-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    min-height: 38px;
+    padding: 7px 12px;
+
+    border: 1px solid var(--mkf-ui-border, #e8e9ed);
+    border-radius: 10px;
+    background: var(--mkf-ui-surface, #fff);
+    color: var(--mkf-text-primary, #17181c);
+
+    font-family: "Poppins", sans-serif;
+    font-size: .8rem;
+    font-weight: 500;
+
+    cursor: pointer;
+}
+
+.orders-subscription-actions button:hover:not(:disabled) {
+    background: var(--mkf-ui-surface-hover, #f4f6fb);
+}
+
+.orders-subscription-actions button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+}
+
+.orders-subscription-actions button.is-danger {
+    color: var(--mkf-ui-danger, #c0392b);
+}

@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const core = require("../subscriptions-core");
+const provider = require("../payments/mercadopago");
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -53,14 +54,18 @@ test("planOf lê o plano do banco, usa a promoção válida e entende milhar", (
     assert.equal(core.planOf({ ...PRODUCT, monthlyPlan: { billingCycle: "x" } }).billingCycle, "monthly");
 });
 
-test("buildPreapprovalBody: cartão nasce autorizado, conta nasce pendente", () => {
+test("assinatura no gateway: cartão nasce autorizado, conta nasce pendente", () => {
 
     const plan = core.planOf(PRODUCT);
+    const schedule = core.billingSchedule(plan, NOW);
 
-    const card = core.buildPreapprovalBody({
-        productName: PRODUCT.name, plan, subscriptionId: "u1_prodA",
-        payerEmail: "a@b.com", method: "card", cardTokenId: "tok123456", backUrl: "https://x", now: NOW
-    });
+    const base = {
+        reason: PRODUCT.name, externalReference: "u1_prodA", payerEmail: "a@b.com",
+        amount: plan.price, frequencyMonths: plan.months, startAt: schedule.startAt, endAt: schedule.endAt,
+        backUrl: "https://x"
+    };
+
+    const card = provider.buildSubscription({ ...base, cardTokenId: "tok123456" });
 
     assert.equal(card.status, "authorized");
     assert.equal(card.card_token_id, "tok123456");
@@ -69,31 +74,40 @@ test("buildPreapprovalBody: cartão nasce autorizado, conta nasce pendente", () 
         frequency: 1, frequency_type: "months", transaction_amount: 99.9, currency_id: "BRL"
     });
 
-    const account = core.buildPreapprovalBody({
-        productName: PRODUCT.name, plan, subscriptionId: "u1_prodA",
-        payerEmail: "a@b.com", method: "account", backUrl: "https://x", now: NOW
-    });
+    const account = provider.buildSubscription({ ...base, cardTokenId: null });
 
     assert.equal(account.status, "pending");
     assert.equal(account.card_token_id, undefined);
 });
 
-test("buildPreapprovalBody: teste grátis e plano sem renovação automática", () => {
+test("teste grátis vai em start_date (assinatura sem plano não aceita free_trial) e sem renovação tem fim", () => {
 
     const plan = { ...core.planOf(PRODUCT), trialDays: 7, autoRenew: false, months: 3 };
+    const schedule = core.billingSchedule(plan, NOW);
 
-    const body = core.buildPreapprovalBody({
-        productName: "X", plan, subscriptionId: "s", payerEmail: "a@b.com",
-        method: "account", backUrl: "https://x", now: NOW
+    assert.equal(schedule.firstChargeAt, NOW + 7 * DAY);
+    assert.equal(schedule.trialEndsAt, NOW + 7 * DAY);
+
+    const body = provider.buildSubscription({
+        reason: "X", externalReference: "s", payerEmail: "a@b.com", amount: plan.price,
+        frequencyMonths: plan.months, startAt: schedule.startAt, endAt: schedule.endAt, backUrl: "https://x"
     });
 
-    assert.deepEqual(body.auto_recurring.free_trial, { frequency: 7, frequency_type: "days" });
+    /* O bug antigo: free_trial era ignorado e a pessoa era cobrada na hora. */
+    assert.equal(body.auto_recurring.free_trial, undefined);
+    assert.equal(new Date(body.auto_recurring.start_date).getTime(), NOW + 7 * DAY);
 
     /* Primeira cobrança em 31/10; o ciclo de 3 meses acaba em
        31/01; o fim é um dia antes, para a 2ª cobrança não vir. */
     const end = new Date(body.auto_recurring.end_date).getTime();
     assert.ok(end > NOW + 7 * DAY + 80 * DAY);
     assert.ok(end < NOW + 7 * DAY + 92 * DAY);
+
+    /* Sem teste grátis nem fim: nada de start_date/end_date. */
+    const plain = core.billingSchedule(core.planOf(PRODUCT), NOW);
+    assert.equal(plain.startAt, null);
+    assert.equal(plain.endAt, null);
+    assert.equal(plain.trialEndsAt, null);
 });
 
 test("parseSubscribe exige aceite da versão atual, e-mail e token do cartão", () => {
@@ -130,37 +144,64 @@ test("parseSubscribe valida o primeiro atendimento sem confiar em nada além das
     );
 });
 
-test("chargeOutcome: agendada não é atraso; recusada e em nova tentativa são", () => {
+test("cobrança do gateway: agendada não é atraso; recusada e em nova tentativa são", () => {
 
-    assert.deepEqual(core.chargeOutcome({ status: "scheduled" }), { paid: false, failed: false, label: "scheduled" });
-    assert.equal(core.chargeOutcome({ status: "processed", payment: { status: "approved" } }).paid, true);
-    assert.equal(core.chargeOutcome({ status: "processed", payment: { status: "rejected" } }).failed, true);
-    assert.equal(core.chargeOutcome({ status: "recycling", payment: { status: "rejected" } }).failed, true);
-    assert.equal(core.chargeOutcome({ status: "processed", payment: { status: "in_process" } }).failed, false);
+    const outcome = (invoice) => {
+        const charge = provider.toCharge(invoice);
+        return { paid: charge.paid, failed: charge.failed, label: charge.label };
+    };
+
+    assert.deepEqual(outcome({ status: "scheduled" }), { paid: false, failed: false, label: "scheduled" });
+    assert.equal(outcome({ status: "processed", payment: { status: "approved" } }).paid, true);
+    assert.equal(outcome({ status: "processed", payment: { status: "rejected" } }).failed, true);
+    assert.equal(outcome({ status: "recycling", payment: { status: "rejected" } }).failed, true);
+    assert.equal(outcome({ status: "processed", payment: { status: "in_process" } }).failed, false);
 });
 
 test("chargeRecord não guarda dado de cartão", () => {
 
-    const record = core.chargeRecord({
-        id: 77, status: "processed", transaction_amount: 99.9, debit_date: "2026-11-24T10:00:00.000-03:00",
+    const record = core.chargeRecord(provider.toCharge({
+        id: 77, preapproval_id: "pre1", status: "processed", transaction_amount: 99.9, debit_date: "2026-11-24T10:00:00.000-03:00",
         payment: { id: 123, status: "approved", card: { last_four_digits: "1234" } },
         payer_email: "x@y.com"
-    }, NOW);
+    }), NOW);
 
     assert.deepEqual(Object.keys(record).sort(), ["amount", "chargedAt", "failed", "paid", "paymentId", "retryAttempt", "status", "updatedAt"]);
     assert.equal(record.paymentId, "123");
+    assert.equal(record.paid, true);
     assert.equal(JSON.stringify(record).includes("1234"), false);
     assert.equal(JSON.stringify(record).includes("x@y.com"), false);
+});
+
+test("toSubscription normaliza o estado do gateway (canceled com um L, status desconhecido)", () => {
+
+    const state = provider.toSubscription({
+        id: "pre1", status: "authorized", next_payment_date: "2026-11-24T12:00:00.000-03:00",
+        external_reference: "u1_p", init_point: "https://www.mercadopago.com.br/subscriptions/checkout?preapproval_id=pre1"
+    });
+
+    assert.equal(state.status, "authorized");
+    assert.equal(state.nextBillingAt, new Date("2026-11-24T12:00:00.000-03:00").getTime());
+    assert.match(state.authorizeUrl, /subscriptions\/checkout/);
+
+    assert.equal(provider.toSubscription({ status: "canceled" }).status, "cancelled");
+
+    const unknown = provider.toSubscription({ status: "finished" });
+    assert.equal(unknown.status, null);
+    assert.equal(unknown.providerStatus, "finished");
 });
 
 test("syncPatch: autoriza, marca atraso pela última cobrança e preserva o período pago ao cancelar lá fora", () => {
 
     const pending = { status: "pending", startedAt: null };
 
-    const authorized = core.syncPatch(pending, { status: "authorized", next_payment_date: "2026-11-24T12:00:00.000-03:00" }, NOW);
+    const authorized = core.syncPatch(pending, { status: "authorized", nextBillingAt: new Date("2026-11-24T12:00:00.000-03:00").getTime() }, NOW);
     assert.equal(authorized.status, "authorized");
     assert.equal(authorized.startedAt, NOW);
     assert.equal(authorized.nextBillingAt, new Date("2026-11-24T12:00:00.000-03:00").getTime());
+
+    /* Autorizada não é paga: sem cobrança aprovada, "processando". */
+    assert.equal(authorized.paymentStatus, "processing");
 
     const late = core.syncPatch(
         { status: "authorized", startedAt: NOW - 40 * DAY, charges: { a: { paid: true, chargedAt: NOW - 40 * DAY }, b: { failed: true, chargedAt: NOW - DAY } } },
@@ -168,6 +209,7 @@ test("syncPatch: autoriza, marca atraso pela última cobrança e preserva o per�
         NOW
     );
     assert.equal(late.status, "past_due");
+    assert.equal(late.paymentStatus, "failed");
 
     const recovered = core.syncPatch(
         { status: "past_due", startedAt: NOW - 40 * DAY, charges: { b: { failed: true, chargedAt: NOW - 2 * DAY }, c: { paid: true, chargedAt: NOW - DAY } } },
@@ -175,6 +217,7 @@ test("syncPatch: autoriza, marca atraso pela última cobrança e preserva o per�
         NOW
     );
     assert.equal(recovered.status, "authorized");
+    assert.equal(recovered.paymentStatus, "paid");
 
     const cancelledOutside = core.syncPatch(
         { status: "authorized", startedAt: NOW - 5 * DAY, nextBillingAt: NOW + 25 * DAY },
@@ -187,6 +230,31 @@ test("syncPatch: autoriza, marca atraso pela última cobrança e preserva o per�
 
     const cancelledLate = core.syncPatch({ status: "past_due", startedAt: NOW - 40 * DAY }, { status: "cancelled" }, NOW);
     assert.equal(cancelledLate.accessUntil, NOW);
+
+    /* Status que a Markfy não conhece: fica registrado, o estado não muda. */
+    const odd = core.syncPatch({ status: "authorized", startedAt: NOW - DAY }, { status: null, providerStatus: "finished" }, NOW);
+    assert.equal(odd.status, "authorized");
+    assert.equal(odd.providerStatus, "finished");
+});
+
+test("paymentStatusOf separa pagamento de assinatura: pendente, teste grátis, processando, paga, recusada", () => {
+
+    assert.equal(core.paymentStatusOf({ status: "pending" }, NOW), "awaiting_authorization");
+    assert.equal(core.paymentStatusOf({ status: "authorized", trialEndsAt: NOW + 3 * DAY }, NOW), "trial");
+    assert.equal(core.paymentStatusOf({ status: "authorized" }, NOW), "processing");
+    assert.equal(core.paymentStatusOf({ status: "authorized", charges: { a: { paid: true, chargedAt: NOW - DAY } } }, NOW), "paid");
+    assert.equal(core.paymentStatusOf({ status: "past_due", charges: { a: { failed: true, chargedAt: NOW - DAY } } }, NOW), "failed");
+});
+
+test("pausar só ativa (sem cancelamento agendado); reativar só pausada", () => {
+
+    assert.equal(core.pauseDecision({ status: "authorized" }).ok, true);
+    assert.equal(core.pauseDecision({ status: "past_due" }).ok, true);
+    assert.match(core.pauseDecision({ status: "pending" }).error, /ativa/);
+    assert.match(core.pauseDecision({ status: "authorized", cancelScheduledFor: NOW + DAY }).error, /agendado/);
+
+    assert.equal(core.resumeDecision({ status: "paused" }).ok, true);
+    assert.match(core.resumeDecision({ status: "authorized" }).error, /pausada/);
 });
 
 test("cancellationDecision: imediato com acesso até o fim do ciclo pago", () => {

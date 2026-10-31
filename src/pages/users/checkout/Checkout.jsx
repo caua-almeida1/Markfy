@@ -548,6 +548,12 @@ const Checkout = () => {
                                     checkoutData.notes
                                 }
 
+                                extraProductIds={
+                                    (checkoutData.extraServices || [])
+                                        .map((item) => item.productId)
+                                        .filter(Boolean)
+                                }
+
                                 onBack={() =>
                                     setShowPayment(false)
                                 }

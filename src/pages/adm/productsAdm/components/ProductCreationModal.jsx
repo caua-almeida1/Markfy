@@ -98,7 +98,6 @@ const ProductCreationModal = ({
         handleAddTimeFee,
         handleAddTimeSlot,
         handleAdminClick,
-        handleButtonSelect,
         handleCancellationDaysChange,
         handleCancellationHoursChange,
         handleCancellationMinutesChange,
@@ -195,9 +194,78 @@ const ProductCreationModal = ({
         unlimitedSessions,
     } = wizard;
 
+    /* "Primeira cobrança: depois de um teste grátis" fica marcado
+       enquanto a pessoa digita os dias (apagar o número não
+       desmarca a opção no meio da edição). */
+    const [trialMode, setTrialMode] = React.useState(false);
+
+    React.useEffect(() => {
+        if (isOpen) setTrialMode(Number(trialDays) > 0);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
+
     if (!isOpen) {
         return null;
     }
+
+    /*
+     * Modalidade do passo 2. O banco continua com o formato de
+     * sempre: type ("individual" | "monthly") + settings.prepayment
+     * — que agora vale de verdade (antes era gravado e ninguém lia).
+     */
+    const modality =
+        productType === "monthly"
+            ? "monthly"
+            : productType === "individual"
+                ? (prepaymentRequired ? "advance" : "onsite")
+                : null;
+
+    const chooseModality = (next) => {
+
+        if (next === "monthly") {
+
+            if (!license.can("monthlyPlans")) {
+
+                alert(
+                    "Mensalidades e assinaturas não estão incluídas no plano atual da empresa. " +
+                    "O administrador principal pode mudar de plano em Perfil → Planos e Assinaturas."
+                );
+
+                return;
+            }
+
+            setProductType("monthly");
+            setPrepaymentRequired(false);
+            return;
+        }
+
+        setProductType("individual");
+        setPrepaymentRequired(next === "advance");
+    };
+
+    const cycleOption =
+        MONTHLY_BILLING_CYCLE_OPTIONS.find((option) => option.id === billingCycle) ||
+        MONTHLY_BILLING_CYCLE_OPTIONS[0];
+
+    const cycleTitle =
+        cycleOption.id === "monthly"
+            ? "Cobrança mensal"
+            : `Cobrança ${cycleOption.label.toLowerCase()}`;
+
+    const cycleInterval = {
+        monthly: "todo mês",
+        quarterly: "a cada 3 meses",
+        semiannual: "a cada 6 meses",
+        annual: "uma vez por ano"
+    }[cycleOption.id];
+
+    /* Plano com 0 sessões ninguém conseguia usar. */
+    const monthlyProblem =
+        !unlimitedSessions && !(Number(sessionsPerCycle) >= 1)
+            ? "Informe quantos atendimentos o plano inclui (ou ligue Ilimitado)."
+            : trialMode && !(Number(trialDays) >= 1)
+                ? "Informe quantos dias de teste grátis (ou escolha cobrar na assinatura)."
+                : null;
 
     /* Duração: o range e os campos de hora/minuto são duas
        leituras do mesmo número de minutos. */
@@ -282,42 +350,40 @@ const ProductCreationModal = ({
                         <div className="adm-product-type-header">
 
                             <span className="adm-product-type-overline">
-                                TIPO DE OFERTA
+                                COMO O CLIENTE PAGA
                             </span>
 
                             <h2>
-                                Como você deseja oferecer?
+                                Escolha a modalidade
                             </h2>
 
                             <p>
-                                Escolha como o cliente irá adquirir este produto.
+                                Dá para mudar depois, na gestão do produto.
                             </p>
 
                         </div>
 
 
-                        {/* OPÇÕES */}
+                        {/* MODALIDADES */}
 
                         <div className="adm-product-type-options">
 
-                            {/* PRODUTO INDIVIDUAL */}
+                            {/* PAGAMENTO ANTECIPADO */}
 
                             <button
                                 type="button"
-                                className={`adm-product-type-card ${productType === "individual"
+                                aria-pressed={modality === "advance"}
+                                className={`adm-product-type-card ${modality === "advance"
                                         ? "selected"
                                         : ""
                                     }`}
-                                onClick={() => {
-                                    handleButtonSelect(1);
-                                    setProductType("individual");
-                                }}
+                                onClick={() => chooseModality("advance")}
                             >
 
                                 <div className="adm-product-type-card-top">
 
                                     <div className="adm-product-type-icon">
-                                        <Icon icon="mdi:package-variant" />
+                                        <Icon icon="solar:card-send-linear" />
                                     </div>
 
                                 </div>
@@ -326,12 +392,12 @@ const ProductCreationModal = ({
                                 <div className="adm-product-type-card-content">
 
                                     <h3>
-                                        Produto individual
+                                        Pagamento antecipado
                                     </h3>
 
                                     <p>
-                                        Uma oferta única para o cliente,
-                                        sem cobrança recorrente.
+                                        O cliente paga uma vez, online, antes
+                                        do atendimento. Pix ou cartão.
                                     </p>
 
                                 </div>
@@ -340,7 +406,7 @@ const ProductCreationModal = ({
                                 <div className="adm-product-type-card-footer">
 
                                     <span>
-                                        Compra única
+                                        Pagamento único
                                     </span>
 
                                     <Icon icon="solar:arrow-right-up-linear" />
@@ -349,7 +415,7 @@ const ProductCreationModal = ({
 
 
                                 <span
-                                    className={`adm-selection-check ${productType === "individual"
+                                    className={`adm-selection-check ${modality === "advance"
                                         ? "active"
                                         : ""
                                         }`}
@@ -361,29 +427,16 @@ const ProductCreationModal = ({
                             </button>
 
 
-                            {/* PLANO DE MENSALIDADE */}
+                            {/* MENSALIDADE */}
 
                             <button
                                 type="button"
-                                className={`adm-product-type-card ${productType === "monthly"
+                                aria-pressed={modality === "monthly"}
+                                className={`adm-product-type-card ${modality === "monthly"
                                         ? "selected"
                                         : ""
                                     }`}
-                                onClick={() => {
-
-                                    if (!license.can("monthlyPlans")) {
-
-                                        alert(
-                                            "Mensalidades e assinaturas não estão incluídas no plano atual da empresa. " +
-                                            "O administrador principal pode mudar de plano em Perfil → Planos e Assinaturas."
-                                        );
-
-                                        return;
-                                    }
-
-                                    handleButtonSelect(2);
-                                    setProductType("monthly");
-                                }}
+                                onClick={() => chooseModality("monthly")}
                             >
 
                                 <div className="adm-product-type-card-top">
@@ -398,12 +451,12 @@ const ProductCreationModal = ({
                                 <div className="adm-product-type-card-content">
 
                                     <h3>
-                                        Plano de mensalidade
+                                        Mensalidade
                                     </h3>
 
                                     <p>
-                                        Uma oferta com cobrança recorrente
-                                        todos os meses.
+                                        O cliente assina e paga todo mês,
+                                        automaticamente, até cancelar.
                                     </p>
 
                                 </div>
@@ -412,7 +465,7 @@ const ProductCreationModal = ({
                                 <div className="adm-product-type-card-footer">
 
                                     <span>
-                                        Cobrança recorrente
+                                        Cobrança mensal recorrente
                                     </span>
 
                                     <Icon icon="solar:arrow-right-up-linear" />
@@ -421,7 +474,7 @@ const ProductCreationModal = ({
 
 
                                 <span
-                                    className={`adm-selection-check ${productType === "monthly"
+                                    className={`adm-selection-check ${modality === "monthly"
                                         ? "active"
                                         : ""
                                         }`}
@@ -435,18 +488,55 @@ const ProductCreationModal = ({
                         </div>
 
 
-                        {/* AJUDA */}
+                        {/* SEM PAGAMENTO ONLINE (o jeito de sempre) */}
 
-                        <div className="adm-product-type-help">
-
-                            <Icon icon="solar:info-circle-linear" />
-
+                        <button
+                            type="button"
+                            aria-pressed={modality === "onsite"}
+                            className={`adm-product-type-onsite ${modality === "onsite" ? "selected" : ""}`}
+                            onClick={() => chooseModality("onsite")}
+                        >
+                            <Icon icon="solar:shop-2-outline" />
                             <span>
-                                Você poderá configurar os detalhes da oferta
-                                nas próximas etapas.
+                                <strong>Sem pagamento online</strong>
+                                {" "}— o cliente paga no local, no dia do atendimento.
                             </span>
+                            {modality === "onsite" && <Icon icon="material-symbols:check-rounded" />}
+                        </button>
 
-                        </div>
+
+                        {/* AVISOS */}
+
+                        {(modality === "advance" || modality === "monthly") && !mercadoPagoConnected && (
+                            <div className="adm-product-type-warning" role="status">
+                                <Icon icon="solar:danger-circle-outline" />
+                                <span>
+                                    Para receber online, conecte o Mercado Pago em{" "}
+                                    <strong>Perfil → Configurações → Pagamentos</strong>. Sem a conta, os
+                                    clientes não conseguem {modality === "monthly" ? "assinar" : "agendar"} este serviço.
+                                </span>
+                            </div>
+                        )}
+
+                        {modality === "onsite" && company?.paymentSettings?.receiveBeforeBooking === true && (
+                            <div className="adm-product-type-warning" role="status">
+                                <Icon icon="solar:info-circle-linear" />
+                                <span>
+                                    A regra geral <strong>Cobrar antecipado em todos os serviços</strong> está
+                                    ligada em Pagamentos: este serviço também será cobrado antes.
+                                </span>
+                            </div>
+                        )}
+
+                        {modality === "monthly" && (
+                            <div className="adm-product-type-help">
+                                <Icon icon="solar:info-circle-linear" />
+                                <span>
+                                    Mensalidade não é parcelamento: cada mês é uma cobrança nova,
+                                    feita sozinha pelo Mercado Pago, até o cliente cancelar.
+                                </span>
+                            </div>
+                        )}
 
 
                         {/* AÇÕES */}
@@ -463,18 +553,18 @@ const ProductCreationModal = ({
 
                             <button
                                 type="button"
-                                className={`adm_products-modal-btn primary-btn ${productType === null ? "disabled" : ""
+                                className={`adm_products-modal-btn primary-btn ${modality === null ? "disabled" : ""
                                     }`}
                                 onClick={nextStep}
-                                disabled={productType === null}
+                                disabled={modality === null}
                                 style={{
                                     cursor:
-                                        productType === null
+                                        modality === null
                                             ? "not-allowed"
                                             : "pointer",
 
                                     opacity:
-                                        productType === null
+                                        modality === null
                                             ? 0.5
                                             : 1
                                 }}
@@ -507,54 +597,114 @@ const ProductCreationModal = ({
                         <div className="adm-product-type-header">
 
                             <span className="adm-product-type-overline">
-                                PLANO DE MENSALIDADE
+                                MENSALIDADE
                             </span>
 
                             <h2>
-                                Configure a assinatura
+                                Como funciona a cobrança
                             </h2>
 
                             <p>
-                                Defina o ciclo de cobrança e os benefícios
-                                inclusos para quem assinar este plano.
+                                O nome, a descrição e o valor mensal você
+                                preenche nas próximas etapas.
                             </p>
 
                         </div>
 
 
-                        {/* CICLO DE COBRANÇA */}
+                        {/* PERIODICIDADE, SEMPRE À VISTA */}
 
-                        <div className="adm-monthly-section">
+                        <div className="adm-monthly-summary">
 
-                            <span className="adm-monthly-section-label">
-                                Ciclo de cobrança
-                            </span>
+                            <Icon icon="solar:calendar-mark-outline" />
 
-                            <div className="adm-monthly-cycle-options">
-
-                                {MONTHLY_BILLING_CYCLE_OPTIONS.map((option) => (
-                                    <button
-                                        key={option.id}
-                                        type="button"
-                                        className={`adm-monthly-cycle-option ${billingCycle === option.id ? "selected" : ""
-                                            }`}
-                                        onClick={() => setBillingCycle(option.id)}
-                                    >
-                                        {option.label}
-                                    </button>
-                                ))}
-
+                            <div>
+                                <strong>{cycleTitle}</strong>
+                                <span>
+                                    {autoRenew
+                                        ? `O cliente é cobrado ${cycleInterval}, no mesmo dia, até cancelar.`
+                                        : "Uma cobrança só, sem renovação: a assinatura acaba no fim do primeiro ciclo."}
+                                </span>
                             </div>
 
                         </div>
 
 
-                        {/* BENEFÍCIOS INCLUSOS */}
+                        {/* PRIMEIRA COBRANÇA */}
 
                         <div className="adm-monthly-section">
 
                             <span className="adm-monthly-section-label">
-                                Benefícios inclusos por ciclo
+                                Primeira cobrança
+                            </span>
+
+                            <div className="adm-monthly-cycle-options" role="radiogroup" aria-label="Primeira cobrança">
+
+                                <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={!trialMode}
+                                    className={`adm-monthly-cycle-option ${!trialMode ? "selected" : ""}`}
+                                    onClick={() => {
+                                        setTrialMode(false);
+                                        setTrialDays("");
+                                    }}
+                                >
+                                    Na assinatura
+                                </button>
+
+                                <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={trialMode}
+                                    className={`adm-monthly-cycle-option ${trialMode ? "selected" : ""}`}
+                                    onClick={() => {
+                                        setTrialMode(true);
+                                        if (!(Number(trialDays) > 0)) setTrialDays("7");
+                                    }}
+                                >
+                                    Depois de um teste grátis
+                                </button>
+
+                            </div>
+
+                            {trialMode && (
+
+                                <div className="adm-monthly-settings-list">
+
+                                    <div className="adm-monthly-setting-row">
+
+                                        <div className="adm-monthly-setting-info">
+                                            <h4>Dias grátis</h4>
+                                            <p>A primeira cobrança fica para depois deles</p>
+                                        </div>
+
+                                        <div className="adm-monthly-setting-input">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="90"
+                                                placeholder="7"
+                                                value={trialDays}
+                                                onChange={(e) => setTrialDays(e.target.value)}
+                                            />
+                                            <span>dias</span>
+                                        </div>
+
+                                    </div>
+
+                                </div>
+                            )}
+
+                        </div>
+
+
+                        {/* ATENDIMENTOS INCLUÍDOS */}
+
+                        <div className="adm-monthly-section">
+
+                            <span className="adm-monthly-section-label">
+                                Atendimentos incluídos {billingCycle === "monthly" ? "por mês" : "por ciclo"}
                             </span>
 
                             <div className="adm-monthly-settings-list">
@@ -565,8 +715,8 @@ const ProductCreationModal = ({
                                         className="adm-monthly-setting-info"
                                         htmlFor="adm-monthly-unlimited-toggle"
                                     >
-                                        <h4>Acesso ilimitado</h4>
-                                        <p>Sem limite de atendimentos no ciclo</p>
+                                        <h4>Ilimitado</h4>
+                                        <p>Sem limite de atendimentos</p>
                                     </label>
 
                                     <div className="adm_admin_config-toggle-switch">
@@ -587,26 +737,20 @@ const ProductCreationModal = ({
 
                                 </div>
 
-                                <div className="adm-monthly-setting-row">
+                                {!unlimitedSessions && (
 
-                                    <div className="adm-monthly-setting-info">
-                                        <h4>Sessões incluídas</h4>
-                                        <p>Quantidade de atendimentos por ciclo</p>
-                                    </div>
+                                    <div className="adm-monthly-setting-row">
 
-                                    {unlimitedSessions ? (
-
-                                        <span className="adm-monthly-setting-badge">
-                                            Ilimitado
-                                        </span>
-
-                                    ) : (
+                                        <div className="adm-monthly-setting-info">
+                                            <h4>Quantidade</h4>
+                                            <p>Quantos atendimentos o plano inclui</p>
+                                        </div>
 
                                         <div className="adm-monthly-setting-input">
                                             <input
                                                 type="number"
-                                                min="0"
-                                                placeholder="0"
+                                                min="1"
+                                                placeholder="4"
                                                 value={sessionsPerCycle}
                                                 onChange={(e) =>
                                                     setSessionsPerCycle(e.target.value)
@@ -615,22 +759,23 @@ const ProductCreationModal = ({
                                             <span>sessões</span>
                                         </div>
 
-                                    )}
-
-                                </div>
+                                    </div>
+                                )}
 
                             </div>
 
                         </div>
 
 
-                        {/* REGRAS DA ASSINATURA */}
+                        {/* MAIS OPÇÕES (recolhido) */}
 
-                        <div className="adm-monthly-section">
+                        <details className="adm-monthly-advanced">
 
-                            <span className="adm-monthly-section-label">
-                                Regras da assinatura
-                            </span>
+                            <summary>
+                                <Icon icon="solar:tuning-2-linear" />
+                                <span>Mais opções</span>
+                                <small>renovação, fidelidade, aviso, ciclo</small>
+                            </summary>
 
                             <div className="adm-monthly-settings-list">
 
@@ -641,7 +786,7 @@ const ProductCreationModal = ({
                                         htmlFor="adm-monthly-autorenew-toggle"
                                     >
                                         <h4>Renovação automática</h4>
-                                        <p>Cobra o cliente de novo a cada ciclo</p>
+                                        <p>Desligada, cobra um ciclo só</p>
                                     </label>
 
                                     <div className="adm_admin_config-toggle-switch">
@@ -663,28 +808,8 @@ const ProductCreationModal = ({
                                 <div className="adm-monthly-setting-row">
 
                                     <div className="adm-monthly-setting-info">
-                                        <h4>Teste gratuito</h4>
-                                        <p>Dias grátis antes da primeira cobrança</p>
-                                    </div>
-
-                                    <div className="adm-monthly-setting-input">
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            placeholder="0"
-                                            value={trialDays}
-                                            onChange={(e) => setTrialDays(e.target.value)}
-                                        />
-                                        <span>dias</span>
-                                    </div>
-
-                                </div>
-
-                                <div className="adm-monthly-setting-row">
-
-                                    <div className="adm-monthly-setting-info">
                                         <h4>Permanência mínima</h4>
-                                        <p>Tempo mínimo de fidelidade do cliente</p>
+                                        <p>O cliente só cancela depois deste prazo</p>
                                     </div>
 
                                     <div className="adm-monthly-setting-input">
@@ -704,7 +829,7 @@ const ProductCreationModal = ({
 
                                     <div className="adm-monthly-setting-info">
                                         <h4>Aviso de cancelamento</h4>
-                                        <p>Antecedência para cancelar sem multa</p>
+                                        <p>Antecedência para o cancelamento valer</p>
                                     </div>
 
                                     <div className="adm-monthly-setting-input">
@@ -724,9 +849,32 @@ const ProductCreationModal = ({
 
                                 </div>
 
+                                <div className="adm-monthly-setting-row adm-monthly-setting-row--stack">
+
+                                    <div className="adm-monthly-setting-info">
+                                        <h4>Ciclo de cobrança</h4>
+                                        <p>O padrão é mensal</p>
+                                    </div>
+
+                                    <div className="adm-monthly-cycle-options">
+                                        {MONTHLY_BILLING_CYCLE_OPTIONS.map((option) => (
+                                            <button
+                                                key={option.id}
+                                                type="button"
+                                                className={`adm-monthly-cycle-option ${billingCycle === option.id ? "selected" : ""
+                                                    }`}
+                                                onClick={() => setBillingCycle(option.id)}
+                                            >
+                                                {option.label}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                </div>
+
                             </div>
 
-                        </div>
+                        </details>
 
 
                         {/* PARA O CLIENTE CONSEGUIR ASSINAR */}
@@ -752,19 +900,8 @@ const ProductCreationModal = ({
                                                 : "Conecte o Mercado Pago"}
                                         </b>
                                         <span>
-                                            Perfil → Formas de Pagamento → Cartões → Conta Mercado Pago.
-                                            É nessa conta que as mensalidades caem.
-                                        </span>
-                                    </div>
-                                </li>
-
-                                <li>
-                                    <Icon icon="solar:refresh-circle-outline" />
-                                    <div>
-                                        <b>Verifique as assinaturas</b>
-                                        <span>
-                                            Na mesma tela, toque em "Verificar assinaturas". Se o
-                                            Mercado Pago ainda não liberou, a tela diz o que fazer.
+                                            Perfil → Configurações → Pagamentos. É nessa conta que as
+                                            mensalidades caem.
                                         </span>
                                     </div>
                                 </li>
@@ -776,7 +913,7 @@ const ProductCreationModal = ({
                                         <span>
                                             Confere o plano, autoriza a cobrança recorrente, paga com
                                             cartão de crédito ou com a conta Mercado Pago, e pronto: a
-                                            cobrança se repete sozinha a cada ciclo até ele cancelar.
+                                            cobrança se repete sozinha até ele cancelar.
                                         </span>
                                     </div>
                                 </li>
@@ -786,7 +923,7 @@ const ProductCreationModal = ({
                             {!mercadoPagoConnected && (
                                 <a
                                     className="adm-monthly-readiness-link"
-                                    href="/central-adm?tab=perfil&screen=payment-card"
+                                    href="/central-adm?tab=perfil&screen=payment"
                                     target="_blank"
                                     rel="noreferrer"
                                 >
@@ -798,19 +935,12 @@ const ProductCreationModal = ({
                         </div>
 
 
-                        {/* AJUDA */}
-
-                        <div className="adm-product-type-help">
-
-                            <Icon icon="solar:info-circle-linear" />
-
-                            <span>
-                                Você poderá alterar essas configurações
-                                depois na página de gestão do produto. Quem já
-                                assina continua com as condições que aceitou.
-                            </span>
-
-                        </div>
+                        {monthlyProblem && (
+                            <div className="adm-product-type-warning" role="status">
+                                <Icon icon="solar:danger-circle-outline" />
+                                <span>{monthlyProblem}</span>
+                            </div>
+                        )}
 
 
                         {/* AÇÕES */}
@@ -827,7 +957,9 @@ const ProductCreationModal = ({
 
                             <button
                                 type="button"
-                                className="adm_products-modal-btn primary-btn"
+                                className={`adm_products-modal-btn primary-btn ${monthlyProblem ? "disabled" : ""}`}
+                                disabled={Boolean(monthlyProblem)}
+                                style={{ opacity: monthlyProblem ? 0.5 : 1, cursor: monthlyProblem ? "not-allowed" : "pointer" }}
                                 onClick={nextStep}
                             >
                                 Continuar
@@ -1595,24 +1727,8 @@ const ProductCreationModal = ({
                                         </div>
                                     </div>
                                 </div>
-                                <div className="adm_admins-config-wrapper">
-                                    <div className="adm_admins-config-square">
-                                        <div className="adm_admins-config-content">
-                                            <h1>Pagamento Antecipado</h1>
-                                            <p>Exige pagamento antes do agendamento.</p>
-                                            <div class="adm_admin_config-toggle-switch">
-                                                <input
-                                                    class="adm_admin_config-toggle-input"
-                                                    id="adm_admin_config-pay-toggle"
-                                                    type="checkbox"
-                                                    checked={prepaymentRequired}
-                                                    onChange={(e) => setPrepaymentRequired(e.target.checked)}
-                                                />
-                                                <label class="adm_admin_config-toggle-label" for="adm_admin_config-pay-toggle"></label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                                {/* "Pagamento Antecipado" saiu daqui: é a
+                                    modalidade escolhida no passo 2. */}
 
                                 <div className="adm_admins-config-wrapper">
                                     <div className="adm_admins-config-square">

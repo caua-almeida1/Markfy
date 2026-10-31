@@ -32,6 +32,19 @@
                  tenta de novo sozinho
      paused      pausada no Mercado Pago
      cancelled   encerrada (pode valer até accessUntil)
+
+   SITUAÇÃO DO PAGAMENTO (paymentStatus), separada do status
+   da assinatura — "autorizada" não quer dizer "paga":
+
+     awaiting_authorization  a pessoa ainda não autorizou
+     trial                   teste grátis, sem cobrança ainda
+     processing              autorizada, 1ª cobrança a caminho
+                             (o Mercado Pago cobra em até ~1 h)
+     paid                    a cobrança mais recente foi paga
+     failed                  a cobrança mais recente foi recusada
+
+   O gateway entra por payments/providers.js: aqui só chegam
+   objetos normalizados (assinatura e cobrança).
 ===================================================== */
 
 const crypto = require("crypto");
@@ -135,57 +148,38 @@ const planOf = (product) => {
 
 
 /* -----------------------------------------------------
-   CORPO DA PREAPPROVAL
+   CALENDÁRIO DA COBRANÇA
 ----------------------------------------------------- */
 
 /** Data da primeira cobrança: hoje, ou depois do teste grátis. */
 const firstChargeAt = (plan, now = Date.now()) =>
     now + (plan.trialDays || 0) * DAY_MS;
 
-const buildPreapprovalBody = ({
-    productName,
-    plan,
-    subscriptionId,
-    payerEmail,
-    method,
-    cardTokenId,
-    backUrl,
-    now = Date.now()
-}) => {
+/**
+ * Quando cobrar, no formato que o provedor entende:
+ *
+ *   startAt  só com teste grátis: a primeira cobrança fica
+ *            para o fim do teste. (Assinatura sem plano não
+ *            aceita free_trial — mandado assim, o teste era
+ *            ignorado e a pessoa era cobrada na hora.)
+ *   endAt    só sem renovação automática: um ciclo e acabou.
+ *            Fica um dia antes da segunda cobrança, para ela
+ *            nunca acontecer.
+ */
+const billingSchedule = (plan, now = Date.now()) => {
 
-    const recurring = {
-        frequency: plan.months,
-        frequency_type: "months",
-        transaction_amount: plan.price,
-        currency_id: "BRL"
+    const first = firstChargeAt(plan, now);
+
+    const endAt = plan.autoRenew
+        ? null
+        : bookingsCore.addMonths(new Date(first), plan.months).getTime() - DAY_MS;
+
+    return {
+        firstChargeAt: first,
+        startAt: plan.trialDays > 0 ? first : null,
+        endAt,
+        trialEndsAt: plan.trialDays > 0 ? first : null
     };
-
-    if (plan.trialDays > 0) {
-        recurring.free_trial = {
-            frequency: plan.trialDays,
-            frequency_type: "days"
-        };
-    }
-
-    /* Sem renovação automática: um ciclo só. O fim fica um dia
-       antes da segunda cobrança, para ela nunca acontecer. */
-    if (!plan.autoRenew) {
-        const end = bookingsCore.addMonths(new Date(firstChargeAt(plan, now)), plan.months);
-        recurring.end_date = new Date(end.getTime() - DAY_MS).toISOString();
-    }
-
-    const body = {
-        reason: bookingsCore.text(productName, 120) || "Mensalidade",
-        external_reference: subscriptionId,
-        payer_email: payerEmail,
-        auto_recurring: recurring,
-        back_url: backUrl,
-        status: method === "card" ? STATUS.ACTIVE : STATUS.PENDING
-    };
-
-    if (method === "card") body.card_token_id = cardTokenId;
-
-    return body;
 };
 
 
@@ -262,56 +256,28 @@ const parseSubscribe = (body, consentVersion = CONSENT_VERSION) => {
 
 
 /* -----------------------------------------------------
-   ESTADO VINDO DO MERCADO PAGO
+   ESTADO VINDO DO GATEWAY
+
+   `state` e `charge` chegam normalizados pelo provedor
+   (toSubscription / toCharge em payments/mercadopago.js).
 ----------------------------------------------------- */
 
-const MP_STATUSES = ["pending", "authorized", "paused", "cancelled"];
+const PROVIDER_STATUSES = ["pending", "authorized", "paused", "cancelled"];
 
 /**
- * Resultado de uma cobrança (authorized_payment):
- *
- *   status          scheduled | processed | recycling | cancelled
- *   payment.status  approved | rejected | in_process | ...
- *
- * "scheduled" é só a próxima cobrança agendada — não é
- * atraso. Tratar isso como falha marcava todo assinante como
- * "pagamento pendente" no dia seguinte a assinar.
+ * Registro gravado em subscriptions/{id}/charges/{chargeId}:
+ * valor, data, situação e o id do pagamento. Nada de cartão.
  */
-const chargeOutcome = (invoice) => {
-
-    const paymentStatus = (invoice && invoice.payment && invoice.payment.status) || null;
-    const status = (invoice && invoice.status) || null;
-
-    const paid = paymentStatus === "approved";
-
-    const failed =
-        !paid &&
-        (
-            paymentStatus === "rejected" ||
-            paymentStatus === "cancelled" ||
-            status === "recycling"
-        );
-
-    return { paid, failed, label: paymentStatus || status || "scheduled" };
-};
-
-/** Registro gravado em subscriptions/{id}/charges/{invoiceId}: sem dado de cartão. */
-const chargeRecord = (invoice, now = Date.now()) => {
-
-    const outcome = chargeOutcome(invoice);
-    const when = invoice.debit_date || invoice.date_created || null;
-
-    return {
-        amount: Number(invoice.transaction_amount) || null,
-        status: outcome.label,
-        paid: outcome.paid,
-        failed: outcome.failed,
-        paymentId: invoice.payment && invoice.payment.id ? String(invoice.payment.id) : null,
-        retryAttempt: Number(invoice.retry_attempt) || 0,
-        chargedAt: when ? new Date(when).getTime() || null : null,
-        updatedAt: now
-    };
-};
+const chargeRecord = (charge, now = Date.now()) => ({
+    amount: charge.amount || null,
+    status: charge.label || "scheduled",
+    paid: Boolean(charge.paid),
+    failed: Boolean(charge.failed),
+    paymentId: charge.paymentId || null,
+    retryAttempt: Number(charge.retryAttempt) || 0,
+    chargedAt: charge.chargedAt || null,
+    updatedAt: now
+});
 
 /** A cobrança mais recente que já teve resultado (paga ou recusada). */
 const latestSettledCharge = (charges) =>
@@ -331,23 +297,46 @@ const paidUntil = (subscription, now = Date.now()) => {
 };
 
 /**
- * Novo estado local a partir da preapproval lida do Mercado
- * Pago (e das cobranças já registradas). Devolve só o que
- * muda — o chamador faz o update.
+ * Situação do pagamento, separada do status da assinatura:
+ * só "paid" quando o gateway diz que a cobrança mais recente
+ * foi aprovada. Ser redirecionado para a página de sucesso,
+ * ou a assinatura estar "authorized", não é pagamento.
  */
-const syncPatch = (local, preapproval, now = Date.now()) => {
+const paymentStatusOf = (subscription, now = Date.now()) => {
+
+    const s = subscription || {};
+
+    if (s.status === STATUS.PENDING) return "awaiting_authorization";
+
+    const last = latestSettledCharge(s.charges);
+
+    if (last && last.failed) return "failed";
+    if (last && last.paid) return "paid";
+
+    if (Number(s.trialEndsAt) > now) return "trial";
+
+    return "processing";
+};
+
+/**
+ * Novo estado local a partir da assinatura lida do gateway
+ * (e das cobranças já registradas). Devolve só o que muda —
+ * o chamador faz o update.
+ */
+const syncPatch = (local, state, now = Date.now()) => {
 
     const current = local || {};
-    const mpStatus = MP_STATUSES.includes(preapproval && preapproval.status)
-        ? preapproval.status
+    const mpStatus = PROVIDER_STATUSES.includes(state && state.status)
+        ? state.status
         : current.status || STATUS.PENDING;
 
     const patch = { lastSyncAt: now, updatedAt: now };
 
-    if (preapproval && preapproval.next_payment_date) {
-        const next = new Date(preapproval.next_payment_date).getTime();
-        if (next) patch.nextBillingAt = next;
-    }
+    /* Status que a Markfy não conhece fica registrado (para
+       diagnóstico), sem mudar o estado local. */
+    if (state && state.providerStatus) patch.providerStatus = state.providerStatus;
+
+    if (state && state.nextBillingAt) patch.nextBillingAt = state.nextBillingAt;
 
     if (mpStatus === STATUS.ACTIVE) {
 
@@ -380,8 +369,38 @@ const syncPatch = (local, preapproval, now = Date.now()) => {
         patch.status = mpStatus;
     }
 
+    patch.paymentStatus = paymentStatusOf({ ...current, ...patch }, now);
+
     return patch;
 };
+
+
+/* -----------------------------------------------------
+   PAUSAR E REATIVAR (só a empresa)
+
+   Pausada, o gateway não cobra e a pessoa não agenda pela
+   mensalidade. Reativar volta a cobrar no ciclo seguinte.
+----------------------------------------------------- */
+
+const pauseDecision = (subscription) => {
+
+    if (!subscription) return { error: "Assinatura não encontrada." };
+
+    if (subscription.status !== STATUS.ACTIVE && subscription.status !== STATUS.PAST_DUE) {
+        return { error: "Só dá para pausar uma assinatura ativa." };
+    }
+
+    if (subscription.cancelScheduledFor) {
+        return { error: "Esta assinatura já tem cancelamento agendado." };
+    }
+
+    return { ok: true };
+};
+
+const resumeDecision = (subscription) =>
+    subscription && subscription.status === STATUS.PAUSED
+        ? { ok: true }
+        : { error: "Só dá para reativar uma assinatura pausada." };
 
 
 /* -----------------------------------------------------
@@ -486,13 +505,17 @@ const publicView = (id, subscription) => {
     return {
         id,
         status: s.status || null,
+        paymentStatus: s.paymentStatus || paymentStatusOf(s),
         method: s.method || null,
         productId: s.productId || null,
         productName: s.productName || null,
         price: s.price || null,
         billingCycle: s.billingCycle || null,
         startedAt: s.startedAt || null,
+        trialEndsAt: s.trialEndsAt || null,
         nextBillingAt: s.nextBillingAt || null,
+        lastPaidAt: s.lastPaidAt || null,
+        pausedAt: s.pausedAt || null,
         accessUntil: s.accessUntil || null,
         cancelScheduledFor: s.cancelScheduledFor || null,
         firstBooking: s.firstBooking
@@ -539,13 +562,19 @@ const explainRejection = (reason, raw = "") => {
         };
     }
 
+    /* Ao autorizar, o Mercado Pago faz uma cobrança de valor
+       mínimo no cartão (e devolve). CC_VAL_433 é essa cobrança
+       recusada: cartão de teste numa conta real, cartão do
+       próprio dono da conta que recebe, débito/pré-pago ou
+       antifraude. A tela de Pagamentos explica isso à empresa
+       (lastFailure). */
     if (/CC_VAL_433|card validation/i.test(all)) {
         return {
             code: "CARD_NOT_VALIDATED",
             ownerAction: false,
             message:
                 "O Mercado Pago não conseguiu validar este cartão para cobrança automática. " +
-                "Tente outro cartão de crédito ou pague pela sua conta Mercado Pago."
+                "Use um cartão de crédito em seu nome (débito e pré-pago não servem) ou pague pela sua conta Mercado Pago."
         };
     }
 
@@ -595,13 +624,15 @@ module.exports = {
     normalizeEmail,
     planOf,
     firstChargeAt,
-    buildPreapprovalBody,
+    billingSchedule,
     parseSubscribe,
-    chargeOutcome,
     chargeRecord,
     latestSettledCharge,
     paidUntil,
+    paymentStatusOf,
     syncPatch,
+    pauseDecision,
+    resumeDecision,
     withinWithdrawal,
     cancellationDecision,
     consentRecord,

@@ -23,6 +23,7 @@ import Modal from "../../../../components/modal/Modal";
 import { getClientId } from "../../../../utils/clientID";
 
 import {
+    getPaymentStatusInfo,
     getSubscriptionSummary,
     isSubscriptionVisible,
     watchMySubscriptions
@@ -2890,6 +2891,13 @@ const Reservations = () => {
                                                         ? " · cartão de crédito"
                                                         : ""}
                                             </span>
+
+                                            {/* Pagamento separado do status: autorizada ≠ paga. */}
+                                            {assinatura.status !== "cancelled" && (
+                                                <small className={`reservations-subscription-payment is-${getPaymentStatusInfo(assinatura).tone}`}>
+                                                    {getPaymentStatusInfo(assinatura).label}
+                                                </small>
+                                            )}
                                         </div>
 
                                         <span

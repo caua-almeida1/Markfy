@@ -61,12 +61,16 @@ const createFakeDb = (initial = {}) => {
     const makeQuery = (path, filter = {}) => ({
         orderByChild: (child) => makeQuery(path, { ...filter, child }),
         equalTo: (value) => makeQuery(path, { ...filter, value, hasValue: true }),
+        startAt: (value) => makeQuery(path, { ...filter, start: value }),
         limitToFirst: (limit) => makeQuery(path, { ...filter, limit }),
         once: async () => {
             const all = get(path) || {};
             let entries = Object.entries(all);
             if (filter.child && filter.hasValue) {
                 entries = entries.filter(([, item]) => isObject(item) && item[filter.child] === filter.value);
+            }
+            if (filter.child && filter.start !== undefined) {
+                entries = entries.filter(([, item]) => isObject(item) && item[filter.child] >= filter.start);
             }
             if (filter.limit) entries = entries.slice(0, filter.limit);
             return snapshot(entries.length ? Object.fromEntries(entries) : null);

@@ -27,6 +27,9 @@ const CentralAdm = () => {
     const [openProductsModal, setOpenProductsModal] = useState(false);
     const [profileInitialScreen, setProfileInitialScreen] = useState("home");
 
+    /* Resultado da volta do Mercado Pago (OAuth): "connected" ou o motivo do erro. */
+    const [paymentReturn, setPaymentReturn] = useState(null);
+
     /* Modal "Trocar empresa", só para quem tem mais de uma. */
     const [isCompanyPickerOpen, setIsCompanyPickerOpen] = useState(false);
 
@@ -50,14 +53,25 @@ const CentralAdm = () => {
                 window.location.search
             );
 
+        const mercadoPagoReturn =
+            params.get("mercadoPago");
+
         if (
-            params.get("mercadoPago") === "connected"
+            mercadoPagoReturn === "connected" ||
+            mercadoPagoReturn === "error"
         ) {
 
-            setProfileInitialScreen("payment-card");
+            setPaymentReturn(
+                mercadoPagoReturn === "connected"
+                    ? "connected"
+                    : params.get("reason") || "default"
+            );
+
+            setProfileInitialScreen("payment");
             setActiveTab("perfil");
 
             params.delete("mercadoPago");
+            params.delete("reason");
 
             const cleanUrl =
                 window.location.pathname +
@@ -562,6 +576,7 @@ const CentralAdm = () => {
                 return (
                     <PerfilAdm
                         initialScreen={profileInitialScreen}
+                        paymentReturn={paymentReturn}
                     />
                 );
             default:

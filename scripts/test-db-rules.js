@@ -69,7 +69,7 @@ const SEED = {
             products: { p1: { name: "Corte", value: "R$ 30,00", relatedUsers: [{ id: "pro1" }] } },
             schedules: { s1: { clientId: "c1", userName: "Ana", professionalId: "pro1", day: "22/10/2026", hour: "10:00", status: "pending" } },
             members: { owner1: { role: "master" }, pro1: { role: "professional" } },
-            paymentOrders: { o1: { status: "pending" } },
+            paymentOrders: { o1: { status: "pending", userId: "cust1", amount: 30 } },
             subscriptions: {
                 cust1_p1: { uid: "cust1", status: "authorized" },
                 other_p1: { uid: "other", status: "authorized" }
@@ -115,7 +115,11 @@ const reseed = () => call("PUT", "", "admin", SEED);
     await expect("anônimo NÃO lê CPF/CNPJ", call("GET", "companys/acme/document", as.anon), false);
     await expect("anônimo NÃO lê a agenda", call("GET", "companys/acme/schedules", as.anon), false);
     await expect("anônimo NÃO lista pedidos de pagamento", call("GET", "companys/acme/paymentOrders", as.anon), false);
-    await expect("anônimo lê um pedido de pagamento pelo id", call("GET", "companys/acme/paymentOrders/o1", as.anon), true);
+    /* Antes: qualquer pessoa com o id lia nome, recado e horário do cliente. */
+    await expect("anônimo NÃO lê um pedido de pagamento pelo id", call("GET", "companys/acme/paymentOrders/o1", as.anon), false);
+    await expect("quem pagou lê o próprio pedido", call("GET", "companys/acme/paymentOrders/o1", as.customer), true);
+    await expect("outro cliente NÃO lê o pedido", call("GET", "companys/acme/paymentOrders/o1", as.stranger), false);
+    await expect("a equipe lê o pedido", call("GET", "companys/acme/paymentOrders/o1", as.pro), true);
     await expect("anônimo lê WhatsApp público", call("GET", "companys/acme/integrations/whatsapp", as.anon), true);
     await expect("anônimo NÃO lê outras integrações", call("GET", "companys/acme/integrations", as.anon), false);
     await expect("anônimo lê receiveBeforeBooking", call("GET", "companys/acme/paymentSettings/receiveBeforeBooking", as.anon), true);
@@ -158,6 +162,13 @@ const reseed = () => call("PUT", "", "admin", SEED);
     /* Cancelar é pela subscriptionsApi: gravar a data direto pulava a fidelidade. */
     await expect("assinante NÃO agenda o próprio cancelamento direto no banco", call("PATCH", "companys/acme/subscriptions/cust1_p1", as.customer, { cancellationRequestedAt: NOW, cancelScheduledFor: NOW, updatedAt: NOW }), false);
     await expect("assinante NÃO muda o status", call("PUT", "companys/acme/subscriptions/cust1_p1/status", as.customer, "authorized"), false);
+    /* Dinheiro só o backend grava: nem a própria equipe forja valor, status ou conexão. */
+    await expect("dono NÃO marca pedido como pago direto no banco", call("PUT", "companys/acme/paymentOrders/o1/status", as.owner, "paid"), false);
+    await expect("dono NÃO cria pedido de pagamento", call("PUT", "companys/acme/paymentOrders/o2", as.owner, { status: "paid", amount: 1 }), false);
+    await expect("dono NÃO ativa assinatura direto no banco", call("PUT", "companys/acme/subscriptions/other_p1/status", as.owner, "authorized"), false);
+    await expect("dono NÃO grava o espelho da conexão do Mercado Pago", call("PATCH", "companys/acme/paymentSettings/mercadoPago", as.owner, { connected: true }), false);
+    await expect("dono NÃO grava histórico de assinatura", call("PUT", "companys/acme/subscriptionHistory/x", as.owner, { status: "cancelled" }), false);
+    await expect("dono ainda liga \"cobrar antecipado em todos os serviços\"", call("PUT", "companys/acme/paymentSettings/receiveBeforeBooking", as.owner, true), true);
 
     /* ---------- convite por link ---------- */
     await expect("convidado NÃO vira master", call("PUT", "companys/acme/members/newpro", as.invited, { role: "master", inviteId: "inv1" }), false);

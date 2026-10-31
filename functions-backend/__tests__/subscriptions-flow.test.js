@@ -146,10 +146,19 @@ global.fetch = async (url, init = {}) => {
 
 const bookings = require("../bookings");
 
+const provider = require("../payments/providers").getProvider("mercadopago");
+
+const connections = require("../payments/connections")({
+    db: () => fakeDb,
+    provider,
+    credentials: () => ({ clientId: "APP_ID", clientSecret: "APP_SECRET" })
+});
+
 const subscriptions = require("../subscriptions")({
     admin: fakeAdmin,
     secrets: [],
-    refreshAccessToken: async (handle, connection) => connection,
+    connections,
+    provider,
     loadCompaniesChildren: async (children) => {
         const companies = fakeDb.get("companys") || {};
         return Object.fromEntries(Object.entries(companies).map(([handle, company]) => [
@@ -312,18 +321,18 @@ test("webhook: cobrança agendada não marca atraso; recusada marca; paga volta 
 
     mp.invoices.inv1 = { id: "inv1", preapproval_id: preapprovalId, status: "scheduled", transaction_amount: 99.9 };
 
-    await subscriptions.handleNotification({ type: "subscription_authorized_payment", id: "inv1", collectorId: 999 });
+    await subscriptions.handleNotification({ topic: "subscription_charge", id: "inv1", sellerId: "999" });
     assert.equal(sub("ana_plano").status, "authorized");
 
     Object.assign(mp.invoices.inv1, { status: "recycling", payment: { id: 501, status: "rejected" }, debit_date: new Date().toISOString() });
 
-    await subscriptions.handleNotification({ type: "subscription_authorized_payment", id: "inv1", collectorId: 999 });
+    await subscriptions.handleNotification({ topic: "subscription_charge", id: "inv1", sellerId: "999" });
     assert.equal(sub("ana_plano").status, "past_due");
     assert.equal(sub("ana_plano").charges.inv1.failed, true);
 
     Object.assign(mp.invoices.inv1, { status: "processed", payment: { id: 501, status: "approved" } });
 
-    await subscriptions.handleNotification({ type: "subscription_authorized_payment", id: "inv1", collectorId: "999" });
+    await subscriptions.handleNotification({ topic: "subscription_charge", id: "inv1", sellerId: "999" });
     assert.equal(sub("ana_plano").status, "authorized");
     assert.ok(sub("ana_plano").lastPaidAt);
 });
@@ -351,7 +360,7 @@ test("conta Mercado Pago: nasce pendente, devolve o link e só reserva depois de
     assert.equal(synced.body.result.firstBooking.status, "booked");
 
     /* Webhook repetido não duplica o agendamento. */
-    await subscriptions.handleNotification({ type: "subscription_preapproval", id: sub("caio_plano").mercadoPagoPreapprovalId });
+    await subscriptions.handleNotification({ topic: "subscription", id: sub("caio_plano").mercadoPagoPreapprovalId });
     assert.equal(schedules().filter((item) => item.subscriptionId === "caio_plano").length, 1);
 });
 

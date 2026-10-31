@@ -1,24 +1,32 @@
 /* =====================================================
-   MARKFY — MENSALIDADES (MERCADO PAGO PREAPPROVAL)
+   MARKFY — MENSALIDADES (ASSINATURA RECORRENTE)
 
    subscriptionsApi recebe { action, ... }:
 
      create  assina (cartão ou conta Mercado Pago)
-     sync    lê o estado no Mercado Pago e atualiza o espelho
+     sync    lê o estado no gateway e atualiza o espelho
      cancel  encerra (respeita fidelidade, aviso prévio e o
              direito de arrependimento de 7 dias)
+     pause   pausa a cobrança (só a empresa)
+     resume  reativa uma assinatura pausada (só a empresa)
 
    Mais duas entradas sem navegador:
 
      handleNotification   chamada pelo mercadoPagoWebhook
      subscriptionsDailySync  todo dia: sincroniza, executa
-                          cancelamentos agendados e apaga
-                          tentativas abandonadas
+                          cancelamentos agendados, apaga
+                          tentativas abandonadas e roda as
+                          tarefas diárias de pagamentos
+                          (renovar tokens que vencem)
 
    O webhook é o caminho rápido; a sincronização diária e o
    `sync` da tela de retorno são a garantia. Se a URL de
    notificação não estiver configurada no Mercado Pago, as
    telas continuam corretas — só demoram mais a perceber.
+
+   O gateway entra por payments/providers.js (`provider`) e o
+   token da empresa por payments/connections.js
+   (`connections.withSeller`, que renova sozinho).
 
    ATENÇÃO: o Admin SDK ignora as regras do banco. Toda
    autorização está aqui.
@@ -32,10 +40,11 @@ const crypto = require("crypto");
 
 const core = require("./subscriptions-core");
 const bookings = require("./bookings");
+const { ConnectionError } = require("./payments/connections");
+const { canManagePayments } = require("./payments/payments-api");
 
 const bookingsCore = bookings.bookingsCore;
 
-const MP_API = "https://api.mercadopago.com";
 const FRONTEND_URL = "https://markfy.vercel.app";
 
 class SubscriptionError extends Error {
@@ -52,7 +61,7 @@ const fail = (status, message, code, extra) => {
 };
 
 
-module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren }) => {
+module.exports = ({ admin, secrets, connections, provider, loadCompaniesChildren, dailyTasks = [] }) => {
 
     const db = () => admin.database();
 
@@ -64,59 +73,30 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
 
 
     /* -------------------------------------------------
-       MERCADO PAGO
+       GATEWAY COM O TOKEN DA EMPRESA
     ------------------------------------------------- */
 
-    const mpFetch = async (token, path, { method = "GET", body, idempotency } = {}) => {
+    /** Conexão quebrada vira mensagem para a pessoa, não 500. */
+    const asSeller = async (handle, call, options) => {
 
-        const headers = { Authorization: `Bearer ${token}` };
+        try {
+            return await connections.withSeller(handle, call, options);
+        } catch (error) {
 
-        if (body) headers["Content-Type"] = "application/json";
-        if (idempotency) headers["X-Idempotency-Key"] = idempotency;
+            if (!(error instanceof ConnectionError)) throw error;
 
-        const response = await fetch(`${MP_API}${path}`, {
-            method,
-            headers,
-            body: body ? JSON.stringify(body) : undefined
-        });
+            if (error.code === "not_connected") {
+                fail(400, "Esta empresa ainda não ativou pagamentos online pelo Mercado Pago.", "not_connected", { ownerAction: true });
+            }
 
-        const data = await response.json().catch(() => ({}));
+            if (error.code === "reconnect_required") {
+                fail(502, "A conta Mercado Pago desta empresa precisa ser conectada novamente.", "reconnect_required", { ownerAction: true });
+            }
 
-        return { ok: response.ok, status: response.status, data };
-    };
-
-    const loadConnection = async (handle) => {
-
-        const connection = await read(`mercadoPagoConnections/${handle}`);
-
-        return connection && connection.connected && connection.accessToken ? connection : null;
-    };
-
-    const credentialRefused = (result) =>
-        result.status === 401 || /invalid.*(token|credential)|credential/i.test((result.data && result.data.message) || "");
-
-    /**
-     * Chama o Mercado Pago com o token da empresa. Renova antes
-     * se o token já venceu, e uma vez depois se for recusado.
-     */
-    const asSeller = async (handle, call, connection = null) => {
-
-        let current = connection || await loadConnection(handle);
-
-        if (!current) fail(400, "Esta empresa ainda não conectou o Mercado Pago.", "not_connected");
-
-        if (current.refreshToken && Number(current.expiresAt) && Number(current.expiresAt) < Date.now() + 60000) {
-            current = await refreshAccessToken(handle, current).catch(() => current);
+            fail(503, "Não foi possível falar com o Mercado Pago agora. Tente de novo em instantes.", "network");
         }
 
-        let result = await call(current.accessToken);
-
-        if (credentialRefused(result) && current.refreshToken) {
-            current = await refreshAccessToken(handle, current);
-            result = await call(current.accessToken);
-        }
-
-        return result;
+        return null;
     };
 
 
@@ -158,7 +138,11 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
             fail(404, "Assinatura não encontrada.", "not_found");
         }
 
-        return { subscription, by: subscription.uid === uid ? "client" : "company" };
+        return {
+            subscription,
+            by: subscription.uid === uid ? "client" : "company",
+            role: member ? member.role || null : null
+        };
     };
 
 
@@ -280,29 +264,17 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
 
 
     /* -------------------------------------------------
-       COBRANÇAS (authorized_payments)
+       COBRANÇAS
     ------------------------------------------------- */
 
-    /** Lê as cobranças da assinatura no Mercado Pago e grava no espelho. */
-    const recordCharges = async (handle, subscriptionId, preapprovalId, token, invoices = null) => {
-
-        let list = invoices;
-
-        if (!list) {
-
-            const result = await mpFetch(
-                token,
-                `/authorized_payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&limit=50`
-            );
-
-            list = result.ok && Array.isArray(result.data.results) ? result.data.results : [];
-        }
+    /** Grava as cobranças (já normalizadas) no espelho. */
+    const recordCharges = async (handle, subscriptionId, charges) => {
 
         const patch = {};
         const now = Date.now();
 
-        list.forEach((invoice) => {
-            if (invoice && invoice.id) patch[String(invoice.id)] = core.chargeRecord(invoice, now);
+        (charges || []).forEach((charge) => {
+            if (charge && charge.id) patch[charge.id] = core.chargeRecord(charge, now);
         });
 
         if (Object.keys(patch).length) {
@@ -317,7 +289,7 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
        SINCRONIZAR
     ------------------------------------------------- */
 
-    const syncOne = async (handle, subscriptionId, { invoices = null } = {}) => {
+    const syncOne = async (handle, subscriptionId, { charges = null } = {}) => {
 
         const ref = subscriptionRef(handle, subscriptionId);
         const local = (await ref.once("value")).val();
@@ -326,24 +298,30 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
 
         const preapprovalId = String(local.mercadoPagoPreapprovalId);
 
-        let token = null;
+        let listed = charges;
 
-        const lido = await asSeller(handle, async (accessToken) => {
-            token = accessToken;
-            return mpFetch(accessToken, `/preapproval/${encodeURIComponent(preapprovalId)}`);
+        const lido = await asSeller(handle, async (token) => {
+
+            const result = await provider.getSubscription(token, preapprovalId);
+
+            if (result.ok && !listed) {
+                const found = await provider.listCharges(token, preapprovalId);
+                listed = found.ok ? found.charges : [];
+            }
+
+            return result;
         });
 
         if (!lido.ok) {
-            console.warn("subscriptions: preapproval ilegível", handle, lido.status);
+            console.warn("subscriptions: assinatura ilegível no gateway", handle, lido.status);
             return local;
         }
 
-        const charges = await recordCharges(handle, subscriptionId, preapprovalId, token, invoices)
-            .catch(() => ({}));
+        const recorded = await recordCharges(handle, subscriptionId, listed).catch(() => ({}));
 
-        const merged = { ...local, charges: { ...(local.charges || {}), ...charges } };
+        const merged = { ...local, charges: { ...(local.charges || {}), ...recorded } };
 
-        const patch = core.syncPatch(merged, lido.data);
+        const patch = core.syncPatch(merged, provider.toSubscription(lido.data));
 
         const last = core.latestSettledCharge(merged.charges);
 
@@ -399,17 +377,15 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
         return Object.keys(updates).length / 3;
     };
 
-    const cancelAtMercadoPago = async (handle, preapprovalId) => {
+    const setStatusAtGateway = async (handle, preapprovalId, status) => {
 
         if (!preapprovalId) return { ok: true };
 
-        return asSeller(handle, (token) =>
-            mpFetch(token, `/preapproval/${encodeURIComponent(preapprovalId)}`, {
-                method: "PUT",
-                body: { status: "cancelled" }
-            })
-        );
+        return asSeller(handle, (token) => provider.setSubscriptionStatus(token, preapprovalId, status));
     };
+
+    const cancelAtGateway = (handle, preapprovalId) =>
+        setStatusAtGateway(handle, preapprovalId, "cancelled");
 
     /** Estorna as cobranças aprovadas dos últimos 7 dias (arrependimento). */
     const refundWithdrawal = async (handle, subscription) => {
@@ -422,28 +398,21 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
 
         await asSeller(handle, async (token) => {
 
-            const result = await mpFetch(
-                token,
-                `/authorized_payments/search?preapproval_id=${encodeURIComponent(preapprovalId)}&limit=50`
-            );
+            const result = await provider.listCharges(token, preapprovalId);
 
             if (result.status === 401) return result;
 
-            const invoices = result.ok && Array.isArray(result.data.results) ? result.data.results : [];
+            for (const charge of result.charges) {
 
-            for (const invoice of invoices) {
+                if (!charge.paid || !charge.paymentId || (charge.chargedAt && charge.chargedAt < since)) continue;
 
-                const record = core.chargeRecord(invoice);
+                const refund = await provider.refundPayment(
+                    token,
+                    charge.paymentId,
+                    core.idempotencyKey("withdrawal", charge.paymentId)
+                );
 
-                if (!record.paid || !record.paymentId || (record.chargedAt && record.chargedAt < since)) continue;
-
-                const refund = await mpFetch(token, `/v1/payments/${encodeURIComponent(record.paymentId)}/refunds`, {
-                    method: "POST",
-                    body: {},
-                    idempotency: core.idempotencyKey("withdrawal", record.paymentId)
-                });
-
-                if (refund.ok) refunded += record.amount || 0;
+                if (refund.ok) refunded += charge.amount || 0;
                 else failed += 1;
             }
 
@@ -460,7 +429,7 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
 
     const LOCK_TTL_MS = 30000;
 
-    const create = async (body, user, req) => {
+    const create = async (body, user) => {
 
         const parsed = core.parseSubscribe(body);
 
@@ -496,9 +465,9 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
             fail(400, "Este profissional não atende este plano. Escolha outro.", "professional_invalid");
         }
 
-        const connection = await loadConnection(handle);
+        const connection = await connections.load(handle);
 
-        if (!connection) {
+        if (!connections.isUsable(connection)) {
             fail(400, "Esta empresa ainda não ativou pagamentos online pelo Mercado Pago.", "not_connected", { ownerAction: true });
         }
 
@@ -528,13 +497,13 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
             }
 
             if (existing && existing.status === core.STATUS.PAUSED) {
-                fail(409, "Sua assinatura deste plano está pausada no Mercado Pago. Reative por lá ou cancele antes de assinar de novo.", "paused");
+                fail(409, "Sua assinatura deste plano está pausada. Fale com a empresa para reativar.", "paused");
             }
 
             /* Tentativa anterior que ficou pela metade: encerra lá
                antes de abrir outra. */
             if (existing && existing.status === core.STATUS.PENDING && existing.mercadoPagoPreapprovalId) {
-                await cancelAtMercadoPago(handle, existing.mercadoPagoPreapprovalId).catch(() => null);
+                await cancelAtGateway(handle, existing.mercadoPagoPreapprovalId).catch(() => null);
                 await indexRef(existing.mercadoPagoPreapprovalId).remove().catch(() => {});
             }
 
@@ -548,45 +517,50 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
             }
 
             const now = Date.now();
+            const schedule = core.billingSchedule(plan, now);
 
-            const preapproval = core.buildPreapprovalBody({
-                productName: name,
-                plan,
-                subscriptionId,
+            const preapproval = provider.buildSubscription({
+                reason: bookingsCore.text(name, 120) || "Mensalidade",
+                externalReference: subscriptionId,
                 payerEmail: request.payerEmail,
-                method: request.method,
-                cardTokenId: request.cardTokenId,
+                amount: plan.price,
+                frequencyMonths: plan.months,
+                startAt: schedule.startAt,
+                endAt: schedule.endAt,
                 backUrl: `${FRONTEND_URL}/assinatura/retorno?empresa=${encodeURIComponent(handle)}`,
-                now
+                cardTokenId: request.method === "card" ? request.cardTokenId : null
             });
 
-            let token = connection.accessToken;
+            const result = await asSeller(handle, (accessToken) =>
+                provider.createSubscription(
+                    accessToken,
+                    preapproval,
+                    core.idempotencyKey("preapproval", subscriptionId, request.method, request.cardTokenId || now)
+                ), { connection });
 
-            const result = await asSeller(handle, (accessToken) => {
-                token = accessToken;
-                return mpFetch(accessToken, "/preapproval", {
-                    method: "POST",
-                    body: preapproval,
-                    idempotency: core.idempotencyKey("preapproval", subscriptionId, request.method, request.cardTokenId || now)
-                });
-            }, connection);
+            if (result.network) {
+                fail(503, "Não foi possível falar com o Mercado Pago agora. Nada foi cobrado. Tente de novo.", "network");
+            }
 
             if (!result.ok || !result.data || !result.data.id) {
 
-                const reason = core.mercadoPagoReason(result.data);
+                const reason = provider.reason(result.data);
                 const explained = core.explainRejection(reason, JSON.stringify((result.data && result.data.cause) || ""));
 
                 /* Só status e motivo: a resposta inteira pode trazer o
                    e-mail do pagador. */
                 console.error("subscriptions: preapproval recusada", handle, result.status, explained.code, reason.slice(0, 300));
 
+                /* A empresa vê a última recusa em Pagamentos (só o código). */
+                await connections.recordFailure(handle, { kind: "subscription", code: explained.code });
+
                 fail(explained.ownerAction ? 502 : 400, explained.message, explained.code, {
                     ownerAction: explained.ownerAction
                 });
             }
 
-            const mp = result.data;
-            const mpStatus = mp.status === core.STATUS.ACTIVE ? core.STATUS.ACTIVE : core.STATUS.PENDING;
+            const state = provider.toSubscription(result.data);
+            const status = state.status === core.STATUS.ACTIVE ? core.STATUS.ACTIVE : core.STATUS.PENDING;
 
             const record = {
                 id: subscriptionId,
@@ -598,9 +572,10 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
                 userName: request.userName,
                 payerEmail: request.payerEmail,
                 method: request.method,
+                provider: provider.id,
 
-                mercadoPagoPreapprovalId: String(mp.id),
-                status: mpStatus,
+                mercadoPagoPreapprovalId: state.id,
+                status,
 
                 price: plan.price,
                 currency: plan.currency,
@@ -609,6 +584,7 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
                 sessionsPerCycle: plan.sessionsPerCycle,
                 autoRenew: plan.autoRenew,
                 trialDays: plan.trialDays,
+                trialEndsAt: schedule.trialEndsAt,
                 loyaltyMonths: plan.loyaltyMonths,
                 cancellationNoticeDays: plan.cancellationNoticeDays,
 
@@ -618,10 +594,8 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
                     ? { status: "waiting", request: request.booking }
                     : null,
 
-                startedAt: mpStatus === core.STATUS.ACTIVE ? now : null,
-                nextBillingAt: mp.next_payment_date
-                    ? new Date(mp.next_payment_date).getTime() || core.firstChargeAt(plan, now)
-                    : core.firstChargeAt(plan, now),
+                startedAt: status === core.STATUS.ACTIVE ? now : null,
+                nextBillingAt: state.nextBillingAt || schedule.firstChargeAt,
 
                 accessUntil: null,
                 cancelScheduledFor: null,
@@ -631,10 +605,12 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
                 updatedAt: now
             };
 
-            await ref.set(record);
-            await writeIndex(String(mp.id), handle, subscriptionId, mpStatus);
+            record.paymentStatus = core.paymentStatusOf(record, now);
 
-            if (mpStatus === core.STATUS.ACTIVE) {
+            await ref.set(record);
+            await writeIndex(state.id, handle, subscriptionId, status);
+
+            if (status === core.STATUS.ACTIVE) {
                 await activateFirstBooking(handle, subscriptionId);
             }
 
@@ -642,9 +618,7 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
 
             return {
                 ...core.publicView(subscriptionId, saved),
-                redirectUrl: mpStatus === core.STATUS.PENDING
-                    ? mp.init_point || mp.sandbox_init_point || null
-                    : null
+                redirectUrl: status === core.STATUS.PENDING ? state.authorizeUrl : null
             };
 
         } finally {
@@ -701,10 +675,10 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
             return core.publicView(subscriptionId, (await ref.once("value")).val());
         }
 
-        const result = await cancelAtMercadoPago(handle, subscription.mercadoPagoPreapprovalId);
+        const result = await cancelAtGateway(handle, subscription.mercadoPagoPreapprovalId);
 
         /* Nunca "cancelado" aqui com a cobrança seguindo lá. */
-        if (!result.ok && !/cancel/i.test(core.mercadoPagoReason(result.data))) {
+        if (!result.ok && !/cancel/i.test(provider.reason(result.data))) {
             console.error("subscriptions: cancelamento recusado", handle, result.status);
             fail(502, "O Mercado Pago não confirmou o cancelamento. Tente de novo em instantes.", "mp_cancel_failed");
         }
@@ -753,10 +727,54 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
     };
 
 
+    /* Pausar/reativar: decisão da empresa (o cliente cancela). */
+    const changeStatus = (target) => async (body, user) => {
+
+        const { handle, subscriptionId } = body;
+
+        const { subscription, by, role } = await loadOwned(handle, subscriptionId, user.uid);
+
+        if (by !== "company" || !canManagePayments(role)) {
+            fail(403, "Só o administrador da empresa pode pausar ou reativar uma assinatura.", "forbidden");
+        }
+
+        const decision = target === core.STATUS.PAUSED
+            ? core.pauseDecision(subscription)
+            : core.resumeDecision(subscription);
+
+        if (decision.error) fail(409, decision.error, "not_allowed");
+
+        const result = await setStatusAtGateway(handle, subscription.mercadoPagoPreapprovalId, target);
+
+        /* O espelho só muda com o gateway confirmando. */
+        if (!result.ok) {
+            console.error("subscriptions: mudança de status recusada", handle, target, result.status);
+            fail(502, "O Mercado Pago não confirmou a mudança. Tente de novo em instantes.", "mp_status_failed");
+        }
+
+        const now = Date.now();
+
+        await subscriptionRef(handle, subscriptionId).update(
+            target === core.STATUS.PAUSED
+                ? { status: core.STATUS.PAUSED, pausedAt: now, pausedBy: user.uid, updatedAt: now }
+                : { status: core.STATUS.ACTIVE, pausedAt: null, resumedAt: now, updatedAt: now }
+        );
+
+        /* Reativada: o gateway devolve a próxima cobrança. */
+        const updated = target === core.STATUS.ACTIVE
+            ? await syncOne(handle, subscriptionId).catch(() => null)
+            : null;
+
+        return core.publicView(subscriptionId, updated || (await subscriptionRef(handle, subscriptionId).once("value")).val());
+    };
+
+
     const ACTIONS = {
         create: { run: create, limit: "subscribe" },
         sync: { run: sync, limit: "subscriptionSync" },
-        cancel: { run: cancel, limit: "subscriptionCancel" }
+        cancel: { run: cancel, limit: "subscriptionCancel" },
+        pause: { run: changeStatus(core.STATUS.PAUSED), limit: "subscriptionManage" },
+        resume: { run: changeStatus(core.STATUS.ACTIVE), limit: "subscriptionManage" }
     };
 
     const subscriptionsApi = onRequest({ secrets, maxInstances: 10 }, async (req, res) => {
@@ -819,88 +837,75 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
            uma cobrança foi agendada, paga ou recusada.
 
        Nada do corpo é levado a sério: a notificação só diz
-       "olhe de novo", e quem diz o estado é a API do Mercado
-       Pago, lida com o token da empresa.
+       "olhe de novo", e quem diz o estado é a API do gateway,
+       lida com o token da empresa.
     ================================================= */
 
-    /** Empresa dona da conta Mercado Pago `user_id` (vem na notificação). */
-    const handleForCollector = async (collectorId) => {
-
-        if (!collectorId) return null;
-
-        for (const value of [Number(collectorId), String(collectorId)]) {
-
-            const found = (await db()
-                .ref("mercadoPagoConnections")
-                .orderByChild("mercadoPagoUserId")
-                .equalTo(value)
-                .limitToFirst(1)
-                .once("value")).val();
-
-            if (found) return Object.keys(found)[0];
-        }
-
-        return null;
-    };
-
-    const handleInvoice = async (invoiceId, collectorId) => {
+    const handleCharge = async (chargeId, sellerId) => {
 
         const tryHandle = async (handle) => {
 
-            let invoice = null;
+            let charge = null;
 
-            const result = await asSeller(handle, async (token) => {
-                const lido = await mpFetch(token, `/authorized_payments/${encodeURIComponent(invoiceId)}`);
-                if (lido.ok) invoice = lido.data;
+            const result = await connections.withSeller(handle, async (token) => {
+                const lido = await provider.getCharge(token, chargeId);
+                if (lido.ok) charge = lido.charge;
                 return lido;
-            }).catch(() => ({ ok: false }));
+            }).catch((error) => {
+                if (error instanceof ConnectionError) return { ok: false };
+                throw error;
+            });
 
-            if (!result.ok || !invoice || !invoice.preapproval_id) return false;
+            if (result.network) throw new Error("Mercado Pago sem resposta");
+            if (!result.ok || !charge || !charge.subscriptionId) return false;
 
-            const found = await findByPreapproval(invoice.preapproval_id);
+            const found = await findByPreapproval(charge.subscriptionId);
 
             if (!found) return false;
 
-            await syncOne(found.handle, found.id, { invoices: [invoice] });
+            await syncOne(found.handle, found.id, { charges: [charge] });
 
             return true;
         };
 
-        const owner = await handleForCollector(collectorId).catch(() => null);
+        const owners = await connections.handlesForSeller(sellerId).catch(() => []);
 
-        if (owner && await tryHandle(owner)) return;
+        for (const handle of owners) {
+            if (await tryHandle(handle)) return true;
+        }
 
         /* Sem user_id (IPN antigo) ou conexão não achada: tenta
            cada empresa conectada. Raro. */
-        const connections = (await db().ref("mercadoPagoConnections").once("value")).val() || {};
-
-        for (const handle of Object.keys(connections)) {
-            if (handle !== owner && connections[handle] && connections[handle].connected && await tryHandle(handle)) return;
+        for (const handle of await connections.connectedHandles()) {
+            if (!owners.includes(handle) && await tryHandle(handle)) return true;
         }
 
-        console.warn("subscriptions: cobrança sem assinatura conhecida", invoiceId);
+        console.warn("subscriptions: cobrança sem assinatura conhecida", chargeId);
+        return false;
     };
 
-    const handleNotification = async ({ type, id, collectorId }) => {
+    const handleNotification = async ({ topic, id, sellerId }) => {
 
-        if (!id) return;
+        if (!id) return false;
 
-        if (type === "preapproval" || type === "subscription_preapproval") {
+        if (topic === "subscription") {
 
             const found = await findByPreapproval(String(id));
 
             if (!found) {
                 console.warn("subscriptions: preapproval desconhecida", id);
-                return;
+                return false;
             }
 
             await syncOne(found.handle, found.id);
-            return;
+            return true;
         }
 
-        if (type === "subscription_authorized_payment" || type === "authorized_payment") {
-            await handleInvoice(String(id), collectorId);
+        if (topic === "subscription_charge") {
+            return handleCharge(String(id), sellerId);
         }
+
+        return false;
     };
 
 
@@ -910,7 +915,8 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
        - atualiza estado e cobranças de toda assinatura aberta;
        - executa os cancelamentos agendados (aviso prévio);
        - cancela e APAGA tentativas pela conta Mercado Pago
-         que ninguém concluiu em 48 h (não houve contrato).
+         que ninguém concluiu em 48 h (não houve contrato);
+       - roda as tarefas diárias de pagamentos (dailyTasks).
     ================================================= */
 
     const runDailySync = async () => {
@@ -942,7 +948,7 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
                     const updated = await syncOne(handle, subscriptionId);
 
                     if (updated && updated.status === core.STATUS.PENDING) {
-                        await cancelAtMercadoPago(handle, preapprovalId).catch(() => null);
+                        await cancelAtGateway(handle, preapprovalId).catch(() => null);
                         await ref.remove();
                         await indexRef(preapprovalId).remove();
                         summary.expired += 1;
@@ -957,7 +963,7 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
                 if (updated && updated.cancelScheduledFor && Number(updated.cancelScheduledFor) <= now &&
                     updated.status !== core.STATUS.CANCELLED) {
 
-                    const result = await cancelAtMercadoPago(handle, preapprovalId);
+                    const result = await cancelAtGateway(handle, preapprovalId);
 
                     if (result.ok) {
 
@@ -987,6 +993,15 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
             }
         }
 
+        for (const task of dailyTasks) {
+            try {
+                summary[task.name] = await task.run();
+            } catch (error) {
+                summary.errors += 1;
+                console.error("payments: tarefa diária falhou", task.name, error.message);
+            }
+        }
+
         console.log("subscriptions: sincronização diária", JSON.stringify(summary));
 
         return summary;
@@ -998,12 +1013,23 @@ module.exports = ({ admin, secrets, refreshAccessToken, loadCompaniesChildren })
     );
 
 
+    /** Cobrança de mensalidade que chegou como aviso "payment". */
+    const syncByReference = async (handle, subscriptionId) => {
+
+        if (!bookingsCore.isHandle(handle) || !bookingsCore.isKey(subscriptionId)) return null;
+        if (!(await read(`companys/${handle}/subscriptions/${subscriptionId}/mercadoPagoPreapprovalId`))) return null;
+
+        return syncOne(handle, subscriptionId);
+    };
+
     return {
         subscriptionsApi,
         subscriptionsDailySync,
         handleNotification,
+        syncByReference,
         runDailySync
     };
 };
 
 module.exports.core = core;
+module.exports.SubscriptionError = SubscriptionError;

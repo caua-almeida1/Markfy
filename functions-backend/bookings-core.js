@@ -269,6 +269,16 @@ const isSubscriptionUsable = (subscription, now = Date.now()) =>
         (subscription.status === "cancelled" && Number(subscription.accessUntil) > now)
     );
 
+/*
+ * Pagamento antes de agendar. Vale o interruptor da empresa
+ * ("todos os serviços", paymentSettings.receiveBeforeBooking)
+ * ou o do produto (settings.prepayment) — antes só o da
+ * empresa era conferido e o do produto era gravado à toa.
+ * Mensalidade tem fluxo próprio e não entra aqui.
+ */
+const advancePaymentRequired = ({ companyFlag, productFlag, productType }) =>
+    productType !== "monthly" && (companyFlag === true || productFlag === true);
+
 /** Uma assinatura cancelada só cobre atendimentos antes do fim do acesso. */
 const subscriptionCoversDate = (subscription, date) =>
     !(subscription && subscription.status === "cancelled") ||
@@ -389,6 +399,15 @@ const buildSchedule = ({ request, product, extras, professionalName, uid, now = 
     if (request.source) record.source = request.source;
     if (request.subscriptionId) record.subscriptionId = request.subscriptionId;
 
+    /* Agendamento que nasceu de um pagamento antecipado
+       aprovado: o painel mostra "pago" e de qual pagamento. */
+    if (request.payment) {
+        record.paymentStatus = "approved";
+        record.paymentId = request.payment.paymentId;
+        record.paymentOrderId = request.payment.orderId;
+        record.paidAmount = request.payment.amount;
+    }
+
     if (extraServices.length) {
         record.extraServices = extraServices;
         record.totalDuration = mainDuration + extraServices.reduce((sum, item) => sum + item.duration, 0);
@@ -472,6 +491,7 @@ module.exports = {
     hasConflict,
     addMonths,
     cycleWindow,
+    advancePaymentRequired,
     isSubscriptionUsable,
     subscriptionCoversDate,
     sessionsLeft,

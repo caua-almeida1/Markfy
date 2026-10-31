@@ -4092,3 +4092,22 @@
     opacity: .5;
     cursor: default;
 }
+
+
+/* Situação do pagamento da mensalidade (separada do status). */
+.reservations-subscription-payment {
+    display: block;
+    margin-top: 4px;
+
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--mkf-text-secondary, #5f626b);
+}
+
+.reservations-subscription-payment.is-active {
+    color: var(--mkf-success-text, #166534);
+}
+
+.reservations-subscription-payment.is-late {
+    color: var(--mkf-ui-danger, #c0392b);
+}
